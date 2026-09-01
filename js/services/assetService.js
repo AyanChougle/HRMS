@@ -6,15 +6,15 @@
 const assetService = {
   // Default Asset Categories
   DEFAULT_CATEGORIES: [
-    { id: 'cat_lap', code: 'LAPTOP', name: 'Laptops & Workstations', prefix: 'DL-LAP', icon: '💻' },
-    { id: 'cat_mon', code: 'MONITOR', name: 'Monitors & Displays', prefix: 'DL-MON', icon: '🖥️' },
-    { id: 'cat_mob', code: 'MOBILE', name: 'Smartphones & Tablets', prefix: 'DL-MOB', icon: '📱' },
-    { id: 'cat_acc', code: 'ACCESS_CARD', name: 'Access Cards & Keys', prefix: 'DL-ACC', icon: '💳' },
-    { id: 'cat_veh', code: 'VEHICLE', name: 'Company Vehicles', prefix: 'DL-VEH', icon: '🚗' },
-    { id: 'cat_fur', code: 'FURNITURE', name: 'Office Furniture & Chairs', prefix: 'DL-FUR', icon: '🪑' },
-    { id: 'cat_net', code: 'NETWORKING', name: 'Networking & Servers', prefix: 'DL-NET', icon: '🌐' },
-    { id: 'cat_lic', code: 'SOFTWARE_LICENSE', name: 'Software Licenses & SaaS', prefix: 'DL-LIC', icon: '🔑' },
-    { id: 'cat_oth', code: 'OTHER', name: 'Other Equipment', prefix: 'DL-OTH', icon: '📦' }
+    { id: 'cat_lap', code: 'LAPTOP', name: 'Laptops & Workstations', prefix: 'DL-LAP' },
+    { id: 'cat_mon', code: 'MONITOR', name: 'Monitors & Displays', prefix: 'DL-MON' },
+    { id: 'cat_mob', code: 'MOBILE', name: 'Smartphones & Tablets', prefix: 'DL-MOB' },
+    { id: 'cat_acc', code: 'ACCESS_CARD', name: 'Access Cards & Keys', prefix: 'DL-ACC' },
+    { id: 'cat_veh', code: 'VEHICLE', name: 'Company Vehicles', prefix: 'DL-VEH' },
+    { id: 'cat_fur', code: 'FURNITURE', name: 'Office Furniture & Chairs', prefix: 'DL-FUR' },
+    { id: 'cat_net', code: 'NETWORKING', name: 'Networking & Servers', prefix: 'DL-NET' },
+    { id: 'cat_lic', code: 'SOFTWARE_LICENSE', name: 'Software Licenses & SaaS', prefix: 'DL-LIC' },
+    { id: 'cat_oth', code: 'OTHER', name: 'Other Equipment', prefix: 'DL-OTH' }
   ],
 
   // 1. GET ASSET CATEGORIES
@@ -310,17 +310,6 @@ const assetService = {
     try {
       const target = companyId || AuthGuard.userProfile?.companyId || 'comp_diallo_india';
       const snapshot = await db.collection('vendors').where('companyId', '==', target).get();
-      if (snapshot.empty) {
-        const defaults = [
-          { name: 'Dell Enterprise India Pvt Ltd', contactPerson: 'Arun Verma', email: 'sales@dell.co.in', phone: '+91 22 6655 4400', category: 'Hardware' },
-          { name: 'Apple Authorized Enterprise Reseller', contactPerson: 'Karan Mehra', email: 'business@applepartner.in', phone: '+91 22 4000 1100', category: 'Hardware' },
-          { name: 'Urban Workspace & Ergonomics Ltd', contactPerson: 'Sanjay Kapoor', email: 'support@urbanwork.in', phone: '+91 80 2345 6789', category: 'Furniture' }
-        ];
-        for (const v of defaults) {
-          await db.collection('vendors').add({ ...v, companyId: target, createdAt: firebase.firestore.FieldValue.serverTimestamp() });
-        }
-        return defaults;
-      }
       return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
     } catch (e) {
       return [];

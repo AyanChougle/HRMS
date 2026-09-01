@@ -456,13 +456,16 @@ const DocumentsView = {
     const file = fileInput.files[0];
 
     try {
-      Toast.info('Uploading document to Firebase Storage...');
+      Toast.info('Uploading document securely to Hostinger Storage...');
       let downloadUrl = '#';
       try {
-        const snap = await storage.ref(`documents/${employeeId}/${Date.now()}_${file.name}`).put(file);
-        downloadUrl = await snap.ref.getDownloadURL();
+        const uploadRecord = await hostingerStorageService.uploadFile(file, {
+          category: categoryCode,
+          employeeId
+        });
+        downloadUrl = uploadRecord.fileUrl;
       } catch (err) {
-        downloadUrl = `https://storage.googleapis.com/hrms-docs/${file.name}`;
+        downloadUrl = `https://storage.diallo.com/documents/${file.name}`;
       }
 
       await documentService.uploadDocument({

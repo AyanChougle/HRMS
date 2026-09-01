@@ -548,13 +548,13 @@ const ExpensesView = {
       if (fileInput?.files?.length > 0) {
         const file = fileInput.files[0];
         receiptFileName = file.name;
-        Toast.info('Uploading receipt to Firebase Storage...');
+        Toast.info('Uploading receipt securely to Hostinger Storage...');
         try {
-          const snapshot = await storage.ref(`expenses/${Date.now()}_${file.name}`).put(file);
-          receiptUrl = await snapshot.ref.getDownloadURL();
+          const uploadRecord = await hostingerStorageService.uploadFile(file, { category: 'EXPENSE_RECEIPT' });
+          receiptUrl = uploadRecord.fileUrl;
         } catch (storageErr) {
           console.warn('Storage upload note:', storageErr);
-          receiptUrl = `https://storage.googleapis.com/hrms-receipts/${file.name}`;
+          receiptUrl = `https://storage.diallo.com/expenses/${file.name}`;
         }
       }
 

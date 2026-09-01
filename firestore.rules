@@ -7,20 +7,25 @@ service cloud.firestore {
       return request.auth != null;
     }
 
-    // DIALLO HRMS — PHASES 1 to 15 COLLECTIONS:
+    // DIALLO HRMS — PHASES 1 to 19 COLLECTIONS:
     // users, roles, companies, companySettings, branches, departments, designations, jobLevels,
     // employmentTypes, workLocations, shifts, holidays, leaveTypes, policies, organizationHistory,
     // grades, costCenters, employees, employeeHistory, onboardingTasks, employeeExits, attendanceRecords, punchLogs,
     // attendanceSettings, attendanceRegularizations, leaveApplications, leaveBalances,
     // salaryStructures, payrollRuns, payslips, approvalRequests, goals, reviewCycles,
     // performanceReviews, 360Feedback, jobRequisitions, jobPositions, candidates, jobApplications,
-    // interviewFeedback, jobOffers, announcements, notifications, auditLogs,
+    // interviewFeedback, jobOffers, announcements, notifications,
     // expenses, expenseCategories, expensePolicies, expenseApprovals,
     // assets, assetCategories, assetAssignments, assetReturns, assetMaintenance, vendors,
     // employeeDocuments, documentRequests, employeeRequests, requestHistory, documentTemplates,
     // savedReports, analytics, scheduledReports,
     // userDevices, notificationPreferences, notificationTemplates, notificationDeliveries,
-    // workflowDefinitions, workflowInstances, approvalTasks, workflowHistory, workflowDelegations
+    // workflowDefinitions, workflowInstances, approvalTasks, workflowHistory, workflowDelegations,
+    // employmentRecords, employmentHistory, probationRecords, probationReviews, promotions, transfers,
+    // salaryHistory, letterTemplates, employeeLetters, certifications, trainingRecords, hrCases, hrCaseEvents,
+    // grievances, hrRequests, complianceRecords, policyAcknowledgements,
+    // auditLogs, securityEvents, securityIncidents, securitySettings, accessReviews, userSessions, operationLogs,
+    // qaBugs, qaTestRuns
 
     match /{document=**} {
       allow read, write: if isAuthenticated();

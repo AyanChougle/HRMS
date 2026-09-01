@@ -663,13 +663,16 @@ const ESSView = {
     const file = fileInput.files[0];
 
     try {
-      Toast.info('Uploading file to Firebase Storage...');
+      Toast.info('Uploading file securely to Hostinger Storage...');
       let downloadUrl = '#';
       try {
-        const snap = await storage.ref(`documents/${AuthGuard.currentUser?.uid}/${Date.now()}_${file.name}`).put(file);
-        downloadUrl = await snap.ref.getDownloadURL();
+        const uploadRecord = await hostingerStorageService.uploadFile(file, {
+          category: categoryCode,
+          employeeId: AuthGuard.userProfile?.employeeId || AuthGuard.currentUser?.uid
+        });
+        downloadUrl = uploadRecord.fileUrl;
       } catch (err) {
-        downloadUrl = `https://storage.googleapis.com/hrms-docs/${file.name}`;
+        downloadUrl = `https://storage.diallo.com/documents/${file.name}`;
       }
 
       await documentService.uploadDocument({

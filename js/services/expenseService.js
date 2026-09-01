@@ -6,16 +6,16 @@
 const expenseService = {
   // Default Expense Categories
   DEFAULT_CATEGORIES: [
-    { id: 'cat_travel', code: 'TRAVEL', name: 'Travel & Flights', maxAmount: 50000, requiresReceipt: true, icon: '✈️' },
-    { id: 'cat_fuel', code: 'FUEL', name: 'Fuel & Conveyance', maxAmount: 10000, requiresReceipt: true, icon: '⛽' },
-    { id: 'cat_food', code: 'FOOD', name: 'Meals & Food', maxAmount: 3000, requiresReceipt: true, icon: '🍔' },
-    { id: 'cat_hotel', code: 'ACCOMMODATION', name: 'Hotel & Accommodation', maxAmount: 35000, requiresReceipt: true, icon: '🏨' },
-    { id: 'cat_supplies', code: 'OFFICE_SUPPLIES', name: 'Office Supplies & Hardware', maxAmount: 15000, requiresReceipt: true, icon: '📦' },
-    { id: 'cat_internet', code: 'INTERNET', name: 'Internet & Mobile Bills', maxAmount: 4000, requiresReceipt: true, icon: '📶' },
-    { id: 'cat_client', code: 'CLIENT_MEETING', name: 'Client Entertainment', maxAmount: 12000, requiresReceipt: true, icon: '🤝' },
-    { id: 'cat_training', code: 'TRAINING', name: 'Certifications & Courses', maxAmount: 25000, requiresReceipt: true, icon: '🎓' },
-    { id: 'cat_medical', code: 'MEDICAL', name: 'Medical Emergency', maxAmount: 20000, requiresReceipt: true, icon: '🏥' },
-    { id: 'cat_misc', code: 'MISCELLANEOUS', name: 'Miscellaneous', maxAmount: 5000, requiresReceipt: false, icon: '💼' }
+    { id: 'cat_travel', code: 'TRAVEL', name: 'Travel & Flights', maxAmount: 50000, requiresReceipt: true },
+    { id: 'cat_fuel', code: 'FUEL', name: 'Fuel & Conveyance', maxAmount: 10000, requiresReceipt: true },
+    { id: 'cat_food', code: 'FOOD', name: 'Meals & Food', maxAmount: 3000, requiresReceipt: true },
+    { id: 'cat_hotel', code: 'ACCOMMODATION', name: 'Hotel & Accommodation', maxAmount: 35000, requiresReceipt: true },
+    { id: 'cat_supplies', code: 'OFFICE_SUPPLIES', name: 'Office Supplies & Hardware', maxAmount: 15000, requiresReceipt: true },
+    { id: 'cat_internet', code: 'INTERNET', name: 'Internet & Mobile Bills', maxAmount: 4000, requiresReceipt: true },
+    { id: 'cat_client', code: 'CLIENT_MEETING', name: 'Client Entertainment', maxAmount: 12000, requiresReceipt: true },
+    { id: 'cat_training', code: 'TRAINING', name: 'Certifications & Courses', maxAmount: 25000, requiresReceipt: true },
+    { id: 'cat_medical', code: 'MEDICAL', name: 'Medical Emergency', maxAmount: 20000, requiresReceipt: true },
+    { id: 'cat_misc', code: 'MISCELLANEOUS', name: 'Miscellaneous', maxAmount: 5000, requiresReceipt: false }
   ],
 
   // 1. GET ALL CATEGORIES

@@ -1,0 +1,33 @@
+# DIALLO HRMS — HOSTINGER STORAGE SECURITY RULES (.htaccess)
+# Prevent direct directory indexing
+Options -Indexes
+
+# Enable Rewrite Engine
+RewriteEngine On
+
+# Force HTTPS on storage.diallo.com
+RewriteCond %{HTTPS} off
+RewriteRule ^(.*)$ https://%{HTTP_HOST}%{REQUEST_URI} [L,R=301]
+
+# Block direct access to executable or sensitive scripts
+<FilesMatch "\.(php|sh|pl|py|cgi|exe|bat)$">
+    Order Allow,Deny
+    Deny from all
+</FilesMatch>
+
+# Allow specific API endpoints
+<Files "upload.php">
+    Order Allow,Deny
+    Allow from all
+</Files>
+
+<Files "download.php">
+    Order Allow,Deny
+    Allow from all
+</Files>
+
+# Protect hidden configuration files
+<FilesMatch "^\.">
+    Order Allow,Deny
+    Deny from all
+</FilesMatch>

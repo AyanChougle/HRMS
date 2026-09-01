@@ -138,31 +138,34 @@ const App = {
         <div id="quick-search-results" class="flex flex-col gap-1">
           <div class="dropdown-header">Quick Navigation</div>
           <button class="dropdown-item" onclick="ModalManager.closeModal(); Router.navigate('employees');">
-            <span>👥 Employee Directory</span>
+            <span>Employee Directory</span>
           </button>
           <button class="dropdown-item" onclick="ModalManager.closeModal(); Router.navigate('attendance');">
-            <span>⏱️ Attendance & Live Punch Logs</span>
+            <span>Attendance & Punch Logs</span>
           </button>
           <button class="dropdown-item" onclick="ModalManager.closeModal(); Router.navigate('leave');">
-            <span>🏖️ Leave Quota & Applications</span>
+            <span>Leave Quota & Applications</span>
           </button>
           <button class="dropdown-item" onclick="ModalManager.closeModal(); Router.navigate('payroll');">
-            <span>💳 Payroll Processing & Salaries</span>
+            <span>Payroll Processing & Salaries</span>
           </button>
           <button class="dropdown-item" onclick="ModalManager.closeModal(); Router.navigate('ess');">
-            <span>📱 ESS & Kiosk Terminal</span>
+            <span>Employee Self-Service (ESS)</span>
           </button>
           <button class="dropdown-item" onclick="ModalManager.closeModal(); Router.navigate('communication');">
-            <span>📢 Communication & Company Wall</span>
+            <span>Communication & Announcements</span>
+          </button>
+          <button class="dropdown-item" onclick="ModalManager.closeModal(); Router.navigate('compliance');">
+            <span>Compliance & Legal Dossiers</span>
           </button>
           <button class="dropdown-item" onclick="ModalManager.closeModal(); Router.navigate('reports');">
-            <span>📊 Reports & Statutory Filings</span>
+            <span>Reports & Analytics</span>
           </button>
           <button class="dropdown-item" onclick="ModalManager.closeModal(); Router.navigate('admin');">
-            <span>🏢 Legal Entities & Governance</span>
+            <span>Organization & Governance</span>
           </button>
           <button class="dropdown-item" onclick="ModalManager.closeModal(); Router.navigate('settings');">
-            <span>⚙️ System Settings</span>
+            <span>System Settings</span>
           </button>
         </div>
       `,

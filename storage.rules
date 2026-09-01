@@ -2,28 +2,40 @@ rules_version = '2';
 service firebase.storage {
   match /b/{bucket}/o {
 
+    // Helper functions
     function isAuthenticated() {
       return request.auth != null;
     }
 
-    // 1. Employee Documents (Aadhaar, PAN, Resume)
-    match /employees/{employeeId}/documents/{fileName} {
-      allow read: if isAuthenticated();
-      allow write: if isAuthenticated() && (
-        request.resource.size < 10 * 1024 * 1024 && // Max 10MB
-        request.resource.contentType.matches('application/pdf|image/.*|application/msword|application/vnd.openxmlformats-officedocument.wordprocessingml.document')
-      );
-      allow delete: if isAuthenticated();
+    function isCompanyMember(companyId) {
+      return isAuthenticated();
     }
 
-    // 2. Employee Profile Avatars
-    match /employees/{employeeId}/profile/{fileName} {
+    function isOwner(employeeId) {
+      return isAuthenticated() && request.auth.uid == employeeId;
+    }
+
+    // Company branding (Logos)
+    match /companies/{companyId}/branding/{allPaths=**} {
       allow read: if isAuthenticated();
-      allow write: if isAuthenticated() && (
-        request.resource.size < 5 * 1024 * 1024 && // Max 5MB
-        request.resource.contentType.matches('image/.*')
-      );
-      allow delete: if isAuthenticated();
+      allow write: if isCompanyMember(companyId);
+    }
+
+    // Company policies & documents
+    match /companies/{companyId}/policies/{allPaths=**} {
+      allow read: if isAuthenticated();
+      allow write: if isCompanyMember(companyId);
+    }
+
+    // Employee specific documents, letters, and certificates
+    match /companies/{companyId}/employees/{employeeId}/{allPaths=**} {
+      allow read: if isOwner(employeeId) || isCompanyMember(companyId);
+      allow write: if isOwner(employeeId) || isCompanyMember(companyId);
+    }
+
+    // Fallback authenticated rule
+    match /{allPaths=**} {
+      allow read, write: if isAuthenticated();
     }
   }
 }

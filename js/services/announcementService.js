@@ -74,7 +74,7 @@ const announcementService = {
             companyId,
             employeeId: doc.id,
             type: 'ANNOUNCEMENT',
-            title: `📢 Announcement: ${payload.title}`,
+            title: `Announcement: ${payload.title}`,
             message: payload.message.slice(0, 120),
             priority: payload.priority,
             relatedModule: 'announcements',

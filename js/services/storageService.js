@@ -1,64 +1,61 @@
 /**
- * DIALLO HRMS — FIREBASE STORAGE SERVICE
- * Handles document and avatar uploads with Firestore metadata records
+ * DIALLO HRMS — PRODUCTION FILE STORAGE SERVICE (PHASE 20)
+ * Uses Hostinger Storage ONLY (Firebase Storage is disabled).
  */
 
 const storageService = {
-  // Upload an employee document (Aadhaar, PAN, Resume, Contract)
+  // Upload an employee document (Aadhaar, PAN, Resume, Contract) to Hostinger
   async uploadEmployeeDocument(employeeId, file, documentType = 'GENERAL') {
     try {
       if (!file) throw new Error('No file provided for upload');
+      const companyId = AuthGuard.userProfile?.companyId || 'comp_diallo_india';
+      
+      const record = await hostingerStorageService.uploadFile(file, {
+        category: documentType,
+        companyId,
+        employeeId
+      });
 
-      const timestamp = Date.now();
-      const safeFileName = `${timestamp}_${file.name.replace(/[^a-zA-Z0-9._-]/g, '_')}`;
-      const storagePath = `employees/${employeeId}/documents/${safeFileName}`;
-
-      const storageRef = storage.ref().child(storagePath);
-      const snapshot = await storageRef.put(file);
-      const downloadUrl = await snapshot.ref.getDownloadURL();
-
-      const docMetadata = {
+      return {
+        id: record.id,
         employeeId,
         fileName: file.name,
         fileSize: file.size,
         fileType: file.type,
         documentType,
-        storagePath,
-        downloadUrl,
-        uploadedBy: AuthGuard.currentUser ? AuthGuard.currentUser.uid : 'SYSTEM',
-        uploadedAt: firebase.firestore.FieldValue.serverTimestamp()
+        storagePath: record.storagePath,
+        downloadUrl: record.fileUrl,
+        fileUrl: record.fileUrl,
+        uploadedBy: record.uploadedBy,
+        uploadedAt: record.createdAt
       };
-
-      const docRef = await db.collection('employeeDocuments').add(docMetadata);
-      docMetadata.id = docRef.id;
-
-      await auditService.log('DOCUMENT_UPLOADED', 'PEOPLE', 'employeeDocuments', docRef.id, { employeeId, fileName: file.name, documentType });
-      return docMetadata;
     } catch (err) {
-      console.error('Document upload error:', err);
+      console.error('Hostinger document upload error:', err);
       throw err;
     }
   },
 
-  // Upload Employee Profile Avatar
+  // Upload Employee Profile Avatar to Hostinger
   async uploadProfileAvatar(employeeId, file) {
     try {
       if (!file) throw new Error('No avatar file provided');
+      const companyId = AuthGuard.userProfile?.companyId || 'comp_diallo_india';
 
-      const storagePath = `employees/${employeeId}/profile/avatar_${Date.now()}`;
-      const storageRef = storage.ref().child(storagePath);
-      const snapshot = await storageRef.put(file);
-      const downloadUrl = await snapshot.ref.getDownloadURL();
+      const record = await hostingerStorageService.uploadFile(file, {
+        category: 'PROFILE_PHOTO',
+        companyId,
+        employeeId
+      });
 
-      // Update employee record with avatar URL
+      // Update employee record with Hostinger avatar URL
       await db.collection('employees').doc(employeeId).update({
-        avatarUrl: downloadUrl,
+        avatarUrl: record.fileUrl,
         updatedAt: firebase.firestore.FieldValue.serverTimestamp()
       });
 
-      return downloadUrl;
+      return record.fileUrl;
     } catch (err) {
-      console.error('Avatar upload error:', err);
+      console.error('Hostinger avatar upload error:', err);
       throw err;
     }
   },

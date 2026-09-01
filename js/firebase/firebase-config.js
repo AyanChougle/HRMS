@@ -21,7 +21,8 @@ if (!firebase.apps.length) {
 // Global Firebase Service Instances
 const auth = firebase.auth();
 const db = firebase.firestore();
-const storage = firebase.storage();
+// NOTE: Firebase Storage is NOT used. All file storage is on Hostinger (storage.diallo.com).
+const storage = (typeof firebase.storage === 'function') ? firebase.storage() : null;
 
 // Helper for server timestamps
 const serverTimestamp = firebase.firestore.FieldValue.serverTimestamp;

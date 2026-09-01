@@ -72,9 +72,11 @@ const organizationService = {
 
   async uploadCompanyLogo(companyId, file) {
     try {
-      const storageRef = storage.ref(`companies/${companyId}/branding/logo_${Date.now()}_${file.name}`);
-      const snapshot = await storageRef.put(file);
-      const logoUrl = await snapshot.ref.getDownloadURL();
+      const uploadRecord = await hostingerStorageService.uploadFile(file, {
+        category: 'COMPANY_DOCUMENTS',
+        companyId
+      });
+      const logoUrl = uploadRecord.fileUrl;
       await this.updateCompany(companyId, { logoUrl });
       return logoUrl;
     } catch (err) {
@@ -676,9 +678,11 @@ const organizationService = {
       let documentName = '';
 
       if (file) {
-        const storageRef = storage.ref(`companies/${companyId}/policies/${Date.now()}_${file.name}`);
-        const snap = await storageRef.put(file);
-        documentUrl = await snap.ref.getDownloadURL();
+        const uploadRecord = await hostingerStorageService.uploadFile(file, {
+          category: 'COMPANY_POLICY',
+          companyId
+        });
+        documentUrl = uploadRecord.fileUrl;
         documentName = file.name;
       }
 

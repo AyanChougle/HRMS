@@ -43,7 +43,10 @@ const PermissionService = {
       'reports.view',
       'reports.export',
       'communication.*',
-      'approvals.process'
+      'approvals.process',
+      'companies.manage',
+      'companies.view',
+      'settings.manage'
     ],
 
     PAYROLL: [

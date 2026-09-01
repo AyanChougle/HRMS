@@ -434,10 +434,10 @@ const CommsView = {
         const file = fileInput.files[0];
         attachmentName = file.name;
         try {
-          const snap = await storage.ref(`announcements/${Date.now()}_${file.name}`).put(file);
-          attachmentUrl = await snap.ref.getDownloadURL();
+          const uploadRecord = await hostingerStorageService.uploadFile(file, { category: 'ANNOUNCEMENTS' });
+          attachmentUrl = uploadRecord.fileUrl;
         } catch (e) {
-          attachmentUrl = `https://storage.googleapis.com/hrms-announcements/${file.name}`;
+          attachmentUrl = `https://storage.diallo.com/announcements/${file.name}`;
         }
       }
 
