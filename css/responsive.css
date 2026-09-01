@@ -1,0 +1,103 @@
+/* ==========================================================================
+   DIALLO HRMS — RESPONSIVE DESIGN BREAKPOINTS
+   Desktop: 1200px+, Tablet: 768px - 1199px, Mobile: < 768px
+   ========================================================================== */
+
+/* Tablet (768px to 1199px) */
+@media (max-width: 1199px) {
+  .dashboard-grid {
+    grid-template-columns: 1fr;
+  }
+  .col-span-8, .col-span-4, .col-span-6 {
+    grid-column: span 12;
+  }
+  .main-content {
+    padding: 20px;
+  }
+  .module-grid {
+    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  }
+  .header-center {
+    max-width: 320px;
+  }
+}
+
+/* Mobile Devices (< 768px) */
+@media (max-width: 767px) {
+  .app-sidebar {
+    transform: translateX(-100%);
+    box-shadow: var(--shadow-xl);
+  }
+  
+  /* Open state on mobile */
+  .app-container.mobile-sidebar-open .app-sidebar {
+    transform: translateX(0);
+  }
+  .app-container.mobile-sidebar-open .sidebar-backdrop {
+    display: block;
+    opacity: 1;
+  }
+
+  .main-wrapper {
+    margin-left: 0 !important;
+  }
+
+  .app-header {
+    padding: 0 12px;
+  }
+  
+  .header-center {
+    display: none; /* Hide wide search on mobile, accessible via button */
+  }
+
+  .header-dropdown-btn span.label-text,
+  .user-profile-trigger .user-name-label,
+  .user-profile-trigger .user-role-label {
+    display: none;
+  }
+
+  .main-content {
+    padding: 16px 12px 32px 12px;
+  }
+
+  .page-title {
+    font-size: 1.35rem;
+  }
+
+  .kpi-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .module-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .table-toolbar {
+    flex-direction: column;
+    align-items: stretch;
+  }
+  .table-search-box {
+    max-width: 100%;
+    min-width: 100%;
+  }
+  .table-filters-group {
+    width: 100%;
+    overflow-x: auto;
+    padding-bottom: 4px;
+  }
+
+  .modal-dialog {
+    margin: 10px;
+    max-height: 95vh;
+  }
+  .drawer-panel {
+    max-width: 100%;
+  }
+
+  .form-row {
+    grid-template-columns: 1fr;
+  }
+  .col-12, .col-6, .col-4, .col-3, .col-8 {
+    grid-column: span 1;
+  }
+}

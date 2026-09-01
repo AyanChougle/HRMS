@@ -1,0 +1,339 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Diallo HRMS — Enterprise Suite (India)</title>
+  <meta name="description" content="Diallo HRMS — Modern Enterprise Human Resource Management System built for Indian compliance with Firebase Cloud Backend." />
+
+  <!-- CSS Architecture Tokens & Components -->
+  <link rel="stylesheet" href="css/variables.css" />
+  <link rel="stylesheet" href="css/global.css" />
+  <link rel="stylesheet" href="css/layout.css" />
+  <link rel="stylesheet" href="css/components.css" />
+  <link rel="stylesheet" href="css/tables.css" />
+  <link rel="stylesheet" href="css/forms.css" />
+  <link rel="stylesheet" href="css/modals.css" />
+  <link rel="stylesheet" href="css/dashboard.css" />
+  <link rel="stylesheet" href="css/responsive.css" />
+</head>
+<body>
+
+  <!-- Main Application Container Shell -->
+  <div class="app-container">
+
+    <!-- ======================================================================
+         TOP HEADER
+         ====================================================================== -->
+    <header class="app-header">
+      <!-- Header Left: Logo + Sidebar Toggle -->
+      <div class="header-left">
+        <button class="sidebar-toggle-btn" id="sidebar-toggle" aria-label="Toggle Sidebar" title="Toggle Navigation Sidebar">
+          <svg width="20" height="20" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"/>
+          </svg>
+        </button>
+
+        <a href="#dashboard" class="brand-logo">
+          <div class="brand-icon-box">D</div>
+          <div class="brand-name">
+            Diallo <span class="hrms-tag">HRMS</span>
+          </div>
+        </a>
+      </div>
+
+      <!-- Header Center: Global Search -->
+      <div class="header-center">
+        <button class="global-search-trigger" id="global-search-trigger" aria-label="Global Search">
+          <div class="flex items-center gap-2">
+            <svg width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
+            </svg>
+            <span>Search employees, actions, Indian tax codes, pages...</span>
+          </div>
+          <span class="search-shortcut-badge">Ctrl K</span>
+        </button>
+      </div>
+
+      <!-- Header Right: Switchers, Notifications, Theme & Profile -->
+      <div class="header-right">
+        <!-- Company Selector Dropdown -->
+        <div class="dropdown-menu-wrapper">
+          <button class="header-dropdown-btn" data-dropdown-trigger="company-popover" title="Switch Company Entity">
+            <svg width="15" height="15" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"/>
+            </svg>
+            <span class="label-text" id="current-company-label">Diallo India Private Limited</span>
+            <svg width="12" height="12" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/>
+            </svg>
+          </button>
+          <div class="dropdown-popover" id="company-popover"></div>
+        </div>
+
+        <!-- Branch / Location Selector Dropdown -->
+        <div class="dropdown-menu-wrapper">
+          <button class="header-dropdown-btn" data-dropdown-trigger="branch-popover" title="Switch Office Location">
+            <svg width="15" height="15" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"/>
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"/>
+            </svg>
+            <span class="label-text" id="current-branch-label">HQ - Mumbai</span>
+            <svg width="12" height="12" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/>
+            </svg>
+          </button>
+          <div class="dropdown-popover" id="branch-popover"></div>
+        </div>
+
+        <!-- Notification Center -->
+        <div class="dropdown-menu-wrapper">
+          <button class="header-icon-btn" data-dropdown-trigger="notif-popover" aria-label="Notifications" title="Notifications">
+            <svg width="18" height="18" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"/>
+            </svg>
+          </button>
+          <div class="dropdown-popover notification-popover" id="notif-popover">
+            <div class="dropdown-header flex justify-between items-center">
+              <span>Notifications</span>
+            </div>
+            <div id="notifications-list-container" style="padding: 24px 16px; text-align: center; color: var(--text-muted); font-size: 0.825rem;">
+              No unread notifications
+            </div>
+          </div>
+        </div>
+
+        <!-- Light / Dark Theme Toggle -->
+        <button class="header-icon-btn theme-toggle-btn" aria-label="Toggle Light / Dark Mode" title="Toggle Theme (Light / Dark)">
+          <span class="theme-icon-container">
+            <svg width="18" height="18" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z" />
+            </svg>
+          </span>
+        </button>
+
+        <!-- User Profile Avatar & Dropdown -->
+        <div class="dropdown-menu-wrapper">
+          <div class="user-profile-trigger" data-dropdown-trigger="profile-popover" title="User Profile Menu">
+            <div class="avatar-img">AD</div>
+            <div>
+              <div class="user-name-label">Administrator</div>
+              <div class="user-role-label">HR Admin</div>
+            </div>
+            <svg width="12" height="12" fill="none" viewBox="0 0 24 24" stroke="currentColor" style="color: var(--text-muted); margin-left: 2px;">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/>
+            </svg>
+          </div>
+          <div class="dropdown-popover" id="profile-popover" style="width: 240px;">
+            <div class="dropdown-header">Logged In Account</div>
+            <div style="padding: 10px 12px; border-bottom: 1px solid var(--border-light);">
+              <div class="font-semibold text-main user-name-label">Administrator</div>
+              <div class="text-muted user-role-label" style="font-size: 0.75rem;">Super Admin</div>
+            </div>
+            <button class="dropdown-item" onclick="Router.navigate('settings'); document.getElementById('profile-popover').classList.remove('active');">
+              <svg width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"/></svg>
+              <span>Account Settings</span>
+            </button>
+            <div class="dropdown-divider"></div>
+            <button class="dropdown-item text-danger" onclick="AuthGuard.logout();">
+              <svg width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"/></svg>
+              <span>Sign Out</span>
+            </button>
+          </div>
+        </div>
+      </div>
+    </header>
+
+    <!-- ======================================================================
+         LEFT SIDEBAR (10 Primary Modules)
+         ====================================================================== -->
+    <aside class="app-sidebar">
+      <div class="sidebar-nav-section">
+        <div class="sidebar-section-title">Core Modules</div>
+
+        <!-- 1. Dashboard -->
+        <a href="#dashboard" class="nav-link active" data-route="dashboard">
+          <svg fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z" />
+          </svg>
+          <span class="nav-text">Dashboard</span>
+        </a>
+
+        <!-- 2. People -->
+        <a href="#people" class="nav-link" data-route="people">
+          <svg fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
+          </svg>
+          <span class="nav-text">People</span>
+        </a>
+
+        <!-- 3. Attendance -->
+        <a href="#attendance" class="nav-link" data-route="attendance">
+          <svg fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+          </svg>
+          <span class="nav-text">Attendance</span>
+        </a>
+
+        <!-- 4. Leave -->
+        <a href="#leave" class="nav-link" data-route="leave">
+          <svg fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+          </svg>
+          <span class="nav-text">Leave</span>
+        </a>
+
+        <!-- 5. Payroll -->
+        <a href="#payroll" class="nav-link" data-route="payroll">
+          <svg fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+          </svg>
+          <span class="nav-text">Payroll</span>
+        </a>
+
+        <!-- 6. ESS & Kiosk -->
+        <a href="#ess" class="nav-link" data-route="ess">
+          <svg fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+          </svg>
+          <span class="nav-text">ESS & Kiosk</span>
+        </a>
+
+        <!-- 7. Communication -->
+        <a href="#communication" class="nav-link" data-route="communication">
+          <svg fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 8h2a2 2 0 012 2v6a2 2 0 01-2 2h-2v4l-4-4H9a1.994 1.994 0 01-1.414-.586m0 0L11 14h4a2 2 0 002-2V6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2v4l.586-.586z" />
+          </svg>
+          <span class="nav-text">Communication</span>
+        </a>
+
+        <!-- 8. Reports -->
+        <a href="#reports" class="nav-link" data-route="reports">
+          <svg fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+          </svg>
+          <span class="nav-text">Reports</span>
+        </a>
+
+        <div class="sidebar-section-title" style="margin-top: 10px;">Governance</div>
+
+        <!-- 9. Admin -->
+        <a href="#admin" class="nav-link" data-route="admin">
+          <svg fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
+          </svg>
+          <span class="nav-text">Admin</span>
+        </a>
+
+        <!-- 10. Settings -->
+        <a href="#settings" class="nav-link" data-route="settings">
+          <svg fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
+          </svg>
+          <span class="nav-text">Settings</span>
+        </a>
+      </div>
+
+      <!-- Sidebar Footer -->
+      <div class="sidebar-footer">
+        <div class="workspace-status">
+          <div class="flex items-center justify-between" style="margin-bottom: 2px;">
+            <span class="font-semibold text-main">Diallo India</span>
+            <span class="badge badge-success" style="font-size: 0.65rem;">Cloud Phase 2</span>
+          </div>
+          <div class="text-muted" style="font-size: 0.7rem;">Firebase Connected</div>
+        </div>
+      </div>
+    </aside>
+
+    <!-- Backdrop for Mobile Sidebar -->
+    <div class="sidebar-backdrop" id="sidebar-backdrop"></div>
+
+    <!-- ======================================================================
+         MAIN CONTENT WRAPPER & VIEWPORT
+         ====================================================================== -->
+    <div class="main-wrapper">
+      <main class="main-content" id="main-content-viewport">
+        <!-- Rendered dynamically by Vanilla JS Router -->
+      </main>
+    </div>
+
+  </div>
+
+  <!-- Toast Notification Portal Container -->
+  <div id="toast-container" class="toast-container"></div>
+
+  <!-- 1. Firebase Web SDK (Compat CDN for Vanilla Browser) -->
+  <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-storage-compat.js"></script>
+
+  <!-- 2. Auth, Permissions & Core Services -->
+  <script src="js/firebase/firebase-config.js"></script>
+  <script src="js/auth/permissionService.js"></script>
+  <script src="js/auth/roleGuard.js"></script>
+  <script src="js/services/auditService.js"></script>
+  <script src="js/services/authService.js"></script>
+  <script src="js/services/userService.js"></script>
+  <script src="js/services/companyService.js"></script>
+  <script src="js/services/orgService.js"></script>
+  <script src="js/services/departmentService.js"></script>
+  <script src="js/services/employeeService.js"></script>
+  <script src="js/services/historyService.js"></script>
+  <script src="js/services/onboardingService.js"></script>
+  <script src="js/services/exitService.js"></script>
+  <script src="js/services/attendanceSettingsService.js"></script>
+  <script src="js/services/attendanceService.js"></script>
+  <script src="js/services/leavePolicyService.js"></script>
+  <script src="js/services/leaveService.js"></script>
+  <script src="js/services/approvalService.js"></script>
+  <script src="js/services/compensationService.js"></script>
+  <script src="js/services/payrollSettingsService.js"></script>
+  <script src="js/services/statutoryEngine.js"></script>
+  <script src="js/services/payrollService.js"></script>
+  <script src="js/services/performanceCalculationService.js"></script>
+  <script src="js/services/performanceCycleService.js"></script>
+  <script src="js/services/performanceService.js"></script>
+  <script src="js/services/recruitmentService.js"></script>
+  <script src="js/services/expenseService.js"></script>
+  <script src="js/services/assetService.js"></script>
+  <script src="js/services/announcementService.js"></script>
+  <script src="js/services/notificationService.js"></script>
+  <script src="js/services/storageService.js"></script>
+  <script src="js/services/seedService.js"></script>
+  <script src="js/firebase/auth-guard.js"></script>
+
+  <!-- 3. Core UI Libraries -->
+  <script src="js/theme.js"></script>
+  <script src="js/toast.js"></script>
+  <script src="js/modal.js"></script>
+  <script src="js/charts.js"></script>
+  <script src="js/table.js"></script>
+  <script src="js/forms.js"></script>
+
+  <!-- 4. View Modules -->
+  <script src="js/views/admin-dashboard-view.js"></script>
+  <script src="js/views/manager-dashboard-view.js"></script>
+  <script src="js/views/employee-dashboard-view.js"></script>
+  <script src="js/views/dashboard-view.js"></script>
+  <script src="js/views/people-view.js"></script>
+  <script src="js/views/recruitment-view.js"></script>
+  <script src="js/views/expenses-view.js"></script>
+  <script src="js/views/assets-view.js"></script>
+  <script src="js/views/attendance-view.js"></script>
+  <script src="js/views/leave-view.js"></script>
+  <script src="js/views/payroll-view.js"></script>
+  <script src="js/views/performance-view.js"></script>
+  <script src="js/views/ess-view.js"></script>
+  <script src="js/views/comms-view.js"></script>
+  <script src="js/views/reports-view.js"></script>
+  <script src="js/views/admin-view.js"></script>
+  <script src="js/views/users-view.js"></script>
+  <script src="js/views/settings-view.js"></script>
+
+  <!-- 5. Router and Coordinator -->
+  <script src="js/router.js"></script>
+  <script src="js/app.js"></script>
+</body>
+</html>

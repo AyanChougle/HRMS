@@ -1,0 +1,517 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Sign In & Sign Up — Diallo HRMS Enterprise Cloud</title>
+  <meta name="description" content="Sign in or create a new organization account for Diallo HRMS Enterprise Cloud Suite." />
+
+  <!-- CSS Architecture Tokens & Components -->
+  <link rel="stylesheet" href="css/variables.css" />
+  <link rel="stylesheet" href="css/global.css" />
+  <link rel="stylesheet" href="css/components.css" />
+  <link rel="stylesheet" href="css/forms.css" />
+  <link rel="stylesheet" href="css/modals.css" />
+  <link rel="stylesheet" href="css/responsive.css" />
+
+  <style>
+    body {
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: var(--bg-body);
+      padding: 24px 16px;
+      font-family: var(--font-family-base);
+    }
+    .auth-card {
+      width: 100%;
+      max-width: 480px;
+      background: var(--bg-surface);
+      border: 1px solid var(--border-main);
+      border-radius: var(--radius-lg);
+      box-shadow: var(--shadow-lg);
+      padding: 36px 32px;
+      position: relative;
+      transition: all var(--transition-normal);
+    }
+    .auth-header {
+      text-align: center;
+      margin-bottom: 24px;
+    }
+    .auth-logo {
+      display: inline-flex;
+      align-items: center;
+      gap: 10px;
+      margin-bottom: 12px;
+      text-decoration: none;
+    }
+    .auth-logo .brand-icon-box {
+      width: 44px;
+      height: 44px;
+      background: var(--primary);
+      color: #fff;
+      font-weight: 800;
+      font-size: 1.35rem;
+      border-radius: var(--radius-md);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      box-shadow: 0 4px 12px rgba(37, 99, 235, 0.25);
+    }
+    .auth-logo .brand-name {
+      font-size: 1.45rem;
+      font-weight: 700;
+      color: var(--text-main);
+    }
+    .auth-title {
+      font-size: 1.25rem;
+      font-weight: 700;
+      color: var(--text-main);
+      margin-bottom: 4px;
+    }
+    .auth-subtitle {
+      font-size: 0.85rem;
+      color: var(--text-secondary);
+    }
+    
+    /* Auth Navigation Tabs */
+    .auth-tabs {
+      display: flex;
+      background: var(--bg-hover);
+      padding: 4px;
+      border-radius: var(--radius-md);
+      margin-bottom: 24px;
+      border: 1px solid var(--border-light);
+    }
+    .auth-tab-btn {
+      flex: 1;
+      padding: 9px 12px;
+      font-size: 0.875rem;
+      font-weight: 600;
+      text-align: center;
+      background: transparent;
+      border: none;
+      border-radius: var(--radius-sm);
+      color: var(--text-secondary);
+      cursor: pointer;
+      transition: all var(--transition-fast);
+    }
+    .auth-tab-btn.active {
+      background: var(--bg-surface);
+      color: var(--primary);
+      box-shadow: var(--shadow-sm);
+    }
+
+    /* Alert Message Box */
+    .auth-alert {
+      padding: 12px 14px;
+      border-radius: var(--radius-md);
+      font-size: 0.85rem;
+      margin-bottom: 18px;
+      display: none;
+      line-height: 1.4;
+    }
+    .auth-alert.error {
+      display: block;
+      background: rgba(220, 38, 38, 0.1);
+      color: var(--danger);
+      border: 1px solid rgba(220, 38, 38, 0.25);
+    }
+    .auth-alert.success {
+      display: block;
+      background: rgba(22, 163, 74, 0.1);
+      color: var(--success);
+      border: 1px solid rgba(22, 163, 74, 0.25);
+    }
+
+    /* Password field with toggle */
+    .password-input-wrapper {
+      position: relative;
+    }
+    .password-toggle-btn {
+      position: absolute;
+      right: 12px;
+      top: 50%;
+      transform: translateY(-50%);
+      background: transparent;
+      border: none;
+      color: var(--text-muted);
+      cursor: pointer;
+      padding: 4px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .password-toggle-btn:hover {
+      color: var(--text-main);
+    }
+
+    .theme-toggle-fixed {
+      position: absolute;
+      top: 16px;
+      right: 16px;
+    }
+    .auth-footer {
+      text-align: center;
+      margin-top: 24px;
+      font-size: 0.8rem;
+      color: var(--text-muted);
+    }
+  </style>
+</head>
+<body>
+
+  <div class="auth-card animate-fade-in">
+    <!-- Theme Toggle Button -->
+    <button class="header-icon-btn theme-toggle-btn theme-toggle-fixed" aria-label="Toggle Theme" title="Toggle Light / Dark Theme" onclick="ThemeManager.toggleTheme()">
+      <span class="theme-icon-container">
+        <svg width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z" />
+        </svg>
+      </span>
+    </button>
+
+    <div class="auth-header">
+      <div class="auth-logo">
+        <div class="brand-icon-box">D</div>
+        <div class="brand-name">Diallo <span class="hrms-tag">HRMS</span></div>
+      </div>
+      <h1 class="auth-title" id="auth-title">Welcome Back</h1>
+      <p class="auth-subtitle" id="auth-subtitle">Sign in to access your organization workspace</p>
+    </div>
+
+    <!-- Sign In / Sign Up Tab Switcher -->
+    <div class="auth-tabs">
+      <button type="button" class="auth-tab-btn active" id="tab-login-btn" onclick="switchAuthTab('login')">Sign In</button>
+      <button type="button" class="auth-tab-btn" id="tab-signup-btn" onclick="switchAuthTab('signup')">Create Account (Sign Up)</button>
+    </div>
+
+    <!-- Alert Box -->
+    <div id="auth-alert" class="auth-alert"></div>
+
+    <!-- ======================================================================
+         1. SIGN IN FORM
+         ====================================================================== -->
+    <form id="login-form" onsubmit="handleLoginSubmit(event)">
+      <div class="form-group" style="margin-bottom: 16px;">
+        <label class="form-label required">Official Email Address</label>
+        <input type="email" id="login-email" class="form-control" placeholder="name@company.com" required autofocus />
+      </div>
+
+      <div class="form-group" style="margin-bottom: 16px;">
+        <div class="flex items-center justify-between" style="margin-bottom: 4px;">
+          <label class="form-label required" style="margin-bottom: 0;">Password</label>
+          <a href="forgot-password.html" style="font-size: 0.8rem; color: var(--primary); text-decoration: none; font-weight: 500;">Forgot password?</a>
+        </div>
+        <div class="password-input-wrapper">
+          <input type="password" id="login-password" class="form-control" placeholder="••••••••" required />
+          <button type="button" class="password-toggle-btn" onclick="togglePasswordVisibility('login-password', this)" title="Show / Hide Password">
+            <svg width="18" height="18" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/>
+            </svg>
+          </button>
+        </div>
+      </div>
+
+      <div class="flex items-center justify-between" style="margin-bottom: 20px;">
+        <label style="display: flex; align-items: center; gap: 8px; font-size: 0.85rem; color: var(--text-secondary); cursor: pointer;">
+          <input type="checkbox" id="remember-me" checked />
+          <span>Remember this session</span>
+        </label>
+      </div>
+
+      <button type="submit" id="login-submit-btn" class="btn btn-primary btn-lg w-full">
+        <span>Sign In to HRMS</span>
+      </button>
+    </form>
+
+    <!-- ======================================================================
+         2. SIGN UP (REGISTER) FORM
+         ====================================================================== -->
+    <form id="signup-form" style="display: none;" onsubmit="handleSignupSubmit(event)">
+      <div class="form-row">
+        <div class="col-6 form-group" style="margin-bottom: 14px;">
+          <label class="form-label required">First Name</label>
+          <input type="text" id="signup-firstname" class="form-control" placeholder="e.g. Rahul" required />
+        </div>
+        <div class="col-6 form-group" style="margin-bottom: 14px;">
+          <label class="form-label required">Last Name</label>
+          <input type="text" id="signup-lastname" class="form-control" placeholder="e.g. Sharma" required />
+        </div>
+      </div>
+
+      <div class="form-group" style="margin-bottom: 14px;">
+        <label class="form-label required">Official Email Address</label>
+        <input type="email" id="signup-email" class="form-control" placeholder="name@company.com" required />
+      </div>
+
+      <div class="form-group" style="margin-bottom: 14px;">
+        <label class="form-label required">Company / Legal Entity Name</label>
+        <input type="text" id="signup-company" class="form-control" placeholder="e.g. Diallo India Private Limited" value="Diallo India Private Limited" required />
+      </div>
+
+      <div class="form-row">
+        <div class="col-6 form-group" style="margin-bottom: 14px;">
+          <label class="form-label required">Account Role</label>
+          <select id="signup-role" class="form-control">
+            <option value="SUPER_ADMIN">Super Administrator</option>
+            <option value="HR">HR Administrator</option>
+            <option value="PAYROLL">Payroll Officer</option>
+            <option value="MANAGER">Line Manager</option>
+            <option value="EMPLOYEE">Employee (Self Service)</option>
+          </select>
+        </div>
+        <div class="col-6 form-group" style="margin-bottom: 14px;">
+          <label class="form-label">Phone Number</label>
+          <input type="text" id="signup-phone" class="form-control" placeholder="+91 98765 43210" />
+        </div>
+      </div>
+
+      <div class="form-group" style="margin-bottom: 14px;">
+        <label class="form-label required">Password</label>
+        <div class="password-input-wrapper">
+          <input type="password" id="signup-password" class="form-control" placeholder="Minimum 6 characters" minlength="6" required />
+          <button type="button" class="password-toggle-btn" onclick="togglePasswordVisibility('signup-password', this)" title="Show / Hide Password">
+            <svg width="18" height="18" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/>
+            </svg>
+          </button>
+        </div>
+      </div>
+
+      <div class="form-group" style="margin-bottom: 18px;">
+        <label class="form-label required">Confirm Password</label>
+        <div class="password-input-wrapper">
+          <input type="password" id="signup-confirm-password" class="form-control" placeholder="Re-enter password" minlength="6" required />
+          <button type="button" class="password-toggle-btn" onclick="togglePasswordVisibility('signup-confirm-password', this)" title="Show / Hide Password">
+            <svg width="18" height="18" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/>
+            </svg>
+          </button>
+        </div>
+      </div>
+
+      <button type="submit" id="signup-submit-btn" class="btn btn-primary btn-lg w-full">
+        <span>Create Account & Start Session</span>
+      </button>
+    </form>
+
+    <div class="auth-footer">
+      <p>© 2026 Diallo India Private Limited • Firebase Cloud Platform</p>
+    </div>
+  </div>
+
+  <div id="toast-container" class="toast-container"></div>
+
+  <!-- Firebase Web SDK (Compat CDN for Vanilla Browser) -->
+  <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-storage-compat.js"></script>
+
+  <!-- App Services & Config -->
+  <script src="js/firebase/firebase-config.js"></script>
+  <script src="js/theme.js"></script>
+  <script src="js/toast.js"></script>
+  <script src="js/services/auditService.js"></script>
+  <script src="js/services/authService.js"></script>
+  <script src="js/firebase/auth-guard.js"></script>
+
+  <script>
+    // Tab switching logic
+    function switchAuthTab(tab) {
+      const loginForm = document.getElementById('login-form');
+      const signupForm = document.getElementById('signup-form');
+      const tabLoginBtn = document.getElementById('tab-login-btn');
+      const tabSignupBtn = document.getElementById('tab-signup-btn');
+      const authTitle = document.getElementById('auth-title');
+      const authSubtitle = document.getElementById('auth-subtitle');
+      const alertBox = document.getElementById('auth-alert');
+
+      alertBox.className = 'auth-alert';
+      alertBox.style.display = 'none';
+
+      if (tab === 'signup') {
+        loginForm.style.display = 'none';
+        signupForm.style.display = 'block';
+        tabLoginBtn.classList.remove('active');
+        tabSignupBtn.classList.add('active');
+        authTitle.textContent = 'Create Organization Account';
+        authSubtitle.textContent = 'Register a new administrator or employee account in Firebase';
+      } else {
+        loginForm.style.display = 'block';
+        signupForm.style.display = 'none';
+        tabLoginBtn.classList.add('active');
+        tabSignupBtn.classList.remove('active');
+        authTitle.textContent = 'Welcome Back';
+        authSubtitle.textContent = 'Sign in to access your organization workspace';
+      }
+    }
+
+    function togglePasswordVisibility(inputId, btn) {
+      const input = document.getElementById(inputId);
+      if (!input) return;
+      if (input.type === 'password') {
+        input.type = 'text';
+        btn.style.color = 'var(--primary)';
+      } else {
+        input.type = 'password';
+        btn.style.color = 'var(--text-muted)';
+      }
+    }
+
+    function quickFillSignUp(email, password) {
+      switchAuthTab('signup');
+      document.getElementById('signup-email').value = email;
+      document.getElementById('signup-password').value = password;
+      document.getElementById('signup-confirm-password').value = password;
+      document.getElementById('signup-firstname').focus();
+    }
+
+    // Explicit Sign In Handler (always called directly by onsubmit)
+    async function handleLoginSubmit(event) {
+      event.preventDefault();
+
+      const email = document.getElementById('login-email').value.trim();
+      const password = document.getElementById('login-password').value;
+      const alertBox = document.getElementById('auth-alert');
+      const loginBtn = document.getElementById('login-submit-btn');
+
+      if (!email || !password) return;
+
+      alertBox.className = 'auth-alert';
+      alertBox.style.display = 'none';
+
+      loginBtn.disabled = true;
+      loginBtn.innerHTML = '<span>Verifying credentials with Firebase...</span>';
+
+      try {
+        const res = await authService.signIn(email, password);
+
+        if (res.success) {
+          loginBtn.innerHTML = '<span>Success! Opening Dashboard...</span>';
+          Toast.success('Authenticated successfully!');
+          const redirect = sessionStorage.getItem('redirect_after_login') || 'index.html#dashboard';
+          sessionStorage.removeItem('redirect_after_login');
+          window.location.replace(redirect);
+        } else {
+          loginBtn.disabled = false;
+          loginBtn.innerHTML = '<span>Sign In to HRMS</span>';
+
+          if (res.code === 'auth/user-not-found' || res.code === 'auth/invalid-credential') {
+            alertBox.innerHTML = `
+              <div><strong>Account not found or invalid credentials.</strong></div>
+              <div style="margin-top: 6px; font-size: 0.8rem;">
+                If you haven't created this account in Firebase yet, 
+                <a href="javascript:void(0)" onclick="quickFillSignUp('${email}', '${password}')" style="color: var(--primary); text-decoration: underline; font-weight: 600;">
+                  Click here to register ${email}
+                </a>
+              </div>
+            `;
+          } else {
+            alertBox.textContent = res.error;
+          }
+
+          alertBox.className = 'auth-alert error';
+          alertBox.style.display = 'block';
+        }
+      } catch (err) {
+        loginBtn.disabled = false;
+        loginBtn.innerHTML = '<span>Sign In to HRMS</span>';
+        alertBox.textContent = err.message || 'An unexpected error occurred during sign in.';
+        alertBox.className = 'auth-alert error';
+        alertBox.style.display = 'block';
+      }
+    }
+
+    // Explicit Sign Up Handler (always called directly by onsubmit)
+    async function handleSignupSubmit(event) {
+      event.preventDefault();
+
+      const firstName = document.getElementById('signup-firstname').value.trim();
+      const lastName = document.getElementById('signup-lastname').value.trim();
+      const email = document.getElementById('signup-email').value.trim();
+      const company = document.getElementById('signup-company').value.trim();
+      const role = document.getElementById('signup-role').value;
+      const phone = document.getElementById('signup-phone').value.trim();
+      const password = document.getElementById('signup-password').value;
+      const confirmPassword = document.getElementById('signup-confirm-password').value;
+      const alertBox = document.getElementById('auth-alert');
+      const signupBtn = document.getElementById('signup-submit-btn');
+
+      if (password !== confirmPassword) {
+        alertBox.textContent = 'Passwords do not match. Please verify and re-enter.';
+        alertBox.className = 'auth-alert error';
+        alertBox.style.display = 'block';
+        return;
+      }
+
+      alertBox.className = 'auth-alert';
+      alertBox.style.display = 'none';
+
+      signupBtn.disabled = true;
+      signupBtn.innerHTML = '<span>Creating Firebase Account & Profile...</span>';
+
+      const profileData = {
+        firstName,
+        lastName,
+        displayName: `${firstName} ${lastName}`.trim() || email.split('@')[0],
+        roleId: role,
+        companyName: company,
+        companyId: 'comp_diallo_india',
+        branchId: 'branch_mumbai',
+        phone: phone || ''
+      };
+
+      try {
+        const res = await authService.signUp(email, password, profileData);
+
+        if (res.success) {
+          signupBtn.innerHTML = '<span>Account Created! Logging in...</span>';
+          Toast.success('Account created successfully! Redirecting...');
+          window.location.replace('index.html#dashboard');
+        } else {
+          signupBtn.disabled = false;
+          signupBtn.innerHTML = '<span>Create Account & Start Session</span>';
+
+          alertBox.textContent = res.error;
+          alertBox.className = 'auth-alert error';
+          alertBox.style.display = 'block';
+        }
+      } catch (err) {
+        signupBtn.disabled = false;
+        signupBtn.innerHTML = '<span>Create Account & Start Session</span>';
+        alertBox.textContent = err.message || 'An unexpected error occurred during sign up.';
+        alertBox.className = 'auth-alert error';
+        alertBox.style.display = 'block';
+      }
+    }
+
+    document.addEventListener('DOMContentLoaded', () => {
+      try {
+        ThemeManager.init();
+        Toast.init();
+      } catch (e) {
+        console.warn('UI init warning:', e);
+      }
+
+      // Check URL parameters for tab=signup
+      const urlParams = new URLSearchParams(window.location.search);
+      if (urlParams.get('tab') === 'signup' || window.location.hash === '#signup') {
+        switchAuthTab('signup');
+      }
+
+      // If user is already authenticated, redirect to dashboard
+      try {
+        AuthGuard.init({ isPublicPage: true });
+      } catch (e) {
+        console.warn('Auth guard check:', e);
+      }
+    });
+  </script>
+</body>
+</html>
