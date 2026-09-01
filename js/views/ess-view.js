@@ -72,25 +72,25 @@ const ESSView = {
       <!-- Navigation Sub-Tabs -->
       <div class="tabs-nav" style="margin-bottom: 20px; overflow-x: auto; white-space: nowrap;">
         <button class="tab-btn ${this.activeTab === 'dashboard' ? 'active' : ''}" onclick="ESSView.switchTab('dashboard')">
-          🏠 My Dashboard
+          My Dashboard
         </button>
         <button class="tab-btn ${this.activeTab === 'profile' ? 'active' : ''}" onclick="ESSView.switchTab('profile')">
-          👤 My Profile
+          My Profile
         </button>
         <button class="tab-btn ${this.activeTab === 'documents' ? 'active' : ''}" onclick="ESSView.switchTab('documents')">
-          📄 Documents (${myDocs.length})
+          Documents (${myDocs.length})
         </button>
         <button class="tab-btn ${this.activeTab === 'requests' ? 'active' : ''}" onclick="ESSView.switchTab('requests')">
-          📩 HR Requests (${myRequests.length})
+          HR Requests (${myRequests.length})
         </button>
         <button class="tab-btn ${this.activeTab === 'payslips' ? 'active' : ''}" onclick="ESSView.switchTab('payslips')">
-          💰 My Payslips
+          My Payslips
         </button>
         <button class="tab-btn ${this.activeTab === 'assets' ? 'active' : ''}" onclick="ESSView.switchTab('assets')">
-          💻 Assigned Assets (${myAssets.length})
+          Assigned Assets (${myAssets.length})
         </button>
         <button class="tab-btn ${this.activeTab === 'settings' ? 'active' : ''}" onclick="ESSView.switchTab('settings')">
-          ⚙️ Settings
+          Settings
         </button>
       </div>
 
@@ -122,7 +122,7 @@ const ESSView = {
 
     return `
       <!-- Top Geolocation Punch & Live Timer Banner -->
-      <div class="card" style="margin-bottom: 24px; border: 2px solid var(--primary-light);">
+      <div class="card" style="margin-bottom: 24px; border: 1px solid var(--border-main);">
         <div class="card-header">
           <div>
             <div class="card-title">Live Geolocation Web Punch Terminal</div>
@@ -140,7 +140,7 @@ const ESSView = {
                 00:00:00
               </div>
               <div style="font-size: 0.8rem; color: var(--text-secondary); margin-top: 4px;" id="ess-geo-status">
-                📍 Location: HQ - Mumbai (BKC, Mumbai 400051)
+                Location: HQ - Mumbai (BKC, Mumbai 400051)
               </div>
             </div>
 
@@ -160,29 +160,61 @@ const ESSView = {
       </div>
 
       <!-- Quick 4 KPI Summary Cards -->
-      <div class="grid" style="grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 16px; margin-bottom: 24px;">
-        <div class="card" style="padding: 16px; border-left: 4px solid var(--accent-leave); cursor: pointer;" onclick="Router.navigate('leave')">
-          <div class="text-muted" style="font-size: 0.75rem; text-transform: uppercase;">Available Paid Leave</div>
-          <div style="font-size: 1.5rem; font-weight: 800; color: var(--accent-leave); margin: 4px 0;">${leaves.AL?.available ?? 18} Days</div>
-          <div style="font-size: 0.75rem; color: var(--text-secondary);">Casual Leave: ${leaves.CL?.available ?? 12} Days</div>
+      <div class="kpi-grid">
+        <div class="kpi-card" onclick="Router.navigate('leave')" style="cursor: pointer;">
+          <div class="kpi-top">
+            <div class="kpi-icon-box" style="background: var(--warning-light); color: var(--warning);">
+              <svg width="20" height="20" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/>
+              </svg>
+            </div>
+            <span class="kpi-trend neutral">Balance</span>
+          </div>
+          <div class="kpi-value">${leaves.AL?.available ?? 18}</div>
+          <div class="kpi-label">Available Paid Leave</div>
+          <div class="kpi-subtitle">Casual Leave: ${leaves.CL?.available ?? 12} Days</div>
         </div>
 
-        <div class="card" style="padding: 16px; border-left: 4px solid var(--primary); cursor: pointer;" onclick="ESSView.switchTab('payslips')">
-          <div class="text-muted" style="font-size: 0.75rem; text-transform: uppercase;">Latest Payslip</div>
-          <div style="font-size: 1.5rem; font-weight: 800; color: var(--primary); margin: 4px 0;">Available</div>
-          <div style="font-size: 0.75rem; color: var(--text-secondary);">Direct Deposit Verified</div>
+        <div class="kpi-card" onclick="ESSView.switchTab('payslips')" style="cursor: pointer;">
+          <div class="kpi-top">
+            <div class="kpi-icon-box" style="background: var(--primary-light); color: var(--primary);">
+              <svg width="20" height="20" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+              </svg>
+            </div>
+            <span class="kpi-trend positive">Ready</span>
+          </div>
+          <div class="kpi-value">Available</div>
+          <div class="kpi-label">Latest Payslip</div>
+          <div class="kpi-subtitle">Direct Deposit Verified</div>
         </div>
 
-        <div class="card" style="padding: 16px; border-left: 4px solid #3b82f6; cursor: pointer;" onclick="ESSView.switchTab('assets')">
-          <div class="text-muted" style="font-size: 0.75rem; text-transform: uppercase;">Assigned Devices</div>
-          <div style="font-size: 1.5rem; font-weight: 800; color: #3b82f6; margin: 4px 0;">${myAssets.length} Items</div>
-          <div style="font-size: 0.75rem; color: var(--text-secondary);">Hardware Custodian</div>
+        <div class="kpi-card" onclick="ESSView.switchTab('assets')" style="cursor: pointer;">
+          <div class="kpi-top">
+            <div class="kpi-icon-box" style="background: var(--info-light); color: var(--info);">
+              <svg width="20" height="20" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/>
+              </svg>
+            </div>
+            <span class="kpi-trend neutral">Custody</span>
+          </div>
+          <div class="kpi-value">${myAssets.length}</div>
+          <div class="kpi-label">Assigned Devices</div>
+          <div class="kpi-subtitle">Hardware Custodian</div>
         </div>
 
-        <div class="card" style="padding: 16px; border-left: 4px solid #10b981; cursor: pointer;" onclick="ESSView.switchTab('requests')">
-          <div class="text-muted" style="font-size: 0.75rem; text-transform: uppercase;">Active HR Requests</div>
-          <div style="font-size: 1.5rem; font-weight: 800; color: #10b981; margin: 4px 0;">${myRequests.filter(r => r.status === 'SUBMITTED').length} Pending</div>
-          <div style="font-size: 0.75rem; color: var(--text-secondary);">Helpdesk & Certificates</div>
+        <div class="kpi-card" onclick="ESSView.switchTab('requests')" style="cursor: pointer;">
+          <div class="kpi-top">
+            <div class="kpi-icon-box" style="background: var(--success-light); color: var(--success);">
+              <svg width="20" height="20" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 4H6a2 2 0 00-2 2v12a2 2 0 002 2h12a2 2 0 002-2V6a2 2 0 00-2-2h-2m-4-1v8m0 0l3-3m-3 3L9 8m-5 5h2.586a1 1 0 01.707.293l2.414 2.414a1 1 0 00.707.293h3.172a1 1 0 00.707-.293l2.414-2.414a1 1 0 01.707-.293H20"/>
+              </svg>
+            </div>
+            <span class="kpi-trend neutral">Queue</span>
+          </div>
+          <div class="kpi-value">${myRequests.filter(r => r.status === 'SUBMITTED').length}</div>
+          <div class="kpi-label">Active HR Requests</div>
+          <div class="kpi-subtitle">Helpdesk & Certificates</div>
         </div>
       </div>
 
@@ -219,19 +251,19 @@ const ESSView = {
           <div class="card-body">
             <div class="grid" style="grid-template-columns: 1fr 1fr; gap: 12px;">
               <button class="btn btn-soft" style="padding: 14px; text-align: left; display: block;" onclick="Forms.openApplyLeaveModal()">
-                <div style="font-weight: 700; font-size: 0.9rem;">🏖️ Apply Leave</div>
+                <div style="font-weight: 700; font-size: 0.9rem;">Apply Leave</div>
                 <div class="text-muted" style="font-size: 0.75rem;">Submit time-off request</div>
               </button>
               <button class="btn btn-soft" style="padding: 14px; text-align: left; display: block;" onclick="Router.navigate('expenses')">
-                <div style="font-weight: 700; font-size: 0.9rem;">💳 Claim Expense</div>
+                <div style="font-weight: 700; font-size: 0.9rem;">Claim Expense</div>
                 <div class="text-muted" style="font-size: 0.75rem;">Submit reimbursement</div>
               </button>
               <button class="btn btn-soft" style="padding: 14px; text-align: left; display: block;" onclick="ESSView.openNewRequestModal('EMPLOYMENT_CERTIFICATE')">
-                <div style="font-weight: 700; font-size: 0.9rem;">📜 Request Certificate</div>
+                <div style="font-weight: 700; font-size: 0.9rem;">Request Certificate</div>
                 <div class="text-muted" style="font-size: 0.75rem;">Salary / Employment Letter</div>
               </button>
               <button class="btn btn-soft" style="padding: 14px; text-align: left; display: block;" onclick="ESSView.openUploadDocModal()">
-                <div style="font-weight: 700; font-size: 0.9rem;">📤 Upload Document</div>
+                <div style="font-weight: 700; font-size: 0.9rem;">Upload Document</div>
                 <div class="text-muted" style="font-size: 0.75rem;">Add PAN / Degree / Cert</div>
               </button>
             </div>
@@ -252,7 +284,7 @@ const ESSView = {
               <div class="card-title">Personal & Contact Details</div>
               <div class="card-subtitle">Self-service editable fields</div>
             </div>
-            <button class="btn btn-primary btn-sm" onclick="ESSView.openEditPersonalModal()">✏️ Edit Personal Info</button>
+            <button class="btn btn-primary btn-sm" onclick="ESSView.openEditPersonalModal()">Edit Personal Info</button>
           </div>
           <div class="card-body">
             <div class="flex flex-col gap-3" style="font-size: 0.85rem;">
@@ -431,7 +463,7 @@ const ESSView = {
                 <div class="text-muted" style="font-size: 0.85rem;">Direct Deposit to ${emp.bankName || 'HDFC Bank'} • Paid on 31 Aug 2026</div>
               </div>
               <button class="btn btn-primary btn-sm" onclick="Router.navigate('payroll')">
-                📥 Download Full PDF Payslip
+                Download Full PDF Payslip
               </button>
             </div>
           </div>
@@ -481,7 +513,7 @@ const ESSView = {
                     <td><span class="badge badge-primary">IN_CUSTODY</span></td>
                     <td>
                       <button class="btn btn-secondary btn-sm" onclick="ESSView.openReportDamageModal('${a.id}', '${a.assetTag}')">
-                        🔧 Report Issue
+                        Report Issue
                       </button>
                     </td>
                   </tr>
@@ -509,8 +541,8 @@ const ESSView = {
           <div class="form-group">
             <label class="form-label">Theme Mode</label>
             <div class="flex gap-2">
-              <button class="btn btn-secondary btn-sm" onclick="ThemeManager.setTheme('light')">☀️ Light Mode</button>
-              <button class="btn btn-secondary btn-sm" onclick="ThemeManager.setTheme('dark')">🌙 Dark Mode</button>
+              <button class="btn btn-secondary btn-sm" onclick="ThemeManager.setTheme('light')">Light Mode</button>
+              <button class="btn btn-secondary btn-sm" onclick="ThemeManager.setTheme('dark')">Dark Mode</button>
             </div>
           </div>
           <hr style="border: none; border-top: 1px solid var(--border-light); margin: 20px 0;" />
@@ -766,7 +798,7 @@ const ESSView = {
         navigator.geolocation.getCurrentPosition(
           (pos) => {
             locationText = `GPS: ${pos.coords.latitude.toFixed(4)}, ${pos.coords.longitude.toFixed(4)}`;
-            if (geoStatus) geoStatus.textContent = `📍 Location: ${locationText}`;
+            if (geoStatus) geoStatus.textContent = `Location: ${locationText}`;
           },
           () => {}
         );

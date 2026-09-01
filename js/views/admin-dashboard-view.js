@@ -20,7 +20,7 @@ const AdminDashboardView = {
       <!-- Welcome Banner -->
       <div class="welcome-banner animate-fade-in">
         <div class="welcome-text">
-          <h1>Good day, ${userDisplayName} 👋</h1>
+          <h1>Good day, ${userDisplayName}</h1>
           <p>Real-time workforce & HR operational metrics synced from Cloud Firestore.</p>
         </div>
         <div class="welcome-date-badge">

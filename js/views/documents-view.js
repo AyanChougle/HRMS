@@ -51,29 +51,61 @@ const DocumentsView = {
       </div>
 
       <!-- KPI Summary Cards -->
-      <div class="grid" style="grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 16px; margin-bottom: 24px;">
-        <div class="card" style="padding: 16px; border-left: 4px solid var(--primary);">
-          <div class="text-muted" style="font-size: 0.8rem; text-transform: uppercase;">Total Dossier Files</div>
-          <div style="font-size: 1.5rem; font-weight: 800; color: var(--text-main); margin: 4px 0;">${docs.length}</div>
-          <div style="font-size: 0.75rem; color: var(--text-secondary);">${activeVerified.length} Verified & Active</div>
+      <div class="kpi-grid">
+        <div class="kpi-card">
+          <div class="kpi-top">
+            <div class="kpi-icon-box" style="background: var(--primary-light); color: var(--primary);">
+              <svg width="20" height="20" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
+              </svg>
+            </div>
+            <span class="kpi-trend neutral">Dossier</span>
+          </div>
+          <div class="kpi-value">${docs.length}</div>
+          <div class="kpi-label">Total Files</div>
+          <div class="kpi-subtitle">${activeVerified.length} Verified & Active</div>
         </div>
 
-        <div class="card" style="padding: 16px; border-left: 4px solid var(--accent-leave);">
-          <div class="text-muted" style="font-size: 0.8rem; text-transform: uppercase;">Pending Verification</div>
-          <div style="font-size: 1.5rem; font-weight: 800; color: var(--accent-leave); margin: 4px 0;">${pendingVerification.length}</div>
-          <div style="font-size: 0.75rem; color: var(--text-secondary);">Awaiting HR Review</div>
+        <div class="kpi-card">
+          <div class="kpi-top">
+            <div class="kpi-icon-box" style="background: var(--warning-light); color: var(--warning);">
+              <svg width="20" height="20" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/>
+              </svg>
+            </div>
+            <span class="kpi-trend neutral">Review</span>
+          </div>
+          <div class="kpi-value">${pendingVerification.length}</div>
+          <div class="kpi-label">Pending Review</div>
+          <div class="kpi-subtitle">Awaiting HR Review</div>
         </div>
 
-        <div class="card" style="padding: 16px; border-left: 4px solid #ef4444;">
-          <div class="text-muted" style="font-size: 0.8rem; text-transform: uppercase;">Expiring (Next 30 Days)</div>
-          <div style="font-size: 1.5rem; font-weight: 800; color: #ef4444; margin: 4px 0;">${expiringDocs.length}</div>
-          <div style="font-size: 0.75rem; color: var(--text-secondary);">Passports / Certs / Visas</div>
+        <div class="kpi-card">
+          <div class="kpi-top">
+            <div class="kpi-icon-box" style="background: var(--danger-light); color: var(--danger);">
+              <svg width="20" height="20" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/>
+              </svg>
+            </div>
+            <span class="kpi-trend warning">30 Days</span>
+          </div>
+          <div class="kpi-value">${expiringDocs.length}</div>
+          <div class="kpi-label">Expiring Soon</div>
+          <div class="kpi-subtitle">Passports / Certs / Visas</div>
         </div>
 
-        <div class="card" style="padding: 16px; border-left: 4px solid #3b82f6;">
-          <div class="text-muted" style="font-size: 0.8rem; text-transform: uppercase;">Outstanding Requests</div>
-          <div style="font-size: 1.5rem; font-weight: 800; color: #3b82f6; margin: 4px 0;">${requests.filter(r => r.status === 'REQUESTED').length}</div>
-          <div style="font-size: 0.75rem; color: var(--text-secondary);">Awaiting Employee Upload</div>
+        <div class="kpi-card">
+          <div class="kpi-top">
+            <div class="kpi-icon-box" style="background: var(--info-light); color: var(--info);">
+              <svg width="20" height="20" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 4H6a2 2 0 00-2 2v12a2 2 0 002 2h12a2 2 0 002-2V6a2 2 0 00-2-2h-2m-4-1v8m0 0l3-3m-3 3L9 8m-5 5h2.586a1 1 0 01.707.293l2.414 2.414a1 1 0 00.707.293h3.172a1 1 0 00.707-.293l2.414-2.414a1 1 0 01.707-.293H20"/>
+              </svg>
+            </div>
+            <span class="kpi-trend neutral">Requests</span>
+          </div>
+          <div class="kpi-value">${requests.filter(r => r.status === 'REQUESTED').length}</div>
+          <div class="kpi-label">Outstanding Requests</div>
+          <div class="kpi-subtitle">Awaiting Employee Upload</div>
         </div>
       </div>
 
@@ -342,7 +374,7 @@ const DocumentsView = {
               <p style="font-size: 0.85rem; color: var(--text-secondary); line-height: 1.4; margin-bottom: 16px;">${t.desc}</p>
             </div>
             <button class="btn btn-soft btn-sm" onclick="Toast.success('Template loaded into Certificate Generator!')">
-              📄 Generate Letter
+              Generate Letter
             </button>
           </div>
         `).join('')}

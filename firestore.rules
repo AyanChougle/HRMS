@@ -7,15 +7,20 @@ service cloud.firestore {
       return request.auth != null;
     }
 
-    // DIALLO HRMS — PHASES 1 to 10 COLLECTIONS:
-    // users, roles, companies, branches, departments, designations, grades, costCenters,
-    // employees, employeeHistory, onboardingTasks, employeeExits, attendanceRecords, punchLogs,
-    // attendanceSettings, attendanceRegularizations, leaveApplications, leaveBalances, leaveTypes,
-    // holidays, salaryStructures, payrollRuns, payslips, approvalRequests, goals, reviewCycles,
+    // DIALLO HRMS — PHASES 1 to 15 COLLECTIONS:
+    // users, roles, companies, companySettings, branches, departments, designations, jobLevels,
+    // employmentTypes, workLocations, shifts, holidays, leaveTypes, policies, organizationHistory,
+    // grades, costCenters, employees, employeeHistory, onboardingTasks, employeeExits, attendanceRecords, punchLogs,
+    // attendanceSettings, attendanceRegularizations, leaveApplications, leaveBalances,
+    // salaryStructures, payrollRuns, payslips, approvalRequests, goals, reviewCycles,
     // performanceReviews, 360Feedback, jobRequisitions, jobPositions, candidates, jobApplications,
     // interviewFeedback, jobOffers, announcements, notifications, auditLogs,
     // expenses, expenseCategories, expensePolicies, expenseApprovals,
-    // assets, assetCategories, assetAssignments, assetReturns, assetMaintenance, vendors
+    // assets, assetCategories, assetAssignments, assetReturns, assetMaintenance, vendors,
+    // employeeDocuments, documentRequests, employeeRequests, requestHistory, documentTemplates,
+    // savedReports, analytics, scheduledReports,
+    // userDevices, notificationPreferences, notificationTemplates, notificationDeliveries,
+    // workflowDefinitions, workflowInstances, approvalTasks, workflowHistory, workflowDelegations
 
     match /{document=**} {
       allow read, write: if isAuthenticated();

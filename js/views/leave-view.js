@@ -349,7 +349,7 @@ const LeaveView = {
           <div class="card-body" style="padding: 16px;">
             <div class="flex items-center justify-between" style="flex-wrap: wrap; gap: 12px;">
               <div>
-                <strong style="color: #15803d; font-size: 0.95rem;">🌴 Upcoming Approved Time-Off</strong>
+                <strong style="color: #15803d; font-size: 0.95rem;">Upcoming Approved Time-Off</strong>
                 <div style="font-size: 0.85rem; color: #334155; margin-top: 2px;">
                   You have scheduled leave from <strong>${upcoming[0].startDate}</strong> to <strong>${upcoming[0].endDate}</strong> (${upcoming[0].numberOfDays} Days — ${upcoming[0].leaveTypeName}).
                 </div>

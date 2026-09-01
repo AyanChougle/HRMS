@@ -544,7 +544,7 @@ const PeopleView = {
 
     const renderNode = (node) => `
       <div class="org-node" style="display: inline-block; margin: 8px; vertical-align: top; text-align: center;">
-        <div class="card" style="padding: 12px 16px; min-width: 180px; display: inline-block; border-top: 4px solid var(--primary); cursor: pointer;" onclick="PeopleView.openEmployeeDrawer('${node.id}')">
+        <div class="card" style="padding: 12px 16px; min-width: 180px; display: inline-block; cursor: pointer;" onclick="PeopleView.openEmployeeDrawer('${node.id}')">
           <div style="width: 36px; height: 36px; border-radius: 50%; background: var(--primary-light); color: var(--primary); margin: 0 auto 6px auto; display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 0.8rem;">
             ${(node.fullName || node.name || 'EM').substring(0, 2).toUpperCase()}
           </div>

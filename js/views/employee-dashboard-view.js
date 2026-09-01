@@ -12,7 +12,7 @@ const EmployeeDashboardView = {
       <!-- Welcome Banner -->
       <div class="welcome-banner animate-fade-in">
         <div class="welcome-text">
-          <h1>Hello, ${userDisplayName} 👋</h1>
+          <h1>Hello, ${userDisplayName}</h1>
           <p>Your employee self-service workspace and daily timecard portal</p>
         </div>
         <div class="welcome-date-badge">

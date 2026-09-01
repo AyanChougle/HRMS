@@ -49,29 +49,61 @@ const RequestsView = {
       </div>
 
       <!-- KPI Summary Cards -->
-      <div class="grid" style="grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 16px; margin-bottom: 24px;">
-        <div class="card" style="padding: 16px; border-left: 4px solid var(--accent-leave);">
-          <div class="text-muted" style="font-size: 0.8rem; text-transform: uppercase;">Pending Review</div>
-          <div style="font-size: 1.5rem; font-weight: 800; color: var(--accent-leave); margin: 4px 0;">${pending.length}</div>
-          <div style="font-size: 0.75rem; color: var(--text-secondary);">Awaiting Action</div>
+      <div class="kpi-grid">
+        <div class="kpi-card">
+          <div class="kpi-top">
+            <div class="kpi-icon-box" style="background: var(--warning-light); color: var(--warning);">
+              <svg width="20" height="20" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/>
+              </svg>
+            </div>
+            <span class="kpi-trend neutral">Review</span>
+          </div>
+          <div class="kpi-value">${pending.length}</div>
+          <div class="kpi-label">Pending Review</div>
+          <div class="kpi-subtitle">Awaiting Action</div>
         </div>
 
-        <div class="card" style="padding: 16px; border-left: 4px solid #10b981;">
-          <div class="text-muted" style="font-size: 0.8rem; text-transform: uppercase;">Completed & Resolved</div>
-          <div style="font-size: 1.5rem; font-weight: 800; color: #10b981; margin: 4px 0;">${completed.length}</div>
-          <div style="font-size: 0.75rem; color: var(--text-secondary);">Approved & Generated</div>
+        <div class="kpi-card">
+          <div class="kpi-top">
+            <div class="kpi-icon-box" style="background: var(--success-light); color: var(--success);">
+              <svg width="20" height="20" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>
+              </svg>
+            </div>
+            <span class="kpi-trend neutral">Resolved</span>
+          </div>
+          <div class="kpi-value">${completed.length}</div>
+          <div class="kpi-label">Completed</div>
+          <div class="kpi-subtitle">Approved & Generated</div>
         </div>
 
-        <div class="card" style="padding: 16px; border-left: 4px solid #ef4444;">
-          <div class="text-muted" style="font-size: 0.8rem; text-transform: uppercase;">Declined / Rejected</div>
-          <div style="font-size: 1.5rem; font-weight: 800; color: #ef4444; margin: 4px 0;">${rejected.length}</div>
-          <div style="font-size: 0.75rem; color: var(--text-secondary);">With Feedback</div>
+        <div class="kpi-card">
+          <div class="kpi-top">
+            <div class="kpi-icon-box" style="background: var(--danger-light); color: var(--danger);">
+              <svg width="20" height="20" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+              </svg>
+            </div>
+            <span class="kpi-trend neutral">Declined</span>
+          </div>
+          <div class="kpi-value">${rejected.length}</div>
+          <div class="kpi-label">Declined / Rejected</div>
+          <div class="kpi-subtitle">With Feedback</div>
         </div>
 
-        <div class="card" style="padding: 16px; border-left: 4px solid var(--primary);">
-          <div class="text-muted" style="font-size: 0.8rem; text-transform: uppercase;">Total Tickets</div>
-          <div style="font-size: 1.5rem; font-weight: 800; color: var(--text-main); margin: 4px 0;">${requests.length}</div>
-          <div style="font-size: 0.75rem; color: var(--text-secondary);">All Lifetime Requests</div>
+        <div class="kpi-card">
+          <div class="kpi-top">
+            <div class="kpi-icon-box" style="background: var(--primary-light); color: var(--primary);">
+              <svg width="20" height="20" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 4H6a2 2 0 00-2 2v12a2 2 0 002 2h12a2 2 0 002-2V6a2 2 0 00-2-2h-2m-4-1v8m0 0l3-3m-3 3L9 8m-5 5h2.586a1 1 0 01.707.293l2.414 2.414a1 1 0 00.707.293h3.172a1 1 0 00.707-.293l2.414-2.414a1 1 0 01.707-.293H20"/>
+              </svg>
+            </div>
+            <span class="kpi-trend neutral">Total</span>
+          </div>
+          <div class="kpi-value">${requests.length}</div>
+          <div class="kpi-label">Total Tickets</div>
+          <div class="kpi-subtitle">All Lifetime Requests</div>
         </div>
       </div>
 

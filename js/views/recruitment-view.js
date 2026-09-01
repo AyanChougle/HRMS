@@ -628,9 +628,9 @@ const RecruitmentView = {
         <div class="form-group">
           <label class="form-label required">Hiring Recommendation</label>
           <select id="fb-recom" class="form-control">
-            <option value="PASS" selected>🌟 PASS (Advance to Selection / Offer)</option>
-            <option value="HOLD">⏸ HOLD (Consider for other roles)</option>
-            <option value="FAIL">❌ REJECT</option>
+            <option value="PASS" selected>PASS (Advance to Selection / Offer)</option>
+            <option value="HOLD">HOLD (Consider for other roles)</option>
+            <option value="FAIL">REJECT</option>
           </select>
         </div>
         <div class="form-group">
@@ -832,7 +832,7 @@ const RecruitmentView = {
               <em>Diallo India Private Limited</em>
             </div>
             <div>
-              <button class="btn btn-secondary btn-sm" onclick="window.print()">🖨️ Print Offer Letter</button>
+              <button class="btn btn-secondary btn-sm" onclick="window.print()">Print Offer Letter</button>
             </div>
           </div>
         </div>

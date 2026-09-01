@@ -6,14 +6,14 @@
 const documentService = {
   // Document Categories
   DOCUMENT_CATEGORIES: [
-    { code: 'IDENTITY', name: 'Identity & Address Proof', icon: '🪪' },
-    { code: 'EMPLOYMENT', name: 'Employment Contracts & Offers', icon: '📝' },
-    { code: 'PAYROLL', name: 'Statutory & Tax Documents', icon: '💰' },
-    { code: 'EDUCATION', name: 'Education & Degree Certificates', icon: '🎓' },
-    { code: 'EXPERIENCE', name: 'Previous Experience & Relieving Letters', icon: '🏢' },
-    { code: 'COMPLIANCE', name: 'Certifications & Compliance', icon: '🛡️' },
-    { code: 'COMPANY', name: 'Company Policies & Handbook', icon: '📘' },
-    { code: 'OTHER', name: 'Miscellaneous Files', icon: '📁' }
+    { code: 'IDENTITY', name: 'Identity & Address Proof' },
+    { code: 'EMPLOYMENT', name: 'Employment Contracts & Offers' },
+    { code: 'PAYROLL', name: 'Statutory & Tax Documents' },
+    { code: 'EDUCATION', name: 'Education & Degree Certificates' },
+    { code: 'EXPERIENCE', name: 'Previous Experience & Relieving Letters' },
+    { code: 'COMPLIANCE', name: 'Certifications & Compliance' },
+    { code: 'COMPANY', name: 'Company Policies & Handbook' },
+    { code: 'OTHER', name: 'Miscellaneous Files' }
   ],
 
   // 1. GET DOCUMENTS (Scoped by Employee or Company)

@@ -12,7 +12,7 @@ const ManagerDashboardView = {
       <!-- Welcome Banner -->
       <div class="welcome-banner animate-fade-in">
         <div class="welcome-text">
-          <h1>Manager Portal — ${userDisplayName} 👔</h1>
+          <h1>Manager Portal — ${userDisplayName}</h1>
           <p>Team attendance oversight, leave approvals, and shift monitoring</p>
         </div>
         <div class="welcome-date-badge">

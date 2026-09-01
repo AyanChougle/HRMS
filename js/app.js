@@ -281,29 +281,10 @@ const App = {
 
   // Notifications
   async bindNotifications() {
-    const container = document.getElementById('notifications-list-container');
-    if (!container || !AuthGuard.currentUser) return;
-
-    try {
-      const notifs = await notificationService.getNotifications(AuthGuard.currentUser.uid);
-      if (notifs.length === 0) {
-        container.innerHTML = `<div style="padding: 24px 16px; text-align: center; color: var(--text-muted); font-size: 0.825rem;">No unread notifications</div>`;
-      } else {
-        container.innerHTML = `
-          <div class="flex flex-col gap-1">
-            ${notifs.map(n => `
-              <div class="dropdown-item" style="flex-direction: column; align-items: flex-start; gap: 2px;">
-                <div class="font-semibold text-main" style="font-size: 0.85rem;">${n.title}</div>
-                <div class="text-muted" style="font-size: 0.75rem;">${n.message}</div>
-              </div>
-            `).join('')}
-          </div>
-        `;
-      }
-    } catch (e) {
-      console.warn('Could not load notifications:', e);
+    if (window.notificationService && notificationService.initRealtimeBadgeListener) {
+      notificationService.initRealtimeBadgeListener();
     }
-  }
+  },
 };
 
 window.App = App;

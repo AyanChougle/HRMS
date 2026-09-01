@@ -224,7 +224,7 @@ const PayrollView = {
                           <button class="btn btn-primary btn-sm" onclick="PayrollView.approvePeriod('${c.id}')">Approve</button>
                         ` : (c.status === 'APPROVED' ? `
                           <button class="btn btn-secondary btn-sm" onclick="PayrollView.lockPeriod('${c.id}')">Lock Period</button>
-                        ` : '<span class="text-muted" style="font-size: 0.75rem;">🔒 Locked</span>')}
+                        ` : '<span class="text-muted" style="font-size: 0.75rem;">Locked</span>')}
                       </div>
                     </td>
                   </tr>
@@ -258,7 +258,7 @@ const PayrollView = {
             </select>
           </div>
           <div>
-            <button class="btn btn-soft btn-sm" onclick="PayrollView.reprocessSelectedPeriod()">🔄 Reprocess Calculations</button>
+            <button class="btn btn-soft btn-sm" onclick="PayrollView.reprocessSelectedPeriod()">Reprocess Calculations</button>
           </div>
         </div>
       </div>

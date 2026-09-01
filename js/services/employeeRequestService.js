@@ -5,13 +5,13 @@
 
 const employeeRequestService = {
   REQUEST_TYPES: [
-    { code: 'PROFILE_CHANGE', name: 'Profile Information Update', icon: '👤', approverRole: 'HR' },
-    { code: 'ADDRESS_CHANGE', name: 'Residential Address Update', icon: '🏠', approverRole: 'HR' },
-    { code: 'BANK_DETAILS_CHANGE', name: 'Salary Bank Account Update', icon: '🏦', approverRole: 'HR' },
-    { code: 'EMPLOYMENT_CERTIFICATE', name: 'Employment Verification Letter', icon: '📜', approverRole: 'HR' },
-    { code: 'SALARY_CERTIFICATE', name: 'Official Salary Certificate', icon: '💼', approverRole: 'HR' },
-    { code: 'EXPERIENCE_LETTER', name: 'Experience & Relieving Letter', icon: '🏢', approverRole: 'HR' },
-    { code: 'GENERAL_HR_QUERY', name: 'General HR Support & Query', icon: '❓', approverRole: 'HR' }
+    { code: 'PROFILE_CHANGE', name: 'Profile Information Update', approverRole: 'HR' },
+    { code: 'ADDRESS_CHANGE', name: 'Residential Address Update', approverRole: 'HR' },
+    { code: 'BANK_DETAILS_CHANGE', name: 'Salary Bank Account Update', approverRole: 'HR' },
+    { code: 'EMPLOYMENT_CERTIFICATE', name: 'Employment Verification Letter', approverRole: 'HR' },
+    { code: 'SALARY_CERTIFICATE', name: 'Official Salary Certificate', approverRole: 'HR' },
+    { code: 'EXPERIENCE_LETTER', name: 'Experience & Relieving Letter', approverRole: 'HR' },
+    { code: 'GENERAL_HR_QUERY', name: 'General HR Support & Query', approverRole: 'HR' }
   ],
 
   // 1. GET REQUESTS (Filtered by Employee, Company, or Status)

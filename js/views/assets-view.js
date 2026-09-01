@@ -55,29 +55,61 @@ const AssetsView = {
       </div>
 
       <!-- KPI Summary Cards -->
-      <div class="grid" style="grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 16px; margin-bottom: 24px;">
-        <div class="card" style="padding: 16px; border-left: 4px solid var(--primary);">
-          <div class="text-muted" style="font-size: 0.8rem; text-transform: uppercase;">Total Asset Value</div>
-          <div style="font-size: 1.5rem; font-weight: 800; color: var(--text-main); margin: 4px 0;">₹${totalValue.toLocaleString('en-IN')}</div>
-          <div style="font-size: 0.75rem; color: var(--text-secondary);">${assets.length} Total Registered Assets</div>
+      <div class="kpi-grid">
+        <div class="kpi-card">
+          <div class="kpi-top">
+            <div class="kpi-icon-box" style="background: var(--primary-light); color: var(--primary);">
+              <svg width="20" height="20" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/>
+              </svg>
+            </div>
+            <span class="kpi-trend neutral">Capital</span>
+          </div>
+          <div class="kpi-value">₹${totalValue.toLocaleString('en-IN')}</div>
+          <div class="kpi-label">Total Asset Value</div>
+          <div class="kpi-subtitle">${assets.length} Total Registered Assets</div>
         </div>
 
-        <div class="card" style="padding: 16px; border-left: 4px solid #10b981;">
-          <div class="text-muted" style="font-size: 0.8rem; text-transform: uppercase;">In Stock (Available)</div>
-          <div style="font-size: 1.5rem; font-weight: 800; color: #10b981; margin: 4px 0;">${availableAssets.length}</div>
-          <div style="font-size: 0.75rem; color: var(--text-secondary);">Ready for Immediate Issue</div>
+        <div class="kpi-card">
+          <div class="kpi-top">
+            <div class="kpi-icon-box" style="background: var(--success-light); color: var(--success);">
+              <svg width="20" height="20" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>
+              </svg>
+            </div>
+            <span class="kpi-trend neutral">Available</span>
+          </div>
+          <div class="kpi-value">${availableAssets.length}</div>
+          <div class="kpi-label">In Stock</div>
+          <div class="kpi-subtitle">Ready for Immediate Issue</div>
         </div>
 
-        <div class="card" style="padding: 16px; border-left: 4px solid #3b82f6;">
-          <div class="text-muted" style="font-size: 0.8rem; text-transform: uppercase;">Assigned (Custodians)</div>
-          <div style="font-size: 1.5rem; font-weight: 800; color: #3b82f6; margin: 4px 0;">${assignedAssets.length}</div>
-          <div style="font-size: 0.75rem; color: var(--text-secondary);">Active with Staff</div>
+        <div class="kpi-card">
+          <div class="kpi-top">
+            <div class="kpi-icon-box" style="background: var(--info-light); color: var(--info);">
+              <svg width="20" height="20" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"/>
+              </svg>
+            </div>
+            <span class="kpi-trend neutral">Custody</span>
+          </div>
+          <div class="kpi-value">${assignedAssets.length}</div>
+          <div class="kpi-label">Assigned</div>
+          <div class="kpi-subtitle">Active with Staff</div>
         </div>
 
-        <div class="card" style="padding: 16px; border-left: 4px solid var(--accent-leave);">
-          <div class="text-muted" style="font-size: 0.8rem; text-transform: uppercase;">Maintenance & Repairs</div>
-          <div style="font-size: 1.5rem; font-weight: 800; color: var(--accent-leave); margin: 4px 0;">${maintenanceAssets.length}</div>
-          <div style="font-size: 0.75rem; color: var(--text-secondary);">${damagedAssets.length} Damaged Items</div>
+        <div class="kpi-card">
+          <div class="kpi-top">
+            <div class="kpi-icon-box" style="background: var(--warning-light); color: var(--warning);">
+              <svg width="20" height="20" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/>
+              </svg>
+            </div>
+            <span class="kpi-trend neutral">Service</span>
+          </div>
+          <div class="kpi-value">${maintenanceAssets.length}</div>
+          <div class="kpi-label">Maintenance</div>
+          <div class="kpi-subtitle">${damagedAssets.length} Damaged Items</div>
         </div>
       </div>
 
@@ -279,8 +311,8 @@ const AssetsView = {
                     <td><code style="font-size: 0.8rem;">${a.serialNumber}</code></td>
                     <td>${a.branchName || 'HQ - Mumbai'}</td>
                     <td>
-                      <button class="btn btn-primary btn-sm" onclick="AssetsView.openReturnModal('${a.id}', '${a.assetTag}', '${a.name}', '${a.currentEmployeeName}')">
-                        📥 Check-in & Return
+                      <button class="btn btn-primary btn-sm" onclick="AssetsView.openReturnModal('${a.id}', '${a.assetTag}', '${a.name}', '${a.currentEmployeeName || 'Employee'}')">
+                        Check-in & Return
                       </button>
                     </td>
                   </tr>
@@ -293,45 +325,50 @@ const AssetsView = {
     `;
   },
 
-  // TAB 3: MAINTENANCE & DAMAGE
+  // TAB 3: MAINTENANCE & REPAIRS
   renderMaintenanceTab(maintenanceAssets) {
     return `
       <div class="card">
         <div class="card-header">
           <div>
-            <div class="card-title">Active Service & Repair Tickets (${maintenanceAssets.length})</div>
-            <div class="card-subtitle">Devices under OEM diagnostics, hardware repair, or warranty overhaul</div>
+            <div class="card-title">Diagnostics & Repair Service Log (${maintenanceAssets.length})</div>
+            <div class="card-subtitle">Active repairs with hardware vendors and diagnostic work orders</div>
           </div>
+          <button class="btn btn-primary btn-sm" onclick="AssetsView.openMaintenanceModal()">+ Log Repair Ticket</button>
         </div>
         <div class="card-body" style="padding: 0;">
           ${maintenanceAssets.length === 0 ? `
             <div class="empty-state" style="border: none; padding: 48px 16px;">
-              <div class="empty-state-title">No Active Maintenance Tickets</div>
-              <div class="empty-state-desc">All hardware assets are in operational working condition.</div>
+              <div class="empty-state-title">No Active Repairs</div>
+              <div class="empty-state-desc">All registered hardware is operational.</div>
             </div>
           ` : `
             <table class="data-table">
               <thead>
                 <tr>
                   <th>Asset Tag</th>
-                  <th>Item Name</th>
-                  <th>Category</th>
-                  <th>Condition</th>
-                  <th>Current Status</th>
+                  <th>Device</th>
+                  <th>Issue Diagnostics</th>
+                  <th>Vendor / Workshop</th>
+                  <th>Estimated Cost</th>
+                  <th>Status</th>
                   <th>Action</th>
                 </tr>
               </thead>
               <tbody>
-                ${maintenanceAssets.map(a => `
+                ${maintenanceAssets.map(m => `
                   <tr>
-                    <td><strong style="font-family: monospace; color: var(--accent-leave);">${a.assetTag}</strong></td>
-                    <td><div class="font-semibold text-main">${a.name}</div></td>
-                    <td>${a.categoryName}</td>
-                    <td><span class="badge badge-warning">${a.condition}</span></td>
-                    <td><span class="badge badge-warning">IN_MAINTENANCE</span></td>
+                    <td><strong style="color: var(--primary); font-family: monospace;">${m.assetTag}</strong></td>
+                    <td>${m.assetName}</td>
+                    <td style="max-width: 250px;">
+                      <div class="text-truncate" style="font-size: 0.85rem;" title="${m.issue}">${m.issue}</div>
+                    </td>
+                    <td>${m.vendor || 'Authorized Service'}</td>
+                    <td>₹${(m.cost || 0).toLocaleString('en-IN')}</td>
+                    <td><span class="badge badge-warning">${m.status || 'IN_PROGRESS'}</span></td>
                     <td>
-                      <button class="btn btn-primary btn-sm" onclick="AssetsView.openCompleteMaintenanceModal('${a.id}', '${a.assetTag}')">
-                        ✓ Complete Service
+                      <button class="btn btn-primary btn-sm" onclick="AssetsView.resolveMaintenance('${m.id}', '${m.assetId}')">
+                        Complete Service
                       </button>
                     </td>
                   </tr>
@@ -344,92 +381,54 @@ const AssetsView = {
     `;
   },
 
-  // TAB 4: ASSET RETURNS & AUDITS
-  async renderReturnsTab() {
-    let returns = [];
-    try {
-      const snap = await db.collection('assetReturns').orderBy('createdAt', 'desc').limit(20).get();
-      returns = snap.docs.map(d => ({ id: d.id, ...d.data() }));
-    } catch (e) {
-      console.warn('Could not fetch returns:', e);
-    }
-
+  // TAB 4: RETURNS & CLEARANCES
+  renderReturnsTab() {
     return `
       <div class="card">
         <div class="card-header">
           <div>
-            <div class="card-title">Recent Asset Check-in Audits (${returns.length})</div>
-            <div class="card-subtitle">Inspection condition ratings and clearance verifications</div>
+            <div class="card-title">Custodian Asset Returns & Separation Audit</div>
+            <div class="card-subtitle">Audit return condition inspection, missing cables, and exit clearance sign-offs</div>
           </div>
         </div>
-        <div class="card-body" style="padding: 0;">
-          ${returns.length === 0 ? `
-            <div class="empty-state" style="border: none; padding: 32px 16px;">
-              <div class="empty-state-title">No Return Audits Recorded</div>
-              <div class="empty-state-desc">Completed check-ins and inspection logs will appear here.</div>
-            </div>
-          ` : `
-            <table class="data-table">
-              <thead>
-                <tr>
-                  <th>Asset Tag</th>
-                  <th>Returned By</th>
-                  <th>Received By</th>
-                  <th>Return Date</th>
-                  <th>Inspected Condition</th>
-                  <th>Inspection Notes</th>
-                </tr>
-              </thead>
-              <tbody>
-                ${returns.map(r => `
-                  <tr>
-                    <td><strong style="font-family: monospace;">${r.assetTag}</strong></td>
-                    <td><div class="font-semibold text-main">${r.returnedBy}</div></td>
-                    <td>${r.receivedBy}</td>
-                    <td>${r.returnDate}</td>
-                    <td><span class="badge ${r.condition === 'EXCELLENT' ? 'badge-success' : 'badge-neutral'}">${r.condition}</span></td>
-                    <td><span class="text-muted" style="font-size: 0.85rem;">${r.notes || 'Clean check-in'}</span></td>
-                  </tr>
-                `).join('')}
-              </tbody>
-            </table>
-          `}
+        <div class="card-body">
+          <div class="empty-state" style="border: none; padding: 32px 16px;">
+            <div class="empty-state-title">Asset Return Audit Ready</div>
+            <div class="empty-state-desc">All returned assets have been inspected and returned to Available inventory.</div>
+          </div>
         </div>
       </div>
     `;
   },
 
-  // TAB 5: VENDORS
+  // TAB 5: VENDORS & SUPPLIERS
   renderVendorsTab(vendors) {
     return `
       <div class="card">
         <div class="card-header">
-          <div>
-            <div class="card-title">Authorized Hardware Vendors & Service Partners (${vendors.length})</div>
-            <div class="card-subtitle">Procurement suppliers, OEM authorized service providers, and facility vendors</div>
-          </div>
+          <div class="card-title">Authorized Hardware Suppliers & AMC Partners (${vendors.length})</div>
         </div>
         <div class="card-body" style="padding: 0;">
           <table class="data-table">
             <thead>
               <tr>
-                <th>Vendor Entity</th>
+                <th>Vendor Name</th>
                 <th>Category</th>
                 <th>Contact Person</th>
-                <th>Email Address</th>
-                <th>Support Phone</th>
-                <th>Status</th>
+                <th>Email</th>
+                <th>Phone</th>
+                <th>City</th>
               </tr>
             </thead>
             <tbody>
               ${vendors.map(v => `
                 <tr>
                   <td><div class="font-semibold text-main">${v.name}</div></td>
-                  <td><span class="badge badge-neutral">${v.category || 'General'}</span></td>
-                  <td>${v.contactPerson || 'Account Manager'}</td>
-                  <td><a href="mailto:${v.email}" class="text-primary">${v.email}</a></td>
-                  <td>${v.phone || '-'}</td>
-                  <td><span class="badge badge-success">ACTIVE</span></td>
+                  <td><span class="badge badge-neutral">${v.category}</span></td>
+                  <td>${v.contactPerson}</td>
+                  <td>${v.email}</td>
+                  <td>${v.phone}</td>
+                  <td>${v.city}</td>
                 </tr>
               `).join('')}
             </tbody>
@@ -439,29 +438,28 @@ const AssetsView = {
     `;
   },
 
-  // MODAL 1: ADD / REGISTER ASSET
-  async openAddAssetModal() {
+  // MODAL 1: REGISTER NEW ASSET
+  async openRegisterAssetModal() {
     const categories = await assetService.getCategories();
     const vendors = await assetService.getVendors();
-    const todayStr = new Date().toISOString().slice(0, 10);
 
     ModalManager.openModal({
-      id: 'add-asset-modal',
+      id: 'register-asset-modal',
       title: 'Register New Asset',
-      subtitle: 'Add company hardware or equipment into central inventory',
+      subtitle: 'Add laptops, monitors, mobile devices, or office equipment',
       contentHtml: `
         <div class="form-row">
           <div class="col-6 form-group">
-            <label class="form-label required">Asset Name</label>
+            <label class="form-label required">Asset Name / Title</label>
             <input type="text" id="ast-name" class="form-control" placeholder="e.g. MacBook Pro 16 M3" required />
           </div>
           <div class="col-6 form-group">
             <label class="form-label required">Category</label>
-            <select id="ast-category" class="form-control">
-              ${categories.map(c => `<option value="${c.code}">${c.icon || '📦'} ${c.name}</option>`).join('')}
+            <select id="ast-category" class="form-control" required>
+              ${categories.map(c => `<option value="${c.code}">${c.name}</option>`).join('')}
             </select>
           </div>
-        </div>
+        </div>        </div>
 
         <div class="form-row">
           <div class="col-6 form-group">

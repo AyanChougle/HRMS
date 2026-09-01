@@ -76,7 +76,7 @@ const PerformanceView = {
             </div>
             <div class="flex items-center gap-2">
               <button class="btn btn-soft btn-sm" onclick="PerformanceView.switchTab('reviews')">
-                ${myReview?.status === 'SELF_REVIEW_SUBMITTED' ? '✓ Self-Review Submitted' : '📝 Start Self-Review'}
+                ${myReview?.status === 'SELF_REVIEW_SUBMITTED' ? 'Self-Review Submitted' : 'Start Self-Review'}
               </button>
             </div>
           </div>
@@ -703,9 +703,9 @@ const PerformanceView = {
         <div class="form-group">
           <label class="form-label required">Feedback Type</label>
           <select id="fb-type" class="form-control">
-            <option value="RECOGNITION" selected>🌟 Recognition / Kudos</option>
-            <option value="CONSTRUCTIVE">💡 Constructive Coaching</option>
-            <option value="GENERAL">💬 General Observation</option>
+            <option value="RECOGNITION" selected>Recognition / Kudos</option>
+            <option value="CONSTRUCTIVE">Constructive Coaching</option>
+            <option value="GENERAL">General Observation</option>
           </select>
         </div>
         <div class="form-group">

@@ -1,392 +1,1182 @@
 /**
- * DIALLO HRMS — ADMIN & SYSTEM GOVERNANCE MODULE (FIREBASE BACKED)
- * Multi-Company Corporate Entities (CIN, PAN, GSTIN) & Indian Branches in Firestore
+ * DIALLO HRMS — COMPANY & ORGANIZATION ADMINISTRATION VIEW (PHASE 15)
+ * Centralized Suite managing Company Profiles, Branches, Departments, Designations,
+ * Shifts, Holidays, Policies, Leave Types, Work Locations, and System Configuration.
  */
 
 const AdminView = {
+  activeTab: 'company',
+
   async renderHub() {
-    let companies = [];
-    let branches = [];
-    try {
-      [companies, branches] = await Promise.all([
-        companyService.getCompanies(),
-        companyService.getBranches(),
-      ]);
-    } catch (e) {
-      console.warn("Could not fetch admin companies:", e);
+    const role = AuthGuard.userProfile?.roleId || 'EMPLOYEE';
+    const isAuthorized = role === 'SUPER_ADMIN' || role === 'COMPANY_ADMIN' || role === 'HR_MANAGER' || role === 'HR';
+
+    if (!isAuthorized) {
+      return `
+        <div class="card" style="padding: 48px; text-align: center;">
+          <h2 style="color: var(--danger); margin-bottom: 8px;">Access Restricted</h2>
+          <p class="text-secondary">You do not have administrative privileges to manage organization configuration.</p>
+        </div>
+      `;
     }
+
+    const companyId = AuthGuard.userProfile?.companyId || 'comp_diallo_india';
+
+    let [company, branches, departments, designations, jobLevels, shifts, holidays, policies, leaveTypes, settings, employees] = await Promise.all([
+      organizationService.getCompany(companyId),
+      organizationService.getBranches(companyId),
+      organizationService.getDepartments(companyId),
+      organizationService.getDesignations(companyId),
+      organizationService.getJobLevels(companyId),
+      organizationService.getShifts(companyId),
+      organizationService.getHolidays(companyId),
+      organizationService.getPolicies(companyId),
+      organizationService.getLeaveTypes(companyId),
+      settingsService.getCompanySettings(companyId),
+      employeeService.getAllEmployees(companyId)
+    ]);
 
     return `
       <div class="page-header animate-fade-in">
         <div class="breadcrumb">
           <a href="#dashboard">Dashboard</a>
           <span class="breadcrumb-separator">/</span>
-          <span class="breadcrumb-current">Admin</span>
+          <span class="breadcrumb-current">Administration</span>
         </div>
         <div class="page-title-row">
           <div>
-            <h1 class="page-title">Admin & Corporate Governance (India)</h1>
-            <p class="page-subtitle">Corporate registrations (CIN/PAN/GSTIN), regional branch offices, and user access matrix in Firestore</p>
+            <h1 class="page-title">Company & Organization Administration</h1>
+            <p class="page-subtitle">Configure legal entities, multi-branch architecture, departments, designations, shifts, holidays, and policies</p>
           </div>
           <div class="page-actions">
-            <button class="btn btn-primary btn-sm" onclick="AdminView.openAddCompanyModal()">
+            <button class="btn btn-primary btn-sm" onclick="AdminView.openQuickAddModal()">
               <svg width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/>
               </svg>
-              Add Legal Entity
+              + Quick Configuration
             </button>
           </div>
         </div>
       </div>
 
-      <!-- Companies Summary Card -->
-      <div class="card" style="margin-bottom: 24px;">
-        <div class="card-header">
-          <div>
-            <div class="card-title">Registered Indian Legal Entities (${companies.length})</div>
-            <div class="card-subtitle">Ministry of Corporate Affairs (MCA) registered entities in Firestore</div>
+      <!-- Top Summary Metrics Grid -->
+      <div class="kpi-grid">
+        <div class="kpi-card">
+          <div class="kpi-top">
+            <div class="kpi-icon-box" style="background: var(--primary-light); color: var(--primary);">
+              <svg width="20" height="20" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"/>
+              </svg>
+            </div>
+            <span class="kpi-trend neutral">Network</span>
           </div>
+          <div class="kpi-value">${branches.length}</div>
+          <div class="kpi-label">Active Branches</div>
+          <div class="kpi-subtitle">${branches.filter(b => b.status === 'ACTIVE').length} Operational Locations</div>
         </div>
-        <div class="card-body" style="padding: 0;">
-          <table class="data-table">
-            <thead>
-              <tr>
-                <th>Company Name</th>
-                <th>Entity Code</th>
-                <th>Corporate Identification No. (CIN)</th>
-                <th>GSTIN</th>
-                <th>Status</th>
-                <th>Actions</th>
-              </tr>
-            </thead>
-            <tbody>
-              ${
-                companies.length === 0
-                  ? `
-                <tr><td colspan="6" style="text-align: center; padding: 24px; color: var(--text-muted);">No legal entities registered.</td></tr>
-              `
-                  : companies
-                      .map(
-                        (c) => `
-                <tr>
-                  <td class="font-semibold text-main">${c.name}</td>
-                  <td><span class="badge badge-neutral">${c.code || "CO"}</span></td>
-                  <td><span style="font-family: monospace; font-size: 0.8rem;">${c.cin || "U72900MH2026PTC123456"}</span></td>
-                  <td><span style="font-family: monospace; font-size: 0.8rem;">${c.gstin || "-"}</span></td>
-                  <td><span class="badge badge-success"><span class="badge-dot"></span> ${c.status || "Active"}</span></td>
-                  <td>
-                    <div class="flex items-center gap-1">
-                      <button class="btn btn-soft btn-sm" onclick="AdminView.openEditCompanyModal('${c.id}', '${c.name}', '${c.code || ""}', '${c.cin || ""}', '${c.pan || ""}', '${c.gstin || ""}')">Edit</button>
-                      <button class="btn btn-soft btn-sm" style="color: var(--danger);" onclick="AdminView.deleteCompany('${c.id}', '${c.name}')">Delete</button>
-                    </div>
-                  </td>
-                </tr>
-              `,
-                      )
-                      .join("")
-              }
-            </tbody>
-          </table>
+
+        <div class="kpi-card">
+          <div class="kpi-top">
+            <div class="kpi-icon-box" style="background: var(--info-light); color: var(--info);">
+              <svg width="20" height="20" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"/>
+              </svg>
+            </div>
+            <span class="kpi-trend neutral">Structure</span>
+          </div>
+          <div class="kpi-value">${departments.length}</div>
+          <div class="kpi-label">Departments</div>
+          <div class="kpi-subtitle">${designations.length} Distinct Designations</div>
+        </div>
+
+        <div class="kpi-card">
+          <div class="kpi-top">
+            <div class="kpi-icon-box" style="background: var(--warning-light); color: var(--warning);">
+              <svg width="20" height="20" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/>
+              </svg>
+            </div>
+            <span class="kpi-trend positive">Roster</span>
+          </div>
+          <div class="kpi-value">${shifts.length}</div>
+          <div class="kpi-label">Configured Shifts</div>
+          <div class="kpi-subtitle">${shifts.filter(s => s.isOvernight).length} Overnight Shifts</div>
+        </div>
+
+        <div class="kpi-card">
+          <div class="kpi-top">
+            <div class="kpi-icon-box" style="background: var(--success-light); color: var(--success);">
+              <svg width="20" height="20" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
+              </svg>
+            </div>
+            <span class="kpi-trend positive">Governance</span>
+          </div>
+          <div class="kpi-value">${policies.length}</div>
+          <div class="kpi-label">HR Policies</div>
+          <div class="kpi-subtitle">${holidays.length} Annual Holidays</div>
         </div>
       </div>
 
-      <!-- 6 Responsive Navigation Cards -->
-      <div class="module-grid">
-        <div class="module-nav-card" onclick="AdminView.showSub('Companies & Legal Entities')">
-          <div>
-            <div class="module-nav-card-top">
-              <div class="module-card-icon-box" style="background: rgba(220, 38, 38, 0.1); color: var(--accent-admin);">
-                <svg width="22" height="22" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"/>
-                </svg>
-              </div>
-              <span class="module-card-badge">${companies.length} Entities</span>
+      <!-- Navigation Tabs (10 Tabs) -->
+      <div class="tabs-nav" style="margin-bottom: 20px; overflow-x: auto; white-space: nowrap;">
+        <button class="tab-btn ${this.activeTab === 'company' ? 'active' : ''}" onclick="AdminView.switchTab('company')">
+          Company Profile
+        </button>
+        <button class="tab-btn ${this.activeTab === 'branches' ? 'active' : ''}" onclick="AdminView.switchTab('branches')">
+          Branches (${branches.length})
+        </button>
+        <button class="tab-btn ${this.activeTab === 'departments' ? 'active' : ''}" onclick="AdminView.switchTab('departments')">
+          Departments (${departments.length})
+        </button>
+        <button class="tab-btn ${this.activeTab === 'designations' ? 'active' : ''}" onclick="AdminView.switchTab('designations')">
+          Designations & Levels (${designations.length})
+        </button>
+        <button class="tab-btn ${this.activeTab === 'shifts' ? 'active' : ''}" onclick="AdminView.switchTab('shifts')">
+          Shifts & Hours (${shifts.length})
+        </button>
+        <button class="tab-btn ${this.activeTab === 'holidays' ? 'active' : ''}" onclick="AdminView.switchTab('holidays')">
+          Holiday Calendar (${holidays.length})
+        </button>
+        <button class="tab-btn ${this.activeTab === 'policies' ? 'active' : ''}" onclick="AdminView.switchTab('policies')">
+          HR Policies (${policies.length})
+        </button>
+        <button class="tab-btn ${this.activeTab === 'leave-types' ? 'active' : ''}" onclick="AdminView.switchTab('leave-types')">
+          Leave Types (${leaveTypes.length})
+        </button>
+        <button class="tab-btn ${this.activeTab === 'orgchart' ? 'active' : ''}" onclick="AdminView.switchTab('orgchart')">
+          Org Hierarchy Chart
+        </button>
+        <button class="tab-btn ${this.activeTab === 'settings' ? 'active' : ''}" onclick="AdminView.switchTab('settings')">
+          System Defaults
+        </button>
+      </div>
+
+      <!-- Active Tab Container -->
+      <div class="tab-content">
+        ${this.renderActiveTab(company, branches, departments, designations, jobLevels, shifts, holidays, policies, leaveTypes, settings, employees)}
+      </div>
+    `;
+  },
+
+  switchTab(tab) {
+    this.activeTab = tab;
+    Router.mountView('admin');
+  },
+
+  renderActiveTab(company, branches, departments, designations, jobLevels, shifts, holidays, policies, leaveTypes, settings, employees) {
+    switch (this.activeTab) {
+      case 'branches': return this.renderBranchesTab(branches, employees);
+      case 'departments': return this.renderDepartmentsTab(departments, employees);
+      case 'designations': return this.renderDesignationsTab(designations, jobLevels, departments);
+      case 'shifts': return this.renderShiftsTab(shifts, settings);
+      case 'holidays': return this.renderHolidaysTab(holidays, branches);
+      case 'policies': return this.renderPoliciesTab(policies);
+      case 'leave-types': return this.renderLeaveTypesTab(leaveTypes);
+      case 'orgchart': return this.renderOrgChartTab(employees, departments, branches);
+      case 'settings': return this.renderSettingsTab(settings);
+      default: return this.renderCompanyProfileTab(company, settings);
+    }
+  },
+
+  // 1. COMPANY PROFILE TAB
+  renderCompanyProfileTab(company, settings) {
+    return `
+      <div class="grid" style="grid-template-columns: 1fr 1fr; gap: 20px;">
+        <!-- Legal Entity Details -->
+        <div class="card">
+          <div class="card-header">
+            <div>
+              <div class="card-title">Corporate Legal Identity</div>
+              <div class="card-subtitle">Registered name, registration number, and tax details</div>
             </div>
-            <div class="module-card-content">
-              <h3>Companies</h3>
-              <p>Corporate registrations, PAN, TAN, GSTIN numbers, and MCA annual compliance filings.</p>
-            </div>
+            <button class="btn btn-primary btn-sm" onclick="AdminView.openEditCompanyModal()">Edit Profile</button>
           </div>
-          <div class="module-card-footer">
-            <span>Manage entities</span>
-            <svg class="arrow-icon" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg>
+          <div class="card-body">
+            <div class="flex flex-col gap-3" style="font-size: 0.88rem;">
+              <div class="flex justify-between">
+                <span class="text-muted">Company Name:</span>
+                <strong>${company.name || '-'}</strong>
+              </div>
+              <div class="flex justify-between">
+                <span class="text-muted">Legal Registered Name:</span>
+                <strong>${company.legalName || '-'}</strong>
+              </div>
+              <div class="flex justify-between">
+                <span class="text-muted">Entity Code:</span>
+                <code>${company.code || '-'}</code>
+              </div>
+              <div class="flex justify-between">
+                <span class="text-muted">CIN / Registration No:</span>
+                <code>${company.registrationNumber || company.cin || '-'}</code>
+              </div>
+              <div class="flex justify-between">
+                <span class="text-muted">Tax / GSTIN Number:</span>
+                <code>${company.taxGstNumber || company.gstin || '-'}</code>
+              </div>
+              <div class="flex justify-between">
+                <span class="text-muted">Permanent Account No (PAN):</span>
+                <code>${company.pan || '-'}</code>
+              </div>
+              <div class="flex justify-between">
+                <span class="text-muted">Industry Domain:</span>
+                <span>${company.industry || '-'}</span>
+              </div>
+            </div>
           </div>
         </div>
 
-        <div class="module-nav-card" onclick="AdminView.showSub('Branches & State Hubs')">
-          <div>
-            <div class="module-nav-card-top">
-              <div class="module-card-icon-box" style="background: rgba(37, 99, 235, 0.1); color: var(--primary);">
-                <svg width="22" height="22" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"/>
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"/>
-                </svg>
+        <!-- Regional, Timezone & Formatting -->
+        <div class="card">
+          <div class="card-header">
+            <div>
+              <div class="card-title">Regional & Localization Formats</div>
+              <div class="card-subtitle">Timezone, currency, date/time standards, and financial year</div>
+            </div>
+          </div>
+          <div class="card-body">
+            <div class="flex flex-col gap-3" style="font-size: 0.88rem;">
+              <div class="flex justify-between">
+                <span class="text-muted">Default Timezone:</span>
+                <strong>${company.timezone || 'Asia/Kolkata'}</strong>
               </div>
-              <span class="module-card-badge">${branches.length} Locations</span>
-            </div>
-            <div class="module-card-content">
-              <h3>Branches</h3>
-              <p>State branches in Maharashtra, Karnataka, Haryana, and Telangana with local Shops & Est. licenses.</p>
-            </div>
-          </div>
-          <div class="module-card-footer">
-            <span>Configure hubs</span>
-            <svg class="arrow-icon" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg>
-          </div>
-        </div>
-
-        <div class="module-nav-card" onclick="AdminView.showSub('User Accounts')">
-          <div>
-            <div class="module-nav-card-top">
-              <div class="module-card-icon-box" style="background: rgba(124, 58, 237, 0.1); color: var(--accent-people);">
-                <svg width="22" height="22" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z"/>
-                </svg>
+              <div class="flex justify-between">
+                <span class="text-muted">Operating Currency:</span>
+                <strong>${company.currency || 'INR'}</strong>
               </div>
-              <span class="module-card-badge">Accounts</span>
-            </div>
-            <div class="module-card-content">
-              <h3>User List</h3>
-              <p>Admin, HR, and Line Manager logins, SSO integration and multi-factor authentication (MFA).</p>
-            </div>
-          </div>
-          <div class="module-card-footer">
-            <span>User directory</span>
-            <svg class="arrow-icon" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg>
-          </div>
-        </div>
-
-        <div class="module-nav-card" onclick="AdminView.showSub('User Types & Roles')">
-          <div>
-            <div class="module-nav-card-top">
-              <div class="module-card-icon-box" style="background: rgba(8, 145, 178, 0.1); color: var(--accent-attendance);">
-                <svg width="22" height="22" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"/>
-                </svg>
+              <div class="flex justify-between">
+                <span class="text-muted">Display Date Format:</span>
+                <code>${company.dateFormat || 'DD/MM/YYYY'}</code>
               </div>
-              <span class="module-card-badge">Roles</span>
-            </div>
-            <div class="module-card-content">
-              <h3>User Types</h3>
-              <p>Super Admin, Company Admin, HR, Payroll Officer, Manager, and Employee ESS.</p>
-            </div>
-          </div>
-          <div class="module-card-footer">
-            <span>Role definitions</span>
-            <svg class="arrow-icon" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg>
-          </div>
-        </div>
-
-        <div class="module-nav-card" onclick="AdminView.showSub('User Access Matrix')">
-          <div>
-            <div class="module-nav-card-top">
-              <div class="module-card-icon-box" style="background: rgba(234, 88, 12, 0.1); color: var(--accent-payroll);">
-                <svg width="22" height="22" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 7a2 2 0 012 2m4 0a6 6 0 01-7.743 5.743L11 17H9v2H7v2H4a1 1 0 01-1-1v-2.586a1 1 0 01.293-.707l5.964-5.964A6 6 0 1121 9z"/>
-                </svg>
+              <div class="flex justify-between">
+                <span class="text-muted">Display Time Format:</span>
+                <code>${company.timeFormat || '12-hour'}</code>
               </div>
-              <span class="module-card-badge">Permissions</span>
-            </div>
-            <div class="module-card-content">
-              <h3>User Access</h3>
-              <p>Granular read/write/delete permission matrix for each module, salary data, and tax reports.</p>
-            </div>
-          </div>
-          <div class="module-card-footer">
-            <span>Access matrix</span>
-            <svg class="arrow-icon" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg>
-          </div>
-        </div>
-
-        <div class="module-nav-card" onclick="AdminView.showSub('Geography & State Jurisdictions')">
-          <div>
-            <div class="module-nav-card-top">
-              <div class="module-card-icon-box" style="background: rgba(22, 163, 74, 0.1); color: var(--accent-leave);">
-                <svg width="22" height="22" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3.055 11H5a2 2 0 012 2v1a2 2 0 002 2 2 2 0 012 2v2.945M8 3.935V5.5A2.5 2.5 0 0010.5 8h.5a2 2 0 012 2 2 2 0 104 0 2 2 0 012-2h1.064M15 20.488V18a2 2 0 012-2h3.064M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
-                </svg>
+              <div class="flex justify-between">
+                <span class="text-muted">Week Starts On:</span>
+                <strong>${company.weekStartDay || 'Monday'}</strong>
               </div>
-              <span class="module-card-badge">India (States)</span>
+              <div class="flex justify-between">
+                <span class="text-muted">Financial Year Cycle:</span>
+                <strong>1st April – 31st March (${company.financialYearStart || '01/04'})</strong>
+              </div>
+              <div class="flex justify-between">
+                <span class="text-muted">Official Contact:</span>
+                <span>${company.email || '-'} • ${company.phone || '-'}</span>
+              </div>
             </div>
-            <div class="module-card-content">
-              <h3>Geography</h3>
-              <p>Indian States, union territories, pin codes, and state-wise professional tax jurisdictions.</p>
-            </div>
-          </div>
-          <div class="module-card-footer">
-            <span>State rules</span>
-            <svg class="arrow-icon" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg>
           </div>
         </div>
       </div>
     `;
   },
 
-  openAddCompanyModal() {
-    ModalManager.openModal({
-      id: "add-company-modal",
-      title: "Register Indian Legal Entity",
-      subtitle: "Create a new corporate entity in Cloud Firestore",
-      contentHtml: `
-        <form id="new-company-form">
-          <div class="form-row">
-            <div class="col-8 form-group">
-              <label class="form-label required">Entity Full Name</label>
-              <input type="text" id="co-name" class="form-control" placeholder="e.g. Diallo Digital Services India Pvt Ltd" required />
-            </div>
-            <div class="col-4 form-group">
-              <label class="form-label required">Code</label>
-              <input type="text" id="co-code" class="form-control" placeholder="DDSI" required />
-            </div>
-            <div class="col-6 form-group">
-              <label class="form-label required">CIN (Corporate Identification No.)</label>
-              <input type="text" id="co-cin" class="form-control" placeholder="U72900MH2026PTC123456" required />
-            </div>
-            <div class="col-6 form-group">
-              <label class="form-label required">Company PAN</label>
-              <input type="text" id="co-pan" class="form-control" placeholder="AAACD1234E" required />
-            </div>
-            <div class="col-12 form-group">
-              <label class="form-label required">GSTIN Number</label>
-              <input type="text" id="co-gstin" class="form-control" placeholder="27AAACD1234E1Z5" required />
-            </div>
+  // 2. BRANCHES TAB
+  renderBranchesTab(branches, employees) {
+    return `
+      <div class="card">
+        <div class="card-header">
+          <div>
+            <div class="card-title">Operating Regional Branches (${branches.length})</div>
+            <div class="card-subtitle">Physical office facilities, regional centers, and branch managers</div>
           </div>
-        </form>
-      `,
-      footerHtml: `
-        <button class="btn btn-secondary btn-sm" data-modal-close>Cancel</button>
-        <button class="btn btn-primary btn-sm" onclick="AdminView.saveNewCompany()">Register Entity in Firestore</button>
-      `,
-    });
+          <button class="btn btn-primary btn-sm" onclick="AdminView.openAddBranchModal()">+ Add Branch</button>
+        </div>
+        <div class="card-body" style="padding: 0;">
+          <table class="data-table">
+            <thead>
+              <tr>
+                <th>Branch Name</th>
+                <th>Branch Code</th>
+                <th>City & State</th>
+                <th>Timezone</th>
+                <th>Contact Phone</th>
+                <th>Status</th>
+                <th>Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${branches.map(b => `
+                <tr>
+                  <td>
+                    <div class="font-semibold text-main">${b.name}</div>
+                    <div class="text-muted" style="font-size: 0.75rem;">${b.address || ''}</div>
+                  </td>
+                  <td><code style="font-family: monospace; color: var(--primary);">${b.code}</code></td>
+                  <td>${b.city || '-'}, ${b.state || '-'}</td>
+                  <td><span class="badge badge-neutral">${b.timezone || 'Asia/Kolkata'}</span></td>
+                  <td>${b.phone || '-'}</td>
+                  <td>
+                    <span class="badge ${b.status === 'ACTIVE' ? 'badge-success' : 'badge-neutral'}">
+                      ${b.status || 'ACTIVE'}
+                    </span>
+                  </td>
+                  <td>
+                    <div class="flex items-center gap-1">
+                      <button class="btn btn-soft btn-sm" onclick="AdminView.openEditBranchModal('${b.id}')">Edit</button>
+                      ${b.status === 'ACTIVE' ? `
+                        <button class="btn btn-secondary btn-sm" onclick="AdminView.toggleBranchStatus('${b.id}', 'INACTIVE')">Deactivate</button>
+                      ` : `
+                        <button class="btn btn-primary btn-sm" onclick="AdminView.toggleBranchStatus('${b.id}', 'ACTIVE')">Activate</button>
+                      `}
+                    </div>
+                  </td>
+                </tr>
+              `).join('')}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    `;
   },
 
-  async saveNewCompany() {
-    const name = document.getElementById("co-name")?.value.trim();
-    const code = document.getElementById("co-code")?.value.trim();
-    const cin = document.getElementById("co-cin")?.value.trim();
-    const pan = document.getElementById("co-pan")?.value.trim();
-    const gstin = document.getElementById("co-gstin")?.value.trim();
+  // 3. DEPARTMENTS TAB
+  renderDepartmentsTab(departments, employees) {
+    return `
+      <div class="card">
+        <div class="card-header">
+          <div>
+            <div class="card-title">Departments & Sub-Divisions (${departments.length})</div>
+            <div class="card-subtitle">Functional divisions, parent-child hierarchies, and designated department heads</div>
+          </div>
+          <button class="btn btn-primary btn-sm" onclick="AdminView.openAddDepartmentModal()">+ Add Department</button>
+        </div>
+        <div class="card-body" style="padding: 0;">
+          <table class="data-table">
+            <thead>
+              <tr>
+                <th>Department</th>
+                <th>Dept Code</th>
+                <th>Department Head</th>
+                <th>Parent Department</th>
+                <th>Status</th>
+                <th>Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${departments.map(d => {
+                const parent = departments.find(p => p.id === d.parentDepartmentId);
+                return `
+                  <tr>
+                    <td>
+                      <div class="font-semibold text-main">${d.name}</div>
+                      <div class="text-muted" style="font-size: 0.75rem;">${d.description || ''}</div>
+                    </td>
+                    <td><code style="font-family: monospace; color: var(--primary);">${d.code}</code></td>
+                    <td>${d.headEmployeeName || 'Not Designated'}</td>
+                    <td>${parent ? parent.name : 'Top Level'}</td>
+                    <td>
+                      <span class="badge ${d.status === 'ACTIVE' ? 'badge-success' : 'badge-neutral'}">
+                        ${d.status || 'ACTIVE'}
+                      </span>
+                    </td>
+                    <td>
+                      <button class="btn btn-soft btn-sm" onclick="AdminView.openEditDepartmentModal('${d.id}')">Edit</button>
+                    </td>
+                  </tr>
+                `;
+              }).join('')}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    `;
+  },
 
-    if (!name || !code || !cin) return;
+  // 4. DESIGNATIONS & JOB LEVELS TAB
+  renderDesignationsTab(designations, jobLevels, departments) {
+    return `
+      <div class="grid" style="grid-template-columns: 1fr 1fr; gap: 20px;">
+        <!-- Job Levels (L1 to L6) -->
+        <div class="card">
+          <div class="card-header">
+            <div>
+              <div class="card-title">Standard Job Levels (${jobLevels.length})</div>
+              <div class="card-subtitle">Career progression bands and seniority matrix</div>
+            </div>
+            <button class="btn btn-primary btn-sm" onclick="AdminView.openAddJobLevelModal()">+ Add Level</button>
+          </div>
+          <div class="card-body" style="padding: 0;">
+            <table class="data-table">
+              <thead>
+                <tr>
+                  <th>Level Code</th>
+                  <th>Level Title</th>
+                  <th>Rank</th>
+                  <th>Description</th>
+                </tr>
+              </thead>
+              <tbody>
+                ${jobLevels.map(l => `
+                  <tr>
+                    <td><code style="font-family: monospace; font-weight: 700; color: var(--primary);">${l.code}</code></td>
+                    <td><strong>${l.name}</strong></td>
+                    <td><span class="badge badge-neutral">Rank ${l.rank}</span></td>
+                    <td><span class="text-muted" style="font-size: 0.8rem;">${l.description || '-'}</span></td>
+                  </tr>
+                `).join('')}
+              </tbody>
+            </table>
+          </div>
+        </div>
 
-    try {
-      await companyService.createCompany({
-        name,
-        code,
-        cin,
-        pan,
-        gstin,
-        country: "India",
+        <!-- Designations Master -->
+        <div class="card">
+          <div class="card-header">
+            <div>
+              <div class="card-title">Job Designations (${designations.length})</div>
+              <div class="card-subtitle">Functional titles and departmental associations</div>
+            </div>
+            <button class="btn btn-primary btn-sm" onclick="AdminView.openAddDesignationModal()">+ Add Designation</button>
+          </div>
+          <div class="card-body" style="padding: 0;">
+            <table class="data-table">
+              <thead>
+                <tr>
+                  <th>Title</th>
+                  <th>Code</th>
+                  <th>Department</th>
+                  <th>Level</th>
+                </tr>
+              </thead>
+              <tbody>
+                ${designations.map(d => `
+                  <tr>
+                    <td><strong>${d.name}</strong></td>
+                    <td><code>${d.code}</code></td>
+                    <td>${d.departmentName || d.departmentId || 'General'}</td>
+                    <td><span class="badge badge-neutral">${d.levelName || d.levelId || 'L2'}</span></td>
+                  </tr>
+                `).join('')}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    `;
+  },
+
+  // 5. SHIFTS & WORKING HOURS TAB
+  renderShiftsTab(shifts, settings) {
+    return `
+      <div class="card">
+        <div class="card-header">
+          <div>
+            <div class="card-title">Work Shifts & Timings (${shifts.length})</div>
+            <div class="card-subtitle">General, morning, afternoon, and overnight cross-midnight shifts</div>
+          </div>
+          <button class="btn btn-primary btn-sm" onclick="AdminView.openAddShiftModal()">+ Add Shift</button>
+        </div>
+        <div class="card-body" style="padding: 0;">
+          <table class="data-table">
+            <thead>
+              <tr>
+                <th>Shift Name</th>
+                <th>Shift Code</th>
+                <th>Working Hours</th>
+                <th>Break Time</th>
+                <th>Grace Period</th>
+                <th>Type</th>
+                <th>Status</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${shifts.map(s => `
+                <tr>
+                  <td><strong>${s.name}</strong></td>
+                  <td><code>${s.code}</code></td>
+                  <td>
+                    <span class="font-semibold">${s.startTime} – ${s.endTime}</span>
+                    <span class="text-muted" style="font-size: 0.75rem; display: block;">${s.workingHours} Net Hours</span>
+                  </td>
+                  <td>${s.breakDuration || 60} Mins</td>
+                  <td>${s.gracePeriod || 15} Mins</td>
+                  <td>
+                    <span class="badge ${s.isOvernight ? 'badge-warning' : 'badge-neutral'}">
+                      ${s.isOvernight ? 'Overnight (Next Day)' : 'Standard Day'}
+                    </span>
+                  </td>
+                  <td><span class="badge badge-success">${s.status || 'ACTIVE'}</span></td>
+                </tr>
+              `).join('')}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    `;
+  },
+
+  // 6. HOLIDAY CALENDAR TAB
+  renderHolidaysTab(holidays, branches) {
+    return `
+      <div class="card">
+        <div class="card-header">
+          <div>
+            <div class="card-title">Annual Holiday Schedule (${holidays.length} Holidays)</div>
+            <div class="card-subtitle">Public, national, and branch-specific regional state holidays</div>
+          </div>
+          <button class="btn btn-primary btn-sm" onclick="AdminView.openAddHolidayModal()">+ Add Holiday</button>
+        </div>
+        <div class="card-body" style="padding: 0;">
+          <table class="data-table">
+            <thead>
+              <tr>
+                <th>Holiday Title</th>
+                <th>Date</th>
+                <th>Type</th>
+                <th>Applicable Branches</th>
+                <th>Description</th>
+                <th>Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${holidays.map(h => `
+                <tr>
+                  <td><strong>${h.name}</strong></td>
+                  <td><code style="font-size: 0.85rem; font-weight: 700; color: var(--primary);">${h.date}</code></td>
+                  <td>
+                    <span class="badge ${h.type === 'PUBLIC' ? 'badge-primary' : (h.type === 'REGIONAL' ? 'badge-warning' : 'badge-neutral')}">
+                      ${h.type || 'PUBLIC'}
+                    </span>
+                  </td>
+                  <td>
+                    <span class="badge badge-neutral">
+                      ${h.branchIds?.includes('ALL') ? 'All Company Branches' : (h.branchIds || []).join(', ')}
+                    </span>
+                  </td>
+                  <td><span class="text-muted" style="font-size: 0.8rem;">${h.description || '-'}</span></td>
+                  <td>
+                    <button class="btn btn-danger btn-sm" onclick="AdminView.deleteHoliday('${h.id}')">Delete</button>
+                  </td>
+                </tr>
+              `).join('')}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    `;
+  },
+
+  // 7. HR POLICIES TAB
+  renderPoliciesTab(policies) {
+    return `
+      <div class="card">
+        <div class="card-header">
+          <div>
+            <div class="card-title">Corporate Governance & HR Policies (${policies.length})</div>
+            <div class="card-subtitle">Official policy documents, versioning history, and compliance circulars</div>
+          </div>
+          <button class="btn btn-primary btn-sm" onclick="AdminView.openAddPolicyModal()">+ Publish Policy</button>
+        </div>
+        <div class="card-body" style="padding: 0;">
+          <table class="data-table">
+            <thead>
+              <tr>
+                <th>Policy Title</th>
+                <th>Category</th>
+                <th>Version</th>
+                <th>Effective Date</th>
+                <th>Status</th>
+                <th>Attachment</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${policies.map(p => `
+                <tr>
+                  <td>
+                    <div class="font-semibold text-main">${p.title}</div>
+                    <div class="text-muted" style="font-size: 0.75rem;">${p.description || ''}</div>
+                  </td>
+                  <td><span class="badge badge-neutral">${p.category}</span></td>
+                  <td><code>${p.version}</code></td>
+                  <td>${p.effectiveDate}</td>
+                  <td><span class="badge badge-success">${p.status}</span></td>
+                  <td>
+                    ${p.documentUrl ? `
+                      <a href="${p.documentUrl}" target="_blank" class="btn btn-soft btn-sm">Download PDF</a>
+                    ` : '<span class="text-muted" style="font-size: 0.8rem;">Text Circular</span>'}
+                  </td>
+                </tr>
+              `).join('')}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    `;
+  },
+
+  // 8. LEAVE TYPES TAB
+  renderLeaveTypesTab(leaveTypes) {
+    return `
+      <div class="card">
+        <div class="card-header">
+          <div>
+            <div class="card-title">Configured Leave Types & Statutory Quotas (${leaveTypes.length})</div>
+            <div class="card-subtitle">Annual allocations, carry-forward caps, and document validation rules</div>
+          </div>
+          <button class="btn btn-primary btn-sm" onclick="AdminView.openAddLeaveTypeModal()">+ Add Leave Type</button>
+        </div>
+        <div class="card-body" style="padding: 0;">
+          <table class="data-table">
+            <thead>
+              <tr>
+                <th>Leave Type</th>
+                <th>Code</th>
+                <th>Annual Quota</th>
+                <th>Compensation</th>
+                <th>Carry Forward</th>
+                <th>Doctor Note</th>
+                <th>Status</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${leaveTypes.map(lt => `
+                <tr>
+                  <td><strong>${lt.name}</strong></td>
+                  <td><code>${lt.code}</code></td>
+                  <td><strong>${lt.annualAllocation} Days / Year</strong></td>
+                  <td><span class="badge ${lt.paid ? 'badge-success' : 'badge-warning'}">${lt.paid ? 'PAID' : 'UNPAID'}</span></td>
+                  <td>${lt.carryForwardAllowed ? `Yes (Max ${lt.maximumCarryForward} Days)` : 'No'}</td>
+                  <td>${lt.requiresDocument ? 'Mandatory' : 'Optional'}</td>
+                  <td><span class="badge badge-success">${lt.status}</span></td>
+                </tr>
+              `).join('')}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    `;
+  },
+
+  // 9. ORG HIERARCHY CHART TAB
+  renderOrgChartTab(employees, departments, branches) {
+    const tree = orgChartService.getOrganizationTree(employees);
+
+    const renderNode = (node) => `
+      <div class="org-node" style="display: inline-block; margin: 8px; vertical-align: top; text-align: center;">
+        <div class="card" style="padding: 12px 16px; min-width: 180px; display: inline-block; cursor: pointer; text-align: center;">
+          <div style="width: 36px; height: 36px; border-radius: 50%; background: var(--primary-light); color: var(--primary); margin: 0 auto 6px auto; display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 0.8rem;">
+            ${(node.name || 'EM').substring(0, 2).toUpperCase()}
+          </div>
+          <div class="font-bold text-main" style="font-size: 0.85rem;">${node.name}</div>
+          <div class="text-secondary" style="font-size: 0.75rem;">${node.designation}</div>
+          <div style="font-size: 0.7rem; color: var(--text-muted);">${node.department}</div>
+        </div>
+        ${node.children && node.children.length > 0 ? `
+          <div style="margin-top: 12px; padding-top: 12px; border-top: 2px dashed var(--border-main); display: flex; justify-content: center; gap: 8px; flex-wrap: wrap;">
+            ${node.children.map(renderNode).join('')}
+          </div>
+        ` : ''}
+      </div>
+    `;
+
+    return `
+      <div class="card">
+        <div class="card-header">
+          <div>
+            <div class="card-title">Live Organization Reporting Hierarchy</div>
+            <div class="card-subtitle">Real-time reporting relationships derived from employee database</div>
+          </div>
+        </div>
+        <div class="card-body" style="overflow-x: auto; text-align: center; padding: 32px 16px; min-height: 400px; background: var(--bg-surface);">
+          ${tree.length === 0 ? `
+            <div class="empty-state">No employee hierarchy structure available.</div>
+          ` : `
+            <div style="display: inline-block; white-space: nowrap;">
+              ${tree.map(renderNode).join('')}
+            </div>
+          `}
+        </div>
+      </div>
+    `;
+  },
+
+  // 10. SYSTEM DEFAULTS & SETTINGS TAB
+  renderSettingsTab(settings) {
+    const att = settings?.attendance || {};
+    const wd = settings?.workingDays || {};
+
+    return `
+      <div class="grid" style="grid-template-columns: 1fr 1fr; gap: 20px;">
+        <!-- Attendance Engine Defaults -->
+        <div class="card">
+          <div class="card-header">
+            <div>
+              <div class="card-title">Attendance Policy Engine</div>
+              <div class="card-subtitle">Default punch thresholds and grace periods</div>
+            </div>
+            <button class="btn btn-primary btn-sm" onclick="AdminView.saveAttendanceSettings()">Save Settings</button>
+          </div>
+          <div class="card-body">
+            <div class="form-group">
+              <label class="form-label">Grace Period (Minutes)</label>
+              <input type="number" id="sett-grace" class="form-control" value="${att.gracePeriodMinutes ?? 15}" />
+            </div>
+            <div class="form-group">
+              <label class="form-label">Half-Day Threshold (Hours)</label>
+              <input type="number" id="sett-halfday" class="form-control" value="${att.halfDayThresholdHours ?? 4.5}" step="0.5" />
+            </div>
+            <div class="form-group">
+              <label class="form-label">Full-Day Threshold (Hours)</label>
+              <input type="number" id="sett-fullday" class="form-control" value="${att.fullDayThresholdHours ?? 8.0}" step="0.5" />
+            </div>
+            <div class="form-group">
+              <label class="form-label">Overtime Minimum Threshold (Hours)</label>
+              <input type="number" id="sett-ot" class="form-control" value="${att.overtimeThresholdHours ?? 9.0}" step="0.5" />
+            </div>
+          </div>
+        </div>
+
+        <!-- Organization Working Days -->
+        <div class="card">
+          <div class="card-header">
+            <div>
+              <div class="card-title">Standard Operating Working Days</div>
+              <div class="card-subtitle">Active business days for shift and payroll calculations</div>
+            </div>
+            <button class="btn btn-primary btn-sm" onclick="AdminView.saveWorkingDaysSettings()">Update Schedule</button>
+          </div>
+          <div class="card-body">
+            <div class="flex flex-col gap-3">
+              ${['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'].map(day => `
+                <div class="flex justify-between items-center" style="padding: 6px 0; border-bottom: 1px solid var(--border-light);">
+                  <span style="text-transform: capitalize; font-weight: 600;">${day}</span>
+                  <label class="toggle-switch">
+                    <input type="checkbox" id="wd-${day}" ${wd[day] ? 'checked' : ''} />
+                    <span class="toggle-slider"></span>
+                  </label>
+                </div>
+              `).join('')}
+            </div>
+          </div>
+        </div>
+      </div>
+    `;
+  },
+
+  // MODALS
+  openEditCompanyModal() {
+    organizationService.getCompany().then(c => {
+      ModalManager.openModal({
+        id: 'edit-company-modal',
+        title: 'Edit Corporate Profile',
+        subtitle: 'Update company legal entity details and registrations',
+        contentHtml: `
+          <div class="form-group">
+            <label class="form-label required">Company Name</label>
+            <input type="text" id="cmp-name" class="form-control" value="${c.name || ''}" required />
+          </div>
+          <div class="form-group">
+            <label class="form-label required">Legal Registered Name</label>
+            <input type="text" id="cmp-legal" class="form-control" value="${c.legalName || ''}" required />
+          </div>
+          <div class="grid" style="grid-template-columns: 1fr 1fr; gap: 12px;">
+            <div class="form-group">
+              <label class="form-label">CIN / Registration No</label>
+              <input type="text" id="cmp-cin" class="form-control" value="${c.registrationNumber || c.cin || ''}" />
+            </div>
+            <div class="form-group">
+              <label class="form-label">GSTIN / Tax ID</label>
+              <input type="text" id="cmp-gst" class="form-control" value="${c.taxGstNumber || ''}" />
+            </div>
+          </div>
+          <div class="grid" style="grid-template-columns: 1fr 1fr; gap: 12px;">
+            <div class="form-group">
+              <label class="form-label">Work Email</label>
+              <input type="email" id="cmp-email" class="form-control" value="${c.email || ''}" />
+            </div>
+            <div class="form-group">
+              <label class="form-label">Phone</label>
+              <input type="text" id="cmp-phone" class="form-control" value="${c.phone || ''}" />
+            </div>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Registered Office Address</label>
+            <input type="text" id="cmp-address" class="form-control" value="${c.address || ''}" />
+          </div>
+          <div class="grid" style="grid-template-columns: 1fr 1fr 1fr; gap: 12px;">
+            <div class="form-group">
+              <label class="form-label">City</label>
+              <input type="text" id="cmp-city" class="form-control" value="${c.city || ''}" />
+            </div>
+            <div class="form-group">
+              <label class="form-label">State</label>
+              <input type="text" id="cmp-state" class="form-control" value="${c.state || ''}" />
+            </div>
+            <div class="form-group">
+              <label class="form-label">Postal Code</label>
+              <input type="text" id="cmp-pin" class="form-control" value="${c.postalCode || ''}" />
+            </div>
+          </div>
+        `,
+        footerHtml: `
+          <button class="btn btn-secondary btn-sm" data-modal-close>Cancel</button>
+          <button class="btn btn-primary btn-sm" onclick="AdminView.saveCompanyProfile()">Save Changes</button>
+        `
       });
-      Toast.success(`Registered ${name} in Cloud Firestore!`);
-      ModalManager.closeModal();
-      Router.navigate("admin");
-    } catch (err) {
-      Toast.error(`Registration failed: ${err.message}`);
-    }
-  },
-
-  openEditCompanyModal(
-    id,
-    currentName,
-    currentCode,
-    currentCin,
-    currentPan,
-    currentGstin,
-  ) {
-    ModalManager.openModal({
-      id: "edit-company-modal",
-      title: `Edit Legal Entity: ${currentName}`,
-      subtitle: "Update company registration details in Firestore",
-      contentHtml: `
-        <form id="edit-company-form">
-          <div class="form-row">
-            <div class="col-8 form-group">
-              <label class="form-label required">Entity Full Name</label>
-              <input type="text" id="eco-name" class="form-control" value="${currentName}" required />
-            </div>
-            <div class="col-4 form-group">
-              <label class="form-label required">Code</label>
-              <input type="text" id="eco-code" class="form-control" value="${currentCode}" required />
-            </div>
-            <div class="col-6 form-group">
-              <label class="form-label required">CIN (Corporate Identification No.)</label>
-              <input type="text" id="eco-cin" class="form-control" value="${currentCin}" required />
-            </div>
-            <div class="col-6 form-group">
-              <label class="form-label required">Company PAN</label>
-              <input type="text" id="eco-pan" class="form-control" value="${currentPan}" required />
-            </div>
-            <div class="col-12 form-group">
-              <label class="form-label required">GSTIN Number</label>
-              <input type="text" id="eco-gstin" class="form-control" value="${currentGstin}" required />
-            </div>
-          </div>
-        </form>
-      `,
-      footerHtml: `
-        <button class="btn btn-secondary btn-sm" data-modal-close>Cancel</button>
-        <button class="btn btn-primary btn-sm" onclick="AdminView.updateCompany('${id}')">Save Changes</button>
-      `,
     });
   },
 
-  async updateCompany(id) {
-    const name = document.getElementById("eco-name")?.value.trim();
-    const code = document.getElementById("eco-code")?.value.trim();
-    const cin = document.getElementById("eco-cin")?.value.trim();
-    const pan = document.getElementById("eco-pan")?.value.trim();
-    const gstin = document.getElementById("eco-gstin")?.value.trim();
-
-    if (!name || !code || !cin) return;
+  async saveCompanyProfile() {
+    const name = document.getElementById('cmp-name')?.value;
+    const legalName = document.getElementById('cmp-legal')?.value;
+    if (!name || !legalName) {
+      Toast.error('Please fill in required company fields.');
+      return;
+    }
 
     try {
-      await companyService.updateCompany(id, { name, code, cin, pan, gstin });
-      Toast.success(`Updated legal entity "${name}"!`);
-      ModalManager.closeModal();
-      Router.navigate("admin");
-    } catch (err) {
-      Toast.error(`Update failed: ${err.message}`);
+      await organizationService.updateCompany('comp_diallo_india', {
+        name,
+        legalName,
+        registrationNumber: document.getElementById('cmp-cin')?.value || '',
+        taxGstNumber: document.getElementById('cmp-gst')?.value || '',
+        email: document.getElementById('cmp-email')?.value || '',
+        phone: document.getElementById('cmp-phone')?.value || '',
+        address: document.getElementById('cmp-address')?.value || '',
+        city: document.getElementById('cmp-city')?.value || '',
+        state: document.getElementById('cmp-state')?.value || '',
+        postalCode: document.getElementById('cmp-pin')?.value || ''
+      });
+      Toast.success('Company profile updated successfully.');
+      ModalManager.closeModal('edit-company-modal');
+      Router.mountView('admin');
+    } catch (e) {
+      Toast.error(e.message);
     }
   },
 
-  deleteCompany(id, name) {
-    ModalManager.confirm({
-      title: "Delete Legal Entity",
-      message: `Are you sure you want to delete entity "${name}"? This action cannot be undone.`,
-      confirmText: "Delete Entity",
-      confirmClass: "btn-danger",
-      onConfirm: async () => {
-        try {
-          await companyService.deleteCompany(id);
-          Toast.success(`Legal entity "${name}" deleted.`);
-          Router.navigate("admin");
-        } catch (e) {
-          Toast.error(`Delete failed: ${e.message}`);
-        }
-      },
-    });
-  },
-
-  showSub(title) {
+  openAddBranchModal() {
     ModalManager.openModal({
-      id: "admin-sub-modal",
-      title,
-      subtitle: `Corporate governance configuration for ${title}`,
+      id: 'add-branch-modal',
+      title: 'Add New Regional Branch',
+      subtitle: 'Create a new operating facility or branch office',
       contentHtml: `
-        <div class="empty-state" style="padding: 24px;">
-          <div class="empty-state-icon" style="background: rgba(220, 38, 38, 0.1); color: var(--accent-admin);">
-            <svg width="24" height="24" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"/>
-            </svg>
+        <div class="form-group">
+          <label class="form-label required">Branch Name</label>
+          <input type="text" id="br-name" class="form-control" placeholder="e.g. Hyderabad Tech Hub" required />
+        </div>
+        <div class="grid" style="grid-template-columns: 1fr 1fr; gap: 12px;">
+          <div class="form-group">
+            <label class="form-label required">Branch Code</label>
+            <input type="text" id="br-code" class="form-control" placeholder="e.g. HYD-04" required />
           </div>
-          <div class="empty-state-title">${title} Synced</div>
-          <div class="empty-state-desc">Indian statutory bindings and governance rules for <strong>${title}</strong> are active.</div>
+          <div class="form-group">
+            <label class="form-label">Timezone</label>
+            <input type="text" id="br-tz" class="form-control" value="Asia/Kolkata" />
+          </div>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Physical Address</label>
+          <input type="text" id="br-addr" class="form-control" placeholder="Street / Tower / Area" />
+        </div>
+        <div class="grid" style="grid-template-columns: 1fr 1fr 1fr; gap: 12px;">
+          <div class="form-group">
+            <label class="form-label">City</label>
+            <input type="text" id="br-city" class="form-control" placeholder="City" />
+          </div>
+          <div class="form-group">
+            <label class="form-label">State</label>
+            <input type="text" id="br-state" class="form-control" placeholder="State" />
+          </div>
+          <div class="form-group">
+            <label class="form-label">Postal Code</label>
+            <input type="text" id="br-pin" class="form-control" placeholder="PIN" />
+          </div>
         </div>
       `,
-      footerHtml: `<button class="btn btn-secondary btn-sm" data-modal-close>Close</button>`,
+      footerHtml: `
+        <button class="btn btn-secondary btn-sm" data-modal-close>Cancel</button>
+        <button class="btn btn-primary btn-sm" onclick="AdminView.saveNewBranch()">Create Branch</button>
+      `
     });
   },
+
+  async saveNewBranch() {
+    const name = document.getElementById('br-name')?.value;
+    const code = document.getElementById('br-code')?.value;
+    if (!name || !code) {
+      Toast.error('Branch Name and Code are required.');
+      return;
+    }
+
+    try {
+      await organizationService.createBranch({
+        name,
+        code,
+        address: document.getElementById('br-addr')?.value || '',
+        city: document.getElementById('br-city')?.value || '',
+        state: document.getElementById('br-state')?.value || '',
+        postalCode: document.getElementById('br-pin')?.value || '',
+        timezone: document.getElementById('br-tz')?.value || 'Asia/Kolkata'
+      });
+      Toast.success('Branch created successfully.');
+      ModalManager.closeModal('add-branch-modal');
+      Router.mountView('admin');
+    } catch (e) {
+      Toast.error(e.message);
+    }
+  },
+
+  async toggleBranchStatus(id, newStatus) {
+    try {
+      await organizationService.updateBranch(id, { status: newStatus });
+      Toast.success(`Branch set to ${newStatus}.`);
+      Router.mountView('admin');
+    } catch (e) {
+      Toast.error(e.message);
+    }
+  },
+
+  openAddDepartmentModal() {
+    organizationService.getDepartments().then(depts => {
+      ModalManager.openModal({
+        id: 'add-dept-modal',
+        title: 'Add New Department',
+        subtitle: 'Configure a functional division or sub-department',
+        contentHtml: `
+          <div class="form-group">
+            <label class="form-label required">Department Name</label>
+            <input type="text" id="dp-name" class="form-control" placeholder="e.g. Quality Assurance" required />
+          </div>
+          <div class="grid" style="grid-template-columns: 1fr 1fr; gap: 12px;">
+            <div class="form-group">
+              <label class="form-label required">Department Code</label>
+              <input type="text" id="dp-code" class="form-control" placeholder="e.g. QA" required />
+            </div>
+            <div class="form-group">
+              <label class="form-label">Parent Department</label>
+              <select id="dp-parent" class="form-control">
+                <option value="">None (Top-Level Department)</option>
+                ${depts.map(d => `<option value="${d.id}">${d.name}</option>`).join('')}
+              </select>
+            </div>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Description / Mandate</label>
+            <textarea id="dp-desc" class="form-control" rows="2" placeholder="Responsibilities and scope"></textarea>
+          </div>
+        `,
+        footerHtml: `
+          <button class="btn btn-secondary btn-sm" data-modal-close>Cancel</button>
+          <button class="btn btn-primary btn-sm" onclick="AdminView.saveNewDepartment()">Create Department</button>
+        `
+      });
+    });
+  },
+
+  async saveNewDepartment() {
+    const name = document.getElementById('dp-name')?.value;
+    const code = document.getElementById('dp-code')?.value;
+    if (!name || !code) {
+      Toast.error('Department Name and Code are required.');
+      return;
+    }
+
+    try {
+      await organizationService.createDepartment({
+        name,
+        code,
+        parentDepartmentId: document.getElementById('dp-parent')?.value || '',
+        description: document.getElementById('dp-desc')?.value || ''
+      });
+      Toast.success('Department created successfully.');
+      ModalManager.closeModal('add-dept-modal');
+      Router.mountView('admin');
+    } catch (e) {
+      Toast.error(e.message);
+    }
+  },
+
+  openAddShiftModal() {
+    ModalManager.openModal({
+      id: 'add-shift-modal',
+      title: 'Configure New Work Shift',
+      subtitle: 'Define shift timings, breaks, grace periods, and overnight hours',
+      contentHtml: `
+        <div class="form-group">
+          <label class="form-label required">Shift Name</label>
+          <input type="text" id="sh-name" class="form-control" placeholder="e.g. Twilight Shift" required />
+        </div>
+        <div class="grid" style="grid-template-columns: 1fr 1fr; gap: 12px;">
+          <div class="form-group">
+            <label class="form-label required">Shift Code</label>
+            <input type="text" id="sh-code" class="form-control" placeholder="e.g. TWL" required />
+          </div>
+          <div class="form-group">
+            <label class="form-label">Grace Period (Mins)</label>
+            <input type="number" id="sh-grace" class="form-control" value="15" />
+          </div>
+        </div>
+        <div class="grid" style="grid-template-columns: 1fr 1fr 1fr; gap: 12px;">
+          <div class="form-group">
+            <label class="form-label required">Start Time</label>
+            <input type="time" id="sh-start" class="form-control" value="09:00" required />
+          </div>
+          <div class="form-group">
+            <label class="form-label required">End Time</label>
+            <input type="time" id="sh-end" class="form-control" value="18:00" required />
+          </div>
+          <div class="form-group">
+            <label class="form-label">Break Duration (Mins)</label>
+            <input type="number" id="sh-break" class="form-control" value="60" />
+          </div>
+        </div>
+      `,
+      footerHtml: `
+        <button class="btn btn-secondary btn-sm" data-modal-close>Cancel</button>
+        <button class="btn btn-primary btn-sm" onclick="AdminView.saveNewShift()">Save Shift</button>
+      `
+    });
+  },
+
+  async saveNewShift() {
+    const name = document.getElementById('sh-name')?.value;
+    const code = document.getElementById('sh-code')?.value;
+    const startTime = document.getElementById('sh-start')?.value;
+    const endTime = document.getElementById('sh-end')?.value;
+    if (!name || !code || !startTime || !endTime) {
+      Toast.error('Please fill in all required shift parameters.');
+      return;
+    }
+
+    try {
+      await organizationService.createShift({
+        name,
+        code,
+        startTime,
+        endTime,
+        gracePeriod: document.getElementById('sh-grace')?.value || 15,
+        breakDuration: document.getElementById('sh-break')?.value || 60
+      });
+      Toast.success('Shift configured successfully.');
+      ModalManager.closeModal('add-shift-modal');
+      Router.mountView('admin');
+    } catch (e) {
+      Toast.error(e.message);
+    }
+  },
+
+  openAddHolidayModal() {
+    organizationService.getBranches().then(branches => {
+      ModalManager.openModal({
+        id: 'add-holiday-modal',
+        title: 'Add Official Holiday',
+        subtitle: 'Schedule a public, national, or branch state holiday',
+        contentHtml: `
+          <div class="form-group">
+            <label class="form-label required">Holiday Title</label>
+            <input type="text" id="hol-name" class="form-control" placeholder="e.g. Dussehra / Vijayadashami" required />
+          </div>
+          <div class="grid" style="grid-template-columns: 1fr 1fr; gap: 12px;">
+            <div class="form-group">
+              <label class="form-label required">Date</label>
+              <input type="date" id="hol-date" class="form-control" value="${new Date().toISOString().split('T')[0]}" required />
+            </div>
+            <div class="form-group">
+              <label class="form-label required">Holiday Type</label>
+              <select id="hol-type" class="form-control">
+                <option value="PUBLIC" selected>Public / National Holiday</option>
+                <option value="COMPANY">Company Specific</option>
+                <option value="REGIONAL">Regional State Holiday</option>
+                <option value="OPTIONAL">Optional / Restricted</option>
+              </select>
+            </div>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Applicable Branch</label>
+            <select id="hol-branch" class="form-control">
+              <option value="ALL" selected>All Branches (Company-Wide)</option>
+              ${branches.map(b => `<option value="${b.code}">${b.name} (${b.code})</option>`).join('')}
+            </select>
+          </div>
+        `,
+        footerHtml: `
+          <button class="btn btn-secondary btn-sm" data-modal-close>Cancel</button>
+          <button class="btn btn-primary btn-sm" onclick="AdminView.saveNewHoliday()">Save Holiday</button>
+        `
+      });
+    });
+  },
+
+  async saveNewHoliday() {
+    const name = document.getElementById('hol-name')?.value;
+    const date = document.getElementById('hol-date')?.value;
+    if (!name || !date) {
+      Toast.error('Please provide holiday name and date.');
+      return;
+    }
+
+    try {
+      const branchVal = document.getElementById('hol-branch')?.value || 'ALL';
+      await organizationService.createHoliday({
+        name,
+        date,
+        type: document.getElementById('hol-type')?.value || 'PUBLIC',
+        branchIds: [branchVal]
+      });
+      Toast.success('Holiday added to organization calendar.');
+      ModalManager.closeModal('add-holiday-modal');
+      Router.mountView('admin');
+    } catch (e) {
+      Toast.error(e.message);
+    }
+  },
+
+  async deleteHoliday(id) {
+    ModalManager.confirm({
+      title: 'Delete Holiday',
+      message: 'Are you sure you want to remove this holiday from the calendar?',
+      confirmText: 'Delete',
+      confirmClass: 'btn-danger',
+      onConfirm: async () => {
+        try {
+          await organizationService.deleteHoliday(id);
+          Toast.success('Holiday removed.');
+          Router.mountView('admin');
+        } catch (e) {
+          Toast.error(e.message);
+        }
+      }
+    });
+  },
+
+  async saveAttendanceSettings() {
+    try {
+      await settingsService.updateCompanySettings('comp_diallo_india', {
+        attendance: {
+          gracePeriodMinutes: Number(document.getElementById('sett-grace')?.value) || 15,
+          halfDayThresholdHours: Number(document.getElementById('sett-halfday')?.value) || 4.5,
+          fullDayThresholdHours: Number(document.getElementById('sett-fullday')?.value) || 8.0,
+          overtimeThresholdHours: Number(document.getElementById('sett-ot')?.value) || 9.0,
+          checkInRequired: true,
+          checkOutRequired: true
+        }
+      });
+      Toast.success('Attendance policy settings saved.');
+    } catch (e) {
+      Toast.error(e.message);
+    }
+  },
+
+  async saveWorkingDaysSettings() {
+    try {
+      const days = {};
+      ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'].forEach(d => {
+        days[d] = document.getElementById(`wd-${d}`)?.checked || false;
+      });
+      await settingsService.updateCompanySettings('comp_diallo_india', {
+        workingDays: days
+      });
+      Toast.success('Operating working days updated.');
+    } catch (e) {
+      Toast.error(e.message);
+    }
+  },
+
+  openQuickAddModal() {
+    this.openAddBranchModal();
+  }
 };
 
 window.AdminView = AdminView;

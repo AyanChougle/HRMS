@@ -60,29 +60,61 @@ const ExpensesView = {
       </div>
 
       <!-- KPI Summary Cards -->
-      <div class="grid" style="grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 16px; margin-bottom: 24px;">
-        <div class="card" style="padding: 16px; border-left: 4px solid var(--primary);">
-          <div class="text-muted" style="font-size: 0.8rem; text-transform: uppercase;">Total Claims</div>
-          <div style="font-size: 1.5rem; font-weight: 800; color: var(--text-main); margin: 4px 0;">₹${totalAmount.toLocaleString('en-IN')}</div>
-          <div style="font-size: 0.75rem; color: var(--text-secondary);">${allExpenses.length} Total Submissions</div>
+      <div class="kpi-grid">
+        <div class="kpi-card">
+          <div class="kpi-top">
+            <div class="kpi-icon-box" style="background: var(--primary-light); color: var(--primary);">
+              <svg width="20" height="20" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm7-5a2 2 0 11-4 0 2 2 0 014 0z"/>
+              </svg>
+            </div>
+            <span class="kpi-trend neutral">Total</span>
+          </div>
+          <div class="kpi-value">₹${totalAmount.toLocaleString('en-IN')}</div>
+          <div class="kpi-label">Total Claims</div>
+          <div class="kpi-subtitle">${allExpenses.length} Total Submissions</div>
         </div>
 
-        <div class="card" style="padding: 16px; border-left: 4px solid var(--accent-leave);">
-          <div class="text-muted" style="font-size: 0.8rem; text-transform: uppercase;">Pending Review</div>
-          <div style="font-size: 1.5rem; font-weight: 800; color: var(--accent-leave); margin: 4px 0;">₹${pendingAmount.toLocaleString('en-IN')}</div>
-          <div style="font-size: 0.75rem; color: var(--text-secondary);">${pendingExpenses.length} Pending Approval</div>
+        <div class="kpi-card">
+          <div class="kpi-top">
+            <div class="kpi-icon-box" style="background: var(--warning-light); color: var(--warning);">
+              <svg width="20" height="20" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/>
+              </svg>
+            </div>
+            <span class="kpi-trend neutral">Review</span>
+          </div>
+          <div class="kpi-value">₹${pendingAmount.toLocaleString('en-IN')}</div>
+          <div class="kpi-label">Pending Review</div>
+          <div class="kpi-subtitle">${pendingExpenses.length} Pending Approval</div>
         </div>
 
-        <div class="card" style="padding: 16px; border-left: 4px solid #3b82f6;">
-          <div class="text-muted" style="font-size: 0.8rem; text-transform: uppercase;">Approved (Ready)</div>
-          <div style="font-size: 1.5rem; font-weight: 800; color: #3b82f6; margin: 4px 0;">₹${approvedAmount.toLocaleString('en-IN')}</div>
-          <div style="font-size: 0.75rem; color: var(--text-secondary);">${approvedExpenses.length} Awaiting Payment</div>
+        <div class="kpi-card">
+          <div class="kpi-top">
+            <div class="kpi-icon-box" style="background: var(--info-light); color: var(--info);">
+              <svg width="20" height="20" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
+              </svg>
+            </div>
+            <span class="kpi-trend neutral">Ready</span>
+          </div>
+          <div class="kpi-value">₹${approvedAmount.toLocaleString('en-IN')}</div>
+          <div class="kpi-label">Approved</div>
+          <div class="kpi-subtitle">${approvedExpenses.length} Awaiting Payment</div>
         </div>
 
-        <div class="card" style="padding: 16px; border-left: 4px solid #10b981;">
-          <div class="text-muted" style="font-size: 0.8rem; text-transform: uppercase;">Paid & Reimbursed</div>
-          <div style="font-size: 1.5rem; font-weight: 800; color: #10b981; margin: 4px 0;">₹${paidAmount.toLocaleString('en-IN')}</div>
-          <div style="font-size: 0.75rem; color: var(--text-secondary);">${paidExpenses.length} Settled Claims</div>
+        <div class="kpi-card">
+          <div class="kpi-top">
+            <div class="kpi-icon-box" style="background: var(--success-light); color: var(--success);">
+              <svg width="20" height="20" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>
+              </svg>
+            </div>
+            <span class="kpi-trend neutral">Settled</span>
+          </div>
+          <div class="kpi-value">₹${paidAmount.toLocaleString('en-IN')}</div>
+          <div class="kpi-label">Paid & Reimbursed</div>
+          <div class="kpi-subtitle">${paidExpenses.length} Settled Claims</div>
         </div>
       </div>
 
@@ -204,7 +236,7 @@ const ExpensesView = {
                     <td><strong style="color: var(--primary);">₹${(e.amount || 0).toLocaleString('en-IN')}</strong></td>
                     <td style="max-width: 250px;">
                       <div class="text-truncate" style="font-size: 0.85rem;" title="${e.description}">${e.description}</div>
-                      ${e.receiptUrl ? `<a href="${e.receiptUrl}" target="_blank" class="text-primary" style="font-size: 0.75rem; text-decoration: underline;">📄 View Receipt</a>` : ''}
+                      ${e.receiptUrl ? `<a href="${e.receiptUrl}" target="_blank" class="text-primary" style="font-size: 0.75rem; text-decoration: underline;">View Receipt</a>` : ''}
                     </td>
                     <td><span class="badge ${e.reimbursementMethod === 'PAYROLL' ? 'badge-primary' : 'badge-soft'}">${e.reimbursementMethod || 'DIRECT'}</span></td>
                     <td>
@@ -376,7 +408,7 @@ const ExpensesView = {
                       <td><span class="badge badge-primary">${e.reimbursementMethod || 'DIRECT'}</span></td>
                       <td>
                         <button class="btn btn-primary btn-sm" onclick="ExpensesView.openDisbursePaymentModal('${e.id}', '${e.employeeName}', ${e.amount})">
-                          💳 Mark Disbursed
+                          Mark Disbursed
                         </button>
                       </td>
                     </tr>
@@ -404,7 +436,6 @@ const ExpensesView = {
           <table class="data-table">
             <thead>
               <tr>
-                <th>Icon</th>
                 <th>Category Name</th>
                 <th>Code</th>
                 <th>Max Policy Cap</th>
@@ -415,7 +446,6 @@ const ExpensesView = {
             <tbody>
               ${categories.map(c => `
                 <tr>
-                  <td style="font-size: 1.3rem;">${c.icon || '💼'}</td>
                   <td><div class="font-semibold text-main">${c.name}</div></td>
                   <td><code style="font-size: 0.8rem;">${c.code}</code></td>
                   <td><strong>₹${(c.maxAmount || 5000).toLocaleString('en-IN')}</strong></td>
@@ -452,7 +482,7 @@ const ExpensesView = {
           <div class="col-6 form-group">
             <label class="form-label required">Category</label>
             <select id="exp-category" class="form-control" required>
-              ${categories.map(c => `<option value="${c.code}" data-name="${c.name}">${c.icon || '💼'} ${c.name} (Cap: ₹${(c.maxAmount || 0).toLocaleString('en-IN')})</option>`).join('')}
+              ${categories.map(c => `<option value="${c.code}" data-name="${c.name}">${c.name} (Cap: ₹${(c.maxAmount || 0).toLocaleString('en-IN')})</option>`).join('')}
             </select>
           </div>
         </div>
