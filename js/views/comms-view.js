@@ -8,6 +8,13 @@ const CommsView = {
   selectedCategory: 'ALL',
   selectedNotificationModule: 'ALL',
 
+  openNotificationCenter() {
+    this.activeTab = 'notifications';
+    if (window.Router) {
+      window.Router.navigate('communication');
+    }
+  },
+
   async renderHub() {
     return this.render();
   },

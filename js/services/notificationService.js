@@ -19,21 +19,44 @@ const notificationService = {
   ],
 
   // 1. GET NOTIFICATIONS (Filtered by Category & Read status)
-  async getNotifications(employeeId = null, category = 'ALL', limitCount = 30) {
+  async getNotifications(employeeId = null, category = 'ALL', limitCount = 40) {
     try {
       const targetEmp = employeeId || AuthGuard.userProfile?.employeeId || AuthGuard.currentUser?.uid;
-      let query = db.collection('notifications')
-        .where('employeeId', '==', targetEmp)
-        .orderBy('createdAt', 'desc')
-        .limit(limitCount);
+      const uid = AuthGuard.currentUser?.uid;
+      
+      let list = [];
+      
+      if (targetEmp) {
+        const snap1 = await db.collection('notifications')
+          .where('employeeId', '==', targetEmp)
+          .get();
+        snap1.docs.forEach(doc => {
+          list.push({ id: doc.id, ...doc.data() });
+        });
+      }
 
-      const snapshot = await query.get();
-      let list = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+      if (uid && uid !== targetEmp) {
+        const snap2 = await db.collection('notifications')
+          .where('recipientUserId', '==', uid)
+          .get();
+        snap2.docs.forEach(doc => {
+          if (!list.some(item => item.id === doc.id)) {
+            list.push({ id: doc.id, ...doc.data() });
+          }
+        });
+      }
+
+      // In-memory sort by createdAt descending (avoids Firestore composite index requirements)
+      list.sort((a, b) => {
+        const timeA = a.createdAt?.seconds ? a.createdAt.seconds : (a.createdAt ? new Date(a.createdAt).getTime() / 1000 : 0);
+        const timeB = b.createdAt?.seconds ? b.createdAt.seconds : (b.createdAt ? new Date(b.createdAt).getTime() / 1000 : 0);
+        return timeB - timeA;
+      });
 
       if (category && category !== 'ALL') {
         list = list.filter(n => (n.relatedModule || '').toUpperCase() === category.toUpperCase());
       }
-      return list;
+      return list.slice(0, limitCount);
     } catch (e) {
       console.warn('Error fetching notifications:', e);
       return [];
@@ -44,10 +67,14 @@ const notificationService = {
   initRealtimeBadgeListener() {
     if (this.activeListenerUnsubscribe) {
       this.activeListenerUnsubscribe();
+      this.activeListenerUnsubscribe = null;
     }
 
     const targetEmp = AuthGuard.userProfile?.employeeId || AuthGuard.currentUser?.uid;
-    if (!targetEmp) return;
+    if (!targetEmp) {
+      this.updateNavBadge(0);
+      return;
+    }
 
     try {
       this.activeListenerUnsubscribe = db.collection('notifications')
@@ -58,19 +85,23 @@ const notificationService = {
           this.updateNavBadge(count);
         }, err => {
           console.warn('Notification snapshot warning:', err);
+          this.updateNavBadge(0);
         });
     } catch (e) {
       console.warn('Realtime listener error:', e);
+      this.updateNavBadge(0);
     }
   },
 
   updateNavBadge(count) {
     const badge = document.getElementById('top-nav-notification-badge');
     if (badge) {
-      if (count > 0) {
-        badge.textContent = count > 99 ? '99+' : count;
+      const num = parseInt(count, 10) || 0;
+      if (num > 0) {
+        badge.textContent = num > 99 ? '99+' : num;
         badge.style.display = 'inline-flex';
       } else {
+        badge.textContent = '0';
         badge.style.display = 'none';
       }
     }
@@ -125,6 +156,7 @@ const notificationService = {
       });
       return true;
     } catch (e) {
+      console.warn('Error marking notification as read:', e);
       return false;
     }
   },
@@ -133,19 +165,41 @@ const notificationService = {
   async markAllAsRead(employeeId = null) {
     try {
       const targetEmp = employeeId || AuthGuard.userProfile?.employeeId || AuthGuard.currentUser?.uid;
-      const snap = await db.collection('notifications')
-        .where('employeeId', '==', targetEmp)
-        .where('read', '==', false)
-        .get();
-
+      const uid = AuthGuard.currentUser?.uid;
+      
       const batch = db.batch();
-      snap.docs.forEach(doc => {
-        batch.update(doc.ref, { read: true, readAt: firebase.firestore.FieldValue.serverTimestamp() });
-      });
-      await batch.commit();
+      let hasUpdates = false;
+
+      if (targetEmp) {
+        const snap = await db.collection('notifications')
+          .where('employeeId', '==', targetEmp)
+          .where('read', '==', false)
+          .get();
+        snap.docs.forEach(doc => {
+          batch.update(doc.ref, { read: true, readAt: firebase.firestore.FieldValue.serverTimestamp() });
+          hasUpdates = true;
+        });
+      }
+
+      if (uid && uid !== targetEmp) {
+        const snap2 = await db.collection('notifications')
+          .where('recipientUserId', '==', uid)
+          .where('read', '==', false)
+          .get();
+        snap2.docs.forEach(doc => {
+          batch.update(doc.ref, { read: true, readAt: firebase.firestore.FieldValue.serverTimestamp() });
+          hasUpdates = true;
+        });
+      }
+
+      if (hasUpdates) {
+        await batch.commit();
+      }
       this.updateNavBadge(0);
       return true;
     } catch (e) {
+      console.warn('Error marking all as read:', e);
+      this.updateNavBadge(0);
       return false;
     }
   },

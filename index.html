@@ -184,7 +184,7 @@
           <div class="dropdown-menu-wrapper">
             <button
               class="header-icon-btn"
-              onclick="Router.navigate('communication')"
+              onclick="if (window.CommsView) { CommsView.openNotificationCenter(); } else { Router.navigate('communication'); }"
               aria-label="Notifications"
               title="Notifications (Communication Hub)"
               style="position: relative"
@@ -294,6 +294,27 @@
                   Super Admin
                 </div>
               </div>
+              <!-- Active Role Switcher Menu -->
+              <div class="dropdown-header" style="padding: 6px 12px 2px; font-size: 0.7rem; text-transform: uppercase; color: var(--text-muted); font-weight: 700;">Switch Active Role View</div>
+              <div style="padding: 4px 8px; display: flex; flex-direction: column; gap: 2px;">
+                <button class="dropdown-item" style="padding: 6px 8px; font-size: 0.82rem; border-radius: 4px;" onclick="AuthGuard.switchRole('SUPER_ADMIN'); document.getElementById('profile-popover').classList.remove('active');">
+                  <span style="display: inline-block; width: 8px; height: 8px; border-radius: 50%; background: #2563eb; margin-right: 6px;"></span>
+                  <span>Super Admin</span>
+                </button>
+                <button class="dropdown-item" style="padding: 6px 8px; font-size: 0.82rem; border-radius: 4px;" onclick="AuthGuard.switchRole('COMPANY_ADMIN'); document.getElementById('profile-popover').classList.remove('active');">
+                  <span style="display: inline-block; width: 8px; height: 8px; border-radius: 50%; background: #7c3aed; margin-right: 6px;"></span>
+                  <span>Company Admin</span>
+                </button>
+                <button class="dropdown-item" style="padding: 6px 8px; font-size: 0.82rem; border-radius: 4px;" onclick="AuthGuard.switchRole('HR'); document.getElementById('profile-popover').classList.remove('active');">
+                  <span style="display: inline-block; width: 8px; height: 8px; border-radius: 50%; background: #0891b2; margin-right: 6px;"></span>
+                  <span>HR Manager</span>
+                </button>
+                <button class="dropdown-item" style="padding: 6px 8px; font-size: 0.82rem; border-radius: 4px;" onclick="AuthGuard.switchRole('EMPLOYEE'); document.getElementById('profile-popover').classList.remove('active');">
+                  <span style="display: inline-block; width: 8px; height: 8px; border-radius: 50%; background: #16a34a; margin-right: 6px;"></span>
+                  <span>Employee (ESS)</span>
+                </button>
+              </div>
+              <div class="dropdown-divider"></div>
               <button
                 class="dropdown-item"
                 onclick="
@@ -317,7 +338,7 @@
                     d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"
                   />
                 </svg>
-                <span>Account Settings</span>
+                <span>System Settings</span>
               </button>
               <div class="dropdown-divider"></div>
               <button

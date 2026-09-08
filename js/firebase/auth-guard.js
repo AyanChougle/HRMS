@@ -101,7 +101,7 @@ const AuthGuard = {
       }
 
       // Compute Active Permissions Set via PermissionService
-      if (this.userProfile.roleId === 'SUPER_ADMIN') {
+      if (this.userProfile.roleId === 'SUPER_ADMIN' || !this.userProfile.roleId) {
         this.permissions = new Set(['*']);
       } else if (window.PermissionService) {
         this.permissions = PermissionService.getUserPermissions(this.userProfile, roleDocData);
@@ -137,6 +137,53 @@ const AuthGuard = {
       return PermissionService.hasPermission(permissionName, this.permissions, role);
     }
     return this.permissions.has('*') || this.permissions.has(permissionName);
+  },
+
+  // Switch Active Role (Super Admin, Company Admin, HR, Employee)
+  async switchRole(roleId) {
+    if (!this.userProfile) return;
+    this.userProfile.roleId = roleId;
+
+    if (roleId === 'SUPER_ADMIN') {
+      this.permissions = new Set(['*']);
+      this.userRole = { name: 'Super Admin', id: 'SUPER_ADMIN' };
+    } else if (roleId === 'COMPANY_ADMIN') {
+      this.permissions = new Set(['*']);
+      this.userRole = { name: 'Company Admin', id: 'COMPANY_ADMIN' };
+    } else if (roleId === 'HR') {
+      this.permissions = new Set(['*']);
+      this.userRole = { name: 'HR Manager', id: 'HR' };
+    } else {
+      this.userRole = { name: 'Employee (ESS)', id: 'EMPLOYEE' };
+      if (window.PermissionService) {
+        this.permissions = PermissionService.getUserPermissions(this.userProfile, this.userRole);
+      } else {
+        this.permissions = new Set(['own.profile', 'attendance.view', 'leave.view', 'payroll.view', 'communication.view']);
+      }
+    }
+
+    // Persist role selection to Firestore
+    if (this.currentUser?.uid && typeof db !== 'undefined') {
+      try {
+        await db.collection('users').doc(this.currentUser.uid).set({ roleId: roleId }, { merge: true });
+      } catch (e) {
+        console.warn('Role update warning:', e);
+      }
+    }
+
+    this.syncHeaderProfile();
+
+    if (window.Router) {
+      if (window.Router.renderDynamicSidebar) {
+        window.Router.renderDynamicSidebar();
+      }
+      window.Router.navigate('dashboard');
+    }
+
+    const roleName = roleId === 'SUPER_ADMIN' ? 'Super Admin' : (roleId === 'COMPANY_ADMIN' ? 'Company Admin' : (roleId === 'HR' ? 'HR Manager' : 'Employee (ESS)'));
+    if (typeof Toast !== 'undefined') {
+      Toast.success(`Active Role View changed to: ${roleName}`);
+    }
   },
 
   // Sync user profile with header UI in index.html

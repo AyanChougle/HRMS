@@ -822,8 +822,6 @@ const SettingsView = {
       Toast.error(e.message || 'Failed to update statutory configuration');
     }
   },
-    `;
-  },
 
   openCodeSeriesModal() {
     ModalManager.openModal({
