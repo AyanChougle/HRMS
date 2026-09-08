@@ -285,11 +285,31 @@ const payrollService = {
   // 7. GET PAYSLIPS FOR A SPECIFIC EMPLOYEE (SELF-SERVICE)
   async getPayslipsForEmployee(employeeId) {
     try {
-      const snapshot = await db.collection('payrollRecords')
-        .where('employeeId', '==', employeeId)
-        .get();
-      return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+      const targetEmp = employeeId || AuthGuard.userProfile?.employeeId || AuthGuard.currentUser?.uid;
+      const uid = AuthGuard.currentUser?.uid;
+      
+      let list = [];
+      if (targetEmp) {
+        const snap1 = await db.collection('payrollRecords')
+          .where('employeeId', '==', targetEmp)
+          .get();
+        snap1.docs.forEach(doc => list.push({ id: doc.id, ...doc.data() }));
+      }
+
+      if (uid && uid !== targetEmp) {
+        const snap2 = await db.collection('payrollRecords')
+          .where('employeeId', '==', uid)
+          .get();
+        snap2.docs.forEach(doc => {
+          if (!list.some(item => item.id === doc.id)) {
+            list.push({ id: doc.id, ...doc.data() });
+          }
+        });
+      }
+
+      return list;
     } catch (e) {
+      console.warn('Error fetching payslips for employee:', e);
       return [];
     }
   }
