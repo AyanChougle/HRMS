@@ -59,6 +59,64 @@ const attendanceService = {
     return remMins > 0 ? `${hrs}h ${remMins}m` : `${hrs}h`;
   },
 
+  // Sanitize attendance record to guarantee accurate duration, breaks, overtime, and status
+  sanitizeRecord(rec) {
+    if (!rec) return rec;
+    const r = { ...rec };
+
+    // Clean break durations
+    const breakSec = (r.totalBreakSeconds !== undefined && r.totalBreakSeconds !== null)
+      ? Number(r.totalBreakSeconds)
+      : (Number(r.totalBreakMinutes || 0) * 60);
+    r.totalBreakSeconds = Math.max(0, breakSec);
+    r.totalBreakMinutes = Math.round(r.totalBreakSeconds / 60);
+    r.breakFormatted = this.formatBreakDuration(r.totalBreakSeconds);
+
+    if (r.checkIn && r.checkOut) {
+      const inMins = this.time12ToMinutes(r.currentCheckInTime || r.checkIn);
+      const outMins = this.time12ToMinutes(r.checkOut);
+      let sessionMinutes = 0;
+      if (outMins >= inMins) {
+        sessionMinutes = outMins - inMins;
+      } else if (r.grossMinutes !== undefined && r.grossMinutes > 0 && r.grossMinutes <= 1440) {
+        sessionMinutes = r.grossMinutes;
+      }
+
+      // Sum gross minutes from prior sessions if any
+      let priorGrossMinutes = 0;
+      if (r.sessions && Array.isArray(r.sessions)) {
+        r.sessions.forEach(s => {
+          priorGrossMinutes += (s.grossMinutes || 0);
+        });
+      }
+
+      const totalGrossMinutes = Math.min(1440, Math.max(0, priorGrossMinutes + sessionMinutes));
+      const workedMinutes = Math.max(0, Math.min(totalGrossMinutes - r.totalBreakMinutes, totalGrossMinutes));
+
+      const hours = Math.floor(workedMinutes / 60);
+      const mins = workedMinutes % 60;
+      r.workedMinutes = workedMinutes;
+      r.workedHoursFormatted = `${hours}h ${String(mins).padStart(2, '0')}m`;
+
+      const grossHours = Math.floor(totalGrossMinutes / 60);
+      const grossMins = totalGrossMinutes % 60;
+      r.grossMinutes = totalGrossMinutes;
+      r.grossHoursFormatted = `${grossHours}h ${String(grossMins).padStart(2, '0')}m`;
+
+      // Standard shift standard = 540m (9h)
+      r.overtimeMinutes = workedMinutes > 540 ? workedMinutes - 540 : 0;
+
+      // Ensure status is valid after checkOut
+      if (!r.status || r.status === 'ON_BREAK') {
+        r.status = workedMinutes < 270 ? 'HALF_DAY' : (r.lateMinutes > 0 ? 'LATE' : 'PRESENT');
+      }
+    } else if (r.checkIn && !r.checkOut) {
+      if (!r.status) r.status = (r.lateMinutes > 0 ? 'LATE' : 'PRESENT');
+    }
+
+    return r;
+  },
+
   // 1. GET TODAY'S ATTENDANCE RECORD FOR AN EMPLOYEE
   async getTodayRecord(employeeId, date = null) {
     try {
@@ -66,7 +124,21 @@ const attendanceService = {
       const recordId = `${employeeId}_${attendanceDate}`;
       const doc = await db.collection('attendanceRecords').doc(recordId).get();
       if (doc.exists) {
-        return { id: doc.id, ...doc.data() };
+        const sanitized = this.sanitizeRecord({ id: doc.id, ...doc.data() });
+        // Self-heal Firestore if doc had corrupt multi-day gross numbers or invalid status
+        const raw = doc.data();
+        if (raw.grossMinutes > 1440 || (raw.checkOut && raw.status === 'ON_BREAK')) {
+          db.collection('attendanceRecords').doc(recordId).update({
+            grossMinutes: sanitized.grossMinutes,
+            grossHoursFormatted: sanitized.grossHoursFormatted,
+            workedMinutes: sanitized.workedMinutes,
+            workedHoursFormatted: sanitized.workedHoursFormatted,
+            overtimeMinutes: sanitized.overtimeMinutes,
+            status: sanitized.status,
+            isOnBreak: false
+          }).catch(err => console.warn('Self-heal warning:', err));
+        }
+        return sanitized;
       }
       return null;
     } catch (e) {
@@ -428,7 +500,22 @@ const attendanceService = {
       if (filters.branchId && filters.branchId !== 'All Branches') query = query.where('branchId', '==', filters.branchId);
 
       const snapshot = await query.get();
-      let records = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+      let records = snapshot.docs.map(doc => {
+        const raw = doc.data();
+        const sanitized = this.sanitizeRecord({ id: doc.id, ...raw });
+        if (raw.grossMinutes > 1440 || (raw.checkOut && raw.status === 'ON_BREAK')) {
+          db.collection('attendanceRecords').doc(doc.id).update({
+            grossMinutes: sanitized.grossMinutes,
+            grossHoursFormatted: sanitized.grossHoursFormatted,
+            workedMinutes: sanitized.workedMinutes,
+            workedHoursFormatted: sanitized.workedHoursFormatted,
+            overtimeMinutes: sanitized.overtimeMinutes,
+            status: sanitized.status,
+            isOnBreak: false
+          }).catch(err => console.warn('Self-heal warning:', err));
+        }
+        return sanitized;
+      });
 
       if (filters.search && filters.search.trim() !== '') {
         const term = filters.search.toLowerCase().trim();

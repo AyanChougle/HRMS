@@ -5,6 +5,16 @@
 
 const EmployeeDashboardView = {
   async render() {
+    const employeeId = AuthGuard.userProfile?.employeeId || AuthGuard.currentUser?.uid;
+    if (typeof ESSView !== 'undefined') {
+      try {
+        const todayRecord = await attendanceService.getTodayRecord(employeeId);
+        await ESSView.syncWithFirestore(todayRecord);
+      } catch (e) {
+        console.warn('Dashboard ESSView sync warning:', e);
+      }
+    }
+
     const userDisplayName = AuthGuard.userProfile?.displayName || 'Team Member';
     const employeeCode = AuthGuard.userProfile?.employeeCode || 'EMP-0001';
     const department = AuthGuard.userProfile?.department || 'Operations';

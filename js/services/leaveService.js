@@ -67,6 +67,16 @@ const leaveService = {
     }
   },
 
+  // Normalize leave code to standard statutory bucket (PL or CL)
+  normalizeLeaveCode(typeStr) {
+    if (!typeStr) return 'PL';
+    const s = String(typeStr).toUpperCase().trim();
+    if (s === 'CL' || s === 'CS' || s === 'SL' || s.includes('CASUAL') || s.includes('SICK')) {
+      return 'CL';
+    }
+    return 'PL';
+  },
+
   // 3. GET DYNAMIC EMPLOYEE LEAVE BALANCES FOR A GIVEN YEAR (PL & CL ONLY)
   async getEmployeeBalances(employeeId, year = 2026, companyId = 'comp_diallo_india') {
     try {
@@ -87,19 +97,19 @@ const leaveService = {
         snap.docs.forEach(doc => {
           const d = doc.data();
           const days = Number(d.numberOfDays) || 1;
-          const type = (d.leaveTypeCode || d.type || '').toUpperCase();
+          const code = this.normalizeLeaveCode(d.leaveTypeCode || d.type || d.leaveTypeName);
 
-          if (type === 'PL' || type === 'AL' || type === 'ANNUAL' || type === 'PRIVILEGE') {
-            if (d.status === 'APPROVED') {
-              plUsed += days;
-            } else if (d.status === 'PENDING') {
-              plPending += days;
-            }
-          } else if (type === 'CL' || type === 'CASUAL' || type === 'CS') {
+          if (code === 'CL') {
             if (d.status === 'APPROVED') {
               clUsed += days;
             } else if (d.status === 'PENDING') {
               clPending += days;
+            }
+          } else {
+            if (d.status === 'APPROVED') {
+              plUsed += days;
+            } else if (d.status === 'PENDING') {
+              plPending += days;
             }
           }
         });
@@ -372,7 +382,17 @@ const leaveService = {
       if (filters.leaveTypeCode && filters.leaveTypeCode !== 'All Types') query = query.where('leaveTypeCode', '==', filters.leaveTypeCode);
 
       const snapshot = await query.get();
-      return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+      return snapshot.docs.map(doc => {
+        const d = doc.data();
+        const code = this.normalizeLeaveCode(d.leaveTypeCode || d.type || d.leaveTypeName);
+        const name = code === 'CL' ? 'Casual Leave (CL)' : 'Privilege Leave (PL)';
+        return {
+          id: doc.id,
+          ...d,
+          leaveTypeCode: d.leaveTypeCode || code,
+          leaveTypeName: (d.leaveTypeName && d.leaveTypeName !== 'Leave') ? d.leaveTypeName : name
+        };
+      });
     } catch (err) {
       console.error('Error getting leave requests:', err);
       return [];

@@ -444,7 +444,8 @@ const ESSView = {
           </div>
           <div class="card-body">
             <div class="flex flex-col gap-3" style="font-size: 0.85rem;">
-              <div class="flex justify-between"><span>Full Name:</span><strong>${emp.fullName || emp.name}</strong></div>
+              <div class="flex justify-between"><span>Full Legal Name:</span><strong class="text-main">${emp.fullName || emp.name}</strong></div>
+              <div class="flex justify-between"><span>Work / Primary Email:</span><strong class="text-main">${emp.workEmail || AuthGuard.currentUser?.email || '-'}</strong></div>
               <div class="flex justify-between"><span>Personal Phone:</span><strong>${emp.phone || '-'}</strong></div>
               <div class="flex justify-between"><span>Personal Email:</span><strong>${emp.personalEmail || '-'}</strong></div>
               <div class="flex justify-between"><span>Emergency Contact:</span><strong>${emp.emergencyContact || '-'}</strong></div>
@@ -852,29 +853,41 @@ const ESSView = {
   async openEditPersonalModal() {
     const employeeId = AuthGuard.userProfile?.employeeId || AuthGuard.currentUser?.uid;
     const emp = await employeeService.getEmployee(employeeId) || {};
+    const defaultName = emp.fullName || emp.name || AuthGuard.userProfile?.displayName || '';
+    const defaultWorkEmail = emp.workEmail || AuthGuard.currentUser?.email || '';
 
     ModalManager.openModal({
       id: 'ess-edit-personal-modal',
-      title: 'Edit Personal Contact Information',
-      subtitle: 'Update your phone number, personal email, and address',
+      title: 'Edit Personal & Profile Information',
+      subtitle: 'Update your display name, contact email, phone number, and address',
       contentHtml: `
         <div class="form-row">
           <div class="col-6 form-group">
-            <label class="form-label required">Personal Phone Number</label>
-            <input type="text" id="edit-phone" class="form-control" value="${emp.phone || ''}" required />
+            <label class="form-label required">Full Legal / Display Name</label>
+            <input type="text" id="edit-fullname" class="form-control" value="${defaultName}" placeholder="e.g. Omkar Tapshale" required />
           </div>
           <div class="col-6 form-group">
-            <label class="form-label required">Personal Email</label>
-            <input type="email" id="edit-pemail" class="form-control" value="${emp.personalEmail || ''}" required />
+            <label class="form-label">Work / Primary Email</label>
+            <input type="email" id="edit-wemail" class="form-control" value="${defaultWorkEmail}" placeholder="e.g. user@company.com" />
+          </div>
+        </div>
+        <div class="form-row">
+          <div class="col-6 form-group">
+            <label class="form-label required">Personal Phone Number</label>
+            <input type="text" id="edit-phone" class="form-control" value="${emp.phone || ''}" placeholder="+91 98765 43210" required />
+          </div>
+          <div class="col-6 form-group">
+            <label class="form-label">Personal Email</label>
+            <input type="email" id="edit-pemail" class="form-control" value="${emp.personalEmail || ''}" placeholder="e.g. personal@gmail.com" />
           </div>
         </div>
         <div class="form-group">
           <label class="form-label">Emergency Contact Name & Phone</label>
-          <input type="text" id="edit-econtact" class="form-control" value="${emp.emergencyContact || ''}" />
+          <input type="text" id="edit-econtact" class="form-control" value="${emp.emergencyContact || ''}" placeholder="e.g. Parent / Spouse (+91 98765 00000)" />
         </div>
         <div class="form-group">
           <label class="form-label">Residential Address</label>
-          <textarea id="edit-addr" class="form-control" rows="2">${emp.address || ''}</textarea>
+          <textarea id="edit-addr" class="form-control" rows="2" placeholder="Full postal residential address...">${emp.address || ''}</textarea>
         </div>
       `,
       footerHtml: `
@@ -886,24 +899,72 @@ const ESSView = {
 
   async savePersonalUpdates() {
     const employeeId = AuthGuard.userProfile?.employeeId || AuthGuard.currentUser?.uid;
+    const userId = AuthGuard.currentUser?.uid;
+    const fullName = document.getElementById('edit-fullname')?.value.trim();
+    const workEmail = document.getElementById('edit-wemail')?.value.trim();
     const phone = document.getElementById('edit-phone')?.value.trim();
     const personalEmail = document.getElementById('edit-pemail')?.value.trim();
     const emergencyContact = document.getElementById('edit-econtact')?.value.trim();
     const address = document.getElementById('edit-addr')?.value.trim();
 
+    if (!fullName) {
+      Toast.error('Please enter your Full Legal Name.');
+      return;
+    }
+
     try {
+      // 1. Update Employee Record in Firestore
       await employeeService.updateEmployee(employeeId, {
+        fullName,
+        name: fullName,
+        workEmail: workEmail || AuthGuard.currentUser?.email || '',
         phone,
         personalEmail,
         emergencyContact,
         address
       });
 
-      Toast.success('Personal contact information updated!');
+      // 2. Update Firebase Auth Profile Display Name
+      if (typeof auth !== 'undefined' && auth.currentUser) {
+        try {
+          await auth.currentUser.updateProfile({ displayName: fullName });
+        } catch (authErr) {
+          console.warn('Auth display name update warning:', authErr);
+        }
+      }
+
+      // 3. Update Firestore Users document
+      if (userId && typeof db !== 'undefined') {
+        try {
+          await db.collection('users').doc(userId).set({
+            displayName: fullName,
+            fullName,
+            name: fullName,
+            personalEmail: personalEmail || '',
+            workEmail: workEmail || AuthGuard.currentUser?.email || '',
+            phone: phone || ''
+          }, { merge: true });
+        } catch (dbErr) {
+          console.warn('Users collection update warning:', dbErr);
+        }
+      }
+
+      // 4. Update in-memory userProfile and sync header profile
+      if (AuthGuard.userProfile) {
+        AuthGuard.userProfile.displayName = fullName;
+        AuthGuard.userProfile.fullName = fullName;
+        AuthGuard.userProfile.name = fullName;
+        AuthGuard.userProfile.personalEmail = personalEmail;
+        if (workEmail) AuthGuard.userProfile.workEmail = workEmail;
+      }
+      AuthGuard.syncHeaderProfile();
+
+      Toast.success('Profile and personal information updated successfully!');
       ModalManager.closeModal();
       this.switchTab('profile');
     } catch (e) {
-      Toast.error(e.message);
+      console.error('Error saving personal updates:', e);
+      Toast.error(e.message || 'Failed to save changes.');
     }
   },
 
@@ -962,6 +1023,67 @@ const ESSView = {
         this.startBreakTimer();
       }
     }
+  },
+
+  async syncWithFirestore(todayRecord) {
+    const today = this.getTodayDateKey();
+    this.shiftDate = today;
+
+    if (!todayRecord || !todayRecord.checkIn) {
+      // Fresh shift day - no check-in exists in Firestore
+      this.isPunchedIn = false;
+      this.isOnBreak = false;
+      this.isShiftCompletedToday = false;
+      this.workSeconds = 0;
+      this.totalBreakSeconds = 0;
+      this.breakSeconds = 0;
+      this.punchInTimestamp = null;
+      this.punchOutTimestamp = null;
+      this.breakStartTimestamp = null;
+      this.stopTimer();
+      this.stopBreakTimer();
+    } else if (todayRecord.checkOut) {
+      // Shift already completed and checked out in Firestore
+      this.isPunchedIn = false;
+      this.isOnBreak = false;
+      this.isShiftCompletedToday = true;
+      this.workSeconds = (todayRecord.workedMinutes || 0) * 60;
+      this.totalBreakSeconds = (todayRecord.totalBreakSeconds !== undefined && todayRecord.totalBreakSeconds !== null)
+        ? Number(todayRecord.totalBreakSeconds)
+        : ((todayRecord.totalBreakMinutes || 0) * 60);
+      this.breakSeconds = 0;
+      this.stopTimer();
+      this.stopBreakTimer();
+    } else {
+      // Currently checked in and shift is active
+      this.isPunchedIn = true;
+      this.isOnBreak = (todayRecord.status === 'ON_BREAK' || !!todayRecord.isOnBreak);
+      this.isShiftCompletedToday = false;
+      this.totalBreakSeconds = (todayRecord.totalBreakSeconds !== undefined && todayRecord.totalBreakSeconds !== null)
+        ? Number(todayRecord.totalBreakSeconds)
+        : ((todayRecord.totalBreakMinutes || 0) * 60);
+
+      if (todayRecord.currentCheckInDateIso || todayRecord.checkInDateIso) {
+        const inDate = new Date(todayRecord.currentCheckInDateIso || todayRecord.checkInDateIso);
+        this.punchInTimestamp = inDate.getTime();
+        const now = Date.now();
+        const totalElapsed = Math.floor((now - this.punchInTimestamp) / 1000);
+        this.workSeconds = Math.max(0, totalElapsed - this.totalBreakSeconds);
+      }
+
+      if (this.isOnBreak) {
+        if (todayRecord.lastBreakStartIso) {
+          this.breakStartTimestamp = new Date(todayRecord.lastBreakStartIso).getTime();
+          this.breakSeconds = Math.max(0, Math.floor((Date.now() - this.breakStartTimestamp) / 1000));
+        }
+        this.startBreakTimer();
+      } else {
+        this.startTimer();
+      }
+    }
+
+    this.savePersistedState();
+    this.updateTimecardUI();
   },
 
   loadPersistedState() {
@@ -1211,14 +1333,29 @@ const ESSView = {
 
   async togglePunch() {
     const today = this.getTodayDateKey();
-    if (this.shiftDate !== today) {
-      this.shiftDate = today;
-      this.isShiftCompletedToday = false;
+    this.shiftDate = today;
+
+    // Verify against fresh Firestore record
+    const employeeId = AuthGuard.userProfile?.employeeId || AuthGuard.currentUser?.uid;
+    try {
+      const todayRec = await attendanceService.getTodayRecord(employeeId, today);
+      if (!todayRec || !todayRec.checkIn) {
+        this.isShiftCompletedToday = false;
+        this.isPunchedIn = false;
+      } else if (todayRec.checkOut) {
+        this.isShiftCompletedToday = true;
+        this.isPunchedIn = false;
+      } else {
+        this.isShiftCompletedToday = false;
+        this.isPunchedIn = true;
+      }
+    } catch (e) {
+      console.warn('Could not check Firestore today record:', e);
     }
 
     if (this.isShiftCompletedToday) {
       Toast.warning('Shift completed for today! Your check-out has already been recorded. Next shift opens tomorrow at 10:00 AM.');
-      return;
+      return false;
     }
 
     if (!this.isPunchedIn) {
@@ -1261,6 +1398,7 @@ const ESSView = {
       } catch (e) {
         console.warn('Punch record warning:', e);
       }
+      return true;
     } else {
       // Auto-end break if on break
       let endedBreakSec = 0;
@@ -1295,6 +1433,7 @@ const ESSView = {
       } catch (e) {
         console.warn('Punch record warning:', e);
       }
+      return true;
     }
   },
 

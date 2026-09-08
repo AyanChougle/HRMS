@@ -58,61 +58,119 @@ const LeaveView = {
 
       <!-- Leave Metrics KPI Cards -->
       <div class="kpi-grid" style="margin-bottom: 24px;">
-        <div class="kpi-card" onclick="LeaveView.setFilterStatus('All Status')" style="cursor: pointer;">
-          <div class="kpi-top">
-            <div class="kpi-icon-box" style="background: var(--primary-light); color: var(--primary);">
-              <svg width="20" height="20" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/>
-              </svg>
+        ${isEmployeeOnly ? `
+          <div class="kpi-card">
+            <div class="kpi-top">
+              <div class="kpi-icon-box" style="background: var(--primary-light); color: var(--primary);">
+                <svg width="20" height="20" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/>
+                </svg>
+              </div>
+              <span class="kpi-trend positive">Available</span>
             </div>
-            <span class="kpi-trend neutral">Absence</span>
+            <div class="kpi-value">${balances.PL?.available ?? 18} Days</div>
+            <div class="kpi-label">Privilege Leave (PL)</div>
+            <div class="kpi-subtitle">${balances.PL?.used || 0} Used of ${balances.PL?.allocated || 18} Allocated</div>
           </div>
-          <div class="kpi-value">${summary.onLeaveToday}</div>
-          <div class="kpi-label">On Leave Today</div>
-          <div class="kpi-subtitle">Approved absences</div>
-        </div>
 
-        <div class="kpi-card" onclick="LeaveView.setFilterStatus('PENDING')" style="cursor: pointer;">
-          <div class="kpi-top">
-            <div class="kpi-icon-box" style="background: var(--warning-light); color: var(--warning);">
-              <svg width="20" height="20" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/>
-              </svg>
+          <div class="kpi-card">
+            <div class="kpi-top">
+              <div class="kpi-icon-box" style="background: var(--info-light); color: var(--info);">
+                <svg width="20" height="20" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                </svg>
+              </div>
+              <span class="kpi-trend neutral">Available</span>
             </div>
-            <span class="kpi-trend warning">${summary.pendingRequests > 0 ? 'Needs Action' : 'Clear'}</span>
+            <div class="kpi-value">${balances.CL?.available ?? 12} Days</div>
+            <div class="kpi-label">Casual Leave (CL)</div>
+            <div class="kpi-subtitle">${balances.CL?.used || 0} Used of ${balances.CL?.allocated || 12} Allocated</div>
           </div>
-          <div class="kpi-value">${summary.pendingRequests}</div>
-          <div class="kpi-label">Pending Requests</div>
-          <div class="kpi-subtitle">Awaiting manager review</div>
-        </div>
 
-        <div class="kpi-card" onclick="LeaveView.setFilterStatus('APPROVED')" style="cursor: pointer;">
-          <div class="kpi-top">
-            <div class="kpi-icon-box" style="background: var(--success-light); color: var(--success);">
-              <svg width="20" height="20" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
-              </svg>
+          <div class="kpi-card">
+            <div class="kpi-top">
+              <div class="kpi-icon-box" style="background: var(--success-light); color: var(--success);">
+                <svg width="20" height="20" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                </svg>
+              </div>
+              <span class="kpi-trend positive">Approved</span>
             </div>
-            <span class="kpi-trend positive">Approved</span>
+            <div class="kpi-value">${(balances.PL?.used || 0) + (balances.CL?.used || 0)} Days</div>
+            <div class="kpi-label">Total Leaves Taken</div>
+            <div class="kpi-subtitle">Current financial year</div>
           </div>
-          <div class="kpi-value">${summary.approvedCount}</div>
-          <div class="kpi-label">Approved Applications</div>
-          <div class="kpi-subtitle">Current financial year</div>
-        </div>
 
-        <div class="kpi-card" onclick="LeaveView.setFilterStatus('REJECTED')" style="cursor: pointer;">
-          <div class="kpi-top">
-            <div class="kpi-icon-box" style="background: var(--danger-light); color: var(--danger);">
-              <svg width="20" height="20" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
-              </svg>
+          <div class="kpi-card">
+            <div class="kpi-top">
+              <div class="kpi-icon-box" style="background: var(--warning-light); color: var(--warning);">
+                <svg width="20" height="20" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                </svg>
+              </div>
+              <span class="kpi-trend ${(balances.PL?.pending || 0) + (balances.CL?.pending || 0) > 0 ? 'warning' : 'neutral'}">${(balances.PL?.pending || 0) + (balances.CL?.pending || 0) > 0 ? 'In Review' : 'None'}</span>
             </div>
-            <span class="kpi-trend neutral">Declined</span>
+            <div class="kpi-value">${(balances.PL?.pending || 0) + (balances.CL?.pending || 0)} Days</div>
+            <div class="kpi-label">Pending Requests</div>
+            <div class="kpi-subtitle">Awaiting supervisor review</div>
           </div>
-          <div class="kpi-value">${summary.rejectedCount}</div>
-          <div class="kpi-label">Rejected Requests</div>
-          <div class="kpi-subtitle">Historical records</div>
-        </div>
+        ` : `
+          <div class="kpi-card" onclick="LeaveView.setFilterStatus('All Status')" style="cursor: pointer;">
+            <div class="kpi-top">
+              <div class="kpi-icon-box" style="background: var(--primary-light); color: var(--primary);">
+                <svg width="20" height="20" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/>
+                </svg>
+              </div>
+              <span class="kpi-trend neutral">Absence</span>
+            </div>
+            <div class="kpi-value">${summary.onLeaveToday}</div>
+            <div class="kpi-label">On Leave Today</div>
+            <div class="kpi-subtitle">Approved absences</div>
+          </div>
+
+          <div class="kpi-card" onclick="LeaveView.setFilterStatus('PENDING')" style="cursor: pointer;">
+            <div class="kpi-top">
+              <div class="kpi-icon-box" style="background: var(--warning-light); color: var(--warning);">
+                <svg width="20" height="20" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                </svg>
+              </div>
+              <span class="kpi-trend warning">${summary.pendingRequests > 0 ? 'Needs Action' : 'Clear'}</span>
+            </div>
+            <div class="kpi-value">${summary.pendingRequests}</div>
+            <div class="kpi-label">Pending Requests</div>
+            <div class="kpi-subtitle">Awaiting manager review</div>
+          </div>
+
+          <div class="kpi-card" onclick="LeaveView.setFilterStatus('APPROVED')" style="cursor: pointer;">
+            <div class="kpi-top">
+              <div class="kpi-icon-box" style="background: var(--success-light); color: var(--success);">
+                <svg width="20" height="20" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                </svg>
+              </div>
+              <span class="kpi-trend positive">Approved</span>
+            </div>
+            <div class="kpi-value">${summary.approvedCount}</div>
+            <div class="kpi-label">Approved Applications</div>
+            <div class="kpi-subtitle">Current financial year</div>
+          </div>
+
+          <div class="kpi-card" onclick="LeaveView.setFilterStatus('REJECTED')" style="cursor: pointer;">
+            <div class="kpi-top">
+              <div class="kpi-icon-box" style="background: var(--danger-light); color: var(--danger);">
+                <svg width="20" height="20" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+                </svg>
+              </div>
+              <span class="kpi-trend neutral">Declined</span>
+            </div>
+            <div class="kpi-value">${summary.rejectedCount}</div>
+            <div class="kpi-label">Rejected Requests</div>
+            <div class="kpi-subtitle">Historical records</div>
+          </div>
+        `}
       </div>
 
       <!-- Navigation Sub-Tabs -->

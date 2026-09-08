@@ -26,6 +26,14 @@ const AttendanceView = {
     const role = AuthGuard.userProfile?.roleId || 'EMPLOYEE';
     const isEmployeeOnly = role === 'EMPLOYEE';
 
+    if (typeof ESSView !== 'undefined') {
+      try {
+        await ESSView.syncWithFirestore(todayRecord);
+      } catch (err) {
+        console.warn('ESSView sync error:', err);
+      }
+    }
+
     if (isEmployeeOnly && (this.activeTab === 'daily' || this.activeTab === 'team' || this.activeTab === 'settings')) {
       this.activeTab = 'my';
     }
@@ -39,8 +47,8 @@ const AttendanceView = {
         </div>
         <div class="page-title-row">
           <div>
-            <h1 class="page-title">Attendance & Time Tracking</h1>
-            <p class="page-subtitle">Real-time punch records, roster status, regularization workflows, and holiday schedules</p>
+            <h1 class="page-title">${isEmployeeOnly ? 'My Attendance & Timecard' : 'Attendance & Time Tracking'}</h1>
+            <p class="page-subtitle">${isEmployeeOnly ? 'Daily punch logging, shift timer, break station, and regularization requests' : 'Real-time punch records, roster status, regularization workflows, and holiday schedules'}</p>
           </div>
           <div class="page-actions">
             <button class="btn btn-secondary btn-sm" onclick="AttendanceView.openRegularizationModal()">
@@ -49,73 +57,133 @@ const AttendanceView = {
               </svg>
               Regularize Punch
             </button>
-            <button class="btn btn-primary btn-sm" onclick="AttendanceView.quickPunch()">
-              <svg width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/>
-              </svg>
-              ${!todayRecord?.checkIn ? 'Web Check In' : (!todayRecord?.checkOut ? 'Check Out' : 'Resume Shift')}
-            </button>
+            ${!isEmployeeOnly ? `
+              <button class="btn btn-primary btn-sm" onclick="AttendanceView.quickPunch()">
+                <svg width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                </svg>
+                ${!todayRecord?.checkIn ? 'Web Check In' : (!todayRecord?.checkOut ? 'Check Out' : 'Resume Shift')}
+              </button>
+            ` : ''}
           </div>
         </div>
       </div>
 
       <!-- Attendance Metrics KPI Cards -->
       <div class="kpi-grid" style="margin-bottom: 24px;">
-        <div class="kpi-card" onclick="AttendanceView.setFilterStatus('All Status')" style="cursor: pointer;">
-          <div class="kpi-top">
-            <div class="kpi-icon-box" style="background: var(--primary-light); color: var(--primary);">
-              <svg width="20" height="20" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"/>
-              </svg>
+        ${isEmployeeOnly ? `
+          <div class="kpi-card">
+            <div class="kpi-top">
+              <div class="kpi-icon-box" style="background: var(--primary-light); color: var(--primary);">
+                <svg width="20" height="20" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                </svg>
+              </div>
+              <span class="kpi-trend ${todayRecord?.checkIn && !todayRecord?.checkOut ? 'positive' : 'neutral'}">Today</span>
             </div>
-            <span class="kpi-trend neutral">Roster</span>
+            <div class="kpi-value" style="font-size: 1.35rem;">${!todayRecord?.checkIn ? 'Not Marked' : (todayRecord.checkOut ? 'Shift Done' : (todayRecord.status === 'ON_BREAK' ? 'On Break' : 'On Shift'))}</div>
+            <div class="kpi-label">Today's Shift Status</div>
+            <div class="kpi-subtitle">Schedule: 10:00 AM – 07:00 PM</div>
           </div>
-          <div class="kpi-value">${summary.totalEmployees}</div>
-          <div class="kpi-label">Total Staff</div>
-          <div class="kpi-subtitle">Active workforce</div>
-        </div>
 
-        <div class="kpi-card" onclick="AttendanceView.setFilterStatus('PRESENT')" style="cursor: pointer;">
-          <div class="kpi-top">
-            <div class="kpi-icon-box" style="background: var(--success-light); color: var(--success);">
-              <svg width="20" height="20" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
-              </svg>
+          <div class="kpi-card">
+            <div class="kpi-top">
+              <div class="kpi-icon-box" style="background: var(--info-light); color: var(--info);">
+                <svg width="20" height="20" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 16l-4-4m0 0l4-4m-4 4h14m-5 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h7a3 3 0 013 3v1"/>
+                </svg>
+              </div>
+              <span class="kpi-trend neutral">Punch</span>
             </div>
-            <span class="kpi-trend positive">${summary.totalEmployees > 0 ? Math.round((summary.present/summary.totalEmployees)*100) : 0}%</span>
+            <div class="kpi-value">${todayRecord?.checkIn || '—'}</div>
+            <div class="kpi-label">Check-In Time</div>
+            <div class="kpi-subtitle">${todayRecord?.lateMinutes > 0 ? `+${todayRecord.lateMinutes}m Late` : 'On-Time'}</div>
           </div>
-          <div class="kpi-value">${summary.present}</div>
-          <div class="kpi-label">Present Today</div>
-          <div class="kpi-subtitle">${summary.onTime} On-Time Checkins</div>
-        </div>
 
-        <div class="kpi-card" onclick="AttendanceView.setFilterStatus('LATE')" style="cursor: pointer;">
-          <div class="kpi-top">
-            <div class="kpi-icon-box" style="background: var(--warning-light); color: var(--warning);">
-              <svg width="20" height="20" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/>
-              </svg>
+          <div class="kpi-card">
+            <div class="kpi-top">
+              <div class="kpi-icon-box" style="background: var(--success-light); color: var(--success);">
+                <svg width="20" height="20" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                </svg>
+              </div>
+              <span class="kpi-trend positive">Worked</span>
             </div>
-            <span class="kpi-trend warning">Grace Exceeded</span>
+            <div class="kpi-value" style="color: var(--primary); font-family: monospace;">${todayRecord?.workedHoursFormatted || '0h 00m'}</div>
+            <div class="kpi-label">Net Worked Hours</div>
+            <div class="kpi-subtitle">Excluding break duration</div>
           </div>
-          <div class="kpi-value">${summary.late}</div>
-          <div class="kpi-label">Late Arrivals</div>
-          <div class="kpi-subtitle">After 10:15 AM IST</div>
-        </div>
 
-        <div class="kpi-card" onclick="AttendanceView.setFilterStatus('LEAVE')" style="cursor: pointer;">
-          <div class="kpi-top">
-            <div class="kpi-icon-box" style="background: var(--info-light); color: var(--info);">
-              <svg width="20" height="20" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/>
-              </svg>
+          <div class="kpi-card">
+            <div class="kpi-top">
+              <div class="kpi-icon-box" style="background: var(--warning-light); color: var(--warning);">
+                <svg width="20" height="20" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M18 8h1a4 4 0 010 8h-1M2 8h16v9a4 4 0 01-4 4H6a4 4 0 01-4-4V8z M6 1v3M10 1v3M14 1v3"/>
+                </svg>
+              </div>
+              <span class="kpi-trend neutral">Breaks</span>
             </div>
-            <span class="kpi-trend neutral">Absence</span>
+            <div class="kpi-value" style="color: var(--warning); font-family: monospace;">${todayRecord?.breakFormatted || (todayRecord?.totalBreakMinutes ? todayRecord.totalBreakMinutes + 'm' : '0m')}</div>
+            <div class="kpi-label">Break Duration</div>
+            <div class="kpi-subtitle">Total time paused</div>
           </div>
-          <div class="kpi-value">${summary.onLeave}</div>
-          <div class="kpi-label">On Approved Leave</div>
-          <div class="kpi-subtitle">Scheduled time-off</div>
-        </div>
+        ` : `
+          <div class="kpi-card" onclick="AttendanceView.setFilterStatus('All Status')" style="cursor: pointer;">
+            <div class="kpi-top">
+              <div class="kpi-icon-box" style="background: var(--primary-light); color: var(--primary);">
+                <svg width="20" height="20" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"/>
+                </svg>
+              </div>
+              <span class="kpi-trend neutral">Roster</span>
+            </div>
+            <div class="kpi-value">${summary.totalEmployees}</div>
+            <div class="kpi-label">Total Staff</div>
+            <div class="kpi-subtitle">Active workforce</div>
+          </div>
+
+          <div class="kpi-card" onclick="AttendanceView.setFilterStatus('PRESENT')" style="cursor: pointer;">
+            <div class="kpi-top">
+              <div class="kpi-icon-box" style="background: var(--success-light); color: var(--success);">
+                <svg width="20" height="20" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                </svg>
+              </div>
+              <span class="kpi-trend positive">${summary.totalEmployees > 0 ? Math.round((summary.present/summary.totalEmployees)*100) : 0}%</span>
+            </div>
+            <div class="kpi-value">${summary.present}</div>
+            <div class="kpi-label">Present Today</div>
+            <div class="kpi-subtitle">${summary.onTime} On-Time Checkins</div>
+          </div>
+
+          <div class="kpi-card" onclick="AttendanceView.setFilterStatus('LATE')" style="cursor: pointer;">
+            <div class="kpi-top">
+              <div class="kpi-icon-box" style="background: var(--warning-light); color: var(--warning);">
+                <svg width="20" height="20" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                </svg>
+              </div>
+              <span class="kpi-trend warning">Grace Exceeded</span>
+            </div>
+            <div class="kpi-value">${summary.late}</div>
+            <div class="kpi-label">Late Arrivals</div>
+            <div class="kpi-subtitle">After 10:15 AM IST</div>
+          </div>
+
+          <div class="kpi-card" onclick="AttendanceView.setFilterStatus('LEAVE')" style="cursor: pointer;">
+            <div class="kpi-top">
+              <div class="kpi-icon-box" style="background: var(--info-light); color: var(--info);">
+                <svg width="20" height="20" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/>
+                </svg>
+              </div>
+              <span class="kpi-trend neutral">Absence</span>
+            </div>
+            <div class="kpi-value">${summary.onLeave}</div>
+            <div class="kpi-label">On Approved Leave</div>
+            <div class="kpi-subtitle">Scheduled time-off</div>
+          </div>
+        `}
       </div>
 
       <!-- Navigation Tabs -->
@@ -435,12 +503,16 @@ const AttendanceView = {
     if (btn) { btn.disabled = true; btn.innerHTML = '<span>Checking In...</span>'; }
 
     try {
-      if (typeof ESSView !== 'undefined' && !ESSView.isPunchedIn) {
-        await ESSView.togglePunch();
+      if (typeof ESSView !== 'undefined') {
+        const ok = await ESSView.togglePunch();
+        if (!ok && ESSView.isShiftCompletedToday) {
+          if (btn) { btn.disabled = false; btn.innerHTML = '<span>Web Check In (GPS)</span>'; }
+          return;
+        }
       } else {
         await attendanceService.checkIn({ source: 'WEB' });
+        Toast.success('Check-in logged successfully! Shift started (10:00 AM – 07:00 PM).');
       }
-      Toast.success('Check-in logged successfully!');
       this.switchTab('my');
     } catch (e) {
       Toast.error(e.message);
@@ -453,12 +525,12 @@ const AttendanceView = {
     if (btn) { btn.disabled = true; btn.innerHTML = '<span>Checking Out...</span>'; }
 
     try {
-      if (typeof ESSView !== 'undefined' && ESSView.isPunchedIn) {
+      if (typeof ESSView !== 'undefined') {
         await ESSView.togglePunch();
       } else {
         await attendanceService.checkOut(employeeId);
+        Toast.info('Checked OUT successfully! Today’s shift completed.');
       }
-      Toast.success('Check-out recorded successfully. Good day!');
       this.switchTab('my');
     } catch (e) {
       Toast.error(e.message);
