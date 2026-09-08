@@ -4,14 +4,10 @@
  */
 
 const leavePolicyService = {
-  // Built-in Default Indian Leave Schemes
+  // Built-in Default Indian Leave Schemes (PL and CL)
   DEFAULT_LEAVE_TYPES: [
-    { code: 'AL', name: 'Annual / Privilege Leave (PL)', annualQuota: 18, paid: true, carryForwardAllowed: true, maxCarryForward: 10, allowHalfDay: true, encashmentAllowed: true, description: 'Statutory annual earned leave under Factories / Shops & Est. Act' },
-    { code: 'CL', name: 'Casual Leave (CL)', annualQuota: 12, paid: true, carryForwardAllowed: false, maxCarryForward: 0, allowHalfDay: true, encashmentAllowed: false, description: 'Short unplanned personal absences and emergencies' },
-    { code: 'SL', name: 'Sick Leave (SL)', annualQuota: 12, paid: true, carryForwardAllowed: true, maxCarryForward: 15, allowHalfDay: true, encashmentAllowed: false, description: 'Medical recovery leave. Certificate required > 2 consecutive days' },
-    { code: 'ML', name: 'Maternity Leave (ML)', annualQuota: 182, paid: true, carryForwardAllowed: false, maxCarryForward: 0, allowHalfDay: false, encashmentAllowed: false, description: '26 weeks paid maternity leave under Maternity Benefit Act 2017' },
-    { code: 'PL_PAT', name: 'Paternity Leave', annualQuota: 15, paid: true, carryForwardAllowed: false, maxCarryForward: 0, allowHalfDay: false, encashmentAllowed: false, description: 'Paid paternity support leave for new fathers' },
-    { code: 'LWP', name: 'Leave Without Pay (LWP)', annualQuota: 365, paid: false, carryForwardAllowed: false, maxCarryForward: 0, allowHalfDay: true, encashmentAllowed: false, description: 'Approved unpaid absence once paid leave quotas are exhausted' }
+    { code: 'PL', name: 'Privilege Leave (PL)', annualQuota: 18, paid: true, carryForwardAllowed: true, maxCarryForward: 10, allowHalfDay: true, encashmentAllowed: true, description: 'Statutory Privilege / Annual Earned Leave' },
+    { code: 'CL', name: 'Casual Leave (CL)', annualQuota: 12, paid: true, carryForwardAllowed: false, maxCarryForward: 0, allowHalfDay: true, encashmentAllowed: false, description: 'Casual Leave for personal matters and short absences' }
   ],
 
   // Get all active leave types for a company

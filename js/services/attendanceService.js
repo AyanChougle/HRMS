@@ -27,6 +27,38 @@ const attendanceService = {
     return (h || 0) * 60 + (m || 0);
   },
 
+  // Convert "05:05 PM", "10:00 AM", "17:05" to minutes from midnight (0 to 1439)
+  time12ToMinutes(timeStr) {
+    if (!timeStr) return 0;
+    const clean = String(timeStr).trim();
+    const match = clean.match(/^(\d{1,2}):(\d{2})(?::\d{2})?\s*(AM|PM)?$/i);
+    if (!match) {
+      return this.timeStringToMinutes(clean);
+    }
+    let hours = parseInt(match[1], 10);
+    const mins = parseInt(match[2], 10);
+    const ampm = match[3] ? match[3].toUpperCase() : null;
+    if (ampm) {
+      if (ampm === 'PM' && hours < 12) hours += 12;
+      if (ampm === 'AM' && hours === 12) hours = 0;
+    }
+    return Math.min(1439, Math.max(0, hours * 60 + mins));
+  },
+
+  // Format break duration with seconds precision if under 1 hr
+  formatBreakDuration(seconds) {
+    if (!seconds || seconds <= 0) return '0m';
+    if (seconds < 60) return `${seconds}s`;
+    const mins = Math.floor(seconds / 60);
+    const remSec = seconds % 60;
+    if (mins < 60) {
+      return remSec > 0 ? `${mins}m ${remSec}s` : `${mins}m`;
+    }
+    const hrs = Math.floor(mins / 60);
+    const remMins = mins % 60;
+    return remMins > 0 ? `${hrs}h ${remMins}m` : `${hrs}h`;
+  },
+
   // 1. GET TODAY'S ATTENDANCE RECORD FOR AN EMPLOYEE
   async getTodayRecord(employeeId, date = null) {
     try {
@@ -43,7 +75,7 @@ const attendanceService = {
     }
   },
 
-  // 2. CHECK-IN
+  // 2. CHECK-IN / RESUME SHIFT
   async checkIn(punchData) {
     try {
       const employeeId = punchData.employeeId || AuthGuard.userProfile?.employeeId || AuthGuard.currentUser?.uid;
@@ -59,17 +91,60 @@ const attendanceService = {
 
       const recordId = `${employeeId}_${attendanceDate}`;
       const recordRef = db.collection('attendanceRecords').doc(recordId);
-
-      // Prevent duplicate check-in
       const existingDoc = await recordRef.get();
-      if (existingDoc.exists && existingDoc.data().checkIn) {
-        throw new Error(`Attendance check-in has already been logged for today (${existingDoc.data().checkIn}).`);
-      }
 
       const now = new Date();
       const checkInTimeStr = punchData.time || this.formatTime(now);
+
+      // If already has an existing record today
+      if (existingDoc.exists && existingDoc.data().checkIn) {
+        const rec = existingDoc.data();
+
+        // If currently on shift and not checked out, return existing
+        if (!rec.checkOut) {
+          return { id: recordId, ...rec };
+        }
+
+        // If checked out earlier, allow SHIFT RESUMPTION / RE-PUNCH IN on the same date!
+        const previousSessions = rec.sessions || [];
+        previousSessions.push({
+          checkIn: rec.currentCheckInTime || rec.checkIn,
+          checkOut: rec.checkOut,
+          grossMinutes: rec.grossMinutes || 0,
+          workedMinutes: rec.workedMinutes || 0
+        });
+
+        const resumePayload = {
+          currentCheckInTime: checkInTimeStr,
+          currentCheckInDateIso: now.toISOString(),
+          checkOut: null,
+          checkOutDateIso: null,
+          sessions: previousSessions,
+          status: 'PRESENT',
+          isOnBreak: false,
+          updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+        };
+
+        await recordRef.update(resumePayload);
+
+        await db.collection('punchLogs').add({
+          employeeId,
+          name: rec.employeeName,
+          punchType: 'In (Resume)',
+          time: checkInTimeStr,
+          date: attendanceDate,
+          location: punchData.location || 'HQ - Mumbai',
+          device: 'Web Attendance Terminal',
+          status: 'Shift Resumed',
+          timestamp: firebase.firestore.FieldValue.serverTimestamp()
+        });
+
+        await auditService.log('ATTENDANCE_CHECK_IN_RESUME', 'ATTENDANCE', 'attendanceRecords', recordId, resumePayload);
+        return { id: recordId, ...rec, ...resumePayload };
+      }
+
       const currentMinutes = now.getHours() * 60 + now.getMinutes();
-      const shiftStartMinutes = this.timeStringToMinutes(settings.defaultStartTime || '09:00');
+      const shiftStartMinutes = this.timeStringToMinutes(settings.defaultStartTime || '10:00');
       const graceLimit = shiftStartMinutes + (settings.graceMinutes || 15);
 
       let status = 'PRESENT';
@@ -77,7 +152,7 @@ const attendanceService = {
 
       if (currentMinutes > graceLimit) {
         status = 'LATE';
-        lateMinutes = currentMinutes - shiftStartMinutes;
+        lateMinutes = Math.min(720, Math.max(0, currentMinutes - shiftStartMinutes));
       }
 
       const payload = {
@@ -93,10 +168,18 @@ const attendanceService = {
         manager: emp?.manager || '',
         date: attendanceDate,
         checkIn: checkInTimeStr,
+        currentCheckInTime: checkInTimeStr,
         checkInDateIso: now.toISOString(),
+        currentCheckInDateIso: now.toISOString(),
         checkOut: null,
+        grossMinutes: 0,
+        grossHoursFormatted: '0h 00m',
+        totalBreakMinutes: 0,
+        totalBreakSeconds: 0,
+        breakFormatted: '0m',
         workedMinutes: 0,
         workedHoursFormatted: '0h 00m',
+        sessions: [],
         status,
         lateMinutes,
         earlyCheckoutMinutes: 0,
@@ -145,39 +228,84 @@ const attendanceService = {
       }
 
       const rec = doc.data();
-      if (rec.checkOut) {
+      if (rec.checkOut && !rec.currentCheckInDateIso) {
         throw new Error(`You have already checked out for today at ${rec.checkOut}.`);
       }
 
       const now = new Date();
       const checkOutTimeStr = checkoutData.time || this.formatTime(now);
-      const checkInDate = rec.checkInDateIso ? new Date(rec.checkInDateIso) : new Date(now.getTime() - 8 * 3600000);
       
-      const diffMs = Math.max(0, now.getTime() - checkInDate.getTime());
-      const workedMinutes = Math.round(diffMs / 60000);
+      // Calculate session minutes cleanly
+      let sessionMinutes = 0;
+      if (checkoutData.totalWorkSeconds !== undefined && checkoutData.totalWorkSeconds !== null && Number(checkoutData.totalWorkSeconds) > 0) {
+        sessionMinutes = Math.round(Number(checkoutData.totalWorkSeconds) / 60);
+      } else {
+        const inMins = this.time12ToMinutes(rec.currentCheckInTime || rec.checkIn);
+        const outMins = this.time12ToMinutes(checkOutTimeStr);
+        if (outMins > inMins) {
+          sessionMinutes = outMins - inMins;
+        } else if (rec.currentCheckInDateIso) {
+          const checkInDate = new Date(rec.currentCheckInDateIso);
+          const diffMs = Math.max(0, now.getTime() - checkInDate.getTime());
+          sessionMinutes = Math.round(diffMs / 60000);
+        }
+      }
+      
+      // Session minutes cannot exceed single 24-hour calendar day (1440m)
+      sessionMinutes = Math.min(Math.max(0, sessionMinutes), 1440);
+
+      // Sum gross minutes from prior sessions if any
+      let priorGrossMinutes = 0;
+      if (rec.sessions && Array.isArray(rec.sessions)) {
+        rec.sessions.forEach(s => {
+          priorGrossMinutes += (s.grossMinutes || 0);
+        });
+      }
+
+      const totalGrossMinutes = Math.min(1440, priorGrossMinutes + sessionMinutes);
+      const totalBreakSeconds = (checkoutData.totalBreakSeconds !== undefined && checkoutData.totalBreakSeconds !== null)
+        ? Number(checkoutData.totalBreakSeconds)
+        : (rec.totalBreakSeconds || (rec.totalBreakMinutes ? rec.totalBreakMinutes * 60 : 0));
+      const totalBreakMinutes = Math.round(totalBreakSeconds / 60);
+      const workedMinutes = Math.max(0, Math.min(totalGrossMinutes - totalBreakMinutes, totalGrossMinutes));
+
       const hours = Math.floor(workedMinutes / 60);
       const mins = workedMinutes % 60;
       const workedHoursFormatted = `${hours}h ${String(mins).padStart(2, '0')}m`;
 
-      // Early checkout & Overtime calculations
-      const shiftEndMinutes = this.timeStringToMinutes(settings.defaultEndTime || '18:00');
+      const grossHours = Math.floor(totalGrossMinutes / 60);
+      const grossMins = totalGrossMinutes % 60;
+      const grossHoursFormatted = `${grossHours}h ${String(grossMins).padStart(2, '0')}m`;
+
+      const breakFormatted = this.formatBreakDuration(totalBreakSeconds);
+
+      // Early checkout & Overtime calculations (Shift 10:00 AM – 07:00 PM = 9h / 540m)
+      const shiftEndMinutes = this.timeStringToMinutes(settings.defaultEndTime || '19:00');
       const currentMinutes = now.getHours() * 60 + now.getMinutes();
       const earlyCheckoutMinutes = currentMinutes < shiftEndMinutes ? shiftEndMinutes - currentMinutes : 0;
-      const overtimeMinutes = workedMinutes > (settings.overtimeAfterMinutes || 480) ? workedMinutes - settings.overtimeAfterMinutes : 0;
+      const shiftStandardMinutes = settings.overtimeAfterMinutes || 540;
+      const overtimeMinutes = workedMinutes > shiftStandardMinutes ? workedMinutes - shiftStandardMinutes : 0;
 
       let status = rec.status;
-      if (workedMinutes < (settings.minimumHalfDayMinutes || 240)) {
+      if (workedMinutes < (settings.minimumHalfDayMinutes || 270)) {
         status = 'HALF_DAY';
       }
 
       const updates = {
         checkOut: checkOutTimeStr,
         checkOutDateIso: now.toISOString(),
+        currentCheckInDateIso: null,
+        grossMinutes: totalGrossMinutes,
+        grossHoursFormatted,
+        totalBreakMinutes,
+        totalBreakSeconds,
+        breakFormatted,
         workedMinutes,
         workedHoursFormatted,
         earlyCheckoutMinutes,
         overtimeMinutes,
         status,
+        isOnBreak: false,
         updatedAt: firebase.firestore.FieldValue.serverTimestamp()
       };
 
@@ -200,6 +328,90 @@ const attendanceService = {
     } catch (err) {
       console.error('Error during check-out:', err);
       throw err;
+    }
+  },
+
+  // 3b. RECORD PUNCH & BREAKS (FOR LIVE ESS & WEBCARD)
+  async recordPunch(punchData) {
+    try {
+      const employeeId = punchData.employeeId || AuthGuard.userProfile?.employeeId || AuthGuard.currentUser?.uid;
+      const companyId = punchData.companyId || AuthGuard.userProfile?.companyId || 'comp_diallo_india';
+      const settings = await attendanceSettingsService.getSettings(companyId);
+      const attendanceDate = punchData.date || this.getCompanyLocalDate(settings.timezone);
+      const recordId = `${employeeId}_${attendanceDate}`;
+      const recordRef = db.collection('attendanceRecords').doc(recordId);
+
+      const now = new Date();
+      const timeStr = punchData.time || this.formatTime(now);
+      const punchType = punchData.punchType;
+
+      // Log in punchLogs collection
+      await db.collection('punchLogs').add({
+        employeeId,
+        name: punchData.name || AuthGuard.userProfile?.displayName || 'Employee',
+        punchType,
+        time: timeStr,
+        date: attendanceDate,
+        location: punchData.location || 'HQ - Mumbai',
+        device: punchData.device || 'Web Attendance Terminal',
+        status: punchData.status || 'Logged',
+        breakDuration: punchData.breakDuration || 0,
+        timestamp: firebase.firestore.FieldValue.serverTimestamp()
+      });
+
+      const doc = await recordRef.get();
+      if (punchType === 'In' || punchType === 'In (Resume)') {
+        await this.checkIn({
+          employeeId,
+          companyId,
+          time: timeStr,
+          location: punchData.location,
+          source: 'WEB'
+        });
+      } else if (punchType === 'Break In') {
+        if (doc.exists) {
+          await recordRef.update({
+            isOnBreak: true,
+            lastBreakStartIso: now.toISOString(),
+            status: 'ON_BREAK',
+            updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+          });
+        }
+      } else if (punchType === 'Break Out') {
+        if (doc.exists) {
+          const rec = doc.data();
+          const breakSec = Number(punchData.breakDuration) || 0;
+          const totalBreakSec = (punchData.totalBreakSeconds !== undefined && punchData.totalBreakSeconds !== null)
+            ? Number(punchData.totalBreakSeconds)
+            : ((rec.totalBreakSeconds || 0) + breakSec);
+          const totalBreakMins = Math.round(totalBreakSec / 60);
+          const breakFormatted = this.formatBreakDuration(totalBreakSec);
+
+          await recordRef.update({
+            isOnBreak: false,
+            lastBreakEndIso: now.toISOString(),
+            totalBreakMinutes: totalBreakMins,
+            totalBreakSeconds: totalBreakSec,
+            breakFormatted,
+            status: rec.checkIn ? (rec.lateMinutes > 0 ? 'LATE' : 'PRESENT') : 'PRESENT',
+            updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+          });
+        }
+      } else if (punchType === 'Out') {
+        if (doc.exists) {
+          await this.checkOut(employeeId, {
+            companyId,
+            time: timeStr,
+            totalBreakSeconds: punchData.totalBreakSeconds,
+            totalWorkSeconds: punchData.totalWorkSeconds
+          });
+        }
+      }
+
+      return true;
+    } catch (e) {
+      console.warn('recordPunch error:', e);
+      return false;
     }
   },
 

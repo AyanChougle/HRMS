@@ -4,15 +4,15 @@
  */
 
 const attendanceSettingsService = {
-  // Default fallback settings
+  // Default fallback settings (General Shift 10:00 AM – 07:00 PM IST)
   DEFAULT_SETTINGS: {
     timezone: 'Asia/Kolkata',
-    defaultStartTime: '09:00',
-    defaultEndTime: '18:00',
+    defaultStartTime: '10:00',
+    defaultEndTime: '19:00',
     graceMinutes: 15,
-    minimumHalfDayMinutes: 240, // 4 hours
-    minimumFullDayMinutes: 480, // 8 hours
-    overtimeAfterMinutes: 480,  // 8 hours
+    minimumHalfDayMinutes: 270, // 4.5 hours
+    minimumFullDayMinutes: 540, // 9 hours
+    overtimeAfterMinutes: 540,  // 9 hours (OT starts after 9h on shift)
     weeklyOffDays: ['Sunday'],
     status: 'ACTIVE'
   },

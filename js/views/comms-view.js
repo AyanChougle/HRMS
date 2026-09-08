@@ -13,6 +13,13 @@ const CommsView = {
   },
 
   async render() {
+    const role = AuthGuard.userProfile?.roleId || 'EMPLOYEE';
+    const canBroadcast = role === 'SUPER_ADMIN' || role === 'COMPANY_ADMIN' || role === 'HR';
+
+    if (!canBroadcast && this.activeTab === 'manage') {
+      this.activeTab = 'wall';
+    }
+
     const [announcements, notifications, preferences] = await Promise.all([
       announcementService.getAnnouncements({}),
       notificationService.getNotifications(null, this.selectedNotificationModule, 40),
@@ -37,12 +44,14 @@ const CommsView = {
             <button class="btn btn-secondary btn-sm" onclick="CommsView.requestWebPushPermission()">
               Enable Web Push
             </button>
-            <button class="btn btn-primary btn-sm" onclick="CommsView.openNewAnnouncementModal()">
-              <svg width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/>
-              </svg>
-              + Post Announcement
-            </button>
+            ${canBroadcast ? `
+              <button class="btn btn-primary btn-sm" onclick="CommsView.openNewAnnouncementModal()">
+                <svg width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/>
+                </svg>
+                + Post Announcement
+              </button>
+            ` : ''}
           </div>
         </div>
       </div>
@@ -114,9 +123,11 @@ const CommsView = {
         <button class="tab-btn ${this.activeTab === 'notifications' ? 'active' : ''}" onclick="CommsView.switchTab('notifications')">
           Notification Center ${unreadCount > 0 ? `<span class="badge badge-primary" style="margin-left: 6px;">${unreadCount}</span>` : ''}
         </button>
-        <button class="tab-btn ${this.activeTab === 'manage' ? 'active' : ''}" onclick="CommsView.switchTab('manage')">
-          Broadcast Management
-        </button>
+        ${canBroadcast ? `
+          <button class="tab-btn ${this.activeTab === 'manage' ? 'active' : ''}" onclick="CommsView.switchTab('manage')">
+            Broadcast Management
+          </button>
+        ` : ''}
         <button class="tab-btn ${this.activeTab === 'preferences' ? 'active' : ''}" onclick="CommsView.switchTab('preferences')">
           Channel Preferences
         </button>
@@ -124,7 +135,7 @@ const CommsView = {
 
       <!-- Tab Body -->
       <div class="tab-content">
-        ${this.renderActiveTab(announcements, notifications, preferences)}
+        ${this.renderActiveTab(announcements, notifications, preferences, canBroadcast)}
       </div>
     `;
   },
@@ -134,9 +145,9 @@ const CommsView = {
     Router.mountView('communication');
   },
 
-  renderActiveTab(announcements, notifications, preferences) {
+  renderActiveTab(announcements, notifications, preferences, canBroadcast = false) {
     if (this.activeTab === 'notifications') return this.renderNotificationsTab(notifications);
-    if (this.activeTab === 'manage') return this.renderManageTab(announcements);
+    if (this.activeTab === 'manage' && canBroadcast) return this.renderManageTab(announcements);
     if (this.activeTab === 'preferences') return this.renderPreferencesTab(preferences);
     return this.renderWallTab(announcements);
   },
@@ -358,6 +369,13 @@ const CommsView = {
   },
 
   openNewAnnouncementModal() {
+    const role = AuthGuard.userProfile?.roleId || 'EMPLOYEE';
+    const canBroadcast = role === 'SUPER_ADMIN' || role === 'COMPANY_ADMIN' || role === 'HR';
+    if (!canBroadcast) {
+      Toast.error('Access Denied: Only HR and Organization Administrators can broadcast announcements.');
+      return;
+    }
+
     ModalManager.openModal({
       id: 'new-announcement-modal',
       title: 'Broadcast Organization Notice',
@@ -373,7 +391,7 @@ const CommsView = {
           <div class="col-6 form-group">
             <label class="form-label required">Category</label>
             <select id="bc-cat" class="form-control">
-              ${announcementService.ANNOUNCEMENT_CATEGORIES.map(c => `<option value="${c.code}">${c.icon} ${c.name}</option>`).join('')}
+              ${announcementService.ANNOUNCEMENT_CATEGORIES.map(c => `<option value="${c.code}">${c.name}</option>`).join('')}
             </select>
           </div>
           <div class="col-6 form-group">
@@ -414,6 +432,13 @@ const CommsView = {
   },
 
   async saveAnnouncement() {
+    const role = AuthGuard.userProfile?.roleId || 'EMPLOYEE';
+    const canBroadcast = role === 'SUPER_ADMIN' || role === 'COMPANY_ADMIN' || role === 'HR';
+    if (!canBroadcast) {
+      Toast.error('Access Denied: Only HR and Organization Administrators can broadcast announcements.');
+      return;
+    }
+
     const title = document.getElementById('bc-title')?.value.trim();
     const category = document.getElementById('bc-cat')?.value;
     const priority = document.getElementById('bc-priority')?.value;
@@ -489,6 +514,13 @@ const CommsView = {
   },
 
   async deleteAnnouncement(id) {
+    const role = AuthGuard.userProfile?.roleId || 'EMPLOYEE';
+    const canBroadcast = role === 'SUPER_ADMIN' || role === 'COMPANY_ADMIN' || role === 'HR';
+    if (!canBroadcast) {
+      Toast.error('Access Denied: Only HR and Organization Administrators can delete broadcasts.');
+      return;
+    }
+
     ModalManager.confirm({
       title: 'Delete Announcement',
       message: 'Are you sure you want to permanently delete this broadcast notice?',

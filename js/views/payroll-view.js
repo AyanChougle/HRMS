@@ -38,6 +38,209 @@ const PayrollView = {
       if (c.status === 'LOCKED') lockedCount++;
     });
 
+    if (isEmployeeOnly) {
+      let comp = null;
+      let emp = null;
+      let payslips = [];
+
+      try {
+        [comp, emp, payslips] = await Promise.all([
+          compensationService.getEmployeeCompensation(employeeId),
+          employeeService.getEmployee(employeeId),
+          payrollService.getPayslipsForEmployee(employeeId)
+        ]);
+      } catch (e) {
+        console.warn('Employee payroll data load error:', e);
+      }
+
+      const monthlyGross = comp?.monthlyGross || (emp?.salary ? parseInt(emp.salary.replace(/[^0-9]/g, '')) || 50000 : 50000);
+      const calc = StatutoryEngine.calculateSalaryStructure(monthlyGross, true, emp?.state || 'Maharashtra');
+
+      return `
+        <div class="page-header animate-fade-in">
+          <div class="breadcrumb">
+            <a href="#dashboard">Dashboard</a>
+            <span class="breadcrumb-separator">/</span>
+            <span class="breadcrumb-current">My Payslips & Compensation</span>
+          </div>
+          <div class="page-title-row">
+            <div>
+              <h1 class="page-title">My Payslips & Compensation</h1>
+              <p class="page-subtitle">Personal CTC structure breakdown, monthly salary disbursement slips, statutory contributions, and direct deposit details</p>
+            </div>
+            <div class="page-actions">
+              <button class="btn btn-secondary btn-sm" onclick="PayrollView.openCtcCalculatorModal()">
+                <svg width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 7h6m0 10v-3m-3 3h.01M9 17h.01M9 14h.01M12 14h.01M15 11h.01M12 11h.01M9 11h.01M7 21h10a2 2 0 002-2V5a2 2 0 00-2-2H7a2 2 0 00-2 2v14a2 2 0 002 2z"/>
+                </svg>
+                <span>CTC Calculator</span>
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Personal Compensation KPI Grid -->
+        <div class="kpi-grid" style="margin-bottom: 24px;">
+          <div class="kpi-card">
+            <div class="kpi-top">
+              <div class="kpi-icon-box" style="background: var(--primary-light); color: var(--primary);">
+                <svg width="20" height="20" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                </svg>
+              </div>
+              <span class="kpi-trend positive">Monthly Gross</span>
+            </div>
+            <div class="kpi-value">₹${calc.gross.toLocaleString('en-IN')}</div>
+            <div class="kpi-label">Base Monthly Compensation</div>
+            <div class="kpi-subtitle">Annual CTC: ₹${calc.annualCtc.toLocaleString('en-IN')}</div>
+          </div>
+
+          <div class="kpi-card">
+            <div class="kpi-top">
+              <div class="kpi-icon-box" style="background: var(--success-light); color: var(--success);">
+                <svg width="20" height="20" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                </svg>
+              </div>
+              <span class="kpi-trend positive">Take-Home</span>
+            </div>
+            <div class="kpi-value" style="color: var(--success);">₹${calc.netSalary.toLocaleString('en-IN')}</div>
+            <div class="kpi-label">Estimated Monthly Net Pay</div>
+            <div class="kpi-subtitle">Direct deposit to bank</div>
+          </div>
+
+          <div class="kpi-card">
+            <div class="kpi-top">
+              <div class="kpi-icon-box" style="background: var(--warning-light); color: var(--warning);">
+                <svg width="20" height="20" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"/>
+                </svg>
+              </div>
+              <span class="kpi-trend neutral">Statutory</span>
+            </div>
+            <div class="kpi-value">₹${calc.deductions.totalDeductions.toLocaleString('en-IN')}</div>
+            <div class="kpi-label">EPF & Professional Tax</div>
+            <div class="kpi-subtitle">EPF 12% + PT ₹200</div>
+          </div>
+
+          <div class="kpi-card">
+            <div class="kpi-top">
+              <div class="kpi-icon-box" style="background: var(--info-light); color: var(--info);">
+                <svg width="20" height="20" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z"/>
+                </svg>
+              </div>
+              <span class="kpi-trend neutral">Disbursement</span>
+            </div>
+            <div class="kpi-value" style="font-size: 1.25rem;">${emp?.bankName || 'HDFC Bank'}</div>
+            <div class="kpi-label">Salary Account</div>
+            <div class="kpi-subtitle">A/C •••• ${emp?.accountNumber ? String(emp.accountNumber).slice(-4) : '4892'}</div>
+          </div>
+        </div>
+
+        <!-- Salary Structure Overview Card -->
+        <div class="card" style="margin-bottom: 24px;">
+          <div class="card-header">
+            <div>
+              <div class="card-title">Salary Breakdown & Component Structure</div>
+              <div class="card-subtitle">Governed by Wage Code 2026 — Basic Pay is compliant at ≥ 50% of Total Gross</div>
+            </div>
+            <span class="badge badge-primary">${comp?.salaryStructureName || 'Standard CTC (Wage Code 2026)'}</span>
+          </div>
+          <div class="card-body">
+            <div class="grid" style="grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 24px;">
+              <!-- Earnings Section -->
+              <div style="background: var(--bg-hover); padding: 16px; border-radius: var(--radius-md); border: 1px solid var(--border-main);">
+                <div class="flex items-center justify-between" style="margin-bottom: 12px; padding-bottom: 8px; border-bottom: 1px solid var(--border-main);">
+                  <span class="font-bold text-main" style="text-transform: uppercase; font-size: 0.8rem; letter-spacing: 0.5px;">Monthly Earnings</span>
+                  <span class="badge badge-success">Gross: ₹${calc.gross.toLocaleString('en-IN')}</span>
+                </div>
+                <div class="flex flex-col gap-2" style="font-size: 0.85rem;">
+                  <div class="flex justify-between"><span>Basic Salary (50%):</span><strong class="text-main">₹${calc.earnings.basic.toLocaleString('en-IN')}</strong></div>
+                  <div class="flex justify-between"><span>House Rent Allowance (HRA 25%):</span><strong class="text-main">₹${calc.earnings.hra.toLocaleString('en-IN')}</strong></div>
+                  <div class="flex justify-between"><span>Special Allowance (25%):</span><strong class="text-main">₹${calc.earnings.specialAllowance.toLocaleString('en-IN')}</strong></div>
+                  <div class="flex justify-between"><span>Conveyance & Medical:</span><strong class="text-main">₹${(calc.earnings.conveyance + calc.earnings.medicalAllowance).toLocaleString('en-IN')}</strong></div>
+                  <div class="flex justify-between" style="margin-top: 6px; padding-top: 8px; border-top: 1px dashed var(--border-main); font-weight: 700;">
+                    <span>Total Gross Earnings:</span><strong style="color: var(--primary);">₹${calc.gross.toLocaleString('en-IN')} / month</strong>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Deductions Section -->
+              <div style="background: var(--bg-hover); padding: 16px; border-radius: var(--radius-md); border: 1px solid var(--border-main);">
+                <div class="flex items-center justify-between" style="margin-bottom: 12px; padding-bottom: 8px; border-bottom: 1px solid var(--border-main);">
+                  <span class="font-bold text-main" style="text-transform: uppercase; font-size: 0.8rem; letter-spacing: 0.5px;">Statutory Deductions</span>
+                  <span class="badge badge-warning">Deductions: ₹${calc.deductions.totalDeductions.toLocaleString('en-IN')}</span>
+                </div>
+                <div class="flex flex-col gap-2" style="font-size: 0.85rem;">
+                  <div class="flex justify-between"><span>Provident Fund (EPF Employee 12%):</span><strong class="text-danger">-₹${calc.deductions.epfEmployee.toLocaleString('en-IN')}</strong></div>
+                  <div class="flex justify-between"><span>Professional Tax (State PT):</span><strong class="text-danger">-₹${calc.deductions.professionalTax.toLocaleString('en-IN')}</strong></div>
+                  <div class="flex justify-between"><span>Employee State Insurance (ESIC):</span><strong class="text-danger">-₹${calc.deductions.esicEmployee.toLocaleString('en-IN')}</strong></div>
+                  <div class="flex justify-between"><span>Estimated TDS (Income Tax):</span><strong class="text-danger">-₹${calc.deductions.tds.toLocaleString('en-IN')}</strong></div>
+                  <div class="flex justify-between" style="margin-top: 6px; padding-top: 8px; border-top: 1px dashed var(--border-main); font-weight: 700;">
+                    <span>Total Monthly Deductions:</span><strong class="text-danger">-₹${calc.deductions.totalDeductions.toLocaleString('en-IN')} / month</strong>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- My Payslips Statements Card -->
+        <div class="card">
+          <div class="card-header">
+            <div>
+              <div class="card-title">My Official Payslips & Statements</div>
+              <div class="card-subtitle">Monthly salary slips with verified EPF, ESIC, State PT, and TDS withholdings</div>
+            </div>
+          </div>
+          <div class="card-body" style="padding: 0;">
+            ${payslips.length === 0 ? `
+              <div class="empty-state" style="border: none; padding: 48px 16px;">
+                <div class="empty-state-icon" style="width: 44px; height: 44px; margin-bottom: 8px; background: var(--primary-light); color: var(--primary);">
+                  <svg width="22" height="22" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
+                  </svg>
+                </div>
+                <div class="empty-state-title">No Payslips Disbursed Yet</div>
+                <div class="empty-state-desc">Your monthly payslips will be listed here automatically once HR processes the current cycle.</div>
+              </div>
+            ` : `
+              <table class="data-table">
+                <thead>
+                  <tr>
+                    <th>Payroll Month</th>
+                    <th>Gross Salary</th>
+                    <th>Total Deductions</th>
+                    <th>Net Take-Home</th>
+                    <th>Status</th>
+                    <th>Action</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  ${payslips.map(p => `
+                    <tr>
+                      <td class="font-bold text-main">${p.periodName || 'Monthly Payout'}</td>
+                      <td><strong>₹${(p.earnings?.grossPay || 0).toLocaleString('en-IN')}</strong></td>
+                      <td class="text-danger">-₹${(p.deductions?.totalDeductions || 0).toLocaleString('en-IN')}</td>
+                      <td><strong style="color: var(--success); font-size: 1rem;">₹${(p.netPay || 0).toLocaleString('en-IN')}</strong></td>
+                      <td><span class="badge badge-success">DISBURSED</span></td>
+                      <td>
+                        <button class="btn btn-primary btn-sm" onclick="PayrollView.viewRecordPayslip('${p.id}')">
+                          <svg width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/></svg>
+                          View / Print
+                        </button>
+                      </td>
+                    </tr>
+                  `).join('')}
+                </tbody>
+              </table>
+            `}
+          </div>
+        </div>
+      `;
+    }
+
     return `
       <div class="page-header animate-fade-in">
         <div class="breadcrumb">
@@ -130,15 +333,11 @@ const PayrollView = {
 
       <!-- Navigation Tabs -->
       <div class="tabs-nav" style="margin-bottom: 20px;">
-        ${!isEmployeeOnly ? `
-          <button class="tab-btn ${this.activeTab === 'cycles' ? 'active' : ''}" onclick="PayrollView.switchTab('cycles')">Payroll Cycles & Runs</button>
-          <button class="tab-btn ${this.activeTab === 'review' ? 'active' : ''}" onclick="PayrollView.switchTab('review')">Payroll Inspection & Review</button>
-          <button class="tab-btn ${this.activeTab === 'comp' ? 'active' : ''}" onclick="PayrollView.switchTab('comp')">Employee Compensation (CTC)</button>
-        ` : ''}
-        <button class="tab-btn ${this.activeTab === 'payslips' || isEmployeeOnly ? 'active' : ''}" onclick="PayrollView.switchTab('payslips')">My Payslips</button>
-        ${!isEmployeeOnly ? `
-          <button class="tab-btn ${this.activeTab === 'settings' ? 'active' : ''}" onclick="PayrollView.switchTab('settings')">Payroll Settings & Policy</button>
-        ` : ''}
+        <button class="tab-btn ${this.activeTab === 'cycles' ? 'active' : ''}" onclick="PayrollView.switchTab('cycles')">Payroll Cycles & Runs</button>
+        <button class="tab-btn ${this.activeTab === 'review' ? 'active' : ''}" onclick="PayrollView.switchTab('review')">Payroll Inspection & Review</button>
+        <button class="tab-btn ${this.activeTab === 'comp' ? 'active' : ''}" onclick="PayrollView.switchTab('comp')">Employee Compensation (CTC)</button>
+        <button class="tab-btn ${this.activeTab === 'payslips' ? 'active' : ''}" onclick="PayrollView.switchTab('payslips')">My Payslips</button>
+        <button class="tab-btn ${this.activeTab === 'settings' ? 'active' : ''}" onclick="PayrollView.switchTab('settings')">Payroll Settings & Policy</button>
       </div>
 
       <!-- TAB CONTENT VIEWPORT -->

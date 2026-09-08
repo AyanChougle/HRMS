@@ -41,7 +41,14 @@ const Toast = {
     `;
 
     const closeBtn = toast.querySelector('.toast-close');
-    closeBtn.addEventListener('click', () => this.dismiss(toast));
+    if (closeBtn) {
+      closeBtn.addEventListener('click', () => this.dismiss(toast));
+    }
+
+    // Remove older toasts if more than 2 are present
+    while (this.container.children.length >= 2) {
+      this.container.removeChild(this.container.firstChild);
+    }
 
     this.container.appendChild(toast);
 

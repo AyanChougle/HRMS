@@ -11,6 +11,7 @@ const employeeRequestService = {
     { code: 'EMPLOYMENT_CERTIFICATE', name: 'Employment Verification Letter', approverRole: 'HR' },
     { code: 'SALARY_CERTIFICATE', name: 'Official Salary Certificate', approverRole: 'HR' },
     { code: 'EXPERIENCE_LETTER', name: 'Experience & Relieving Letter', approverRole: 'HR' },
+    { code: 'HARDWARE_REQUISITION', name: 'IT Hardware & Work Equipment Requisition', approverRole: 'IT' },
     { code: 'GENERAL_HR_QUERY', name: 'General HR Support & Query', approverRole: 'HR' }
   ],
 

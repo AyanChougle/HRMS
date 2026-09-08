@@ -332,11 +332,15 @@ const Forms = {
   },
 
   // 2. APPLY LEAVE MODAL
-  openApplyLeaveModal() {
+  async openApplyLeaveModal() {
+    if (window.LeaveView && LeaveView.openApplyLeaveModal) {
+      return LeaveView.openApplyLeaveModal();
+    }
+
     ModalManager.openModal({
       id: 'apply-leave-modal',
       title: 'Apply for Leave',
-      subtitle: 'Statutory Indian Leave Entitlements (PL, CL, SL, ML)',
+      subtitle: 'Statutory Indian Leave Entitlements (PL, CL)',
       contentHtml: `
         <form id="apply-leave-form" onsubmit="event.preventDefault(); Forms.submitLeaveForm()">
           <div class="form-group">
@@ -344,8 +348,6 @@ const Forms = {
             <select id="lf-type" class="form-control">
               <option value="PL">Privilege Leave (PL) — 18 Days Annual Balance</option>
               <option value="CL">Casual Leave (CL) — 12 Days Annual Balance</option>
-              <option value="SL">Sick Leave (SL) — Medical Certificate Required > 2 Days</option>
-              <option value="ML">Maternity / Paternity Leave</option>
             </select>
           </div>
           <div class="form-row">

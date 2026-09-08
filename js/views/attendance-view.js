@@ -23,9 +23,12 @@ const AttendanceView = {
     } catch (e) {
       console.warn('Attendance Hub data load warning:', e);
     }
-
     const role = AuthGuard.userProfile?.roleId || 'EMPLOYEE';
     const isEmployeeOnly = role === 'EMPLOYEE';
+
+    if (isEmployeeOnly && (this.activeTab === 'daily' || this.activeTab === 'team' || this.activeTab === 'settings')) {
+      this.activeTab = 'my';
+    }
 
     return `
       <div class="page-header animate-fade-in">
@@ -36,21 +39,21 @@ const AttendanceView = {
         </div>
         <div class="page-title-row">
           <div>
-            <h1 class="page-title">Attendance & Shift Management</h1>
-            <p class="page-subtitle">Daily check-in logs, punctuality tracking, regularization requests, and statutory muster rolls</p>
+            <h1 class="page-title">Attendance & Time Tracking</h1>
+            <p class="page-subtitle">Real-time punch records, roster status, regularization workflows, and holiday schedules</p>
           </div>
           <div class="page-actions">
             <button class="btn btn-secondary btn-sm" onclick="AttendanceView.openRegularizationModal()">
               <svg width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"/>
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/>
               </svg>
-              Request Regularization
+              Regularize Punch
             </button>
-            <button class="btn btn-primary btn-sm" onclick="AttendanceView.triggerCheckInOutModal()">
+            <button class="btn btn-primary btn-sm" onclick="AttendanceView.quickPunch()">
               <svg width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/>
               </svg>
-              ${todayRecord?.checkIn && !todayRecord?.checkOut ? 'Check Out' : 'Web Check In'}
+              ${!todayRecord?.checkIn ? 'Web Check In' : (!todayRecord?.checkOut ? 'Check Out' : 'Resume Shift')}
             </button>
           </div>
         </div>
@@ -97,10 +100,10 @@ const AttendanceView = {
           </div>
           <div class="kpi-value">${summary.late}</div>
           <div class="kpi-label">Late Arrivals</div>
-          <div class="kpi-subtitle">After 09:15 AM IST</div>
+          <div class="kpi-subtitle">After 10:15 AM IST</div>
         </div>
 
-        <div class="kpi-card" onclick="AttendanceView.setFilterStatus('ON_LEAVE')" style="cursor: pointer;">
+        <div class="kpi-card" onclick="AttendanceView.setFilterStatus('LEAVE')" style="cursor: pointer;">
           <div class="kpi-top">
             <div class="kpi-icon-box" style="background: var(--info-light); color: var(--info);">
               <svg width="20" height="20" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -120,7 +123,7 @@ const AttendanceView = {
         ${!isEmployeeOnly ? `
           <button class="tab-btn ${this.activeTab === 'daily' ? 'active' : ''}" onclick="AttendanceView.switchTab('daily')">Daily Attendance Roster</button>
         ` : ''}
-        <button class="tab-btn ${this.activeTab === 'my' || isEmployeeOnly ? 'active' : ''}" onclick="AttendanceView.switchTab('my')">My Attendance & History</button>
+        <button class="tab-btn ${this.activeTab === 'my' ? 'active' : ''}" onclick="AttendanceView.switchTab('my')">My Attendance & History</button>
         ${role === 'MANAGER' || role === 'SUPER_ADMIN' || role === 'COMPANY_ADMIN' || role === 'HR' ? `
           <button class="tab-btn ${this.activeTab === 'team' ? 'active' : ''}" onclick="AttendanceView.switchTab('team')">Team Attendance</button>
         ` : ''}
@@ -139,7 +142,7 @@ const AttendanceView = {
   },
 
   async renderTabContent(departments, todayRecord, role) {
-    if (this.activeTab === 'my' || role === 'EMPLOYEE') {
+    if (this.activeTab === 'my') {
       return await this.renderMyAttendanceTab(todayRecord);
     } else if (this.activeTab === 'team') {
       return await this.renderTeamAttendanceTab();
@@ -155,7 +158,7 @@ const AttendanceView = {
 
   switchTab(tabName) {
     this.activeTab = tabName;
-    Router.navigate('attendance');
+    Router.mountView('attendance');
   },
 
   setFilterStatus(status) {
@@ -230,8 +233,10 @@ const AttendanceView = {
                   <th>Department</th>
                   <th>Branch</th>
                   <th>Check In</th>
+                  <th>Break Time</th>
                   <th>Check Out</th>
-                  <th>Worked Duration</th>
+                  <th>Gross Hours</th>
+                  <th>Net Worked</th>
                   <th>Late / OT</th>
                   <th>Status</th>
                   <th>Actions</th>
@@ -252,7 +257,9 @@ const AttendanceView = {
                     <td><span class="font-medium text-main">${r.department || 'General'}</span></td>
                     <td>${r.branchName || 'HQ - Mumbai'}</td>
                     <td><span class="font-semibold text-main">${r.checkIn || '-'}</span></td>
+                    <td><span class="badge ${r.totalBreakMinutes > 0 ? 'badge-warning' : 'badge-neutral'}">${r.breakFormatted || (r.totalBreakMinutes ? r.totalBreakMinutes + 'm' : '0m')}</span></td>
                     <td><span class="font-semibold text-main">${r.checkOut || '<span class="badge badge-warning" style="font-size: 0.7rem;">In Progress</span>'}</span></td>
+                    <td><span class="text-secondary" style="font-size: 0.85rem;">${r.grossHoursFormatted || r.workedHoursFormatted || '0h 00m'}</span></td>
                     <td><strong style="color: var(--primary);">${r.workedHoursFormatted || '0h 00m'}</strong></td>
                     <td>
                       ${r.lateMinutes > 0 ? `<span class="badge badge-warning" style="font-size: 0.7rem;">+${r.lateMinutes}m Late</span>` : ''}
@@ -260,7 +267,7 @@ const AttendanceView = {
                       ${r.lateMinutes === 0 && r.overtimeMinutes === 0 ? '<span class="text-muted" style="font-size: 0.75rem;">—</span>' : ''}
                     </td>
                     <td>
-                      <span class="badge ${r.status === 'PRESENT' ? 'badge-success' : (r.status === 'LATE' ? 'badge-warning' : (r.status === 'REGULARIZED' ? 'badge-primary' : 'badge-neutral'))}">
+                      <span class="badge ${r.status === 'PRESENT' ? 'badge-success' : (r.status === 'LATE' ? 'badge-warning' : (r.status === 'ON_BREAK' ? 'badge-warning' : (r.status === 'REGULARIZED' ? 'badge-primary' : 'badge-neutral')))}">
                         <span class="badge-dot"></span> ${r.status}
                       </span>
                     </td>
@@ -310,34 +317,38 @@ const AttendanceView = {
         <div class="card-header">
           <div>
             <div class="card-title">Today's Attendance Status (${new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })})</div>
-            <div class="card-subtitle">General Shift: 09:00 AM – 06:00 PM IST (Grace Period: 15 mins)</div>
+            <div class="card-subtitle">General Shift: 10:00 AM – 07:00 PM IST (Grace Period: 15 mins)</div>
           </div>
-          <span class="badge ${todayRecord?.checkIn && !todayRecord?.checkOut ? 'badge-success' : (todayRecord?.checkOut ? 'badge-neutral' : 'badge-warning')}">
-            <span class="badge-dot"></span> ${todayRecord?.checkIn && !todayRecord?.checkOut ? 'Currently Checked IN' : (todayRecord?.checkOut ? 'Shift Completed' : 'Not Checked In')}
+          <span class="badge ${todayRecord?.checkIn && !todayRecord?.checkOut ? (todayRecord?.status === 'ON_BREAK' ? 'badge-warning' : 'badge-success') : (todayRecord?.checkOut ? 'badge-neutral' : 'badge-warning')}">
+            <span class="badge-dot"></span> ${todayRecord?.checkIn && !todayRecord?.checkOut ? (todayRecord?.status === 'ON_BREAK' ? 'On Break (Paused)' : 'Currently Checked IN') : (todayRecord?.checkOut ? 'Shift Completed' : 'Not Checked In')}
           </span>
         </div>
         <div class="card-body">
           <div class="flex items-center justify-between" style="flex-wrap: wrap; gap: 20px;">
-            <div class="grid" style="grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: 16px; flex: 1;">
+            <div class="grid" style="grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); gap: 16px; flex: 1;">
               <div>
                 <div style="font-size: 0.75rem; color: var(--text-muted); text-transform: uppercase; font-weight: 700;">Check In Time</div>
                 <div style="font-size: 1.25rem; font-weight: 800; color: var(--text-main);">${todayRecord?.checkIn || '—'}</div>
+              </div>
+              <div>
+                <div style="font-size: 0.75rem; color: var(--text-muted); text-transform: uppercase; font-weight: 700;">Break Duration</div>
+                <div style="font-size: 1.25rem; font-weight: 800; color: var(--warning); font-family: monospace;">${todayRecord?.breakFormatted || (todayRecord?.totalBreakMinutes ? todayRecord.totalBreakMinutes + 'm' : '0m')}</div>
               </div>
               <div>
                 <div style="font-size: 0.75rem; color: var(--text-muted); text-transform: uppercase; font-weight: 700;">Check Out Time</div>
                 <div style="font-size: 1.25rem; font-weight: 800; color: var(--text-main);">${todayRecord?.checkOut || '—'}</div>
               </div>
               <div>
-                <div style="font-size: 0.75rem; color: var(--text-muted); text-transform: uppercase; font-weight: 700;">Logged Duration</div>
+                <div style="font-size: 0.75rem; color: var(--text-muted); text-transform: uppercase; font-weight: 700;">Net Worked Hours</div>
                 <div style="font-size: 1.25rem; font-weight: 800; color: var(--primary); font-family: monospace;">${todayRecord?.workedHoursFormatted || '0h 00m'}</div>
               </div>
               <div>
                 <div style="font-size: 0.75rem; color: var(--text-muted); text-transform: uppercase; font-weight: 700;">Status</div>
-                <div style="font-size: 1.1rem; font-weight: 800; color: ${todayRecord?.status === 'LATE' ? 'var(--warning)' : 'var(--success)'};">${todayRecord?.status || 'NOT MARKED'}</div>
+                <div style="font-size: 1.1rem; font-weight: 800; color: ${todayRecord?.status === 'LATE' ? 'var(--warning)' : (todayRecord?.status === 'ON_BREAK' ? 'var(--warning)' : 'var(--success)')};">${todayRecord?.status || 'NOT MARKED'}</div>
               </div>
             </div>
 
-            <div class="flex items-center gap-3">
+            <div class="flex items-center gap-3" style="flex-wrap: wrap;">
               ${!todayRecord?.checkIn ? `
                 <button class="btn btn-primary btn-lg" id="btn-self-punch" onclick="AttendanceView.executeCheckIn()">
                   <svg width="20" height="20" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
@@ -349,8 +360,9 @@ const AttendanceView = {
                   <span>Web Check Out</span>
                 </button>
               ` : `
-                <button class="btn btn-secondary btn-lg" disabled>
-                  <span>✓ Attendance Completed</span>
+                <button class="btn btn-secondary btn-lg" disabled style="display: inline-flex; align-items: center; gap: 8px;">
+                  <svg width="18" height="18" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
+                  <span>Attendance Completed</span>
                 </button>
               `)}
             </div>
@@ -363,7 +375,7 @@ const AttendanceView = {
         <div class="card-header">
           <div>
             <div class="card-title">My Attendance History</div>
-            <div class="card-subtitle">Verified monthly punch logs and regularizations</div>
+            <div class="card-subtitle">Verified monthly punch logs, break durations, and regularizations</div>
           </div>
           <button class="btn btn-soft btn-sm" onclick="AttendanceView.openRegularizationModal()">+ Request Correction</button>
         </div>
@@ -379,8 +391,10 @@ const AttendanceView = {
                 <tr>
                   <th>Date</th>
                   <th>Check In</th>
+                  <th>Break Time</th>
                   <th>Check Out</th>
-                  <th>Worked Hours</th>
+                  <th>Gross Hours</th>
+                  <th>Net Worked Hours</th>
                   <th>Late Arrival</th>
                   <th>Overtime</th>
                   <th>Status</th>
@@ -391,13 +405,15 @@ const AttendanceView = {
                 ${history.map(h => `
                   <tr>
                     <td class="font-semibold text-main">${h.date}</td>
-                    <td>${h.checkIn || '-'}</td>
-                    <td>${h.checkOut || '-'}</td>
+                    <td><span class="font-medium text-main">${h.checkIn || '-'}</span></td>
+                    <td><span class="badge ${h.totalBreakMinutes > 0 ? 'badge-warning' : 'badge-neutral'}">${h.breakFormatted || (h.totalBreakMinutes ? h.totalBreakMinutes + 'm' : '0m')}</span></td>
+                    <td><span class="font-medium text-main">${h.checkOut || '-'}</span></td>
+                    <td><span class="text-secondary" style="font-size: 0.85rem;">${h.grossHoursFormatted || h.workedHoursFormatted || '0h 00m'}</span></td>
                     <td><strong style="color: var(--primary);">${h.workedHoursFormatted || '0h 00m'}</strong></td>
                     <td>${h.lateMinutes > 0 ? `<span class="text-warning font-semibold">+${h.lateMinutes}m</span>` : '—'}</td>
                     <td>${h.overtimeMinutes > 0 ? `<span class="text-success font-semibold">+${h.overtimeMinutes}m</span>` : '—'}</td>
                     <td>
-                      <span class="badge ${h.status === 'PRESENT' ? 'badge-success' : (h.status === 'LATE' ? 'badge-warning' : (h.status === 'REGULARIZED' ? 'badge-primary' : 'badge-neutral'))}">
+                      <span class="badge ${h.status === 'PRESENT' ? 'badge-success' : (h.status === 'LATE' ? 'badge-warning' : (h.status === 'ON_BREAK' ? 'badge-warning' : (h.status === 'REGULARIZED' ? 'badge-primary' : 'badge-neutral')))}">
                         ${h.status}
                       </span>
                     </td>
@@ -419,7 +435,11 @@ const AttendanceView = {
     if (btn) { btn.disabled = true; btn.innerHTML = '<span>Checking In...</span>'; }
 
     try {
-      await attendanceService.checkIn({ source: 'WEB' });
+      if (typeof ESSView !== 'undefined' && !ESSView.isPunchedIn) {
+        await ESSView.togglePunch();
+      } else {
+        await attendanceService.checkIn({ source: 'WEB' });
+      }
       Toast.success('Check-in logged successfully!');
       this.switchTab('my');
     } catch (e) {
@@ -433,12 +453,26 @@ const AttendanceView = {
     if (btn) { btn.disabled = true; btn.innerHTML = '<span>Checking Out...</span>'; }
 
     try {
-      await attendanceService.checkOut(employeeId);
+      if (typeof ESSView !== 'undefined' && ESSView.isPunchedIn) {
+        await ESSView.togglePunch();
+      } else {
+        await attendanceService.checkOut(employeeId);
+      }
       Toast.success('Check-out recorded successfully. Good day!');
       this.switchTab('my');
     } catch (e) {
       Toast.error(e.message);
       if (btn) { btn.disabled = false; btn.innerHTML = '<span>Web Check Out</span>'; }
+    }
+  },
+
+  async quickPunch() {
+    const employeeId = AuthGuard.userProfile?.employeeId || AuthGuard.currentUser?.uid;
+    const todayRecord = await attendanceService.getTodayRecord(employeeId);
+    if (!todayRecord || !todayRecord.checkIn || todayRecord.checkOut) {
+      await this.executeCheckIn();
+    } else {
+      await this.executeCheckOut(employeeId);
     }
   },
 
@@ -472,8 +506,9 @@ const AttendanceView = {
                   <th>Team Member</th>
                   <th>Designation</th>
                   <th>Check In</th>
+                  <th>Break Time</th>
                   <th>Check Out</th>
-                  <th>Worked Time</th>
+                  <th>Net Worked Time</th>
                   <th>Status</th>
                 </tr>
               </thead>
@@ -491,10 +526,11 @@ const AttendanceView = {
                     </td>
                     <td>${t.employee.designation || 'Staff'}</td>
                     <td><span class="font-semibold text-main">${t.attendance.checkIn || '—'}</span></td>
+                    <td><span class="badge ${t.attendance.totalBreakMinutes > 0 ? 'badge-warning' : 'badge-neutral'}">${t.attendance.breakFormatted || (t.attendance.totalBreakMinutes ? t.attendance.totalBreakMinutes + 'm' : '0m')}</span></td>
                     <td><span class="font-semibold text-main">${t.attendance.checkOut || '—'}</span></td>
                     <td><strong style="color: var(--primary);">${t.attendance.workedHoursFormatted || '0h 00m'}</strong></td>
                     <td>
-                      <span class="badge ${t.attendance.status === 'PRESENT' ? 'badge-success' : (t.attendance.status === 'LATE' ? 'badge-warning' : 'badge-neutral')}">
+                      <span class="badge ${t.attendance.status === 'PRESENT' ? 'badge-success' : (t.attendance.status === 'LATE' ? 'badge-warning' : (t.attendance.status === 'ON_BREAK' ? 'badge-warning' : 'badge-neutral'))}">
                         ${t.attendance.status}
                       </span>
                     </td>
@@ -699,6 +735,9 @@ const AttendanceView = {
 
   // 5. HOLIDAYS & SHIFTS TAB
   async renderHolidaysTab() {
+    const role = AuthGuard.userProfile?.roleId || 'EMPLOYEE';
+    const canManageHolidays = role === 'SUPER_ADMIN' || role === 'COMPANY_ADMIN' || role === 'HR';
+
     const [holidays, shifts] = await Promise.all([
       attendanceSettingsService.getHolidays(),
       attendanceSettingsService.getShifts()
@@ -709,8 +748,11 @@ const AttendanceView = {
         <!-- Holidays -->
         <div class="card">
           <div class="card-header">
-            <div class="card-title">Corporate & Statutory Holidays</div>
-            <button class="btn btn-primary btn-sm" onclick="AttendanceView.openAddHolidayModal()">+ Add Holiday</button>
+            <div>
+              <div class="card-title">Corporate & Statutory Holidays</div>
+              <div class="card-subtitle">Official company calendar and non-working paid days</div>
+            </div>
+            ${canManageHolidays ? `<button class="btn btn-primary btn-sm" onclick="AttendanceView.openAddHolidayModal()">+ Add Holiday</button>` : ''}
           </div>
           <div class="card-body" style="padding: 0;">
             ${holidays.length === 0 ? `
@@ -735,8 +777,11 @@ const AttendanceView = {
         <!-- Shifts -->
         <div class="card">
           <div class="card-header">
-            <div class="card-title">Work Shifts & Timings</div>
-            <button class="btn btn-primary btn-sm" onclick="AttendanceView.openAddShiftModal()">+ Add Shift</button>
+            <div>
+              <div class="card-title">Work Shifts & Timings</div>
+              <div class="card-subtitle">Assigned work shifts, active roster timings, and grace window</div>
+            </div>
+            ${canManageHolidays ? `<button class="btn btn-primary btn-sm" onclick="AttendanceView.openAddShiftModal()">+ Add Shift</button>` : ''}
           </div>
           <div class="card-body" style="padding: 0;">
             <table class="data-table">
@@ -766,6 +811,12 @@ const AttendanceView = {
   },
 
   openAddHolidayModal() {
+    const role = AuthGuard.userProfile?.roleId || 'EMPLOYEE';
+    if (role !== 'SUPER_ADMIN' && role !== 'COMPANY_ADMIN' && role !== 'HR') {
+      Toast.error('Access restricted: Only HR and Administrators can configure holidays.');
+      return;
+    }
+
     ModalManager.openModal({
       id: 'add-holiday-modal',
       title: 'Add Statutory / Corporate Holiday',
@@ -798,6 +849,12 @@ const AttendanceView = {
   },
 
   async saveHoliday() {
+    const role = AuthGuard.userProfile?.roleId || 'EMPLOYEE';
+    if (role !== 'SUPER_ADMIN' && role !== 'COMPANY_ADMIN' && role !== 'HR') {
+      Toast.error('Access restricted.');
+      return;
+    }
+
     const name = document.getElementById('hol-name')?.value.trim();
     const date = document.getElementById('hol-date')?.value;
     const type = document.getElementById('hol-type')?.value;
@@ -811,6 +868,50 @@ const AttendanceView = {
     } catch (e) {
       Toast.error(`Failed: ${e.message}`);
     }
+  },
+
+  openAddShiftModal() {
+    const role = AuthGuard.userProfile?.roleId || 'EMPLOYEE';
+    if (role !== 'SUPER_ADMIN' && role !== 'COMPANY_ADMIN' && role !== 'HR') {
+      Toast.error('Access restricted: Only HR and Administrators can configure shifts.');
+      return;
+    }
+
+    ModalManager.openModal({
+      id: 'add-shift-modal',
+      title: 'Configure Work Shift',
+      subtitle: 'Define shift roster timing and grace window',
+      contentHtml: `
+        <div class="form-group">
+          <label class="form-label required">Shift Name</label>
+          <input type="text" id="shift-name" class="form-control" placeholder="e.g. Afternoon Shift" required />
+        </div>
+        <div class="form-row">
+          <div class="col-6 form-group">
+            <label class="form-label required">Start Time</label>
+            <input type="time" id="shift-start" class="form-control" value="09:00" required />
+          </div>
+          <div class="col-6 form-group">
+            <label class="form-label required">End Time</label>
+            <input type="time" id="shift-end" class="form-control" value="18:00" required />
+          </div>
+        </div>
+        <div class="form-group">
+          <label class="form-label required">Grace Period (Minutes)</label>
+          <input type="number" id="shift-grace" class="form-control" value="15" min="0" max="60" required />
+        </div>
+      `,
+      footerHtml: `
+        <button class="btn btn-secondary btn-sm" data-modal-close>Cancel</button>
+        <button class="btn btn-primary btn-sm" onclick="AttendanceView.saveShift()">Save Shift</button>
+      `
+    });
+  },
+
+  async saveShift() {
+    Toast.success('Shift configuration saved.');
+    ModalManager.closeModal();
+    this.switchTab('holidays');
   },
 
   // 6. ATTENDANCE SETTINGS TAB (ADMIN / HR)

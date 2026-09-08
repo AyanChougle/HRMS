@@ -68,15 +68,15 @@ const seedService = {
       {
         id: 'MANAGER',
         name: 'Line Manager',
-        description: 'Team attendance oversight and leave approvals',
-        permissions: ['attendance.view', 'leave.view', 'leave.approve', 'people.view'],
+        description: 'Team attendance oversight, approvals, and employee self-service',
+        permissions: ['team.*', 'team.view', 'team.attendance', 'team.leave', 'team.approve', 'people.view', 'attendance.*', 'attendance.view', 'leave.*', 'leave.view', 'leave.approve', 'approvals.*', 'approvals.process', 'performance.*', 'requests.*', 'workflows.*', 'communication.*', 'reports.*', 'reports.view', 'own.profile', 'own.attendance', 'own.leave', 'own.payslips', 'own.documents', 'own.requests', 'own.expenses', 'ess.view'],
         status: 'ACTIVE'
       },
       {
         id: 'EMPLOYEE',
         name: 'Employee (ESS)',
         description: 'Self-service timecard, punch logs, leave applications, and payslip download',
-        permissions: ['ess.view', 'leave.create', 'attendance.punch', 'own.profile'],
+        permissions: ['ess.view', 'own.profile', 'own.attendance', 'own.leave', 'own.payslips', 'own.documents', 'own.expenses', 'own.requests', 'attendance.punch', 'attendance.view', 'leave.view', 'leave.create', 'payroll.view', 'communication.view', 'reports.view', 'expenses.view', 'assets.view', 'performance.view', 'documents.view', 'requests.view'],
         status: 'ACTIVE'
       }
     ];
@@ -144,14 +144,10 @@ const seedService = {
       });
     });
 
-    // 5. Leave Types
+    // 5. Leave Types (PL & CL)
     const leaveTypes = [
-      { id: 'lt_pl', name: 'Privilege / Earned Leave (PL/EL)', quota: 18, carryForward: 30, color: '#2563eb' },
-      { id: 'lt_cl', name: 'Casual Leave (CL)', quota: 12, carryForward: 0, color: '#0891b2' },
-      { id: 'lt_sl', name: 'Sick / Medical Leave (SL)', quota: 12, carryForward: 0, color: '#16a34a' },
-      { id: 'lt_ml', name: 'Maternity Leave (ML)', quota: 182, carryForward: 0, color: '#db2777' },
-      { id: 'lt_pl_paternity', name: 'Paternity Leave (PL)', quota: 15, carryForward: 0, color: '#4f46e5' },
-      { id: 'lt_co', name: 'Compensatory Off (Comp-Off)', quota: 6, carryForward: 2, color: '#ea580c' }
+      { id: 'lt_pl', code: 'PL', name: 'Privilege Leave (PL)', annualQuota: 18, quota: 18, carryForward: 30, color: '#2563eb' },
+      { id: 'lt_cl', code: 'CL', name: 'Casual Leave (CL)', annualQuota: 12, quota: 12, carryForward: 0, color: '#0891b2' }
     ];
 
     leaveTypes.forEach(lt => {

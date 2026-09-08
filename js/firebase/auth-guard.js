@@ -141,20 +141,20 @@ const AuthGuard = {
 
   // Sync user profile with header UI in index.html
   syncHeaderProfile() {
-    const nameEl = document.querySelector('.user-name-label');
-    const roleEl = document.querySelector('.user-role-label');
-    const avatarEl = document.querySelector('.user-profile-trigger .avatar-img');
+    const nameEls = document.querySelectorAll('.user-name-label');
+    const roleEls = document.querySelectorAll('.user-role-label');
+    const avatarEls = document.querySelectorAll('.user-profile-trigger .avatar-img, #profile-popover .avatar-img');
     const companyLabel = document.getElementById('current-company-label');
     const branchLabel = document.getElementById('current-branch-label');
 
     if (this.userProfile) {
       const name = this.userProfile.displayName || this.userProfile.fullName || this.currentUser?.email?.split('@')[0] || 'User';
-      const role = this.userRole?.name || this.userProfile.roleId || 'Staff';
+      const role = this.userRole?.name || (this.userProfile.roleId === 'SUPER_ADMIN' ? 'Super Admin' : (this.userProfile.roleId === 'COMPANY_ADMIN' ? 'Company Admin' : (this.userProfile.roleId === 'HR' ? 'HR Manager' : (this.userProfile.roleId === 'TEAM_LEAD' ? 'Team Lead' : 'Employee (ESS)'))));
       const initials = name.split(' ').map(n => n[0]).join('').substring(0, 2).toUpperCase() || 'US';
 
-      if (nameEl) nameEl.textContent = name;
-      if (roleEl) roleEl.textContent = role;
-      if (avatarEl) avatarEl.textContent = initials;
+      nameEls.forEach(el => { el.textContent = name; });
+      roleEls.forEach(el => { el.textContent = role; });
+      avatarEls.forEach(el => { el.textContent = initials; });
       if (companyLabel) companyLabel.textContent = this.userProfile.companyName || 'Diallo India';
       if (branchLabel) branchLabel.textContent = this.userProfile.branchName || 'HQ - Mumbai';
     }

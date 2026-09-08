@@ -67,50 +67,78 @@ const leaveService = {
     }
   },
 
-  // 3. GET OR INITIALIZE EMPLOYEE LEAVE BALANCES FOR A GIVEN YEAR
+  // 3. GET DYNAMIC EMPLOYEE LEAVE BALANCES FOR A GIVEN YEAR (PL & CL ONLY)
   async getEmployeeBalances(employeeId, year = 2026, companyId = 'comp_diallo_india') {
     try {
-      const balanceDocId = `${employeeId}_${year}`;
-      const doc = await db.collection('leaveBalances').doc(balanceDocId).get();
+      const plAllocated = 18;
+      const clAllocated = 12;
 
-      if (doc.exists) {
-        return doc.data().balances || {};
+      let plUsed = 0;
+      let plPending = 0;
+      let clUsed = 0;
+      let clPending = 0;
+
+      // Query leaveApplications to compute dynamic counters
+      if (employeeId) {
+        const snap = await db.collection('leaveApplications')
+          .where('employeeId', '==', employeeId)
+          .get();
+
+        snap.docs.forEach(doc => {
+          const d = doc.data();
+          const days = Number(d.numberOfDays) || 1;
+          const type = (d.leaveTypeCode || d.type || '').toUpperCase();
+
+          if (type === 'PL' || type === 'AL' || type === 'ANNUAL' || type === 'PRIVILEGE') {
+            if (d.status === 'APPROVED') {
+              plUsed += days;
+            } else if (d.status === 'PENDING') {
+              plPending += days;
+            }
+          } else if (type === 'CL' || type === 'CASUAL' || type === 'CS') {
+            if (d.status === 'APPROVED') {
+              clUsed += days;
+            } else if (d.status === 'PENDING') {
+              clPending += days;
+            }
+          }
+        });
       }
 
-      // Initialize default statutory quota balances for the employee
-      const leaveTypes = await leavePolicyService.getLeaveTypes(companyId);
-      const initialBalances = {};
-
-      leaveTypes.forEach(lt => {
-        initialBalances[lt.code] = {
-          leaveTypeId: lt.id,
-          code: lt.code,
-          name: lt.name,
-          allocated: lt.annualQuota,
-          used: 0,
-          pending: 0,
-          available: lt.annualQuota,
-          carriedForward: 0
-        };
-      });
-
-      const payload = {
-        employeeId,
-        companyId,
-        year,
-        balances: initialBalances,
-        createdAt: firebase.firestore.FieldValue.serverTimestamp(),
-        updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+      const balances = {
+        PL: {
+          code: 'PL',
+          name: 'Privilege Leave (PL)',
+          allocated: plAllocated,
+          used: plUsed,
+          pending: plPending,
+          available: Math.max(0, plAllocated - plUsed)
+        },
+        AL: {
+          code: 'PL',
+          name: 'Privilege Leave (PL)',
+          allocated: plAllocated,
+          used: plUsed,
+          pending: plPending,
+          available: Math.max(0, plAllocated - plUsed)
+        },
+        CL: {
+          code: 'CL',
+          name: 'Casual Leave (CL)',
+          allocated: clAllocated,
+          used: clUsed,
+          pending: clPending,
+          available: Math.max(0, clAllocated - clUsed)
+        }
       };
 
-      await db.collection('leaveBalances').doc(balanceDocId).set(payload);
-      return initialBalances;
+      return balances;
     } catch (e) {
       console.warn('Could not fetch leave balances:', e);
       return {
-        AL: { code: 'AL', name: 'Annual Leave', allocated: 18, used: 0, available: 18 },
-        CL: { code: 'CL', name: 'Casual Leave', allocated: 12, used: 0, available: 12 },
-        SL: { code: 'SL', name: 'Sick Leave', allocated: 12, used: 0, available: 12 }
+        PL: { code: 'PL', name: 'Privilege Leave (PL)', allocated: 18, used: 0, pending: 0, available: 18 },
+        AL: { code: 'PL', name: 'Privilege Leave (PL)', allocated: 18, used: 0, pending: 0, available: 18 },
+        CL: { code: 'CL', name: 'Casual Leave (CL)', allocated: 12, used: 0, pending: 0, available: 12 }
       };
     }
   },

@@ -5,6 +5,7 @@
 
 const AssetsView = {
   activeTab: 'register', // 'register', 'assignments', 'maintenance', 'returns', 'vendors'
+  employeeActiveTab: 'assigned', // 'assigned', 'requisitions'
   currentFilters: {
     status: 'All',
     categoryCode: 'All',
@@ -12,11 +13,58 @@ const AssetsView = {
   },
 
   async render() {
+    const role = AuthGuard.userProfile?.roleId || 'EMPLOYEE';
+    const isEmployee = role === 'EMPLOYEE';
+    const currentEmpId = AuthGuard.userProfile?.employeeId || AuthGuard.currentUser?.uid;
+    const currentEmpName = AuthGuard.userProfile?.displayName || 'Employee';
+
     const [assets, categories, vendors] = await Promise.all([
       assetService.getAssets({}),
       assetService.getCategories(),
       assetService.getVendors()
     ]);
+
+    if (isEmployee) {
+      const userIds = [
+        AuthGuard.userProfile?.employeeId,
+        AuthGuard.userProfile?.id,
+        AuthGuard.currentUser?.uid,
+        AuthGuard.userProfile?.employeeCode
+      ].filter(Boolean);
+
+      const myAssets = assets.filter(a => {
+        if (!a) return false;
+        if (a.currentEmployeeId && userIds.includes(a.currentEmployeeId)) return true;
+        if (a.employeeId && userIds.includes(a.employeeId)) return true;
+        if (a.employeeCode && userIds.includes(a.employeeCode)) return true;
+        if (a.currentEmployeeName && currentEmpName) {
+          const cName = a.currentEmployeeName.trim().toLowerCase();
+          const uName = currentEmpName.trim().toLowerCase();
+          if (cName === uName || cName.includes(uName) || uName.includes(cName)) return true;
+        }
+        return false;
+      });
+
+      let myRequests = [];
+      try {
+        const allReqs = await employeeRequestService.getRequests({});
+        myRequests = allReqs.filter(r => {
+          if (!r) return false;
+          const isHw = r.requestType === 'HARDWARE_REQUISITION' || (r.title && r.title.toLowerCase().includes('hardware'));
+          const isMyReq = userIds.includes(r.employeeId) ||
+            (r.employeeName && currentEmpName && (
+              r.employeeName.trim().toLowerCase() === currentEmpName.trim().toLowerCase() ||
+              r.employeeName.toLowerCase().includes(currentEmpName.toLowerCase()) ||
+              currentEmpName.toLowerCase().includes(r.employeeName.toLowerCase())
+            ));
+          return isHw && isMyReq;
+        });
+      } catch (e) {
+        console.warn('Error fetching employee hardware requests:', e);
+      }
+
+      return this.renderEmployeeView(myAssets, myRequests, categories);
+    }
 
     const availableAssets = assets.filter(a => a.status === 'AVAILABLE');
     const assignedAssets = assets.filter(a => a.status === 'ASSIGNED');
@@ -788,6 +836,432 @@ const AssetsView = {
     Router.mountView('assets');
   },
 
+  switchEmployeeTab(tab) {
+    this.employeeActiveTab = tab;
+    Router.mountView('assets');
+  },
+
+  // ==========================================
+  // EMPLOYEE VIEW: MY ASSIGNED ASSETS & HARDWARE REQUISITIONS
+  // ==========================================
+  renderEmployeeView(myAssets, myRequests = [], categories = []) {
+    const activeAssigned = myAssets.filter(a => a.status === 'ASSIGNED');
+    const inMaintenance = myAssets.filter(a => a.status === 'MAINTENANCE');
+    const pendingRequests = myRequests.filter(r => r.status === 'SUBMITTED' || r.status === 'UNDER_REVIEW');
+    const approvedRequests = myRequests.filter(r => r.status === 'APPROVED' || r.status === 'COMPLETED');
+
+    let assetList = myAssets;
+    if (this.currentFilters.status !== 'All') {
+      assetList = assetList.filter(a => a.status === this.currentFilters.status);
+    }
+    if (this.currentFilters.search) {
+      const s = this.currentFilters.search.toLowerCase();
+      assetList = assetList.filter(a =>
+        (a.name && a.name.toLowerCase().includes(s)) ||
+        (a.assetTag && a.assetTag.toLowerCase().includes(s)) ||
+        (a.serialNumber && a.serialNumber.toLowerCase().includes(s))
+      );
+    }
+
+    return `
+      <div class="page-header animate-fade-in">
+        <div class="breadcrumb">
+          <a href="#dashboard">Dashboard</a>
+          <span class="breadcrumb-separator">/</span>
+          <span class="breadcrumb-current">My Assets & Hardware</span>
+        </div>
+        <div class="page-title-row">
+          <div>
+            <h1 class="page-title">My Assigned Assets & Hardware Requests</h1>
+            <p class="page-subtitle">View company devices issued to your custody and track hardware requisition requests</p>
+          </div>
+          <div class="page-actions">
+            <button class="btn btn-primary btn-sm" onclick="AssetsView.openRequestHardwareModal()">
+              <svg width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/>
+              </svg>
+              + Request Hardware / Accessory
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Informational Guide Card -->
+      <div class="card" style="margin-bottom: 20px; padding: 14px 18px; background: linear-gradient(135deg, rgba(37, 99, 235, 0.05), rgba(99, 102, 241, 0.03)); border: 1px solid rgba(37, 99, 235, 0.15); border-radius: var(--radius-md);">
+        <div style="display: flex; align-items: flex-start; gap: 12px;">
+          <div style="color: var(--primary); display: flex; align-items: center; margin-top: 2px;">
+            <svg width="20" height="20" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z"/></svg>
+          </div>
+          <div>
+            <div style="font-weight: 600; font-size: 0.9rem; color: var(--text-main); margin-bottom: 4px;">
+              Asset Allocation & Requisition Lifecycle
+            </div>
+            <div style="font-size: 0.8rem; color: var(--text-secondary); line-height: 1.4;">
+              • <strong>Assigned Devices:</strong> When IT registers hardware in company inventory and assigns it to your employee account, it appears under <em>Assigned Devices</em>.<br/>
+              • <strong>Hardware Requests:</strong> When you submit a request via <em>+ Request Hardware / Accessory</em>, it tracks under <em>Hardware Requisitions</em> until approved and issued.
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- KPI Grid -->
+      <div class="kpi-grid">
+        <div class="kpi-card">
+          <div class="kpi-top">
+            <div class="kpi-icon-box" style="background: var(--primary-light); color: var(--primary);">
+              <svg width="20" height="20" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/>
+              </svg>
+            </div>
+            <span class="kpi-trend neutral">Custody</span>
+          </div>
+          <div class="kpi-value">${myAssets.length}</div>
+          <div class="kpi-label">Assigned Devices</div>
+          <div class="kpi-subtitle">In Your Physical Custody</div>
+        </div>
+
+        <div class="kpi-card">
+          <div class="kpi-top">
+            <div class="kpi-icon-box" style="background: var(--success-light); color: var(--success);">
+              <svg width="20" height="20" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>
+              </svg>
+            </div>
+            <span class="kpi-trend neutral">Active</span>
+          </div>
+          <div class="kpi-value">${activeAssigned.length}</div>
+          <div class="kpi-label">Operational Hardware</div>
+          <div class="kpi-subtitle">Active In Daily Use</div>
+        </div>
+
+        <div class="kpi-card">
+          <div class="kpi-top">
+            <div class="kpi-icon-box" style="background: var(--warning-light); color: var(--warning);">
+              <svg width="20" height="20" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/>
+              </svg>
+            </div>
+            <span class="kpi-trend neutral">Requests</span>
+          </div>
+          <div class="kpi-value">${pendingRequests.length}</div>
+          <div class="kpi-label">Pending Requisitions</div>
+          <div class="kpi-subtitle">Awaiting IT Review</div>
+        </div>
+
+        <div class="kpi-card">
+          <div class="kpi-top">
+            <div class="kpi-icon-box" style="background: var(--info-light); color: var(--info);">
+              <svg width="20" height="20" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
+              </svg>
+            </div>
+            <span class="kpi-trend neutral">Approved</span>
+          </div>
+          <div class="kpi-value">${approvedRequests.length}</div>
+          <div class="kpi-label">Approved Requests</div>
+          <div class="kpi-subtitle">Fulfilled / Dispatched</div>
+        </div>
+      </div>
+
+      <!-- Navigation Tabs -->
+      <div class="tabs-nav" style="margin-bottom: 20px;">
+        <button class="tab-btn ${this.employeeActiveTab === 'assigned' ? 'active' : ''}" onclick="AssetsView.switchEmployeeTab('assigned')">
+          Assigned Devices (${myAssets.length})
+        </button>
+        <button class="tab-btn ${this.employeeActiveTab === 'requisitions' ? 'active' : ''}" onclick="AssetsView.switchEmployeeTab('requisitions')">
+          Hardware Requisitions (${myRequests.length})
+        </button>
+      </div>
+
+      <!-- Tab 1: Assigned Devices -->
+      ${this.employeeActiveTab === 'assigned' ? `
+        <div class="card">
+          <div class="card-header">
+            <div class="card-title">Assigned Hardware & Equipment (${assetList.length})</div>
+          </div>
+          <div class="card-body" style="padding: 0;">
+            ${assetList.length === 0 ? `
+              <div class="empty-state" style="border: none; padding: 48px 16px;">
+                <div class="empty-state-icon" style="width: 44px; height: 44px; margin-bottom: 8px; background: var(--primary-light); color: var(--primary);">
+                  <svg width="24" height="24" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/></svg>
+                </div>
+                <div class="empty-state-title">No Assets Assigned</div>
+                <div class="empty-state-desc">You currently do not have any company hardware or devices issued to your custody. When IT assigns an asset to your profile, it will appear here.</div>
+                <button class="btn btn-primary btn-sm" style="margin-top: 14px;" onclick="AssetsView.openRequestHardwareModal()">+ Request Work Equipment</button>
+              </div>
+            ` : `
+              <table class="data-table">
+                <thead>
+                  <tr>
+                    <th>Asset Tag</th>
+                    <th>Device / Item Details</th>
+                    <th>Category</th>
+                    <th>Serial Number</th>
+                    <th>Assigned Date</th>
+                    <th>Condition</th>
+                    <th>Status</th>
+                    <th>Action</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  ${assetList.map(a => `
+                    <tr>
+                      <td><strong style="font-family: monospace; color: var(--primary);">${a.assetTag}</strong></td>
+                      <td>
+                        <div class="font-semibold text-main">${a.name}</div>
+                        <div class="text-muted" style="font-size: 0.75rem;">${a.brand || ''} ${a.model || ''}</div>
+                      </td>
+                      <td><span class="badge badge-neutral">${a.categoryName || a.categoryCode}</span></td>
+                      <td><code style="font-size: 0.75rem;">${a.serialNumber || 'N/A'}</code></td>
+                      <td>${a.assignedDate || 'Active'}</td>
+                      <td><span class="badge ${a.condition === 'EXCELLENT' || a.condition === 'GOOD' ? 'badge-success' : 'badge-warning'}">${a.condition || 'GOOD'}</span></td>
+                      <td>
+                        <span class="badge ${a.status === 'ASSIGNED' ? 'badge-primary' : (a.status === 'MAINTENANCE' ? 'badge-warning' : 'badge-danger')}">
+                          ${a.status}
+                        </span>
+                      </td>
+                      <td>
+                        <button class="btn btn-soft btn-sm" onclick="AssetsView.openReportAssetIssueModal('${a.id}', '${a.assetTag}', '${a.name}')">
+                          Report Issue
+                        </button>
+                      </td>
+                    </tr>
+                  `).join('')}
+                </tbody>
+              </table>
+            `}
+          </div>
+        </div>
+      ` : `
+        <!-- Tab 2: Hardware Requisitions -->
+        <div class="card">
+          <div class="card-header">
+            <div>
+              <div class="card-title">My Hardware Requisitions (${myRequests.length})</div>
+              <div class="card-subtitle">Equipment & accessory requests submitted to IT Asset Management</div>
+            </div>
+            <button class="btn btn-primary btn-sm" onclick="AssetsView.openRequestHardwareModal()">+ New Requisition</button>
+          </div>
+          <div class="card-body" style="padding: 0;">
+            ${myRequests.length === 0 ? `
+              <div class="empty-state" style="border: none; padding: 48px 16px;">
+                <div class="empty-state-icon" style="width: 44px; height: 44px; margin-bottom: 8px; background: var(--primary-light); color: var(--primary);">
+                  <svg width="24" height="24" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
+                </div>
+                <div class="empty-state-title">No Hardware Requests Found</div>
+                <div class="empty-state-desc">You have not submitted any hardware requisitions yet.</div>
+                <button class="btn btn-primary btn-sm" style="margin-top: 14px;" onclick="AssetsView.openRequestHardwareModal()">+ Request Work Equipment</button>
+              </div>
+            ` : `
+              <table class="data-table">
+                <thead>
+                  <tr>
+                    <th>Request Item</th>
+                    <th>Category & Change</th>
+                    <th>Submitted On</th>
+                    <th>Status</th>
+                    <th>Action</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  ${myRequests.map(r => `
+                    <tr>
+                      <td>
+                        <div class="font-semibold text-main">${r.title}</div>
+                        ${r.description ? `<div class="text-muted text-truncate" style="font-size: 0.75rem; max-width: 320px;">${r.description.split('\n')[0]}</div>` : ''}
+                      </td>
+                      <td>
+                        <span class="badge badge-neutral">${r.requestedValue || r.requestTypeName || 'Hardware'}</span>
+                      </td>
+                      <td>${r.createdAt ? new Date(r.createdAt.seconds ? r.createdAt.seconds * 1000 : r.createdAt).toLocaleDateString() : 'Recent'}</td>
+                      <td>
+                        <span class="badge ${r.status === 'COMPLETED' || r.status === 'APPROVED' ? 'badge-success' : (r.status === 'SUBMITTED' || r.status === 'UNDER_REVIEW' ? 'badge-warning' : 'badge-danger')}">
+                          ${r.status === 'SUBMITTED' ? 'Pending IT Review' : (r.status === 'UNDER_REVIEW' ? 'In Review' : r.status)}
+                        </span>
+                      </td>
+                      <td>
+                        <button class="btn btn-soft btn-sm" onclick="RequestsView.openRequestDetailsModal('${r.id}')">
+                          View Details
+                        </button>
+                      </td>
+                    </tr>
+                  `).join('')}
+                </tbody>
+              </table>
+            `}
+          </div>
+        </div>
+      `}
+    `;
+  },
+
+  openRequestHardwareModal() {
+    ModalManager.openModal({
+      id: 'req-hardware-modal',
+      title: 'Request Work Hardware & Accessories',
+      subtitle: 'Submit IT equipment requisition for laptops, monitors, or peripherals',
+      contentHtml: `
+        <div class="form-row">
+          <div class="col-6 form-group">
+            <label class="form-label required">Hardware Category</label>
+            <select id="rh-category" class="form-control">
+              <option value="Company Laptop">Company Laptop / Workstation</option>
+              <option value="External Monitor">External Monitor / Display</option>
+              <option value="Wireless Keyboard & Mouse">Wireless Keyboard & Mouse</option>
+              <option value="Noise-Canceling Headset">Noise-Canceling Headset</option>
+              <option value="USB-C Dock / Adapter">USB-C Dock / Power Adapter</option>
+              <option value="Ergonomic Chair / Desk">Ergonomic Chair & Desk Setup</option>
+              <option value="Mobile Test Device">Mobile Testing Device</option>
+              <option value="Other Hardware">Other Hardware / Accessory</option>
+            </select>
+          </div>
+          <div class="col-6 form-group">
+            <label class="form-label required">Specific Item / Model Requested</label>
+            <input type="text" id="rh-title" class="form-control" placeholder="e.g. Dell XPS 15 (16GB RAM) or 27-inch 4K Monitor" required />
+          </div>
+        </div>
+
+        <div class="form-row">
+          <div class="col-6 form-group">
+            <label class="form-label required">Requisition Purpose</label>
+            <select id="rh-reason-type" class="form-control">
+              <option value="New Setup">New Joinee / Work Setup</option>
+              <option value="Upgrade">Performance Upgrade for Dev / Design</option>
+              <option value="Replacement">Replacement for Damaged / Faulty Device</option>
+              <option value="WFH Essential">Work From Home (WFH) Essential</option>
+            </select>
+          </div>
+          <div class="col-6 form-group">
+            <label class="form-label required">Required By Date</label>
+            <input type="date" id="rh-date" class="form-control" value="${new Date(Date.now() + 5 * 86400000).toISOString().slice(0, 10)}" required />
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label">Delivery / Handover Preference</label>
+          <select id="rh-delivery" class="form-control">
+            <option value="Office Desk Pickup">Office Desk Handover (HQ - Mumbai)</option>
+            <option value="Home Delivery Courier">Courier to Registered Home Address</option>
+          </select>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label required">Business Justification & Specifications</label>
+          <textarea id="rh-justification" class="form-control" rows="3" placeholder="Explain why this equipment is needed for your daily role & deliverables..." required></textarea>
+        </div>
+
+        <div class="card" style="padding: 12px; background: var(--bg-hover); font-size: 0.8rem; color: var(--text-secondary); display: flex; align-items: center; gap: 8px;">
+          <svg width="18" height="18" fill="none" viewBox="0 0 24 24" stroke="currentColor" style="color: var(--primary); flex-shrink: 0;">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+          </svg>
+          <div>Asset requests are reviewed by IT Asset Management. Average turnaround time is 3 business days.</div>
+        </div>
+      `,
+      footerHtml: `
+        <button class="btn btn-secondary btn-sm" data-modal-close>Cancel</button>
+        <button class="btn btn-primary btn-sm" id="btn-submit-hw" onclick="AssetsView.submitHardwareRequisition()">Submit Hardware Request</button>
+      `
+    });
+  },
+
+  async submitHardwareRequisition() {
+    const category = document.getElementById('rh-category')?.value;
+    const title = document.getElementById('rh-title')?.value.trim();
+    const reasonType = document.getElementById('rh-reason-type')?.value;
+    const requiredDate = document.getElementById('rh-date')?.value;
+    const delivery = document.getElementById('rh-delivery')?.value;
+    const justification = document.getElementById('rh-justification')?.value.trim();
+
+    if (!title || !justification) {
+      Toast.warning('Please enter the hardware model and business justification.');
+      return;
+    }
+
+    const btn = document.getElementById('btn-submit-hw');
+    if (btn) {
+      btn.disabled = true;
+      btn.innerText = 'Submitting...';
+    }
+
+    try {
+      const empId = AuthGuard.userProfile?.employeeId || AuthGuard.currentUser?.uid;
+      const empName = AuthGuard.userProfile?.displayName || 'Employee';
+
+      await employeeRequestService.createRequest({
+        employeeId: empId,
+        employeeName: empName,
+        requestType: 'HARDWARE_REQUISITION',
+        title: `Hardware Requisition: ${title} (${category})`,
+        requestedValue: `${category} — ${title} [${reasonType}]`,
+        description: `Item: ${title}\nCategory: ${category}\nPurpose: ${reasonType}\nRequired By: ${requiredDate}\nDelivery: ${delivery}\nJustification: ${justification}`
+      });
+
+      Toast.success('Hardware request dispatched to IT Asset Management!');
+      ModalManager.closeModal();
+      Router.mountView('assets');
+    } catch (e) {
+      Toast.error(e.message || 'Failed to submit hardware request');
+      if (btn) {
+        btn.disabled = false;
+        btn.innerText = 'Submit Hardware Request';
+      }
+    }
+  },
+
+  openReportAssetIssueModal(assetId, assetTag, assetName) {
+    ModalManager.openModal({
+      id: 'report-asset-issue-modal',
+      title: `Report Hardware Issue: ${assetTag}`,
+      subtitle: `${assetName}`,
+      contentHtml: `
+        <div class="form-group">
+          <label class="form-label required">Issue Description</label>
+          <textarea id="asset-issue-desc" class="form-control" rows="3" placeholder="Describe the issue (e.g. Battery draining rapidly, screen flicker, keyboard key not working)..." required></textarea>
+        </div>
+        <div class="form-group">
+          <label class="form-label required">Urgency</label>
+          <select id="asset-issue-urgency" class="form-control">
+            <option value="NORMAL">Normal — Usable with minor issue</option>
+            <option value="HIGH">High — Severely affecting daily work</option>
+            <option value="CRITICAL">Critical — Device completely inoperable</option>
+          </select>
+        </div>
+      `,
+      footerHtml: `
+        <button class="btn btn-secondary btn-sm" data-modal-close>Cancel</button>
+        <button class="btn btn-primary btn-sm" onclick="AssetsView.submitAssetIssue('${assetId}', '${assetTag}', '${assetName}')">Submit Ticket</button>
+      `
+    });
+  },
+
+  async submitAssetIssue(assetId, assetTag, assetName) {
+    const desc = document.getElementById('asset-issue-desc')?.value.trim();
+    const urgency = document.getElementById('asset-issue-urgency')?.value;
+    if (!desc) {
+      Toast.warning('Please describe the issue.');
+      return;
+    }
+
+    try {
+      const empId = AuthGuard.userProfile?.employeeId || AuthGuard.currentUser?.uid;
+      const empName = AuthGuard.userProfile?.displayName || 'Employee';
+
+      await employeeRequestService.createRequest({
+        employeeId: empId,
+        employeeName: empName,
+        requestType: 'GENERAL_HR_QUERY',
+        title: `Hardware Issue: ${assetTag} - ${assetName} [${urgency}]`,
+        description: `Asset: ${assetTag} (${assetName})\nUrgency: ${urgency}\nDetails: ${desc}`
+      });
+
+      Toast.success('Hardware issue reported to IT & HR!');
+      ModalManager.closeModal();
+      Router.navigate('requests');
+    } catch (e) {
+      Toast.error(e.message);
+    }
+  },
+
   async exportAssetsCSV() {
     const assets = await assetService.getAssets({});
     let csv = 'AssetTag,Name,Category,Brand,Model,SerialNumber,Price,Status,Condition,Custodian\n';
@@ -806,3 +1280,4 @@ const AssetsView = {
 };
 
 window.AssetsView = AssetsView;
+

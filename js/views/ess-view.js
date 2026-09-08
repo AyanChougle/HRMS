@@ -4,10 +4,14 @@
  */
 
 const ESSView = {
-  activeTab: 'dashboard', // 'dashboard', 'profile', 'documents', 'requests', 'payslips', 'assets', 'attendance', 'settings'
+  activeTab: 'profile', // Default to clean profile dossier view
   punchTimerInterval: null,
   workSeconds: 0,
   isPunchedIn: false,
+  isOnBreak: false,
+  breakSeconds: 0,
+  breakTimerInterval: null,
+  totalBreakSeconds: 0,
 
   async renderHub() {
     return this.render();
@@ -17,86 +21,226 @@ const ESSView = {
     const employeeId = AuthGuard.userProfile?.employeeId || AuthGuard.currentUser?.uid;
     const userDisplayName = AuthGuard.userProfile?.displayName || AuthGuard.currentUser?.email?.split('@')[0] || 'Employee';
 
-    const [empDoc, leaves, myDocs, myRequests, myAssets, myExpenses, notifications] = await Promise.all([
-      employeeService.getEmployee(employeeId),
-      leaveService.getEmployeeBalances(employeeId),
-      documentService.getDocuments({ employeeId }),
-      employeeRequestService.getRequests({ employeeId }),
-      assetService.getEmployeeAssets(employeeId),
-      expenseService.getExpenses({ employeeId }),
-      notificationService.getNotifications(employeeId)
-    ]);
+    const empDoc = await employeeService.getEmployee(employeeId);
 
     const employee = empDoc || {
       fullName: userDisplayName,
-      employeeCode: 'EMP-001',
-      department: 'Technology',
-      designation: 'Software Engineer',
-      phone: '+91 98765 43210',
-      workEmail: AuthGuard.currentUser?.email,
-      personalEmail: 'personal@diallo.in',
-      dateOfJoining: '2025-01-15',
-      bankName: 'HDFC Bank Ltd',
-      accountNumber: '••••••••4892',
-      ifscCode: 'HDFC0001234',
-      emergencyContact: 'Family (+91 99887 76655)',
-      address: 'Bandra Kurla Complex, Mumbai, Maharashtra 400051'
+      employeeCode: AuthGuard.userProfile?.employeeCode || 'EMP-001',
+      department: AuthGuard.userProfile?.department || 'Technology',
+      designation: AuthGuard.userProfile?.designation || 'Software Engineer',
+      phone: AuthGuard.userProfile?.phone || '+91 98765 43210',
+      workEmail: AuthGuard.currentUser?.email || 'employee@diallo.in',
+      personalEmail: AuthGuard.userProfile?.personalEmail || 'personal@diallo.in',
+      dateOfJoining: AuthGuard.userProfile?.dateOfJoining || '2025-01-15',
+      bankName: AuthGuard.userProfile?.bankName || 'HDFC Bank Ltd',
+      accountNumber: AuthGuard.userProfile?.accountNumber || '••••••••4892',
+      ifscCode: AuthGuard.userProfile?.ifscCode || 'HDFC0001234',
+      panNumber: AuthGuard.userProfile?.panNumber || 'ABCDE1234F',
+      uanNumber: AuthGuard.userProfile?.uanNumber || '101234567890',
+      emergencyContact: AuthGuard.userProfile?.emergencyContact || 'Family (+91 99887 76655)',
+      address: AuthGuard.userProfile?.address || 'Bandra Kurla Complex, Mumbai, Maharashtra 400051',
+      branchName: AuthGuard.userProfile?.branchName || 'HQ - Mumbai'
     };
+
+    const initials = (employee.fullName || userDisplayName).split(' ').map(n => n[0]).join('').substring(0, 2).toUpperCase() || 'EM';
 
     return `
       <div class="page-header animate-fade-in">
         <div class="breadcrumb">
           <a href="#dashboard">Dashboard</a>
           <span class="breadcrumb-separator">/</span>
-          <span class="breadcrumb-current">Employee Self-Service</span>
+          <span class="breadcrumb-current">My Profile</span>
         </div>
         <div class="page-title-row">
           <div>
-            <h1 class="page-title">Employee Self-Service (ESS) Portal</h1>
-            <p class="page-subtitle">Welcome back, <strong>${employee.fullName || employee.name}</strong> • ${employee.employeeCode} (${employee.designation})</p>
+            <h1 class="page-title">My Profile & Personal Dossier</h1>
+            <p class="page-subtitle">Personal records, verified contact details, employment data and statutory accounts</p>
           </div>
           <div class="page-actions">
             <button class="btn btn-secondary btn-sm" onclick="ESSView.openNewRequestModal()">
               <svg width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/>
               </svg>
-              + Submit HR Request
+              <span>+ Submit HR Request</span>
             </button>
-            <button class="btn btn-primary btn-sm" onclick="Forms.openApplyLeaveModal()">
-              Apply Leave
+            <button class="btn btn-primary btn-sm" onclick="ESSView.openEditPersonalModal()">
+              <svg width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"/>
+              </svg>
+              <span>Edit Personal Info</span>
             </button>
           </div>
         </div>
       </div>
 
-      <!-- Navigation Sub-Tabs -->
-      <div class="tabs-nav" style="margin-bottom: 20px; overflow-x: auto; white-space: nowrap;">
-        <button class="tab-btn ${this.activeTab === 'dashboard' ? 'active' : ''}" onclick="ESSView.switchTab('dashboard')">
-          My Dashboard
-        </button>
-        <button class="tab-btn ${this.activeTab === 'profile' ? 'active' : ''}" onclick="ESSView.switchTab('profile')">
-          My Profile
-        </button>
-        <button class="tab-btn ${this.activeTab === 'documents' ? 'active' : ''}" onclick="ESSView.switchTab('documents')">
-          Documents (${myDocs.length})
-        </button>
-        <button class="tab-btn ${this.activeTab === 'requests' ? 'active' : ''}" onclick="ESSView.switchTab('requests')">
-          HR Requests (${myRequests.length})
-        </button>
-        <button class="tab-btn ${this.activeTab === 'payslips' ? 'active' : ''}" onclick="ESSView.switchTab('payslips')">
-          My Payslips
-        </button>
-        <button class="tab-btn ${this.activeTab === 'assets' ? 'active' : ''}" onclick="ESSView.switchTab('assets')">
-          Assigned Assets (${myAssets.length})
-        </button>
-        <button class="tab-btn ${this.activeTab === 'settings' ? 'active' : ''}" onclick="ESSView.switchTab('settings')">
-          Settings
-        </button>
+      <!-- Profile Header Summary Banner -->
+      <div class="card animate-fade-in" style="margin-bottom: 24px; padding: 24px;">
+        <div class="flex items-center justify-between" style="flex-wrap: wrap; gap: 20px;">
+          <div class="flex items-center gap-4">
+            <div style="width: 64px; height: 64px; border-radius: 50%; background: linear-gradient(135deg, var(--primary), var(--primary-dark, #1d4ed8)); color: #fff; font-size: 1.5rem; font-weight: 700; display: flex; align-items: center; justify-content: center; box-shadow: 0 4px 12px rgba(37, 99, 235, 0.25);">
+              ${initials}
+            </div>
+            <div>
+              <div class="flex items-center gap-3">
+                <h2 style="font-size: 1.35rem; font-weight: 700; color: var(--text-main); margin: 0;">${employee.fullName || employee.name}</h2>
+                <span class="badge badge-success"><span class="badge-dot"></span> Active</span>
+              </div>
+              <div class="flex items-center gap-3" style="margin-top: 4px; font-size: 0.88rem; color: var(--text-secondary); flex-wrap: wrap;">
+                <span>${employee.designation || 'Staff'}</span>
+                <span>•</span>
+                <span>${employee.department || 'General'}</span>
+                <span>•</span>
+                <span style="font-family: monospace; font-weight: 600; color: var(--primary);">${employee.employeeCode || 'EMP-001'}</span>
+              </div>
+            </div>
+          </div>
+          <div class="flex items-center gap-2">
+            <span class="badge badge-neutral" style="padding: 6px 12px; font-size: 0.8rem;">
+              <svg width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="currentColor" style="margin-right: 4px; display: inline-block; vertical-align: middle;">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"/>
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"/>
+              </svg>
+              ${employee.branchName || 'HQ - Mumbai'}
+            </span>
+            <span class="badge badge-neutral" style="padding: 6px 12px; font-size: 0.8rem;">
+              <svg width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="currentColor" style="margin-right: 4px; display: inline-block; vertical-align: middle;">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/>
+              </svg>
+              Joined: ${employee.dateOfJoining || employee.joiningDate || 'Jan 2025'}
+            </span>
+          </div>
+        </div>
       </div>
 
-      <!-- Tab Content Area -->
-      <div class="tab-content">
-        ${this.renderTab(employee, leaves, myDocs, myRequests, myAssets, myExpenses, notifications)}
+      <!-- Dossier Information Grid -->
+      <div class="grid" style="grid-template-columns: repeat(auto-fit, minmax(420px, 1fr)); gap: 20px;">
+        <!-- Card 1: Personal & Contact Information -->
+        <div class="card">
+          <div class="card-header">
+            <div>
+              <div class="card-title">Personal & Contact Details</div>
+              <div class="card-subtitle">Direct self-service editable contact records</div>
+            </div>
+            <button class="btn btn-soft btn-sm" onclick="ESSView.openEditPersonalModal()">Edit Info</button>
+          </div>
+          <div class="card-body">
+            <div class="flex flex-col gap-3" style="font-size: 0.85rem;">
+              <div class="flex justify-between items-center py-1" style="border-bottom: 1px solid var(--border-light);">
+                <span class="text-muted">Full Legal Name:</span>
+                <strong class="text-main">${employee.fullName || employee.name}</strong>
+              </div>
+              <div class="flex justify-between items-center py-1" style="border-bottom: 1px solid var(--border-light);">
+                <span class="text-muted">Personal Phone:</span>
+                <strong class="text-main">${employee.phone || '-'}</strong>
+              </div>
+              <div class="flex justify-between items-center py-1" style="border-bottom: 1px solid var(--border-light);">
+                <span class="text-muted">Personal Email:</span>
+                <strong class="text-main">${employee.personalEmail || '-'}</strong>
+              </div>
+              <div class="flex justify-between items-center py-1" style="border-bottom: 1px solid var(--border-light);">
+                <span class="text-muted">Emergency Contact:</span>
+                <strong class="text-main">${employee.emergencyContact || '-'}</strong>
+              </div>
+              <div class="flex justify-between items-start py-1">
+                <span class="text-muted">Residential Address:</span>
+                <strong class="text-main" style="max-width: 260px; text-align: right; line-height: 1.4;">${employee.address || '-'}</strong>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Card 2: Official Employment & Organization -->
+        <div class="card">
+          <div class="card-header">
+            <div>
+              <div class="card-title">Official Employment & Organization</div>
+              <div class="card-subtitle">Managed by HR Operations (Requires Approval to Modify)</div>
+            </div>
+            <button class="btn btn-secondary btn-sm" onclick="ESSView.openNewRequestModal('PROFILE_CHANGE')">Request Correction</button>
+          </div>
+          <div class="card-body">
+            <div class="flex flex-col gap-3" style="font-size: 0.85rem;">
+              <div class="flex justify-between items-center py-1" style="border-bottom: 1px solid var(--border-light);">
+                <span class="text-muted">Employee Code:</span>
+                <strong style="font-family: monospace; color: var(--primary);">${employee.employeeCode || 'EMP-001'}</strong>
+              </div>
+              <div class="flex justify-between items-center py-1" style="border-bottom: 1px solid var(--border-light);">
+                <span class="text-muted">Department:</span>
+                <strong class="text-main">${employee.department || 'Technology'}</strong>
+              </div>
+              <div class="flex justify-between items-center py-1" style="border-bottom: 1px solid var(--border-light);">
+                <span class="text-muted">Designation / Role:</span>
+                <strong class="text-main">${employee.designation || 'Software Engineer'}</strong>
+              </div>
+              <div class="flex justify-between items-center py-1" style="border-bottom: 1px solid var(--border-light);">
+                <span class="text-muted">Work Email:</span>
+                <strong class="text-main">${employee.workEmail || AuthGuard.currentUser?.email || '-'}</strong>
+              </div>
+              <div class="flex justify-between items-center py-1" style="border-bottom: 1px solid var(--border-light);">
+                <span class="text-muted">Branch / Location:</span>
+                <strong class="text-main">${employee.branchName || 'HQ - Mumbai'}</strong>
+              </div>
+              <div class="flex justify-between items-center py-1">
+                <span class="text-muted">Employment Status:</span>
+                <span class="badge badge-success"><span class="badge-dot"></span> ${employee.employmentStatus || 'ACTIVE'}</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Card 3: Bank & Salary Account -->
+        <div class="card">
+          <div class="card-header">
+            <div>
+              <div class="card-title">Bank & Salary Account</div>
+              <div class="card-subtitle">Disbursement details for payroll direct deposit</div>
+            </div>
+            <button class="btn btn-secondary btn-sm" onclick="ESSView.openNewRequestModal('BANK_DETAILS_CHANGE')">Update Bank Info</button>
+          </div>
+          <div class="card-body">
+            <div class="flex flex-col gap-3" style="font-size: 0.85rem;">
+              <div class="flex justify-between items-center py-1" style="border-bottom: 1px solid var(--border-light);">
+                <span class="text-muted">Bank Name:</span>
+                <strong class="text-main">${employee.bankName || 'HDFC Bank Ltd'}</strong>
+              </div>
+              <div class="flex justify-between items-center py-1" style="border-bottom: 1px solid var(--border-light);">
+                <span class="text-muted">Account Number:</span>
+                <strong class="text-main" style="font-family: monospace;">${employee.accountNumber || '••••••••4892'}</strong>
+              </div>
+              <div class="flex justify-between items-center py-1">
+                <span class="text-muted">IFSC Code:</span>
+                <strong class="text-main" style="font-family: monospace;">${employee.ifscCode || 'HDFC0001234'}</strong>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Card 4: Statutory Identity & Compliance -->
+        <div class="card">
+          <div class="card-header">
+            <div>
+              <div class="card-title">Statutory & Tax Identity</div>
+              <div class="card-subtitle">Official tax and retirement accounts</div>
+            </div>
+            <button class="btn btn-secondary btn-sm" onclick="ESSView.openNewRequestModal('PROFILE_CHANGE')">Update Identity</button>
+          </div>
+          <div class="card-body">
+            <div class="flex flex-col gap-3" style="font-size: 0.85rem;">
+              <div class="flex justify-between items-center py-1" style="border-bottom: 1px solid var(--border-light);">
+                <span class="text-muted">Permanent Account Number (PAN):</span>
+                <strong class="text-main" style="font-family: monospace;">${employee.panNumber || 'ABCDE1234F'}</strong>
+              </div>
+              <div class="flex justify-between items-center py-1" style="border-bottom: 1px solid var(--border-light);">
+                <span class="text-muted">Universal Account Number (UAN / PF):</span>
+                <strong class="text-main" style="font-family: monospace;">${employee.uanNumber || '101234567890'}</strong>
+              </div>
+              <div class="flex justify-between items-center py-1">
+                <span class="text-muted">ESIC Insurance Number:</span>
+                <strong class="text-main" style="font-family: monospace;">${employee.esicNumber || '31000123450000001'}</strong>
+              </div>
+            </div>
+          </div>
+        </div>
       </div>
     `;
   },
@@ -142,15 +286,27 @@ const ESSView = {
               <div style="font-size: 0.8rem; color: var(--text-secondary); margin-top: 4px;" id="ess-geo-status">
                 Location: HQ - Mumbai (BKC, Mumbai 400051)
               </div>
+              <div style="font-size: 0.8rem; margin-top: 6px; display: flex; gap: 16px; align-items: center;">
+                <span style="color: var(--text-muted);">Break: <strong style="font-family: monospace; color: ${this.isOnBreak ? 'var(--warning)' : 'var(--text-secondary)'};" id="ess-break-display">00:00</strong></span>
+                <span style="color: var(--text-muted);">Total Break: <strong style="font-family: monospace;" id="ess-total-break-display">${Math.floor(this.totalBreakSeconds / 60)}m</strong></span>
+              </div>
             </div>
 
-            <div class="flex items-center gap-3">
+            <div class="flex items-center gap-3" style="flex-wrap: wrap;">
               <button class="btn btn-primary btn-lg" id="ess-punch-btn" onclick="ESSView.togglePunch()">
                 <svg width="20" height="20" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/>
                 </svg>
                 <span>${this.isPunchedIn ? 'Punch Out' : 'Web Punch In (GPS)'}</span>
               </button>
+              ${this.isPunchedIn ? `
+              <button class="btn ${this.isOnBreak ? 'btn-warning' : 'btn-secondary'} btn-lg" id="ess-break-btn" onclick="ESSView.toggleBreak()">
+                <svg width="20" height="20" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="${this.isOnBreak ? 'M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z M21 12a9 9 0 11-18 0 9 9 0 0118 0z' : 'M10 9v6m4-6v6m7-3a9 9 0 11-18 0 9 9 0 0118 0z'}"/>
+                </svg>
+                <span>${this.isOnBreak ? 'End Break' : 'Start Break'}</span>
+              </button>
+              ` : ''}
               <button class="btn btn-secondary btn-lg" onclick="Forms.openApplyLeaveModal()">
                 <span>Apply Time-Off</span>
               </button>
@@ -170,9 +326,9 @@ const ESSView = {
             </div>
             <span class="kpi-trend neutral">Balance</span>
           </div>
-          <div class="kpi-value">${leaves.AL?.available ?? 18}</div>
-          <div class="kpi-label">Available Paid Leave</div>
-          <div class="kpi-subtitle">Casual Leave: ${leaves.CL?.available ?? 12} Days</div>
+          <div class="kpi-value">${(leaves.PL || leaves.AL)?.available ?? 18}</div>
+          <div class="kpi-label">Privilege Leave (PL)</div>
+          <div class="kpi-subtitle">Casual Leave: ${leaves.CL?.available ?? 12} Days Available</div>
         </div>
 
         <div class="kpi-card" onclick="ESSView.switchTab('payslips')" style="cursor: pointer;">
@@ -789,11 +945,281 @@ const ESSView = {
     Router.mountView('ess');
   },
 
-  // LIVE GPS TIMECARD PUNCH
+  // LIVE GPS TIMECARD & BREAK SYSTEM
+  getTodayDateKey() {
+    const d = new Date();
+    const year = d.getFullYear();
+    const month = String(d.getMonth() + 1).padStart(2, '0');
+    const day = String(d.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
+  },
+
+  initTimecard() {
+    this.loadPersistedState();
+    if (this.isPunchedIn && !this.isShiftCompletedToday) {
+      this.startTimer();
+      if (this.isOnBreak) {
+        this.startBreakTimer();
+      }
+    }
+  },
+
+  loadPersistedState() {
+    try {
+      const today = this.getTodayDateKey();
+      const raw = localStorage.getItem('diallo_timecard_state');
+      if (raw) {
+        const state = JSON.parse(raw);
+        // If state is from a previous day, auto-reset for the new day's 10:00 AM - 07:00 PM shift
+        if (state.shiftDate && state.shiftDate !== today) {
+          this.isPunchedIn = false;
+          this.isOnBreak = false;
+          this.isShiftCompletedToday = false;
+          this.workSeconds = 0;
+          this.totalBreakSeconds = 0;
+          this.breakSeconds = 0;
+          this.punchInTimestamp = null;
+          this.punchOutTimestamp = null;
+          this.breakStartTimestamp = null;
+          this.shiftDate = today;
+          this.savePersistedState();
+          return;
+        }
+
+        this.shiftDate = state.shiftDate || today;
+        this.isShiftCompletedToday = !!state.isShiftCompletedToday;
+        this.isPunchedIn = this.isShiftCompletedToday ? false : !!state.isPunchedIn;
+        this.isOnBreak = this.isPunchedIn ? !!state.isOnBreak : false;
+        this.workSeconds = state.workSeconds || 0;
+        this.totalBreakSeconds = state.totalBreakSeconds || 0;
+        this.breakSeconds = this.isOnBreak ? (state.breakSeconds || 0) : 0;
+        this.punchInTimestamp = state.punchInTimestamp || null;
+        this.punchOutTimestamp = state.punchOutTimestamp || null;
+        this.breakStartTimestamp = this.isOnBreak ? (state.breakStartTimestamp || null) : null;
+
+        // If currently punched in, calculate true elapsed time
+        if (this.isPunchedIn && this.punchInTimestamp && !this.isShiftCompletedToday) {
+          const now = Date.now();
+          const totalElapsed = Math.floor((now - this.punchInTimestamp) / 1000);
+          
+          if (this.isOnBreak && this.breakStartTimestamp) {
+            this.breakSeconds = Math.floor((now - this.breakStartTimestamp) / 1000);
+          }
+          
+          this.workSeconds = Math.max(0, totalElapsed - this.totalBreakSeconds - (this.isOnBreak ? this.breakSeconds : 0));
+        }
+      } else {
+        this.shiftDate = today;
+        this.isShiftCompletedToday = false;
+        this.isPunchedIn = false;
+        this.isOnBreak = false;
+      }
+    } catch (e) {
+      console.warn('Could not load timecard state:', e);
+    }
+  },
+
+  savePersistedState() {
+    try {
+      const today = this.getTodayDateKey();
+      const state = {
+        shiftDate: this.shiftDate || today,
+        isShiftCompletedToday: !!this.isShiftCompletedToday,
+        isPunchedIn: !this.isShiftCompletedToday && !!this.isPunchedIn,
+        isOnBreak: !this.isShiftCompletedToday && this.isPunchedIn && !!this.isOnBreak,
+        workSeconds: this.workSeconds || 0,
+        totalBreakSeconds: this.totalBreakSeconds || 0,
+        breakSeconds: (this.isPunchedIn && this.isOnBreak) ? (this.breakSeconds || 0) : 0,
+        punchInTimestamp: this.punchInTimestamp || null,
+        punchOutTimestamp: this.punchOutTimestamp || null,
+        breakStartTimestamp: this.breakStartTimestamp || null
+      };
+      localStorage.setItem('diallo_timecard_state', JSON.stringify(state));
+    } catch (e) {
+      console.warn('Could not save timecard state:', e);
+    }
+  },
+
+  updateTimecardUI() {
+    const hrs = String(Math.floor(this.workSeconds / 3600)).padStart(2, '0');
+    const mins = String(Math.floor((this.workSeconds % 3600) / 60)).padStart(2, '0');
+    const secs = String(this.workSeconds % 60).padStart(2, '0');
+    const workTimeStr = `${hrs}:${mins}:${secs}`;
+
+    const bMins = String(Math.floor(this.breakSeconds / 60)).padStart(2, '0');
+    const bSecs = String(this.breakSeconds % 60).padStart(2, '0');
+    const breakTimeStr = `${bMins}:${bSecs}`;
+    
+    // Accurate break duration format (e.g. 45s, 2m 15s, 15m)
+    let totalBreakStr = '0m';
+    if (this.totalBreakSeconds > 0) {
+      if (this.totalBreakSeconds < 60) {
+        totalBreakStr = `${this.totalBreakSeconds}s`;
+      } else if (this.totalBreakSeconds < 3600) {
+        const m = Math.floor(this.totalBreakSeconds / 60);
+        const s = this.totalBreakSeconds % 60;
+        totalBreakStr = s > 0 ? `${m}m ${s}s` : `${m}m`;
+      } else {
+        const h = Math.floor(this.totalBreakSeconds / 3600);
+        const m = Math.floor((this.totalBreakSeconds % 3600) / 60);
+        totalBreakStr = `${h}h ${m}m`;
+      }
+    }
+
+    // Work timer displays
+    ['ess-timer-display', 'emp-live-timer'].forEach(id => {
+      const el = document.getElementById(id);
+      if (el) el.textContent = workTimeStr;
+    });
+
+    // Break timer displays
+    ['ess-break-display', 'emp-break-timer'].forEach(id => {
+      const el = document.getElementById(id);
+      if (el) {
+        el.textContent = breakTimeStr;
+        el.style.color = (this.isPunchedIn && this.isOnBreak) ? 'var(--warning)' : 'var(--text-secondary)';
+      }
+    });
+
+    // Total break displays
+    ['ess-total-break-display', 'emp-total-break'].forEach(id => {
+      const el = document.getElementById(id);
+      if (el) el.textContent = totalBreakStr;
+    });
+
+    // Sub-status & Box highlight styling on dashboard
+    const subStatusEl = document.getElementById('emp-timer-substatus');
+    if (subStatusEl) {
+      if (this.isShiftCompletedToday) {
+        subStatusEl.textContent = 'Shift Completed for Today • Next shift tomorrow 10:00 AM – 07:00 PM';
+        subStatusEl.style.color = 'var(--accent-leave)';
+      } else if (!this.isPunchedIn) {
+        subStatusEl.textContent = 'Shift Not Started • General Shift 10:00 AM – 07:00 PM';
+        subStatusEl.style.color = 'var(--text-secondary)';
+      } else if (this.isOnBreak) {
+        subStatusEl.textContent = 'Timer Paused for Break';
+        subStatusEl.style.color = 'var(--warning)';
+      } else {
+        subStatusEl.textContent = 'Active On Duty';
+        subStatusEl.style.color = 'var(--primary)';
+      }
+    }
+
+    const breakBadgeEl = document.getElementById('emp-break-badge-status');
+    if (breakBadgeEl) {
+      breakBadgeEl.className = (this.isPunchedIn && this.isOnBreak) ? 'badge badge-warning' : 'badge badge-neutral';
+      breakBadgeEl.textContent = this.isShiftCompletedToday ? 'Shift Ended' : ((this.isPunchedIn && this.isOnBreak) ? 'Break in progress' : 'Break Idle');
+    }
+
+    const headerBreakBadge = document.getElementById('emp-header-break-badge');
+    if (headerBreakBadge) {
+      headerBreakBadge.innerHTML = (this.isPunchedIn && this.isOnBreak) ? '<span class="badge badge-warning" style="font-size: 0.75rem; animation: pulse 2s infinite; display: inline-flex; align-items: center; gap: 4px;"><svg width="12" height="12" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/></svg> Break Active</span>' : '';
+    }
+
+    const breakBox = document.getElementById('emp-break-highlight-box');
+    if (breakBox) {
+      breakBox.style.background = (this.isPunchedIn && this.isOnBreak) ? 'rgba(245, 158, 11, 0.12)' : 'var(--bg-hover)';
+      breakBox.style.borderColor = (this.isPunchedIn && this.isOnBreak) ? 'var(--warning)' : 'rgba(245, 158, 11, 0.3)';
+    }
+
+    const heroCard = document.getElementById('emp-timecard-hero-card');
+    if (heroCard) {
+      heroCard.style.borderColor = (this.isPunchedIn && this.isOnBreak) ? 'var(--warning)' : 'var(--primary-light)';
+      heroCard.style.boxShadow = (this.isPunchedIn && this.isOnBreak) ? '0 0 16px rgba(245, 158, 11, 0.15)' : 'var(--shadow-sm)';
+    }
+
+    // Shift status badges
+    ['ess-live-badge', 'emp-shift-badge'].forEach(id => {
+      const el = document.getElementById(id);
+      if (el) {
+        if (this.isShiftCompletedToday) {
+          el.className = 'badge badge-success';
+          el.innerHTML = '<span class="badge-dot"></span> Shift Completed (Today)';
+        } else if (!this.isPunchedIn) {
+          el.className = 'badge badge-neutral';
+          el.innerHTML = '<span class="badge-dot"></span> Checked OUT';
+        } else if (this.isOnBreak) {
+          el.className = 'badge badge-warning';
+          el.innerHTML = '<span class="badge-dot"></span> On Break (Paused)';
+        } else {
+          el.className = 'badge badge-success';
+          el.innerHTML = '<span class="badge-dot"></span> On Shift (Active)';
+        }
+      }
+    });
+
+    // Punch buttons
+    ['ess-punch-btn', 'emp-punch-btn'].forEach(id => {
+      const el = document.getElementById(id);
+      if (el) {
+        if (this.isShiftCompletedToday) {
+          el.className = 'btn btn-secondary btn-lg disabled';
+          el.setAttribute('disabled', 'true');
+          el.style.opacity = '0.75';
+          el.style.cursor = 'not-allowed';
+          el.innerHTML = `
+            <svg width="20" height="20" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>
+            </svg>
+            <span>Shift Completed Today</span>
+          `;
+        } else if (this.isPunchedIn) {
+          el.className = 'btn btn-primary btn-lg';
+          el.removeAttribute('disabled');
+          el.style.opacity = '1';
+          el.style.cursor = 'pointer';
+          el.innerHTML = `
+            <svg width="20" height="20" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/>
+            </svg>
+            <span>Punch Out</span>
+          `;
+        } else {
+          el.className = 'btn btn-primary btn-lg';
+          el.removeAttribute('disabled');
+          el.style.opacity = '1';
+          el.style.cursor = 'pointer';
+          el.innerHTML = `
+            <svg width="20" height="20" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/>
+            </svg>
+            <span>Web Punch In (GPS)</span>
+          `;
+        }
+      }
+    });
+
+    // Break buttons
+    ['ess-break-btn', 'emp-break-btn'].forEach(id => {
+      const el = document.getElementById(id);
+      if (el) {
+        if (!this.isPunchedIn || this.isShiftCompletedToday) {
+          el.style.display = 'none';
+        } else {
+          el.style.display = 'inline-flex';
+          el.className = this.isOnBreak ? 'btn btn-warning btn-lg' : 'btn btn-secondary btn-lg';
+          el.innerHTML = `
+            <svg width="20" height="20" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="${this.isOnBreak ? 'M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z M21 12a9 9 0 11-18 0 9 9 0 0118 0z' : 'M10 9v6m4-6v6m7-3a9 9 0 11-18 0 9 9 0 0118 0z'}"/>
+            </svg>
+            <span>${this.isOnBreak ? 'End Break' : 'Start Break'}</span>
+          `;
+        }
+      }
+    });
+  },
+
   async togglePunch() {
-    const btn = document.getElementById('ess-punch-btn');
-    const badge = document.getElementById('ess-live-badge');
-    const geoStatus = document.getElementById('ess-geo-status');
+    const today = this.getTodayDateKey();
+    if (this.shiftDate !== today) {
+      this.shiftDate = today;
+      this.isShiftCompletedToday = false;
+    }
+
+    if (this.isShiftCompletedToday) {
+      Toast.warning('Shift completed for today! Your check-out has already been recorded. Next shift opens tomorrow at 10:00 AM.');
+      return;
+    }
 
     if (!this.isPunchedIn) {
       let locationText = 'HQ - Mumbai (BKC, Mumbai 400051)';
@@ -801,6 +1227,7 @@ const ESSView = {
         navigator.geolocation.getCurrentPosition(
           (pos) => {
             locationText = `GPS: ${pos.coords.latitude.toFixed(4)}, ${pos.coords.longitude.toFixed(4)}`;
+            const geoStatus = document.getElementById('ess-geo-status');
             if (geoStatus) geoStatus.textContent = `Location: ${locationText}`;
           },
           () => {}
@@ -808,13 +1235,19 @@ const ESSView = {
       }
 
       this.isPunchedIn = true;
-      if (btn) btn.innerHTML = `<span>Punch Out</span>`;
-      if (badge) {
-        badge.className = 'badge badge-success';
-        badge.innerHTML = `<span class="badge-dot"></span> On Shift (Active)`;
-      }
+      this.isOnBreak = false;
+      this.isShiftCompletedToday = false;
+      this.shiftDate = today;
+      this.workSeconds = 0;
+      this.totalBreakSeconds = 0;
+      this.breakSeconds = 0;
+      this.punchInTimestamp = Date.now();
+      this.punchOutTimestamp = null;
+      this.breakStartTimestamp = null;
 
       this.startTimer();
+      this.savePersistedState();
+      this.updateTimecardUI();
 
       try {
         await attendanceService.recordPunch({
@@ -824,28 +1257,41 @@ const ESSView = {
           status: 'On Time',
           location: locationText
         });
-        Toast.success('Checked IN successfully with GPS coordinates!');
+        Toast.success('Checked IN successfully! Daily shift started (10:00 AM – 07:00 PM).');
       } catch (e) {
         console.warn('Punch record warning:', e);
       }
     } else {
-      this.isPunchedIn = false;
-      this.stopTimer();
-
-      if (btn) btn.innerHTML = `<span>Web Punch In (GPS)</span>`;
-      if (badge) {
-        badge.className = 'badge badge-neutral';
-        badge.innerHTML = `<span class="badge-dot"></span> Checked Out`;
+      // Auto-end break if on break
+      let endedBreakSec = 0;
+      if (this.isOnBreak) {
+        this.isOnBreak = false;
+        endedBreakSec = this.breakSeconds || 0;
+        this.totalBreakSeconds += endedBreakSec;
+        this.breakSeconds = 0;
+        this.stopBreakTimer();
       }
+
+      const finalTotalBreakSec = this.totalBreakSeconds;
+      this.isPunchedIn = false;
+      this.isShiftCompletedToday = true;
+      this.punchOutTimestamp = Date.now();
+      this.breakStartTimestamp = null;
+      this.stopTimer();
+      this.savePersistedState();
+      this.updateTimecardUI();
 
       try {
         await attendanceService.recordPunch({
           name: AuthGuard.userProfile?.displayName || 'Employee',
           punchType: 'Out',
           device: 'ESS Web GPS Terminal',
-          status: 'On Time'
+          status: 'Shift Completed',
+          totalBreakSeconds: finalTotalBreakSec,
+          breakDuration: endedBreakSec,
+          totalWorkSeconds: this.workSeconds
         });
-        Toast.info('Checked OUT successfully!');
+        Toast.info('Checked OUT successfully! Today’s shift completed. Check-in locked until tomorrow 10:00 AM.');
       } catch (e) {
         console.warn('Punch record warning:', e);
       }
@@ -854,19 +1300,91 @@ const ESSView = {
 
   startTimer() {
     clearInterval(this.punchTimerInterval);
-    const display = document.getElementById('ess-timer-display');
     this.punchTimerInterval = setInterval(() => {
-      this.workSeconds++;
-      const hrs = String(Math.floor(this.workSeconds / 3600)).padStart(2, '0');
-      const mins = String(Math.floor((this.workSeconds % 3600) / 60)).padStart(2, '0');
-      const secs = String(this.workSeconds % 60).padStart(2, '0');
-      if (display) display.textContent = `${hrs}:${mins}:${secs}`;
+      if (!this.isOnBreak && !this.isShiftCompletedToday) {
+        this.workSeconds++;
+        this.updateTimecardUI();
+      }
     }, 1000);
   },
 
   stopTimer() {
     clearInterval(this.punchTimerInterval);
+  },
+
+  // BREAK PUNCH IN/OUT
+  async toggleBreak() {
+    if (!this.isPunchedIn || this.isShiftCompletedToday) return;
+
+    if (!this.isOnBreak) {
+      // Start break
+      this.isOnBreak = true;
+      this.breakSeconds = 0;
+      this.breakStartTimestamp = Date.now();
+
+      this.startBreakTimer();
+      this.savePersistedState();
+      this.updateTimecardUI();
+
+      try {
+        await attendanceService.recordPunch({
+          name: AuthGuard.userProfile?.displayName || 'Employee',
+          punchType: 'Break In',
+          device: 'ESS Web GPS Terminal',
+          status: 'On Break'
+        });
+        Toast.info('Break started — work timer paused.');
+      } catch (e) {
+        console.warn('Break punch warning:', e);
+      }
+    } else {
+      // End break
+      const endedBreakSec = this.breakSeconds || 0;
+      this.isOnBreak = false;
+      this.totalBreakSeconds += endedBreakSec;
+      this.breakSeconds = 0;
+      this.breakStartTimestamp = null;
+
+      this.stopBreakTimer();
+      this.savePersistedState();
+      this.updateTimecardUI();
+
+      try {
+        await attendanceService.recordPunch({
+          name: AuthGuard.userProfile?.displayName || 'Employee',
+          punchType: 'Break Out',
+          device: 'ESS Web GPS Terminal',
+          status: 'Back from Break',
+          breakDuration: endedBreakSec,
+          totalBreakSeconds: this.totalBreakSeconds
+        });
+        Toast.success('Break ended — work timer resumed!');
+      } catch (e) {
+        console.warn('Break punch warning:', e);
+      }
+    }
+  },
+
+  startBreakTimer() {
+    clearInterval(this.breakTimerInterval);
+    this.breakTimerInterval = setInterval(() => {
+      if (this.isOnBreak && !this.isShiftCompletedToday) {
+        this.breakSeconds++;
+        this.updateTimecardUI();
+      }
+    }, 1000);
+  },
+
+  stopBreakTimer() {
+    clearInterval(this.breakTimerInterval);
+    this.breakSeconds = 0;
+    this.updateTimecardUI();
   }
 };
+
+// Initialize timecard state on load
+if (typeof ESSView !== 'undefined' && ESSView.initTimecard) {
+  ESSView.initTimecard();
+}
 
 window.ESSView = ESSView;

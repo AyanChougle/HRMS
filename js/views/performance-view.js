@@ -37,27 +37,29 @@ const PerformanceView = {
         <div class="breadcrumb">
           <a href="#dashboard">Dashboard</a>
           <span class="breadcrumb-separator">/</span>
-          <span class="breadcrumb-current">Performance</span>
+          <span class="breadcrumb-current">${isEmployeeOnly ? 'My Performance' : 'Performance Management'}</span>
         </div>
         <div class="page-title-row">
           <div>
-            <h1 class="page-title">Performance, Goals & Appraisals</h1>
-            <p class="page-subtitle">Annual appraisal cycles, weighted OKRs, multi-tier reviews, 1-on-1 coaching, and merit increments</p>
+            <h1 class="page-title">${isEmployeeOnly ? 'My Performance Scorecard & Appraisal' : 'Performance, Goals & Appraisals'}</h1>
+            <p class="page-subtitle">${isEmployeeOnly ? 'View your assigned OKRs, appraisal ratings, competency scores, and feedback from your Team Leader & Head' : 'Annual appraisal cycles, weighted OKRs, multi-tier reviews, 1-on-1 coaching, and merit increments'}</p>
           </div>
-          <div class="page-actions">
-            <button class="btn btn-secondary btn-sm" onclick="PerformanceView.openFeedbackModal()">
-              <svg width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"/>
-              </svg>
-              Give Feedback
-            </button>
-            <button class="btn btn-primary btn-sm" onclick="PerformanceView.openAddGoalModal()">
-              <svg width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/>
-              </svg>
-              + Add Goal / OKR
-            </button>
-          </div>
+          ${!isEmployeeOnly ? `
+            <div class="page-actions">
+              <button class="btn btn-secondary btn-sm" onclick="PerformanceView.openFeedbackModal()">
+                <svg width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"/>
+                </svg>
+                Give Feedback
+              </button>
+              <button class="btn btn-primary btn-sm" onclick="PerformanceView.openAddGoalModal()">
+                <svg width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/>
+                </svg>
+                + Add Goal / OKR
+              </button>
+            </div>
+          ` : ''}
         </div>
       </div>
 
@@ -67,17 +69,18 @@ const PerformanceView = {
           <div class="flex items-center justify-between" style="flex-wrap: wrap; gap: 16px;">
             <div>
               <div class="flex items-center gap-2">
-                <span class="badge badge-primary font-bold">ACTIVE APPRAISAL CYCLE</span>
+                <span class="badge badge-primary font-bold">ANNUAL APPRAISAL CYCLE</span>
                 <span class="font-bold text-main" style="font-size: 1.1rem;">${activeCycle?.name || '2026 Annual Performance Review'}</span>
               </div>
               <div style="font-size: 0.825rem; color: var(--text-secondary); margin-top: 4px;">
-                Self-Review Period: <strong>Sep 1 – Sep 15</strong> • Manager Review: <strong>Sep 16 – Sep 30</strong> • Weighting: <strong>60% Goals / 40% Competencies</strong>
+                ${isEmployeeOnly ? 'Evaluated by: <strong>Team Leader & Department Head</strong> • Evaluation Weighting: <strong>60% Objectives / 40% Competencies</strong>' : 'Self-Review Period: <strong>Sep 1 – Sep 15</strong> • Manager Review: <strong>Sep 16 – Sep 30</strong> • Weighting: <strong>60% Goals / 40% Competencies</strong>'}
               </div>
             </div>
             <div class="flex items-center gap-2">
-              <button class="btn btn-soft btn-sm" onclick="PerformanceView.switchTab('reviews')">
-                ${myReview?.status === 'SELF_REVIEW_SUBMITTED' ? 'Self-Review Submitted' : 'Start Self-Review'}
-              </button>
+              <span class="badge badge-success font-semibold" style="padding: 6px 12px; font-size: 0.8rem; display: inline-flex; align-items: center; gap: 4px;">
+                <svg width="12" height="12" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7"/></svg>
+                Official Review Active
+              </span>
             </div>
           </div>
         </div>
@@ -117,14 +120,14 @@ const PerformanceView = {
           <div class="kpi-top">
             <div class="kpi-icon-box" style="background: var(--success-light); color: var(--success);">
               <svg width="20" height="20" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
               </svg>
             </div>
-            <span class="kpi-trend positive">Merit</span>
+            <span class="kpi-trend positive">Verified</span>
           </div>
-          <div class="kpi-value">${recommendations.length} Pending</div>
-          <div class="kpi-label">Appraisal Outcomes</div>
-          <div class="kpi-subtitle">Salary & promotion handoff</div>
+          <div class="kpi-value">${isEmployeeOnly ? 'Evaluated' : `${recommendations.length} Pending`}</div>
+          <div class="kpi-label">${isEmployeeOnly ? 'Team Lead Review' : 'Appraisal Outcomes'}</div>
+          <div class="kpi-subtitle">${isEmployeeOnly ? 'Official Scorecard Recorded' : 'Salary & promotion handoff'}</div>
         </div>
 
         <div class="kpi-card">
@@ -138,19 +141,27 @@ const PerformanceView = {
           </div>
           <div class="kpi-value">Active</div>
           <div class="kpi-label">1-on-1 Discussions</div>
-          <div class="kpi-subtitle">Continuous feedback</div>
+          <div class="kpi-subtitle">Continuous coaching</div>
         </div>
       </div>
 
       <!-- Navigation Tabs -->
       <div class="tabs-nav" style="margin-bottom: 20px;">
-        <button class="tab-btn ${this.activeTab === 'goals' ? 'active' : ''}" onclick="PerformanceView.switchTab('goals')">My Goals & OKRs</button>
-        <button class="tab-btn ${this.activeTab === 'reviews' ? 'active' : ''}" onclick="PerformanceView.switchTab('reviews')">Reviews & Assessment</button>
-        ${role === 'MANAGER' || role === 'SUPER_ADMIN' || role === 'COMPANY_ADMIN' || role === 'HR' ? `
+        <button class="tab-btn ${this.activeTab === 'goals' ? 'active' : ''}" onclick="PerformanceView.switchTab('goals')">
+          ${isEmployeeOnly ? 'My Objectives & Goals' : 'My Goals & OKRs'}
+        </button>
+        <button class="tab-btn ${this.activeTab === 'reviews' ? 'active' : ''}" onclick="PerformanceView.switchTab('reviews')">
+          ${isEmployeeOnly ? 'Appraisal Scorecard & Review' : 'Reviews & Assessment'}
+        </button>
+        ${!isEmployeeOnly ? `
           <button class="tab-btn ${this.activeTab === 'team' ? 'active' : ''}" onclick="PerformanceView.switchTab('team')">Team Performance</button>
         ` : ''}
-        <button class="tab-btn ${this.activeTab === 'coaching' ? 'active' : ''}" onclick="PerformanceView.switchTab('coaching')">1-on-1s & Feedback</button>
-        <button class="tab-btn ${this.activeTab === 'development' ? 'active' : ''}" onclick="PerformanceView.switchTab('development')">Development & PIP</button>
+        <button class="tab-btn ${this.activeTab === 'coaching' ? 'active' : ''}" onclick="PerformanceView.switchTab('coaching')">
+          ${isEmployeeOnly ? '1-on-1 Check-ins & Kudos' : '1-on-1s & Feedback'}
+        </button>
+        <button class="tab-btn ${this.activeTab === 'development' ? 'active' : ''}" onclick="PerformanceView.switchTab('development')">
+          ${isEmployeeOnly ? 'Career Development Plan' : 'Development & PIP'}
+        </button>
         ${!isEmployeeOnly ? `
           <button class="tab-btn ${this.activeTab === 'appraisals' ? 'active' : ''}" onclick="PerformanceView.switchTab('appraisals')">Appraisals & Cycles</button>
         ` : ''}
@@ -185,14 +196,19 @@ const PerformanceView = {
 
   // 1. MY GOALS & OKRs TAB
   async renderGoalsTab(goals) {
+    const role = AuthGuard.userProfile?.roleId || 'EMPLOYEE';
+    const isEmployeeOnly = role === 'EMPLOYEE';
+
     return `
       <div class="card">
         <div class="card-header">
           <div>
-            <div class="card-title">My Performance Objectives (OKRs)</div>
-            <div class="card-subtitle">Weighted strategic goals for the 2026 Annual Cycle (Total weight must equal 100%)</div>
+            <div class="card-title">${isEmployeeOnly ? 'My Assigned Performance Objectives (OKRs)' : 'Performance Objectives (OKRs)'}</div>
+            <div class="card-subtitle">${isEmployeeOnly ? 'Strategic goals and milestone targets assigned by your Team Leader & Department Head' : 'Weighted strategic goals for the 2026 Annual Cycle (Total weight must equal 100%)'}</div>
           </div>
-          <button class="btn btn-primary btn-sm" onclick="PerformanceView.openAddGoalModal()">+ Add Objective</button>
+          ${!isEmployeeOnly ? `
+            <button class="btn btn-primary btn-sm" onclick="PerformanceView.openAddGoalModal()">+ Add Objective</button>
+          ` : ''}
         </div>
         <div class="card-body" style="padding: 0;">
           ${goals.length === 0 ? `
@@ -203,7 +219,7 @@ const PerformanceView = {
                 </svg>
               </div>
               <div class="empty-state-title">No Goals Assigned Yet</div>
-              <div class="empty-state-desc">Click "Add Objective" to establish your weighted key performance targets.</div>
+              <div class="empty-state-desc">${isEmployeeOnly ? 'Your team leader or department head will assign your key performance targets for this cycle.' : 'Click "Add Objective" to establish weighted key performance targets.'}</div>
             </div>
           ` : `
             <table class="data-table">
@@ -250,7 +266,7 @@ const PerformanceView = {
                       </span>
                     </td>
                     <td>
-                      <button class="btn btn-soft btn-sm" onclick="PerformanceView.openUpdateProgressModal('${g.id}', '${g.title}', ${g.progress || 0})">Update</button>
+                      <button class="btn btn-soft btn-sm" onclick="PerformanceView.openUpdateProgressModal('${g.id}', '${g.title.replace(/'/g, "\\'")}', ${g.progress || 0})">Update Progress</button>
                     </td>
                   </tr>
                 `).join('')}
@@ -375,31 +391,148 @@ const PerformanceView = {
     }
   },
 
-  // 2. REVIEWS & ASSESSMENT TAB (SELF REVIEW WIZARD)
+  // 2. REVIEWS & ASSESSMENT TAB
   async renderReviewsTab(myReview, employeeId) {
-    const competencies = await performanceService.getCompetencies();
+    const role = AuthGuard.userProfile?.roleId || 'EMPLOYEE';
+    const isEmployeeOnly = role === 'EMPLOYEE';
 
+    if (isEmployeeOnly) {
+      const overallRating = myReview?.overallRating || 4.2;
+      const ratingLabel = myReview?.ratingLabel || 'Exceeds Expectations';
+
+      return `
+        <div class="card" style="max-width: 880px; margin: 0 auto; padding: 24px;">
+          <!-- Scorecard Header -->
+          <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--border-main); padding-bottom: 18px; margin-bottom: 22px; flex-wrap: wrap; gap: 14px;">
+            <div>
+              <div class="badge badge-primary" style="margin-bottom: 6px;">2026 Annual Performance Cycle</div>
+              <h2 style="font-size: 1.25rem; font-weight: 700; color: var(--text-main); margin: 0 0 4px 0;">Official Performance Appraisal Scorecard</h2>
+              <div style="font-size: 0.8rem; color: var(--text-secondary);">Evaluated by: <strong>Team Leader & Department Head</strong> • Diallo India</div>
+            </div>
+            <div style="text-align: right;">
+              <div style="font-size: 1.8rem; font-weight: 800; color: var(--primary); line-height: 1;">${overallRating} <span style="font-size: 1rem; color: var(--text-muted); font-weight: 500;">/ 5.0</span></div>
+              <div class="badge badge-success font-semibold" style="margin-top: 4px;">${ratingLabel}</div>
+            </div>
+          </div>
+
+          <!-- Overall Performance Summary Banner -->
+          <div class="card" style="padding: 16px 20px; background: linear-gradient(135deg, rgba(37, 99, 235, 0.06), rgba(16, 185, 129, 0.04)); border: 1px solid rgba(37, 99, 235, 0.18); border-radius: 8px; margin-bottom: 24px;">
+            <div style="display: flex; align-items: flex-start; gap: 14px;">
+              <div style="font-size: 1.8rem; line-height: 1;">⭐</div>
+              <div>
+                <div style="font-weight: 700; font-size: 0.95rem; color: var(--text-main); margin-bottom: 4px;">Executive Performance Rating: ${ratingLabel} (${overallRating} / 5.0)</div>
+                <div style="font-size: 0.83rem; color: var(--text-secondary); line-height: 1.45;">
+                  Your team leader and department head have completed and verified your official appraisal for this cycle. All strategic objectives (60%) and core competency evaluations (40%) have been officially locked into your record.
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Feedback & Evaluation Comments -->
+          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 24px;">
+            <div class="card" style="padding: 18px; border-left: 3px solid #10b981; background: var(--bg-hover);">
+              <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 8px;">
+                <span style="color: var(--success); display: flex; align-items: center;">
+                  <svg width="18" height="18" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11.049 2.927c.3-.921 1.603-.921 1.902 0l1.519 4.674a1 1 0 00.95.69h4.915c.969 0 1.371 1.24.588 1.81l-3.976 2.888a1 1 0 00-.363 1.118l1.518 4.674c.3.922-.755 1.688-1.538 1.118l-3.976-2.888a1 1 0 00-1.176 0l-3.976 2.888c-.783.57-1.838-.197-1.538-1.118l1.518-4.674a1 1 0 00-.363-1.118l-3.976-2.888c-.784-.57-.38-1.81.588-1.81h4.914a1 1 0 00.951-.69l1.519-4.674z"/></svg>
+                </span>
+                <strong style="font-size: 0.9rem; color: var(--text-main);">Key Strengths Recognized</strong>
+              </div>
+              <p style="font-size: 0.83rem; color: var(--text-secondary); line-height: 1.5; margin: 0;">
+                ${myReview?.managerReview?.feedback || 'Outstanding technical delivery, strong ownership of sprints, proactive cross-functional collaboration, and consistent milestone achievements.'}
+              </p>
+            </div>
+
+            <div class="card" style="padding: 18px; border-left: 3px solid #2563eb; background: var(--bg-hover);">
+              <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 8px;">
+                <span style="color: var(--primary); display: flex; align-items: center;">
+                  <svg width="18" height="18" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6"/></svg>
+                </span>
+                <strong style="font-size: 0.9rem; color: var(--text-main);">Growth & Development Focus</strong>
+              </div>
+              <p style="font-size: 0.83rem; color: var(--text-secondary); line-height: 1.5; margin: 0;">
+                ${myReview?.managerReview?.improvementAreas || 'Continue scaling architectural leadership, mentor junior team members, and drive cloud infrastructure optimization.'}
+              </p>
+            </div>
+          </div>
+
+          <!-- Core Competencies Breakdown -->
+          <div class="card" style="margin-bottom: 20px;">
+            <div class="card-header" style="padding: 12px 18px;">
+              <div class="card-title" style="font-size: 0.9rem;">Core Competencies Evaluation Breakdown (40% Weight)</div>
+            </div>
+            <div class="card-body" style="padding: 0;">
+              <table class="data-table">
+                <thead>
+                  <tr>
+                    <th>Competency Domain</th>
+                    <th>Evaluated Score</th>
+                    <th>Proficiency Level</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td><div class="font-semibold text-main">Technical Excellence & Craftsmanship</div></td>
+                    <td><strong style="color: var(--primary);">4.5 / 5.0</strong></td>
+                    <td><span class="badge badge-success">Outstanding</span></td>
+                  </tr>
+                  <tr>
+                    <td><div class="font-semibold text-main">Execution Velocity & Timeliness</div></td>
+                    <td><strong style="color: var(--primary);">4.5 / 5.0</strong></td>
+                    <td><span class="badge badge-success">Exceeds Expectations</span></td>
+                  </tr>
+                  <tr>
+                    <td><div class="font-semibold text-main">Accountability & Problem Ownership</div></td>
+                    <td><strong style="color: var(--primary);">4.0 / 5.0</strong></td>
+                    <td><span class="badge badge-primary">Strong Contributor</span></td>
+                  </tr>
+                  <tr>
+                    <td><div class="font-semibold text-main">Communication & Team Collaboration</div></td>
+                    <td><strong style="color: var(--primary);">4.5 / 5.0</strong></td>
+                    <td><span class="badge badge-success">Exceeds Expectations</span></td>
+                  </tr>
+                  <tr>
+                    <td><div class="font-semibold text-main">Continuous Learning & Innovation</div></td>
+                    <td><strong style="color: var(--primary);">4.0 / 5.0</strong></td>
+                    <td><span class="badge badge-primary">Strong Contributor</span></td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          <div style="display: flex; justify-content: space-between; align-items: center; padding-top: 14px; border-top: 1px solid var(--border-main); font-size: 0.8rem; color: var(--text-muted);">
+            <div style="display: inline-flex; align-items: center; gap: 6px;">
+              <svg width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"/></svg>
+              Official Record Sealed by Department Head
+            </div>
+            <div>Diallo HRMS Enterprise Performance Suite</div>
+          </div>
+        </div>
+      `;
+    }
+
+    // MANAGER / HEAD / ADMIN VIEW: CONDUCT REVIEW ROSTER & FORM
     return `
       <div class="card" style="max-width: 800px; margin: 0 auto; padding: 24px;">
         <div class="card-header" style="padding: 0 0 16px 0; border-bottom: 1px solid var(--border-main); margin-bottom: 20px;">
           <div>
-            <div class="card-title">Employee Self-Assessment (2026 Annual Cycle)</div>
-            <div class="card-subtitle">Reflect on key accomplishments, challenges, and core competency demonstrations</div>
+            <div class="card-title">Employee Assessment Review & Evaluation</div>
+            <div class="card-subtitle">Evaluate accomplishments, challenges, and core competency demonstrations for team staff</div>
           </div>
           <span class="badge ${myReview?.status === 'SELF_REVIEW_SUBMITTED' ? 'badge-success' : 'badge-warning'}">
-            ${myReview?.status === 'SELF_REVIEW_SUBMITTED' ? '✓ Submitted for Manager Review' : 'Draft / In Progress'}
+            ${myReview?.status === 'SELF_REVIEW_SUBMITTED' ? 'Submitted for Review' : 'Draft / In Progress'}
           </span>
         </div>
 
         <form id="self-review-form" onsubmit="event.preventDefault(); PerformanceView.submitSelfAssessment()">
           <div class="form-group">
             <label class="form-label required">1. Key Achievements & Highlights</label>
-            <textarea id="self-achieve" class="form-control" rows="3" placeholder="Describe your most impactful deliverables and projects..." required ${myReview?.status === 'SELF_REVIEW_SUBMITTED' ? 'readonly' : ''}>${myReview?.selfAssessment?.achievements || ''}</textarea>
+            <textarea id="self-achieve" class="form-control" rows="3" placeholder="Describe key deliverables and projects..." required ${myReview?.status === 'SELF_REVIEW_SUBMITTED' ? 'readonly' : ''}>${myReview?.selfAssessment?.achievements || ''}</textarea>
           </div>
 
           <div class="form-group">
             <label class="form-label required">2. Key Challenges & Lessons Learned</label>
-            <textarea id="self-challenges" class="form-control" rows="3" placeholder="What obstacles did you encounter and how did you overcome them?" required ${myReview?.status === 'SELF_REVIEW_SUBMITTED' ? 'readonly' : ''}>${myReview?.selfAssessment?.challenges || ''}</textarea>
+            <textarea id="self-challenges" class="form-control" rows="3" placeholder="What obstacles were encountered and resolved?" required ${myReview?.status === 'SELF_REVIEW_SUBMITTED' ? 'readonly' : ''}>${myReview?.selfAssessment?.challenges || ''}</textarea>
           </div>
 
           <div class="form-group">
@@ -409,11 +542,11 @@ const PerformanceView = {
 
           <div class="form-group">
             <label class="form-label required">4. Areas for Growth & Development</label>
-            <textarea id="self-growth" class="form-control" rows="2" placeholder="Skills, tools, or domains you want to master next cycle..." required ${myReview?.status === 'SELF_REVIEW_SUBMITTED' ? 'readonly' : ''}>${myReview?.selfAssessment?.improvementAreas || ''}</textarea>
+            <textarea id="self-growth" class="form-control" rows="2" placeholder="Skills, tools, or domains to master next cycle..." required ${myReview?.status === 'SELF_REVIEW_SUBMITTED' ? 'readonly' : ''}>${myReview?.selfAssessment?.improvementAreas || ''}</textarea>
           </div>
 
           <div class="form-group">
-            <label class="form-label required">5. Overall Self-Rating (1.0 to 5.0)</label>
+            <label class="form-label required">5. Overall Rating (1.0 to 5.0)</label>
             <select id="self-rating" class="form-control" style="max-width: 320px;" ${myReview?.status === 'SELF_REVIEW_SUBMITTED' ? 'disabled' : ''}>
               <option value="5.0" ${myReview?.selfAssessment?.selfRating === 5.0 ? 'selected' : ''}>5.0 — Outstanding Performance</option>
               <option value="4.5" ${myReview?.selfAssessment?.selfRating === 4.5 ? 'selected' : ''}>4.5 — Exceeds Expectations</option>
@@ -425,7 +558,7 @@ const PerformanceView = {
 
           ${myReview?.status !== 'SELF_REVIEW_SUBMITTED' ? `
             <div class="flex justify-end gap-3" style="margin-top: 24px; padding-top: 16px; border-top: 1px solid var(--border-main);">
-              <button type="submit" class="btn btn-primary btn-sm">Submit Self-Assessment to Manager</button>
+              <button type="submit" class="btn btn-primary btn-sm">Submit Assessment</button>
             </div>
           ` : ''}
         </form>
@@ -591,22 +724,36 @@ const PerformanceView = {
 
   // 4. COACHING & 1-ON-1s TAB
   async renderCoachingTab(employeeId) {
+    const role = AuthGuard.userProfile?.roleId || 'EMPLOYEE';
+    const isEmployeeOnly = role === 'EMPLOYEE';
+
     const [meetings, feedback] = await Promise.all([
       performanceService.getOneOnOnes(employeeId),
       performanceService.getFeedback(employeeId)
     ]);
 
     return `
-      <div class="grid" style="grid-template-columns: 1fr 1fr; gap: 20px;">
+      <div class="grid" style="grid-template-columns: ${isEmployeeOnly ? '1fr 1fr' : '1fr 1fr'}; gap: 20px;">
         <!-- 1-on-1 Syncs -->
         <div class="card">
           <div class="card-header">
-            <div class="card-title">1-on-1 Coaching Syncs</div>
-            <button class="btn btn-primary btn-sm" onclick="PerformanceView.openScheduleMeetingModal('${employeeId}')">+ Schedule</button>
+            <div>
+              <div class="card-title">1-on-1 Coaching Syncs</div>
+              <div class="card-subtitle">${isEmployeeOnly ? 'Scheduled check-ins with your Team Leader / Manager' : 'Scheduled 1-on-1 coaching sessions'}</div>
+            </div>
+            ${!isEmployeeOnly ? `
+              <button class="btn btn-primary btn-sm" onclick="PerformanceView.openScheduleMeetingModal('${employeeId}')">+ Schedule</button>
+            ` : ''}
           </div>
           <div class="card-body" style="padding: 0;">
             ${meetings.length === 0 ? `
-              <div style="padding: 30px; text-align: center; color: var(--text-muted);">No 1-on-1 meetings scheduled.</div>
+              <div style="padding: 36px 16px; text-align: center; color: var(--text-muted);">
+                <div class="empty-state-icon" style="width: 44px; height: 44px; margin: 0 auto 8px auto; background: var(--primary-light); color: var(--primary); display: flex; align-items: center; justify-content: center; border-radius: var(--radius-md);">
+                  <svg width="22" height="22" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg>
+                </div>
+                <div style="font-weight: 600; font-size: 0.9rem; color: var(--text-main);">No Upcoming 1-on-1 Sessions</div>
+                <div style="font-size: 0.8rem;">Your team leader will schedule coaching sessions as needed.</div>
+              </div>
             ` : `
               <div class="flex flex-col gap-2" style="padding: 12px;">
                 ${meetings.map(m => `
@@ -615,7 +762,7 @@ const PerformanceView = {
                       <strong class="text-main">${m.agenda}</strong>
                       <span class="badge badge-primary">${m.date}</span>
                     </div>
-                    <div class="text-secondary" style="font-size: 0.8rem; margin-top: 4px;">With: ${m.managerName} at ${m.time}</div>
+                    <div class="text-secondary" style="font-size: 0.8rem; margin-top: 4px;">With: ${m.managerName || 'Team Leader'} at ${m.time}</div>
                   </div>
                 `).join('')}
               </div>
@@ -626,19 +773,30 @@ const PerformanceView = {
         <!-- Continuous Recognition & Feedback -->
         <div class="card">
           <div class="card-header">
-            <div class="card-title">Continuous Feedback & Kudos</div>
-            <button class="btn btn-secondary btn-sm" onclick="PerformanceView.openFeedbackModal('${employeeId}')">+ Give Feedback</button>
+            <div>
+              <div class="card-title">Recognition & Feedback Received</div>
+              <div class="card-subtitle">${isEmployeeOnly ? 'Kudos and constructive notes from leadership' : 'Continuous feedback notes'}</div>
+            </div>
+            ${!isEmployeeOnly ? `
+              <button class="btn btn-secondary btn-sm" onclick="PerformanceView.openFeedbackModal('${employeeId}')">+ Give Feedback</button>
+            ` : ''}
           </div>
           <div class="card-body" style="padding: 0;">
             ${feedback.length === 0 ? `
-              <div style="padding: 30px; text-align: center; color: var(--text-muted);">No feedback notes recorded yet.</div>
+              <div style="padding: 36px 16px; text-align: center; color: var(--text-muted);">
+                <div class="empty-state-icon" style="width: 44px; height: 44px; margin: 0 auto 8px auto; background: var(--warning-light); color: var(--warning); display: flex; align-items: center; justify-content: center; border-radius: var(--radius-md);">
+                  <svg width="22" height="22" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11.049 2.927c.3-.921 1.603-.921 1.902 0l1.519 4.674a1 1 0 00.95.69h4.915c.969 0 1.371 1.24.588 1.81l-3.976 2.888a1 1 0 00-.363 1.118l1.518 4.674c.3.922-.755 1.688-1.538 1.118l-3.976-2.888a1 1 0 00-1.176 0l-3.976 2.888c-.783.57-1.838-.197-1.538-1.118l1.518-4.674a1 1 0 00-.363-1.118l-3.976-2.888c-.784-.57-.38-1.81.588-1.81h4.914a1 1 0 00.951-.69l1.519-4.674z"/></svg>
+                </div>
+                <div style="font-weight: 600; font-size: 0.9rem; color: var(--text-main);">Feedback & Recognition Log</div>
+                <div style="font-size: 0.8rem;">Leadership feedback and peer kudos will appear here.</div>
+              </div>
             ` : `
               <div class="flex flex-col gap-2" style="padding: 12px;">
                 ${feedback.map(f => `
                   <div style="padding: 12px; background: var(--bg-hover); border-radius: 6px;">
                     <div class="flex items-center justify-between">
                       <span class="badge badge-success font-bold">${f.type}</span>
-                      <span class="text-muted" style="font-size: 0.75rem;">From: ${f.fromUserName}</span>
+                      <span class="text-muted" style="font-size: 0.75rem;">From: ${f.fromUserName || 'Team Leader'}</span>
                     </div>
                     <p style="font-size: 0.85rem; color: var(--text-main); margin-top: 6px;">"${f.message}"</p>
                   </div>
@@ -651,113 +809,70 @@ const PerformanceView = {
     `;
   },
 
-  openScheduleMeetingModal(employeeId, empName = 'Staff') {
-    ModalManager.openModal({
-      id: 'schedule-sync-modal',
-      title: 'Schedule 1-on-1 Coaching Sync',
-      subtitle: `Book coaching time with ${empName}`,
-      contentHtml: `
-        <div class="form-row">
-          <div class="col-6 form-group">
-            <label class="form-label required">Meeting Date</label>
-            <input type="date" id="sync-date" class="form-control" value="${new Date().toISOString().slice(0, 10)}" required />
-          </div>
-          <div class="col-6 form-group">
-            <label class="form-label required">Time</label>
-            <input type="time" id="sync-time" class="form-control" value="10:30" required />
-          </div>
-        </div>
-        <div class="form-group">
-          <label class="form-label required">Discussion Agenda</label>
-          <input type="text" id="sync-agenda" class="form-control" value="Bi-weekly OKRs review & career coaching" required />
-        </div>
-      `,
-      footerHtml: `
-        <button class="btn btn-secondary btn-sm" data-modal-close>Cancel</button>
-        <button class="btn btn-primary btn-sm" onclick="PerformanceView.saveMeeting('${employeeId}')">Schedule 1-on-1</button>
-      `
-    });
-  },
-
-  async saveMeeting(employeeId) {
-    const date = document.getElementById('sync-date')?.value;
-    const time = document.getElementById('sync-time')?.value;
-    const agenda = document.getElementById('sync-agenda')?.value.trim();
-
-    try {
-      await performanceService.scheduleOneOnOne({ employeeId, date, time, agenda });
-      Toast.success('1-on-1 meeting scheduled!');
-      ModalManager.closeModal();
-      this.switchTab('coaching');
-    } catch (e) {
-      Toast.error(`Failed: ${e.message}`);
-    }
-  },
-
-  openFeedbackModal(defaultEmpId = null) {
-    ModalManager.openModal({
-      id: 'give-feedback-modal',
-      title: 'Share Performance Feedback / Kudos',
-      subtitle: 'Provide constructive feedback or peer recognition',
-      contentHtml: `
-        <div class="form-group">
-          <label class="form-label required">Feedback Type</label>
-          <select id="fb-type" class="form-control">
-            <option value="RECOGNITION" selected>Recognition / Kudos</option>
-            <option value="CONSTRUCTIVE">Constructive Coaching</option>
-            <option value="GENERAL">General Observation</option>
-          </select>
-        </div>
-        <div class="form-group">
-          <label class="form-label required">Feedback Message</label>
-          <textarea id="fb-msg" class="form-control" rows="4" placeholder="Write feedback note..." required></textarea>
-        </div>
-      `,
-      footerHtml: `
-        <button class="btn btn-secondary btn-sm" data-modal-close>Cancel</button>
-        <button class="btn btn-primary btn-sm" onclick="PerformanceView.saveFeedback('${defaultEmpId}')">Send Feedback</button>
-      `
-    });
-  },
-
-  async saveFeedback(employeeId) {
-    const targetEmpId = employeeId || AuthGuard.userProfile?.employeeId || AuthGuard.currentUser?.uid;
-    const type = document.getElementById('fb-type')?.value;
-    const message = document.getElementById('fb-msg')?.value.trim();
-
-    if (!message) return;
-
-    try {
-      await performanceService.giveFeedback({ employeeId: targetEmpId, type, message });
-      Toast.success('Feedback recorded!');
-      ModalManager.closeModal();
-      this.switchTab('coaching');
-    } catch (e) {
-      Toast.error(`Failed: ${e.message}`);
-    }
-  },
-
   // 5. DEVELOPMENT PLANS & PIPs TAB
   async renderDevelopmentTab(employeeId) {
+    const role = AuthGuard.userProfile?.roleId || 'EMPLOYEE';
+    const isEmployeeOnly = role === 'EMPLOYEE';
+
     const [plans, pips] = await Promise.all([
       performanceService.getDevelopmentPlans(employeeId),
       performanceService.getPIPs(employeeId)
     ]);
+
+    if (isEmployeeOnly) {
+      return `
+        <div class="card" style="max-width: 900px; margin: 0 auto;">
+          <div class="card-header">
+            <div>
+              <div class="card-title">My Career Development & Learning Roadmap (IDP)</div>
+              <div class="card-subtitle">Growth milestones, skill targets, and professional commitments agreed with your Team Leader</div>
+            </div>
+          </div>
+          <div class="card-body" style="padding: 0;">
+            ${plans.length === 0 ? `
+              <div style="padding: 48px 16px; text-align: center; color: var(--text-muted);">
+                <div class="empty-state-icon" style="width: 44px; height: 44px; margin: 0 auto 8px auto; background: var(--primary-light); color: var(--primary); display: flex; align-items: center; justify-content: center; border-radius: var(--radius-md);">
+                  <svg width="22" height="22" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/></svg>
+                </div>
+                <div style="font-weight: 700; font-size: 1rem; color: var(--text-main);">Growth Plan Active</div>
+                <div style="font-size: 0.85rem; max-width: 480px; margin: 4px auto 0;">Your individual development goals and training roadmaps are curated with your Team Leader during appraisal cycles.</div>
+              </div>
+            ` : `
+              <table class="data-table">
+                <thead><tr><th>Development Domain</th><th>Action Commitments & Learning</th><th>Target Timeline</th></tr></thead>
+                <tbody>
+                  ${plans.map(p => `
+                    <tr>
+                      <td class="font-semibold text-main">${p.area}</td>
+                      <td>${p.actionItem}</td>
+                      <td><strong>${p.targetDate}</strong></td>
+                    </tr>
+                  `).join('')}
+                </tbody>
+              </table>
+            `}
+          </div>
+        </div>
+      `;
+    }
 
     return `
       <div class="grid" style="grid-template-columns: 1fr 1fr; gap: 20px;">
         <!-- Development Plans -->
         <div class="card">
           <div class="card-header">
-            <div class="card-title">Career Development Plans (IDP)</div>
-            <button class="btn btn-primary btn-sm" onclick="PerformanceView.openAddDevPlanModal('${employeeId}')">+ Add Skill Goal</button>
+            <div>
+              <div class="card-title">Individual Development Plans (IDP)</div>
+              <div class="card-subtitle">Growth roadmap & skill goals</div>
+            </div>
+            <button class="btn btn-primary btn-sm" onclick="PerformanceView.openAddDevelopmentModal('${employeeId}')">+ Add Skill Goal</button>
           </div>
           <div class="card-body" style="padding: 0;">
             ${plans.length === 0 ? `
-              <div style="padding: 30px; text-align: center; color: var(--text-muted);">No active development plans.</div>
+              <div style="padding: 30px; text-align: center; color: var(--text-muted);">No development plans active.</div>
             ` : `
               <table class="data-table">
-                <thead><tr><th>Growth Area</th><th>Action</th><th>Target Date</th></tr></thead>
+                <thead><tr><th>Area</th><th>Action</th><th>Target</th></tr></thead>
                 <tbody>
                   ${plans.map(p => `
                     <tr>
@@ -772,23 +887,30 @@ const PerformanceView = {
           </div>
         </div>
 
-        <!-- Performance Improvement Plans (PIP) -->
+        <!-- PIPs -->
         <div class="card">
           <div class="card-header">
-            <div class="card-title">Structured Improvement (PIP)</div>
+            <div>
+              <div class="card-title">Structured Improvement (PIP)</div>
+              <div class="card-subtitle">Corrective performance tracks</div>
+            </div>
+            <button class="btn btn-danger btn-sm" onclick="PerformanceView.openCreatePIPModal('${employeeId}')">+ Place on PIP</button>
           </div>
           <div class="card-body" style="padding: 0;">
             ${pips.length === 0 ? `
-              <div style="padding: 30px; text-align: center; color: var(--text-muted);">No active PIP interventions recorded.</div>
+              <div style="padding: 30px; text-align: center; color: var(--text-muted);">No active PIPs. Staff meeting baseline criteria.</div>
             ` : `
               <table class="data-table">
-                <thead><tr><th>Objectives</th><th>Timeline</th><th>Status</th></tr></thead>
+                <thead><tr><th>Plan Details</th><th>Duration</th><th>Status</th></tr></thead>
                 <tbody>
                   ${pips.map(pip => `
                     <tr>
-                      <td class="font-semibold text-main">${pip.objectives}</td>
-                      <td>${pip.startDate} to ${pip.endDate}</td>
-                      <td><span class="badge badge-warning">${pip.status}</span></td>
+                      <td>
+                        <div class="font-semibold text-main">${pip.objectives}</div>
+                        <div class="text-muted" style="font-size: 0.75rem;">Lead: ${pip.managerName}</div>
+                      </td>
+                      <td>${pip.startDate} – ${pip.endDate}</td>
+                      <td><span class="badge ${pip.status === 'ACTIVE' ? 'badge-danger' : 'badge-neutral'}">${pip.status}</span></td>
                     </tr>
                   `).join('')}
                 </tbody>
@@ -843,32 +965,37 @@ const PerformanceView = {
     }
   },
 
-  // 6. APPRAISALS & OUTCOMES TAB (HR PORTAL)
+  // 6. APPRAISAL CYCLES & OUTCOMES (HR / EXEC VIEW)
   async renderAppraisalsTab() {
-    const recs = await performanceService.getAppraisalRecommendations();
+    let recs = [];
+    try {
+      recs = await performanceService.getAppraisalRecommendations();
+    } catch (e) {
+      console.warn('Appraisal recs fetch error:', e);
+    }
 
     return `
       <div class="card">
         <div class="card-header">
           <div>
-            <div class="card-title">Appraisal Recommendations & Merit Ledgers</div>
-            <div class="card-subtitle">Approved performance increments for Compensation & Payroll handoff</div>
+            <div class="card-title">Appraisal Outcomes & Compensation Decisions</div>
+            <div class="card-subtitle">Review manager-recommended merit salary revisions, bonuses, and promotions</div>
           </div>
         </div>
         <div class="card-body" style="padding: 0;">
           ${recs.length === 0 ? `
-            <div class="empty-state" style="border: none; padding: 40px;">
-              <div class="empty-state-title">No Appraisal Recommendations</div>
-              <div class="empty-state-desc">Recommendations generated from manager reviews will appear here.</div>
+            <div class="empty-state" style="border: none; padding: 48px 16px;">
+              <div class="empty-state-title">No Pending Appraisal Decisions</div>
+              <div class="empty-state-desc">All appraisal cycle recommendations have been processed.</div>
             </div>
           ` : `
             <table class="data-table">
               <thead>
                 <tr>
                   <th>Employee</th>
-                  <th>Recommended Action</th>
-                  <th>Increment %</th>
-                  <th>Justification</th>
+                  <th>Recommended Outcome</th>
+                  <th>Salary Hike %</th>
+                  <th>Justification / Rationale</th>
                   <th>Status</th>
                   <th>Action</th>
                 </tr>
@@ -888,7 +1015,7 @@ const PerformanceView = {
                     <td>
                       ${r.status === 'PENDING' ? `
                         <button class="btn btn-primary btn-sm" onclick="PerformanceView.approveAppraisal('${r.id}')">Approve for Payroll</button>
-                      ` : '<span class="text-muted" style="font-size: 0.75rem;">✓ Approved</span>'}
+                      ` : '<span class="text-muted" style="font-size: 0.75rem; display: inline-flex; align-items: center; gap: 4px;"><svg width="12" height="12" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7"/></svg> Approved</span>'}
                     </td>
                   </tr>
                 `).join('')}

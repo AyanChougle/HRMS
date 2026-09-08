@@ -76,6 +76,14 @@ const employeeService = {
     }
   },
 
+  // Get all employees (alias for getEmployees)
+  async getAllEmployees(companyId = null) {
+    if (companyId) {
+      return this.getEmployees({ companyId });
+    }
+    return this.getEmployees();
+  },
+
   // Get single employee by ID or employeeCode
   async getEmployee(employeeId) {
     try {

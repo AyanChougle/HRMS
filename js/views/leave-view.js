@@ -4,13 +4,22 @@
  */
 
 const LeaveView = {
-  activeTab: 'all',
+  activeTab: 'my',
   currentFilters: {},
 
   async renderHub() {
     const role = AuthGuard.userProfile?.roleId || 'EMPLOYEE';
     const employeeId = AuthGuard.userProfile?.employeeId || AuthGuard.currentUser?.uid;
     const isEmployeeOnly = role === 'EMPLOYEE';
+    const canManageSchemes = role === 'SUPER_ADMIN' || role === 'COMPANY_ADMIN' || role === 'HR';
+    const canViewTeam = role === 'MANAGER' || role === 'TEAM_LEAD' || role === 'SUPER_ADMIN' || role === 'COMPANY_ADMIN' || role === 'HR';
+
+    if (!canManageSchemes && this.activeTab === 'types') {
+      this.activeTab = 'my';
+    }
+    if (isEmployeeOnly && (this.activeTab === 'all' || this.activeTab === 'team')) {
+      this.activeTab = 'my';
+    }
 
     let summary = { onLeaveToday: 0, pendingRequests: 0, approvedCount: 0, rejectedCount: 0 };
     let balances = {};
@@ -111,12 +120,14 @@ const LeaveView = {
         ${!isEmployeeOnly ? `
           <button class="tab-btn ${this.activeTab === 'all' ? 'active' : ''}" onclick="LeaveView.switchTab('all')">All Leave Requests</button>
         ` : ''}
-        <button class="tab-btn ${this.activeTab === 'my' || isEmployeeOnly ? 'active' : ''}" onclick="LeaveView.switchTab('my')">My Leave & Balances</button>
-        ${role === 'MANAGER' || role === 'SUPER_ADMIN' || role === 'COMPANY_ADMIN' || role === 'HR' ? `
+        <button class="tab-btn ${this.activeTab === 'my' ? 'active' : ''}" onclick="LeaveView.switchTab('my')">My Leave & Balances</button>
+        ${canViewTeam ? `
           <button class="tab-btn ${this.activeTab === 'team' ? 'active' : ''}" onclick="LeaveView.switchTab('team')">Team Leave Roster</button>
         ` : ''}
         <button class="tab-btn ${this.activeTab === 'calendar' ? 'active' : ''}" onclick="LeaveView.switchTab('calendar')">Leave Calendar</button>
-        <button class="tab-btn ${this.activeTab === 'types' ? 'active' : ''}" onclick="LeaveView.switchTab('types')">Leave Schemes & Policy</button>
+        ${canManageSchemes ? `
+          <button class="tab-btn ${this.activeTab === 'types' ? 'active' : ''}" onclick="LeaveView.switchTab('types')">Leave Schemes & Policy</button>
+        ` : ''}
       </div>
 
       <!-- TAB CONTENT VIEWPORT -->
@@ -127,7 +138,7 @@ const LeaveView = {
   },
 
   async renderTabContent(balances, role) {
-    if (this.activeTab === 'my' || role === 'EMPLOYEE') {
+    if (this.activeTab === 'my') {
       return await this.renderMyLeaveTab(balances);
     } else if (this.activeTab === 'team') {
       return await this.renderTeamLeaveTab();
@@ -141,7 +152,7 @@ const LeaveView = {
 
   switchTab(tabName) {
     this.activeTab = tabName;
-    Router.navigate('leave');
+    Router.mountView('leave');
   },
 
   setFilterStatus(status) {
@@ -284,8 +295,8 @@ const LeaveView = {
     const upcoming = requests.filter(r => r.status === 'APPROVED' && r.startDate >= todayStr);
 
     return `
-      <!-- 4 Quota Balance Cards -->
-      <div class="kpi-grid" style="margin-bottom: 24px;">
+      <!-- 2 Quota Balance Cards (PL & CL) -->
+      <div class="kpi-grid" style="margin-bottom: 24px; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));">
         <div class="kpi-card">
           <div class="kpi-top">
             <div class="kpi-icon-box" style="background: var(--primary-light); color: var(--primary);">
@@ -293,11 +304,11 @@ const LeaveView = {
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/>
               </svg>
             </div>
-            <span class="kpi-trend positive">Paid PL</span>
+            <span class="kpi-trend positive">Paid Earned Leave</span>
           </div>
-          <div class="kpi-value">${balances.AL?.available ?? 18} Days</div>
-          <div class="kpi-label">Annual Leave (PL)</div>
-          <div class="kpi-subtitle">${balances.AL?.used || 0} Days Used of ${balances.AL?.allocated || 18}</div>
+          <div class="kpi-value">${(balances.PL || balances.AL)?.available ?? 18} Days</div>
+          <div class="kpi-label">Privilege Leave (PL)</div>
+          <div class="kpi-subtitle">${(balances.PL || balances.AL)?.used || 0} Days Used of ${(balances.PL || balances.AL)?.allocated || 18} • ${(balances.PL || balances.AL)?.pending || 0} Pending</div>
         </div>
 
         <div class="kpi-card">
@@ -311,35 +322,7 @@ const LeaveView = {
           </div>
           <div class="kpi-value">${balances.CL?.available ?? 12} Days</div>
           <div class="kpi-label">Casual Leave (CL)</div>
-          <div class="kpi-subtitle">${balances.CL?.used || 0} Days Used of ${balances.CL?.allocated || 12}</div>
-        </div>
-
-        <div class="kpi-card">
-          <div class="kpi-top">
-            <div class="kpi-icon-box" style="background: var(--success-light); color: var(--success);">
-              <svg width="20" height="20" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
-              </svg>
-            </div>
-            <span class="kpi-trend positive">Medical</span>
-          </div>
-          <div class="kpi-value">${balances.SL?.available ?? 12} Days</div>
-          <div class="kpi-label">Sick Leave (SL)</div>
-          <div class="kpi-subtitle">${balances.SL?.used || 0} Days Used of ${balances.SL?.allocated || 12}</div>
-        </div>
-
-        <div class="kpi-card">
-          <div class="kpi-top">
-            <div class="kpi-icon-box" style="background: var(--warning-light); color: var(--warning);">
-              <svg width="20" height="20" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
-              </svg>
-            </div>
-            <span class="kpi-trend neutral">Maternity/Paternity</span>
-          </div>
-          <div class="kpi-value">${balances.ML?.available ?? 182} Days</div>
-          <div class="kpi-label">Statutory Parental</div>
-          <div class="kpi-subtitle">26 Weeks Benefit Act</div>
+          <div class="kpi-subtitle">${balances.CL?.used || 0} Days Used of ${balances.CL?.allocated || 12} • ${balances.CL?.pending || 0} Pending</div>
         </div>
       </div>
 
@@ -543,6 +526,8 @@ const LeaveView = {
 
   // 5. LEAVE TYPES MASTER TAB
   async renderLeaveTypesTab() {
+    const role = AuthGuard.userProfile?.roleId || 'EMPLOYEE';
+    const canManage = role === 'SUPER_ADMIN' || role === 'COMPANY_ADMIN' || role === 'HR';
     const types = await leavePolicyService.getLeaveTypes();
 
     return `
@@ -552,7 +537,7 @@ const LeaveView = {
             <div class="card-title">Statutory Leave Schemes & Quotas</div>
             <div class="card-subtitle">Indian Labour Law compliant leave types and carry forward policies</div>
           </div>
-          <button class="btn btn-primary btn-sm" onclick="LeaveView.openAddLeaveTypeModal()">+ Add Scheme</button>
+          ${canManage ? `<button class="btn btn-primary btn-sm" onclick="LeaveView.openAddLeaveTypeModal()">+ Add Scheme</button>` : ''}
         </div>
         <div class="card-body" style="padding: 0;">
           <table class="data-table">
@@ -568,17 +553,27 @@ const LeaveView = {
               </tr>
             </thead>
             <tbody>
-              ${types.map(t => `
-                <tr>
-                  <td class="font-bold" style="font-family: monospace; color: var(--primary);">${t.code}</td>
-                  <td class="font-semibold text-main">${t.name}</td>
-                  <td><strong>${t.annualQuota} Days / yr</strong></td>
-                  <td><span class="badge ${t.paid ? 'badge-success' : 'badge-neutral'}">${t.paid ? 'Paid' : 'Unpaid'}</span></td>
-                  <td>${t.carryForwardAllowed ? `Max ${t.maxCarryForward} Days` : 'No'}</td>
-                  <td>${t.allowHalfDay ? 'Allowed' : 'Full Day Only'}</td>
-                  <td><span class="badge badge-success">ACTIVE</span></td>
-                </tr>
-              `).join('')}
+              ${types.map(t => {
+                const code = t.code || t.typeCode || t.leaveTypeCode || 'LS';
+                const name = t.name || t.typeName || t.leaveTypeName || 'Leave Scheme';
+                const quota = t.annualQuota !== undefined ? t.annualQuota : (t.daysPerYear !== undefined ? t.daysPerYear : (t.quota !== undefined ? t.quota : 12));
+                const isPaid = t.paid !== undefined ? t.paid : (t.isPaid !== undefined ? t.isPaid : true);
+                const carryFwd = t.carryForwardAllowed ? `Max ${t.maxCarryForward || 10} Days` : 'No';
+                const halfDay = t.allowHalfDay !== false ? 'Allowed' : 'Full Day Only';
+                const status = t.status || 'ACTIVE';
+
+                return `
+                  <tr>
+                    <td class="font-bold" style="font-family: monospace; color: var(--primary);">${code}</td>
+                    <td class="font-semibold text-main">${name}</td>
+                    <td><strong>${quota} Days / yr</strong></td>
+                    <td><span class="badge ${isPaid ? 'badge-success' : 'badge-neutral'}">${isPaid ? 'Paid' : 'Unpaid'}</span></td>
+                    <td>${carryFwd}</td>
+                    <td>${halfDay}</td>
+                    <td><span class="badge badge-success">${status}</span></td>
+                  </tr>
+                `;
+              }).join('')}
             </tbody>
           </table>
         </div>
@@ -587,6 +582,13 @@ const LeaveView = {
   },
 
   openAddLeaveTypeModal() {
+    const role = AuthGuard.userProfile?.roleId || 'EMPLOYEE';
+    const canManage = role === 'SUPER_ADMIN' || role === 'COMPANY_ADMIN' || role === 'HR';
+    if (!canManage) {
+      Toast.error('Access Denied: Only HR and Organization Administrators can create leave schemes.');
+      return;
+    }
+
     ModalManager.openModal({
       id: 'add-leave-type-modal',
       title: 'Create Leave Scheme',
@@ -624,6 +626,13 @@ const LeaveView = {
   },
 
   async saveLeaveType() {
+    const role = AuthGuard.userProfile?.roleId || 'EMPLOYEE';
+    const canManage = role === 'SUPER_ADMIN' || role === 'COMPANY_ADMIN' || role === 'HR';
+    if (!canManage) {
+      Toast.error('Access Denied: Only HR and Organization Administrators can create leave schemes.');
+      return;
+    }
+
     const name = document.getElementById('lt-name')?.value.trim();
     const code = document.getElementById('lt-code')?.value.trim().toUpperCase();
     const annualQuota = Number(document.getElementById('lt-quota')?.value) || 5;
