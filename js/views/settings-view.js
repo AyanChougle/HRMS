@@ -485,7 +485,7 @@ const SettingsView = {
           </div>
         </div>
 
-        <div class="module-nav-card" onclick="SettingsView.openEmailModal()">
+        <div class="module-nav-card" onclick="Router.navigate('email-config')">
           <div>
             <div class="module-nav-card-top">
               <div class="module-card-icon-box" style="background: rgba(37, 99, 235, 0.1); color: var(--primary);">
@@ -493,15 +493,15 @@ const SettingsView = {
                   <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/>
                 </svg>
               </div>
-              <span class="module-card-badge">SMTP / API</span>
+              <span class="module-card-badge">SMTP / Relay</span>
             </div>
             <div class="module-card-content">
-              <h3>Email Configuration</h3>
-              <p>SMTP server host, TLS/SSL encryption ports, custom sender domains and email delivery logs.</p>
+              <h3>Email & SMTP Gateway</h3>
+              <p>SMTP server host, TLS/SSL encryption ports, custom sender domains, test sandbox, and delivery relay.</p>
             </div>
           </div>
           <div class="module-card-footer">
-            <span>Server setup</span>
+            <span>Configure gateway</span>
             <svg class="arrow-icon" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg>
           </div>
         </div>
@@ -527,7 +527,7 @@ const SettingsView = {
           </div>
         </div>
 
-        <div class="module-nav-card" onclick="SettingsView.showSub('Payslip Templates')">
+        <div class="module-nav-card" onclick="Router.navigate('payslip-templates')" style="border: 1.5px solid var(--accent-leave);">
           <div>
             <div class="module-nav-card-top">
               <div class="module-card-icon-box" style="background: rgba(22, 163, 74, 0.1); color: var(--accent-leave);">
@@ -535,16 +535,16 @@ const SettingsView = {
                   <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
                 </svg>
               </div>
-              <span class="module-card-badge">PDF Layouts</span>
+              <span class="module-card-badge" style="background: rgba(22, 163, 74, 0.15); color: #15803d;">Multi-Design Gallery</span>
             </div>
             <div class="module-card-content">
-              <h3>Payslip Templates</h3>
-              <p>Custom company header logo, color theme accents, signature seals and bilingual labels.</p>
+              <h3>Payslip Templates & Designer</h3>
+              <p>Classic, Canvas Standard, Compliance, Modern Executive, and Minimalist templates with live preview, print & customizer.</p>
             </div>
           </div>
           <div class="module-card-footer">
-            <span>Template builder</span>
-            <svg class="arrow-icon" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg>
+            <span style="color: #15803d; font-weight: 600;">Open template designer</span>
+            <svg class="arrow-icon" fill="none" viewBox="0 0 24 24" stroke="currentColor" style="color: #15803d;"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg>
           </div>
         </div>
       </div>

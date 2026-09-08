@@ -254,6 +254,12 @@ const PayrollView = {
             <p class="page-subtitle">Monthly salary disbursements, attendance/leave reconciliations, EPF, ESIC, State PT, and Form-16 payslips</p>
           </div>
           <div class="page-actions">
+            <button class="btn btn-secondary btn-sm" onclick="Router.navigate('payslip-templates')">
+              <svg width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 5a1 1 0 011-1h14a1 1 0 011 1v2a1 1 0 01-1 1H5a1 1 0 01-1-1V5zM4 13a1 1 0 011-1h6a1 1 0 011 1v6a1 1 0 01-1 1H5a1 1 0 01-1-1v-6zM16 13a1 1 0 011-1h2a1 1 0 011 1v6a1 1 0 01-1 1h-2a1 1 0 01-1-1v-6z"/>
+              </svg>
+              <span>Payslip Templates</span>
+            </button>
             <button class="btn btn-secondary btn-sm" onclick="PayrollView.openCtcCalculatorModal()">
               <svg width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 7h6m0 10v-3m-3 3h.01M9 17h.01M9 14h.01M12 14h.01M15 11h.01M12 11h.01M9 11h.01M7 21h10a2 2 0 002-2V5a2 2 0 00-2-2H7a2 2 0 00-2 2v14a2 2 0 002 2z"/>
@@ -896,7 +902,10 @@ const PayrollView = {
       if (!doc.exists) throw new Error('Payroll record not found');
       const r = doc.data();
 
-      const contentHtml = `
+      const activeTemplateId = window.payslipTemplateService ? await payslipTemplateService.getActiveTemplateId() : 'classic';
+      const contentHtml = window.payslipTemplateService
+        ? payslipTemplateService.renderPayslipHtml(r, activeTemplateId)
+        : `
         <div id="printable-payslip-container" style="background: #fff; color: #1e293b; padding: 24px; border: 1px solid #cbd5e1; border-radius: 8px; font-family: sans-serif;">
           <!-- Header -->
           <div style="display: flex; justify-content: space-between; align-items: flex-start; padding-bottom: 16px; border-bottom: 2px solid #2563eb; margin-bottom: 16px;">
@@ -913,65 +922,8 @@ const PayrollView = {
               </span>
             </div>
           </div>
-
-          <!-- Employee Details Grid -->
-          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px; font-size: 0.825rem; background: #f8fafc; padding: 12px; border-radius: 6px; margin-bottom: 16px;">
-            <div><strong>Employee Name:</strong> ${r.employeeSnapshot?.fullName || 'Staff'}</div>
-            <div><strong>Employee Code:</strong> ${r.employeeSnapshot?.employeeCode || r.employeeId}</div>
-            <div><strong>Designation:</strong> ${r.employeeSnapshot?.designation || 'Staff'}</div>
-            <div><strong>Department:</strong> ${r.employeeSnapshot?.department || 'General'}</div>
-            <div><strong>PAN Number:</strong> ${r.employeeSnapshot?.pan || 'ABCDE1234F'}</div>
-            <div><strong>UAN / PF No:</strong> ${r.employeeSnapshot?.uan || '100987654321'}</div>
-            <div><strong>Attendance Summary:</strong> ${r.attendanceSnapshot?.presentDays || 0} Present / ${r.attendanceSnapshot?.paidLeaveDays || 0} Leave / ${r.attendanceSnapshot?.lwpDays || 0} LOP</div>
-            <div><strong>Bank A/C:</strong> HDFC Bank ••••••4589</div>
-          </div>
-
-          <!-- Earnings and Deductions Table -->
-          <table style="width: 100%; border-collapse: collapse; font-size: 0.825rem; margin-bottom: 16px;">
-            <thead>
-              <tr style="background: #e2e8f0; color: #1e293b;">
-                <th style="padding: 8px; text-align: left; border: 1px solid #cbd5e1; width: 35%;">Earnings</th>
-                <th style="padding: 8px; text-align: right; border: 1px solid #cbd5e1; width: 15%;">Amount (₹)</th>
-                <th style="padding: 8px; text-align: left; border: 1px solid #cbd5e1; width: 35%;">Deductions</th>
-                <th style="padding: 8px; text-align: right; border: 1px solid #cbd5e1; width: 15%;">Amount (₹)</th>
-              </tr>
-            </thead>
-            <tbody>
-              <tr>
-                <td style="padding: 6px 8px; border: 1px solid #cbd5e1;">Basic Salary (50%)</td>
-                <td style="padding: 6px 8px; text-align: right; border: 1px solid #cbd5e1;">₹${(r.earnings?.basic || 0).toLocaleString('en-IN')}.00</td>
-                <td style="padding: 6px 8px; border: 1px solid #cbd5e1;">Provident Fund (EPF 12%)</td>
-                <td style="padding: 6px 8px; text-align: right; border: 1px solid #cbd5e1;">₹${(r.deductions?.epfEmployee || 0).toLocaleString('en-IN')}.00</td>
-              </tr>
-              <tr>
-                <td style="padding: 6px 8px; border: 1px solid #cbd5e1;">House Rent Allowance (HRA)</td>
-                <td style="padding: 6px 8px; text-align: right; border: 1px solid #cbd5e1;">₹${(r.earnings?.hra || 0).toLocaleString('en-IN')}.00</td>
-                <td style="padding: 6px 8px; border: 1px solid #cbd5e1;">Employee State Insurance (ESIC)</td>
-                <td style="padding: 6px 8px; text-align: right; border: 1px solid #cbd5e1;">₹${(r.deductions?.esicEmployee || 0).toLocaleString('en-IN')}.00</td>
-              </tr>
-              <tr>
-                <td style="padding: 6px 8px; border: 1px solid #cbd5e1;">Special Allowance</td>
-                <td style="padding: 6px 8px; text-align: right; border: 1px solid #cbd5e1;">₹${(r.earnings?.specialAllowance || 0).toLocaleString('en-IN')}.00</td>
-                <td style="padding: 6px 8px; border: 1px solid #cbd5e1;">Professional Tax (State PT)</td>
-                <td style="padding: 6px 8px; text-align: right; border: 1px solid #cbd5e1;">₹${(r.deductions?.professionalTax || 0).toLocaleString('en-IN')}.00</td>
-              </tr>
-              <tr>
-                <td style="padding: 6px 8px; border: 1px solid #cbd5e1;">Overtime / Allowances</td>
-                <td style="padding: 6px 8px; text-align: right; border: 1px solid #cbd5e1;">₹${((r.earnings?.overtimePay || 0) + (r.earnings?.conveyance || 0)).toLocaleString('en-IN')}.00</td>
-                <td style="padding: 6px 8px; border: 1px solid #cbd5e1;">Income Tax TDS / LOP Deductions</td>
-                <td style="padding: 6px 8px; text-align: right; border: 1px solid #cbd5e1;">₹${((r.deductions?.tds || 0) + (r.deductions?.lwpDeduction || 0)).toLocaleString('en-IN')}.00</td>
-              </tr>
-              <tr style="background: #f1f5f9; font-weight: 700;">
-                <td style="padding: 8px; border: 1px solid #cbd5e1;">Total Gross Earnings</td>
-                <td style="padding: 8px; text-align: right; border: 1px solid #cbd5e1; color: #2563eb;">₹${(r.earnings?.grossPay || 0).toLocaleString('en-IN')}.00</td>
-                <td style="padding: 8px; border: 1px solid #cbd5e1;">Total Deductions</td>
-                <td style="padding: 8px; text-align: right; border: 1px solid #cbd5e1; color: #dc2626;">₹${(r.deductions?.totalDeductions || 0).toLocaleString('en-IN')}.00</td>
-              </tr>
-            </tbody>
-          </table>
-
           <!-- Net Salary Box -->
-          <div style="background: #f0fdf4; border: 1px solid #86efac; border-radius: 6px; padding: 12px; display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
+          <div style="background: #f0fdf4; border: 1px solid #86efac; border-radius: 6px; padding: 12px; display: flex; justify-content: space-between; align-items: center;">
             <div>
               <div style="font-size: 0.75rem; color: #15803d; text-transform: uppercase; font-weight: 700;">Net Payout Amount</div>
               <div style="font-size: 0.8rem; color: #334155;"><strong>In Words:</strong> ${r.netInWords || 'Rupees Only'}</div>
@@ -979,10 +931,6 @@ const PayrollView = {
             <div style="font-size: 1.4rem; font-weight: 800; color: #16a34a;">
               ₹${(r.netPay || 0).toLocaleString('en-IN')}.00
             </div>
-          </div>
-
-          <div style="font-size: 0.7rem; color: #94a3b8; text-align: center;">
-            This is a system generated computer document and does not require a physical signature. Diallo HRMS Cloud Suite.
           </div>
         </div>
       `;
@@ -995,6 +943,9 @@ const PayrollView = {
         contentHtml,
         footerHtml: `
           <button class="btn btn-secondary btn-sm" data-modal-close>Close</button>
+          <button class="btn btn-soft btn-sm" onclick="Router.navigate('payslip-templates'); ModalManager.closeModal();">
+            Change Template
+          </button>
           <button class="btn btn-primary btn-sm" onclick="PayrollView.printPayslip()">
             <svg width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z"/></svg>
             Print / Save as PDF

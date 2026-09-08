@@ -36,6 +36,14 @@ const Router = {
       requiredPerm: 'payroll.view',
       render: () => PayrollView.renderHub()
     },
+    'payslip-templates': {
+      requiredPerm: 'payroll.view',
+      render: () => PayslipTemplatesView.render()
+    },
+    'email-config': {
+      requiredPerm: 'settings.manage',
+      render: () => EmailConfigView.render()
+    },
     performance: {
       requiredPerm: null,
       render: () => PerformanceView.renderHub()
@@ -78,7 +86,7 @@ const Router = {
     },
     admin: {
       requiredPerm: 'companies.manage',
-      render: () => AdminView.renderHub()
+      render: () => window.MasterAdminView ? MasterAdminView.render() : AdminView.renderHub()
     },
     compliance: {
       requiredPerm: null,
