@@ -4,20 +4,53 @@
  */
 
 const StatutoryEngine = {
-  // Statutory Wage Ceilings & Rates
+  // Statutory Wage Ceilings & Rates (Defaults)
   CONFIG: {
+    pfEnabled: true,
     EPF_WAGE_CEILING: 15000,       // ₹15,000 / month PF statutory wage ceiling
     EPF_EE_RATE: 0.12,            // 12% Employee EPF
     EPF_ER_RATE: 0.0367,          // 3.67% Employer EPF share
     EPS_ER_RATE: 0.0833,          // 8.33% Employer EPS (Pension Fund)
     EPF_ADMIN_RATE: 0.005,        // 0.5% Admin charges
     EDLI_RATE: 0.005,             // 0.5% EDLI insurance
+    pfCeilingRestricted: true,
+    includeEmployerPfInCtc: true,
 
+    esicEnabled: true,
     ESIC_WAGE_CEILING: 21000,      // ₹21,000 / month gross wage ceiling
     ESIC_EE_RATE: 0.0075,         // 0.75% Employee ESIC
     ESIC_ER_RATE: 0.0325,         // 3.25% Employer ESIC
 
+    ptEnabled: true,
+    lwfEnabled: true,
+    lwfMonthlyAmount: 20,
+    gratuityEnabled: true,
+    gratuityRate: 4.81,           // 4.81% Basic
     GRATUITY_FACTOR: 15 / 26      // 15 days out of 26 working days per year
+  },
+
+  updateConfig(newConfig) {
+    if (!newConfig) return;
+    if (newConfig.pfEnabled !== undefined) this.CONFIG.pfEnabled = !!newConfig.pfEnabled;
+    if (newConfig.pfEmployeeRate !== undefined) this.CONFIG.EPF_EE_RATE = Number(newConfig.pfEmployeeRate) / 100;
+    if (newConfig.pfEmployerRate !== undefined) this.CONFIG.EPF_ER_RATE = Number(newConfig.pfEmployerRate) / 100;
+    if (newConfig.epsEmployerRate !== undefined) this.CONFIG.EPS_ER_RATE = Number(newConfig.epsEmployerRate) / 100;
+    if (newConfig.pfAdminRate !== undefined) this.CONFIG.EPF_ADMIN_RATE = Number(newConfig.pfAdminRate) / 100;
+    if (newConfig.edliRate !== undefined) this.CONFIG.EDLI_RATE = Number(newConfig.edliRate) / 100;
+    if (newConfig.pfWageCeiling !== undefined) this.CONFIG.EPF_WAGE_CEILING = Number(newConfig.pfWageCeiling);
+    if (newConfig.pfCeilingRestricted !== undefined) this.CONFIG.pfCeilingRestricted = !!newConfig.pfCeilingRestricted;
+    if (newConfig.includeEmployerPfInCtc !== undefined) this.CONFIG.includeEmployerPfInCtc = !!newConfig.includeEmployerPfInCtc;
+
+    if (newConfig.esicEnabled !== undefined) this.CONFIG.esicEnabled = !!newConfig.esicEnabled;
+    if (newConfig.esicWageCeiling !== undefined) this.CONFIG.ESIC_WAGE_CEILING = Number(newConfig.esicWageCeiling);
+    if (newConfig.esicEmployeeRate !== undefined) this.CONFIG.ESIC_EE_RATE = Number(newConfig.esicEmployeeRate) / 100;
+    if (newConfig.esicEmployerRate !== undefined) this.CONFIG.ESIC_ER_RATE = Number(newConfig.esicEmployerRate) / 100;
+
+    if (newConfig.ptEnabled !== undefined) this.CONFIG.ptEnabled = !!newConfig.ptEnabled;
+    if (newConfig.lwfEnabled !== undefined) this.CONFIG.lwfEnabled = !!newConfig.lwfEnabled;
+    if (newConfig.lwfMonthlyAmount !== undefined) this.CONFIG.lwfMonthlyAmount = Number(newConfig.lwfMonthlyAmount);
+    if (newConfig.gratuityEnabled !== undefined) this.CONFIG.gratuityEnabled = !!newConfig.gratuityEnabled;
+    if (newConfig.gratuityRate !== undefined) this.CONFIG.gratuityRate = Number(newConfig.gratuityRate);
   },
 
   // Calculate State-wise Professional Tax (PT)
@@ -54,8 +87,9 @@ const StatutoryEngine = {
   },
 
   // Break down Gross Salary into CTC Components (Indian Wage Code compliant: Basic >= 50%)
-  calculateSalaryStructure(monthlyGross, isMetro = true, state = 'Maharashtra') {
+  calculateSalaryStructure(monthlyGross, isMetro = true, state = 'Maharashtra', customConfig = null) {
     const gross = Math.max(0, Number(monthlyGross) || 0);
+    const cfg = { ...this.CONFIG, ...(customConfig || {}) };
 
     // 1. Earnings Breakdown
     const basic = Math.round(gross * 0.50); // 50% of Gross as Basic
@@ -66,24 +100,38 @@ const StatutoryEngine = {
     const specialAllowance = Math.max(0, gross - (basic + hra + conveyance + medicalAllowance));
 
     // 2. EPF Calculations (Employee & Employer)
-    const pfWages = Math.min(basic, this.CONFIG.EPF_WAGE_CEILING);
-    const epfEmployee = Math.round(pfWages * this.CONFIG.EPF_EE_RATE);
-    const epfEmployer = Math.round(pfWages * this.CONFIG.EPF_ER_RATE);
-    const epsEmployer = Math.round(pfWages * this.CONFIG.EPS_ER_RATE);
-    const epfTotalEmployer = epfEmployer + epsEmployer;
+    let epfEmployee = 0;
+    let epfEmployer = 0;
+    let epsEmployer = 0;
+    let epfAdmin = 0;
+    let edliInsurance = 0;
+    let epfTotalEmployer = 0;
 
-    // 3. ESIC Calculations (Applicable if Gross <= ₹21,000)
+    if (cfg.pfEnabled !== false) {
+      const pfWages = cfg.pfCeilingRestricted !== false ? Math.min(basic, cfg.EPF_WAGE_CEILING || 15000) : basic;
+      epfEmployee = Math.round(pfWages * (cfg.EPF_EE_RATE ?? 0.12));
+      epfEmployer = Math.round(pfWages * (cfg.EPF_ER_RATE ?? 0.0367));
+      epsEmployer = Math.round(pfWages * (cfg.EPS_ER_RATE ?? 0.0833));
+      epfAdmin = Math.round(pfWages * (cfg.EPF_ADMIN_RATE ?? 0.005));
+      edliInsurance = Math.round(pfWages * (cfg.EDLI_RATE ?? 0.005));
+      epfTotalEmployer = epfEmployer + epsEmployer;
+    }
+
+    // 3. ESIC Calculations (Applicable if Gross <= ceiling)
     let esicEmployee = 0;
     let esicEmployer = 0;
-    if (gross <= this.CONFIG.ESIC_WAGE_CEILING && gross > 0) {
-      esicEmployee = Math.ceil(gross * this.CONFIG.ESIC_EE_RATE);
-      esicEmployer = Math.ceil(gross * this.CONFIG.ESIC_ER_RATE);
+    if (cfg.esicEnabled !== false && gross <= (cfg.ESIC_WAGE_CEILING || 21000) && gross > 0) {
+      esicEmployee = Math.ceil(gross * (cfg.ESIC_EE_RATE ?? 0.0075));
+      esicEmployer = Math.ceil(gross * (cfg.ESIC_ER_RATE ?? 0.0325));
     }
 
     // 4. Professional Tax (PT)
-    const pt = this.calculateProfessionalTax(gross, state);
+    const pt = (cfg.ptEnabled !== false) ? this.calculateProfessionalTax(gross, state) : 0;
 
-    // 5. Projected Monthly TDS (Section 192) under New Regime (Section 115BAC)
+    // 5. Labour Welfare Fund (LWF)
+    const lwf = (cfg.lwfEnabled !== false) ? Number(cfg.lwfMonthlyAmount || 20) : 0;
+
+    // 6. Projected Monthly TDS (Section 192) under New Regime (Section 115BAC)
     const annualGross = gross * 12;
     const stdDeduction = 75000; // FY 2024-26 Standard Deduction
     const taxableIncome = Math.max(0, annualGross - stdDeduction);
@@ -109,13 +157,14 @@ const StatutoryEngine = {
     annualTds = Math.round(annualTds * 1.04);
     const monthlyTds = Math.round(annualTds / 12);
 
-    // 6. Deductions Total & Net Payout
-    const totalDeductions = epfEmployee + esicEmployee + pt + monthlyTds;
+    // 7. Deductions Total & Net Payout
+    const totalDeductions = epfEmployee + esicEmployee + pt + lwf + monthlyTds;
     const netSalary = Math.max(0, gross - totalDeductions);
 
-    // 7. Employer Cost (CTC)
-    const gratuityMonthlyProvision = Math.round((basic * 15) / (26 * 12));
-    const monthlyCtc = gross + epfTotalEmployer + esicEmployer + gratuityMonthlyProvision;
+    // 8. Employer Cost (CTC)
+    const gratuityMonthlyProvision = (cfg.gratuityEnabled !== false) ? Math.round((basic * 15) / (26 * 12)) : 0;
+    const employerPfCost = (cfg.includeEmployerPfInCtc !== false) ? epfTotalEmployer : 0;
+    const monthlyCtc = gross + employerPfCost + esicEmployer + gratuityMonthlyProvision;
 
     return {
       gross,
@@ -133,6 +182,7 @@ const StatutoryEngine = {
         epfEmployee,
         esicEmployee,
         professionalTax: pt,
+        labourWelfareFund: lwf,
         tds: monthlyTds,
         totalDeductions
       },
@@ -140,6 +190,8 @@ const StatutoryEngine = {
         epfEmployer,
         epsEmployer,
         epfTotalEmployer,
+        epfAdmin,
+        edliInsurance,
         esicEmployer,
         gratuityMonthlyProvision,
         totalEmployerCost: epfTotalEmployer + esicEmployer + gratuityMonthlyProvision

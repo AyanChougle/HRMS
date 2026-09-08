@@ -440,8 +440,30 @@ const SettingsView = {
         </div>
       </div>
 
-      <!-- 4 Responsive Navigation Cards -->
+      <!-- 5 Responsive Navigation Cards -->
       <div class="module-grid">
+        <!-- 1. Provident Fund (PF) & Statutory Funds Configuration -->
+        <div class="module-nav-card" onclick="SettingsView.openStatutoryFundsModal()" style="border: 1.5px solid var(--primary-light);">
+          <div>
+            <div class="module-nav-card-top">
+              <div class="module-card-icon-box" style="background: rgba(37, 99, 235, 0.12); color: var(--primary);">
+                <svg width="22" height="22" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                </svg>
+              </div>
+              <span class="module-card-badge" style="background: var(--primary-light); color: var(--primary);">EPF / ESIC / PT / Funds</span>
+            </div>
+            <div class="module-card-content">
+              <h3>Provident Fund & Statutory Funds</h3>
+              <p>Company-wide PF enable/disable, employee & employer contribution rates, statutory wage ceilings, ESIC thresholds, and PT rules.</p>
+            </div>
+          </div>
+          <div class="module-card-footer">
+            <span style="color: var(--primary); font-weight: 600;">Configure PF & funds</span>
+            <svg class="arrow-icon" fill="none" viewBox="0 0 24 24" stroke="currentColor" style="color: var(--primary);"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg>
+          </div>
+        </div>
+
         <div class="module-nav-card" onclick="SettingsView.openCodeSeriesModal()">
           <div>
             <div class="module-nav-card-top">
@@ -526,6 +548,280 @@ const SettingsView = {
           </div>
         </div>
       </div>
+    `;
+  },
+
+  // MODAL: PROVIDENT FUND & STATUTORY FUNDS GOVERNANCE
+  async openStatutoryFundsModal() {
+    const companyId = AuthGuard.userProfile?.companyId || 'comp_diallo_india';
+    let stat = {};
+    try {
+      stat = await payrollSettingsService.getStatutorySettings(companyId);
+    } catch (e) {
+      stat = payrollSettingsService.DEFAULT_SETTINGS.statutory;
+    }
+
+    const pfEnabled = stat.pfEnabled !== false;
+    const pfCeilingRestricted = stat.pfCeilingRestricted !== false;
+    const pfWageCeiling = stat.pfWageCeiling || 15000;
+    const pfEeRate = stat.pfEmployeeRate ?? 12;
+    const pfErRate = stat.pfEmployerRate ?? 3.67;
+    const epsErRate = stat.epsEmployerRate ?? 8.33;
+    const pfAdminRate = stat.pfAdminRate ?? 0.5;
+    const edliRate = stat.edliRate ?? 0.5;
+    const includeEmployerPfInCtc = stat.includeEmployerPfInCtc !== false;
+
+    const esicEnabled = stat.esicEnabled !== false;
+    const esicWageCeiling = stat.esicWageCeiling || 21000;
+    const esicEeRate = stat.esicEmployeeRate ?? 0.75;
+    const esicErRate = stat.esicEmployerRate ?? 3.25;
+
+    const ptEnabled = stat.ptEnabled !== false;
+    const lwfEnabled = stat.lwfEnabled !== false;
+    const lwfMonthlyAmount = stat.lwfMonthlyAmount ?? 20;
+    const gratuityEnabled = stat.gratuityEnabled !== false;
+
+    ModalManager.openModal({
+      id: 'statutory-funds-modal',
+      title: 'Provident Fund (PF) & Statutory Funds Governance',
+      subtitle: 'Manage company-wide EPF, EPS, ESIC, Professional Tax and Gratuity configurations',
+      contentHtml: `
+        <div style="max-height: 70vh; overflow-y: auto; padding-right: 4px;">
+          <!-- 1. PROVIDENT FUND (EPF / EPS) SECTION -->
+          <div class="card" style="margin-bottom: 20px; border: 1.5px solid var(--border-main); padding: 18px;">
+            <div class="flex items-center justify-between" style="border-bottom: 1px solid var(--border-light); padding-bottom: 12px; margin-bottom: 16px;">
+              <div class="flex items-center gap-2">
+                <div style="width: 32px; height: 32px; border-radius: 6px; background: rgba(37, 99, 235, 0.12); color: var(--primary); display: flex; align-items: center; justify-content: center; font-weight: 800; font-size: 0.85rem;">
+                  PF
+                </div>
+                <div>
+                  <h4 style="font-size: 1rem; font-weight: 700; color: var(--text-main); margin: 0;">Employees' Provident Fund (EPF & EPS)</h4>
+                  <div style="font-size: 0.75rem; color: var(--text-secondary);">Statutory retirement fund under Employees' Provident Funds Act 1952</div>
+                </div>
+              </div>
+              <label class="flex items-center gap-2" style="cursor: pointer; background: var(--bg-hover); padding: 4px 12px; border-radius: 20px; border: 1px solid var(--border-light);">
+                <input type="checkbox" id="stat-pf-enable" ${pfEnabled ? 'checked' : ''} style="width: 18px; height: 18px; accent-color: var(--primary);" />
+                <strong style="font-size: 0.82rem; color: ${pfEnabled ? 'var(--primary)' : 'var(--text-muted)'};" id="stat-pf-enable-label">${pfEnabled ? 'PF ENABLED' : 'PF DISABLED'}</strong>
+              </label>
+            </div>
+
+            <div class="grid" style="grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 14px;">
+              <div class="form-group">
+                <label class="form-label font-semibold">Employee EPF Contribution Rate (%)</label>
+                <input type="number" step="0.01" id="stat-pf-ee-rate" class="form-control" value="${pfEeRate}" placeholder="12.00" />
+                <small class="text-muted" style="font-size: 0.7rem;">Deducted from Employee Basic</small>
+              </div>
+
+              <div class="form-group">
+                <label class="form-label font-semibold">Employer EPF Share (%)</label>
+                <input type="number" step="0.01" id="stat-pf-er-rate" class="form-control" value="${pfErRate}" placeholder="3.67" />
+                <small class="text-muted" style="font-size: 0.7rem;">Direct Employer PF share</small>
+              </div>
+
+              <div class="form-group">
+                <label class="form-label font-semibold">Employer EPS Pension Share (%)</label>
+                <input type="number" step="0.01" id="stat-pf-eps-rate" class="form-control" value="${epsErRate}" placeholder="8.33" />
+                <small class="text-muted" style="font-size: 0.7rem;">Pension Fund Contribution</small>
+              </div>
+
+              <div class="form-group">
+                <label class="form-label font-semibold">EPF Admin Charges (%)</label>
+                <input type="number" step="0.01" id="stat-pf-admin-rate" class="form-control" value="${pfAdminRate}" placeholder="0.50" />
+                <small class="text-muted" style="font-size: 0.7rem;">Govt Admin charges (A/c 2)</small>
+              </div>
+
+              <div class="form-group">
+                <label class="form-label font-semibold">EDLI Insurance Rate (%)</label>
+                <input type="number" step="0.01" id="stat-pf-edli-rate" class="form-control" value="${edliRate}" placeholder="0.50" />
+                <small class="text-muted" style="font-size: 0.7rem;">Deposit Linked Insurance</small>
+              </div>
+
+              <div class="form-group">
+                <label class="form-label font-semibold">Statutory Wage Ceiling (₹ / mo)</label>
+                <input type="number" id="stat-pf-ceiling" class="form-control" value="${pfWageCeiling}" placeholder="15000" />
+                <small class="text-muted" style="font-size: 0.7rem;">Statutory limit: ₹15,000</small>
+              </div>
+            </div>
+
+            <div class="flex items-center justify-between" style="margin-top: 14px; padding-top: 12px; border-top: 1px dashed var(--border-light); flex-wrap: wrap; gap: 12px;">
+              <label class="flex items-center gap-2" style="cursor: pointer;">
+                <input type="checkbox" id="stat-pf-ceiling-type" ${pfCeilingRestricted ? 'checked' : ''} style="width: 16px; height: 16px; accent-color: var(--primary);" />
+                <span style="font-size: 0.85rem; color: var(--text-main);">Restrict PF calculation to Statutory Ceiling (₹15,000 max)</span>
+              </label>
+
+              <label class="flex items-center gap-2" style="cursor: pointer;">
+                <input type="checkbox" id="stat-pf-ctc-include" ${includeEmployerPfInCtc ? 'checked' : ''} style="width: 16px; height: 16px; accent-color: var(--primary);" />
+                <span style="font-size: 0.85rem; color: var(--text-main);">Include Employer PF Share in Gross CTC</span>
+              </label>
+            </div>
+          </div>
+
+          <!-- 2. EMPLOYEES' STATE INSURANCE (ESIC) SECTION -->
+          <div class="card" style="margin-bottom: 20px; border: 1.5px solid var(--border-main); padding: 18px;">
+            <div class="flex items-center justify-between" style="border-bottom: 1px solid var(--border-light); padding-bottom: 12px; margin-bottom: 16px;">
+              <div class="flex items-center gap-2">
+                <div style="width: 32px; height: 32px; border-radius: 6px; background: rgba(16, 185, 129, 0.12); color: var(--success); display: flex; align-items: center; justify-content: center; font-weight: 800; font-size: 0.85rem;">
+                  ESI
+                </div>
+                <div>
+                  <h4 style="font-size: 1rem; font-weight: 700; color: var(--text-main); margin: 0;">Employees' State Insurance (ESIC)</h4>
+                  <div style="font-size: 0.75rem; color: var(--text-secondary);">Medical & health benefits for employees with gross monthly wage ≤ ₹21,000</div>
+                </div>
+              </div>
+              <label class="flex items-center gap-2" style="cursor: pointer; background: var(--bg-hover); padding: 4px 12px; border-radius: 20px; border: 1px solid var(--border-light);">
+                <input type="checkbox" id="stat-esic-enable" ${esicEnabled ? 'checked' : ''} style="width: 18px; height: 18px; accent-color: var(--success);" />
+                <strong style="font-size: 0.82rem; color: ${esicEnabled ? 'var(--success)' : 'var(--text-muted)'};" id="stat-esic-enable-label">${esicEnabled ? 'ESIC ENABLED' : 'ESIC DISABLED'}</strong>
+              </label>
+            </div>
+
+            <div class="grid" style="grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 14px;">
+              <div class="form-group">
+                <label class="form-label font-semibold">Gross Wage Ceiling Threshold (₹ / mo)</label>
+                <input type="number" id="stat-esic-ceiling" class="form-control" value="${esicWageCeiling}" placeholder="21000" />
+                <small class="text-muted" style="font-size: 0.7rem;">Eligible if Gross Salary ≤ this limit</small>
+              </div>
+
+              <div class="form-group">
+                <label class="form-label font-semibold">Employee ESIC Rate (%)</label>
+                <input type="number" step="0.01" id="stat-esic-ee-rate" class="form-control" value="${esicEeRate}" placeholder="0.75" />
+                <small class="text-muted" style="font-size: 0.7rem;">Statutory employee contribution: 0.75%</small>
+              </div>
+
+              <div class="form-group">
+                <label class="form-label font-semibold">Employer ESIC Share (%)</label>
+                <input type="number" step="0.01" id="stat-esic-er-rate" class="form-control" value="${esicErRate}" placeholder="3.25" />
+                <small class="text-muted" style="font-size: 0.7rem;">Statutory employer contribution: 3.25%</small>
+              </div>
+            </div>
+          </div>
+
+          <!-- 3. STATE PT, LWF & GRATUITY FUNDS -->
+          <div class="card" style="border: 1.5px solid var(--border-main); padding: 18px;">
+            <div class="flex items-center justify-between" style="border-bottom: 1px solid var(--border-light); padding-bottom: 12px; margin-bottom: 16px;">
+              <div class="flex items-center gap-2">
+                <div style="width: 32px; height: 32px; border-radius: 6px; background: rgba(245, 158, 11, 0.12); color: var(--warning); display: flex; align-items: center; justify-content: center; font-weight: 800; font-size: 0.85rem;">
+                  TAX
+                </div>
+                <div>
+                  <h4 style="font-size: 1rem; font-weight: 700; color: var(--text-main); margin: 0;">State Professional Tax (PT), LWF & Gratuity</h4>
+                  <div style="font-size: 0.75rem; color: var(--text-secondary);">State statutory levies, welfare fund, and Payment of Gratuity Act 1972</div>
+                </div>
+              </div>
+            </div>
+
+            <div class="flex flex-col gap-3">
+              <label class="flex items-center justify-between" style="cursor: pointer; padding: 10px 14px; background: var(--bg-hover); border-radius: var(--radius-sm);">
+                <div>
+                  <div style="font-weight: 600; color: var(--text-main); font-size: 0.88rem;">Professional Tax (PT) Deduction</div>
+                  <div style="font-size: 0.75rem; color: var(--text-secondary);">State-wise slabs (Maharashtra: ₹200/mo & ₹300 Feb, Karnataka: ₹200/mo, Telangana: ₹200/mo)</div>
+                </div>
+                <input type="checkbox" id="stat-pt-enable" ${ptEnabled ? 'checked' : ''} style="width: 18px; height: 18px; accent-color: var(--primary);" />
+              </label>
+
+              <div style="padding: 10px 14px; background: var(--bg-hover); border-radius: var(--radius-sm); display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap;">
+                <div>
+                  <div style="font-weight: 600; color: var(--text-main); font-size: 0.88rem;">Labour Welfare Fund (LWF)</div>
+                  <div style="font-size: 0.75rem; color: var(--text-secondary);">State statutory welfare contribution per employee</div>
+                </div>
+                <div class="flex items-center gap-3">
+                  <div class="flex items-center gap-1">
+                    <span style="font-size: 0.8rem; color: var(--text-muted);">Amount: ₹</span>
+                    <input type="number" id="stat-lwf-amount" class="form-control" style="width: 80px; height: 32px; padding: 2px 8px;" value="${lwfMonthlyAmount}" />
+                  </div>
+                  <input type="checkbox" id="stat-lwf-enable" ${lwfEnabled ? 'checked' : ''} style="width: 18px; height: 18px; accent-color: var(--primary);" />
+                </div>
+              </div>
+
+              <label class="flex items-center justify-between" style="cursor: pointer; padding: 10px 14px; background: var(--bg-hover); border-radius: var(--radius-sm);">
+                <div>
+                  <div style="font-weight: 600; color: var(--text-main); font-size: 0.88rem;">Gratuity Liability Monthly Provision (4.81% Basic)</div>
+                  <div style="font-size: 0.75rem; color: var(--text-secondary);">Provision for Payment of Gratuity Act 1972 (15/26 working days calculation)</div>
+                </div>
+                <input type="checkbox" id="stat-gratuity-enable" ${gratuityEnabled ? 'checked' : ''} style="width: 18px; height: 18px; accent-color: var(--primary);" />
+              </label>
+            </div>
+          </div>
+        </div>
+      `,
+      footerHtml: `
+        <button class="btn btn-secondary btn-sm" data-modal-close>Cancel</button>
+        <button class="btn btn-primary btn-sm" onclick="SettingsView.saveStatutoryFundsSettings()">Save & Apply for Company</button>
+      `
+    });
+
+    // Attach dynamic toggle listeners
+    document.getElementById('stat-pf-enable')?.addEventListener('change', (e) => {
+      const lbl = document.getElementById('stat-pf-enable-label');
+      if (lbl) {
+        lbl.textContent = e.target.checked ? 'PF ENABLED' : 'PF DISABLED';
+        lbl.style.color = e.target.checked ? 'var(--primary)' : 'var(--text-muted)';
+      }
+    });
+
+    document.getElementById('stat-esic-enable')?.addEventListener('change', (e) => {
+      const lbl = document.getElementById('stat-esic-enable-label');
+      if (lbl) {
+        lbl.textContent = e.target.checked ? 'ESIC ENABLED' : 'ESIC DISABLED';
+        lbl.style.color = e.target.checked ? 'var(--success)' : 'var(--text-muted)';
+      }
+    });
+  },
+
+  async saveStatutoryFundsSettings() {
+    const companyId = AuthGuard.userProfile?.companyId || 'comp_diallo_india';
+    
+    const pfEnabled = document.getElementById('stat-pf-enable')?.checked !== false;
+    const pfEmployeeRate = Number(document.getElementById('stat-pf-ee-rate')?.value) || 12;
+    const pfEmployerRate = Number(document.getElementById('stat-pf-er-rate')?.value) || 3.67;
+    const epsEmployerRate = Number(document.getElementById('stat-pf-eps-rate')?.value) || 8.33;
+    const pfAdminRate = Number(document.getElementById('stat-pf-admin-rate')?.value) || 0.5;
+    const edliRate = Number(document.getElementById('stat-pf-edli-rate')?.value) || 0.5;
+    const pfWageCeiling = Number(document.getElementById('stat-pf-ceiling')?.value) || 15000;
+    const pfCeilingRestricted = document.getElementById('stat-pf-ceiling-type')?.checked !== false;
+    const includeEmployerPfInCtc = document.getElementById('stat-pf-ctc-include')?.checked !== false;
+
+    const esicEnabled = document.getElementById('stat-esic-enable')?.checked !== false;
+    const esicWageCeiling = Number(document.getElementById('stat-esic-ceiling')?.value) || 21000;
+    const esicEmployeeRate = Number(document.getElementById('stat-esic-ee-rate')?.value) || 0.75;
+    const esicEmployerRate = Number(document.getElementById('stat-esic-er-rate')?.value) || 3.25;
+
+    const ptEnabled = document.getElementById('stat-pt-enable')?.checked !== false;
+    const lwfEnabled = document.getElementById('stat-lwf-enable')?.checked !== false;
+    const lwfMonthlyAmount = Number(document.getElementById('stat-lwf-amount')?.value) || 20;
+    const gratuityEnabled = document.getElementById('stat-gratuity-enable')?.checked !== false;
+
+    const statutoryPayload = {
+      pfEnabled,
+      pfEmployeeRate,
+      pfEmployerRate,
+      epsEmployerRate,
+      pfAdminRate,
+      edliRate,
+      pfWageCeiling,
+      pfCeilingRestricted,
+      includeEmployerPfInCtc,
+
+      esicEnabled,
+      esicWageCeiling,
+      esicEmployeeRate,
+      esicEmployerRate,
+
+      ptEnabled,
+      lwfEnabled,
+      lwfMonthlyAmount,
+      gratuityEnabled,
+      gratuityRate: 4.81
+    };
+
+    try {
+      await payrollSettingsService.updateStatutorySettings(companyId, statutoryPayload);
+      Toast.success('Company-wide PF and Statutory Funds rules updated & active!');
+      ModalManager.closeModal();
+    } catch (e) {
+      console.error('Error saving statutory settings:', e);
+      Toast.error(e.message || 'Failed to update statutory configuration');
+    }
+  },
     `;
   },
 

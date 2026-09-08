@@ -5,7 +5,7 @@
 
 /* Welcome Banner */
 .welcome-banner {
-  background: linear-gradient(135deg, var(--primary-light) 0%, var(--bg-card) 100%);
+  background-color: var(--bg-card);
   border: 1px solid var(--border-main);
   border-radius: var(--radius-lg);
   padding: 20px 24px;
@@ -15,33 +15,36 @@
   justify-content: space-between;
   gap: 16px;
   box-shadow: var(--shadow-xs);
+  position: relative;
 }
 
 .welcome-text h1 {
-  font-size: 1.5rem;
+  font-size: 1.45rem;
   font-weight: 700;
   color: var(--text-main);
-  margin-bottom: 4px;
+  margin-bottom: 2px;
+  letter-spacing: -0.02em;
 }
 .welcome-text p {
   color: var(--text-secondary);
-  font-size: 0.9rem;
+  font-size: 0.85rem;
+  line-height: 1.4;
 }
 .welcome-date-badge {
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  padding: 6px 12px;
-  background-color: var(--bg-card);
-  border: 1px solid var(--border-main);
+  padding: 5px 12px;
+  background-color: var(--bg-hover);
+  border: 1px solid var(--border-light);
   border-radius: var(--radius-full);
-  font-size: 0.8rem;
+  font-size: 0.78rem;
   font-weight: 500;
   color: var(--text-secondary);
 }
 
 /* ----------------------------------------------------
-   KPI METRICS GRID (5 Core Cards)
+   KPI METRICS GRID
    ---------------------------------------------------- */
 .kpi-grid {
   display: grid;
@@ -54,17 +57,17 @@
   background-color: var(--bg-card);
   border: 1px solid var(--border-main);
   border-radius: var(--radius-lg);
-  padding: 18px 20px;
+  padding: 16px 18px;
   box-shadow: var(--shadow-xs);
-  transition: all 0.2s ease;
+  transition: all 0.15s ease;
   position: relative;
   overflow: hidden;
 }
 
 .kpi-card:hover {
-  transform: translateY(-2px);
-  box-shadow: var(--shadow-md);
-  border-color: var(--primary-border);
+  transform: translateY(-1px);
+  box-shadow: var(--shadow-sm);
+  border-color: var(--border-dark);
 }
 
 .kpi-top {
