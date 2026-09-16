@@ -53,7 +53,8 @@ const PayrollView = {
         console.warn('Employee payroll data load error:', e);
       }
 
-      const monthlyGross = comp?.monthlyGross || (emp?.salary ? parseInt(emp.salary.replace(/[^0-9]/g, '')) || 50000 : 50000);
+      const rawEmpSalary = typeof emp?.salary === 'number' ? emp.salary : (emp?.salary ? parseInt(String(emp.salary).replace(/[^0-9]/g, '')) || 50000 : 50000);
+      const monthlyGross = comp?.monthlyGross || rawEmpSalary;
       const calc = StatutoryEngine.calculateSalaryStructure(monthlyGross, true, emp?.state || 'Maharashtra');
 
       return `
@@ -689,9 +690,10 @@ const PayrollView = {
             </thead>
             <tbody>
               ${employees.map(emp => {
+                const sNum = typeof emp.salary === 'number' ? emp.salary : (emp.salary ? parseInt(String(emp.salary).replace(/[^0-9]/g, '')) || 50000 : 50000);
                 const comp = compMap[emp.id] || {
-                  monthlyGross: emp.salary ? parseInt(emp.salary.replace(/[^0-9]/g, '')) || 50000 : 50000,
-                  annualCTC: (emp.salary ? parseInt(emp.salary.replace(/[^0-9]/g, '')) || 50000 : 50000) * 12,
+                  monthlyGross: sNum,
+                  annualCTC: sNum * 12,
                   salaryStructureName: 'Standard CTC (Wage Code 2026)',
                   effectiveFrom: emp.dateOfJoining || '2026-01-01'
                 };

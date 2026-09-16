@@ -28,6 +28,17 @@ const seedService = {
       await this.checkAndSeedModule('employeeDocuments', () => this.seedDocuments());
       await this.checkAndSeedModule('announcements', () => this.seedAnnouncements());
       await this.checkAndSeedModule('notifications', () => this.seedNotifications());
+      await this.checkAndSeedModule('trainees', () => this.seedTraining());
+
+      // Auto-heal DOC003 visibility if it was seeded as ALL
+      try {
+        const doc3Ref = db.collection('employeeDocuments').doc('DOC003');
+        const d3 = await doc3Ref.get();
+        if (d3.exists && d3.data().visibility === 'ALL') {
+          await doc3Ref.update({ visibility: 'EMPLOYEE' });
+        }
+      } catch (_) {}
+
       console.log('[Seed] System dataset verification complete.');
     } catch (err) {
       console.warn('[Seed] Bootstrap check warning:', err);
@@ -63,6 +74,7 @@ const seedService = {
     await this.seedDocuments();
     await this.seedAnnouncements();
     await this.seedNotifications();
+    await this.seedTraining();
     console.log('[Seed] Full system seed finished successfully.');
     if (typeof Toast !== 'undefined') {
       Toast.success('Realistic corporate datasets populated across all modules!');
@@ -577,7 +589,7 @@ const seedService = {
     const docs = [
       { id: 'DOC001', employeeId: 'EMP000', employeeName: 'Ayan Chougle', name: 'Permanent Account Number (PAN Card)', documentType: 'PAN_CARD', categoryCode: 'IDENTITY', fileType: 'PDF', fileSize: '1.2 MB', status: 'ACTIVE', downloadUrl: 'https://images.unsplash.com/photo-1554415707-9e4c019fcaf4?w=500&auto=format&fit=crop', companyId: this.COMPANY_ID },
       { id: 'DOC002', employeeId: 'EMP000', employeeName: 'Ayan Chougle', name: 'Official Employment Agreement & Offer Letter', documentType: 'OFFER_LETTER', categoryCode: 'EMPLOYMENT', fileType: 'PDF', fileSize: '2.8 MB', status: 'ACTIVE', downloadUrl: 'https://images.unsplash.com/photo-1554415707-9e4c019fcaf4?w=500&auto=format&fit=crop', companyId: this.COMPANY_ID },
-      { id: 'DOC003', employeeId: 'EMP000', employeeName: 'Ayan Chougle', name: 'Annual IT & Security Policy Acknowledgement', documentType: 'COMPLIANCE', categoryCode: 'COMPLIANCE', fileType: 'PDF', fileSize: '850 KB', status: 'ACTIVE', visibility: 'ALL', expiryDate: '2027-01-15', downloadUrl: 'https://images.unsplash.com/photo-1554415707-9e4c019fcaf4?w=500&auto=format&fit=crop', companyId: this.COMPANY_ID },
+      { id: 'DOC003', employeeId: 'EMP000', employeeName: 'Ayan Chougle', name: 'Annual IT & Security Policy Acknowledgement', documentType: 'COMPLIANCE', categoryCode: 'COMPLIANCE', fileType: 'PDF', fileSize: '850 KB', status: 'ACTIVE', visibility: 'EMPLOYEE', expiryDate: '2027-01-15', downloadUrl: 'https://images.unsplash.com/photo-1554415707-9e4c019fcaf4?w=500&auto=format&fit=crop', companyId: this.COMPANY_ID },
       { id: 'DOC004', employeeId: 'EMP001', employeeName: 'Vikram Sharma', name: 'Executive Appointment Letter', documentType: 'OFFER_LETTER', categoryCode: 'EMPLOYMENT', fileType: 'PDF', fileSize: '3.1 MB', status: 'ACTIVE', downloadUrl: 'https://images.unsplash.com/photo-1554415707-9e4c019fcaf4?w=500&auto=format&fit=crop', companyId: this.COMPANY_ID },
       { id: 'DOC005', employeeId: 'ALL', employeeName: 'Company Wide', name: 'Diallo Group Employee Handbook & POSH Policy 2026', documentType: 'POLICY', categoryCode: 'COMPANY', fileType: 'PDF', fileSize: '4.2 MB', status: 'ACTIVE', visibility: 'ALL', downloadUrl: 'https://images.unsplash.com/photo-1554415707-9e4c019fcaf4?w=500&auto=format&fit=crop', companyId: this.COMPANY_ID }
     ];
@@ -625,6 +637,54 @@ const seedService = {
     notifications.forEach(n => {
       const ref = db.collection('notifications').doc(n.id);
       batch.set(ref, n, { merge: true });
+    });
+
+    await batch.commit();
+  },
+
+  // 13. TRAINING, TRAINEES & TRAINERS (L&D)
+  async seedTraining() {
+    const batch = db.batch();
+
+    // Trainers & Mentors
+    const trainers = [
+      { id: 'TRN001', fullName: 'Vikram Sharma', email: 'vikram.sharma@diallo.in', phone: '+91 98111 22334', trainerType: 'INTERNAL', designation: 'Lead Technical Architect & Mentor', specialization: 'Full-Stack JavaScript, Cloud Firestore & Microservices', batchesConducted: 18, activeTrainees: 3, rating: 4.9, bio: '14+ years building high-throughput distributed systems. Leads GET engineering cohorts.', companyId: this.COMPANY_ID, createdAt: firebase.firestore.FieldValue.serverTimestamp() },
+      { id: 'TRN002', fullName: 'Priya Nair', email: 'priya.nair@diallo.in', phone: '+91 98222 33445', trainerType: 'INTERNAL', designation: 'Head of People & Culture', specialization: 'POSH Act 2013, DEI, Labor Laws & Workplace Ethics', batchesConducted: 24, activeTrainees: 1, rating: 4.8, bio: 'Champion of inclusive culture, leadership grooming, and compliance governance.', companyId: this.COMPANY_ID, createdAt: firebase.firestore.FieldValue.serverTimestamp() },
+      { id: 'TRN003', fullName: 'Rahul Mehta', email: 'rahul.mehta@diallo.in', phone: '+91 98333 44556', trainerType: 'INTERNAL', designation: 'Finance Controller & Taxation Lead', specialization: 'Direct/Indirect Tax (GST), TDS Compliance & MIS Reporting', batchesConducted: 12, activeTrainees: 1, rating: 4.7, bio: 'Chartered Accountant guiding corporate finance apprentices and tax analysts.', companyId: this.COMPANY_ID, createdAt: firebase.firestore.FieldValue.serverTimestamp() },
+      { id: 'TRN004', fullName: 'Dr. Arvind Swaminathan', email: 'arvind.s@cloudmentor.io', phone: '+91 98444 55667', trainerType: 'EXTERNAL', designation: 'Chief Cloud & DevOps Consultant', specialization: 'Kubernetes, AWS/GCP, Docker & Infrastructure as Code', batchesConducted: 8, activeTrainees: 1, rating: 5.0, bio: 'Industry speaker and consultant advising enterprises on site reliability and CI/CD.', companyId: this.COMPANY_ID, createdAt: firebase.firestore.FieldValue.serverTimestamp() }
+    ];
+
+    trainers.forEach(tr => {
+      const ref = db.collection('trainers').doc(tr.id);
+      batch.set(ref, tr, { merge: true });
+    });
+
+    // Trainees & Interns
+    const trainees = [
+      { id: 'TRN_EMP001', fullName: 'Tanvi Joshi', email: 'tanvi.joshi@diallo.in', traineeCode: 'EMP-T01', department: 'Engineering & Technology', track: 'Graduate Engineering Trainee (GET)', trainerId: 'TRN001', trainerName: 'Vikram Sharma', batchName: 'GET Batch 2026-Q3', startDate: '2026-07-01', targetEndDate: '2026-10-31', progress: 75, completedModules: 4, totalModules: 5, status: 'IN_TRAINING', rating: 4.5, companyId: this.COMPANY_ID, createdAt: firebase.firestore.FieldValue.serverTimestamp() },
+      { id: 'TRN_EMP002', fullName: 'Sameer Khan', email: 'sameer.khan@diallo.in', traineeCode: 'EMP-T02', department: 'Engineering & Technology', track: 'Graduate Engineering Trainee (GET)', trainerId: 'TRN001', trainerName: 'Vikram Sharma', batchName: 'GET Batch 2026-Q3', startDate: '2026-07-01', targetEndDate: '2026-10-31', progress: 60, completedModules: 3, totalModules: 5, status: 'IN_TRAINING', rating: 4.0, companyId: this.COMPANY_ID, createdAt: firebase.firestore.FieldValue.serverTimestamp() },
+      { id: 'TRN_EMP003', fullName: 'Meera Deshmukh', email: 'meera.d@diallo.in', traineeCode: 'EMP-T03', department: 'Human Resources', track: 'HR Management Trainee (HRMT)', trainerId: 'TRN002', trainerName: 'Priya Nair', batchName: 'HRMT FastTrack 2026', startDate: '2026-06-01', targetEndDate: '2026-09-30', progress: 90, completedModules: 5, totalModules: 5, status: 'IN_EVALUATION', rating: 4.8, companyId: this.COMPANY_ID, createdAt: firebase.firestore.FieldValue.serverTimestamp() },
+      { id: 'TRN_EMP004', fullName: 'Kunal Roy', email: 'kunal.roy@diallo.in', traineeCode: 'EMP-T04', department: 'Finance, Accounts & Taxation', track: 'Corporate Finance & Tax Apprentice', trainerId: 'TRN003', trainerName: 'Rahul Mehta', batchName: 'FinTax Apprentice Batch 2', startDate: '2026-08-01', targetEndDate: '2026-12-15', progress: 45, completedModules: 2, totalModules: 5, status: 'IN_TRAINING', rating: 4.2, companyId: this.COMPANY_ID, createdAt: firebase.firestore.FieldValue.serverTimestamp() },
+      { id: 'TRN_EMP005', fullName: 'Ananya Iyer', email: 'ananya.iyer@diallo.in', traineeCode: 'EMP-T05', department: 'Operations & Logistics', track: 'Operations & Supply Chain Associate', trainerId: 'TRN004', trainerName: 'Dr. Arvind Swaminathan', batchName: 'Ops Excellence Batch 1', startDate: '2026-04-01', targetEndDate: '2026-08-31', progress: 100, completedModules: 5, totalModules: 5, status: 'CERTIFIED', certifiedDate: '2026-08-31', rating: 4.9, companyId: this.COMPANY_ID, createdAt: firebase.firestore.FieldValue.serverTimestamp() },
+      { id: 'TRN_EMP006', fullName: 'Sahil Verma', email: 'sahil.v@diallo.in', traineeCode: 'EMP-T06', department: 'Engineering & Technology', track: 'Frontend Engineering Intern', trainerId: 'TRN001', trainerName: 'Vikram Sharma', batchName: 'GET Batch 2026-Q3', startDate: '2026-07-01', targetEndDate: '2026-10-31', progress: 80, completedModules: 4, totalModules: 5, status: 'IN_TRAINING', rating: 4.4, companyId: this.COMPANY_ID, createdAt: firebase.firestore.FieldValue.serverTimestamp() }
+    ];
+
+    trainees.forEach(t => {
+      const ref = db.collection('trainees').doc(t.id);
+      batch.set(ref, t, { merge: true });
+    });
+
+    // Training Programs
+    const programs = [
+      { id: 'PRG001', title: 'Graduate Engineering Trainee (GET) Program 2026', category: 'Technical Engineering', duration: '16 Weeks', mode: 'HYBRID', trainerName: 'Vikram Sharma', trainerId: 'TRN001', enrolledCount: 3, status: 'ACTIVE', modules: ['Modern JS & React Core', 'State Management & WebSockets', 'Cloud Firestore & Security Rules', 'RESTful Microservices & Testing', 'Production Capstone Evaluation'], description: 'Intensive engineering immersion covering full-stack architecture, clean code, and cloud databases.', companyId: this.COMPANY_ID, createdAt: firebase.firestore.FieldValue.serverTimestamp() },
+      { id: 'PRG002', title: 'Workplace Ethics, POSH & Corporate Induction', category: 'Compliance & Culture', duration: '4 Weeks', mode: 'CLASSROOM', trainerName: 'Priya Nair', trainerId: 'TRN002', enrolledCount: 25, status: 'ACTIVE', modules: ['POSH Act 2013 Statutory Mandates', 'Diversity, Equity & Inclusion (DEI)', 'Data Privacy, NDA & Information Security', 'Grievance Redressal & Support Channels'], description: 'Mandatory statutory induction training for all new joinees and management trainees.', companyId: this.COMPANY_ID, createdAt: firebase.firestore.FieldValue.serverTimestamp() },
+      { id: 'PRG003', title: 'Indian Taxation, TDS & Corporate Accounts', category: 'Finance & Taxation', duration: '8 Weeks', mode: 'CLASSROOM', trainerName: 'Rahul Mehta', trainerId: 'TRN003', enrolledCount: 2, status: 'ACTIVE', modules: ['Direct vs Indirect Tax Framework', 'TDS Withholding & Form 16 Generation', 'Monthly Payroll Reconciliation', 'Statutory Audit Readiness'], description: 'Comprehensive finance apprentice curriculum on tax laws and ledger audits.', companyId: this.COMPANY_ID, createdAt: firebase.firestore.FieldValue.serverTimestamp() },
+      { id: 'PRG004', title: 'DevOps, Docker & Cloud Infrastructure', category: 'Cloud & DevOps', duration: '12 Weeks', mode: 'VIRTUAL', trainerName: 'Dr. Arvind Swaminathan', trainerId: 'TRN004', enrolledCount: 6, status: 'ACTIVE', modules: ['Docker Containerization Principles', 'Kubernetes Cluster Architecture', 'CI/CD Pipeline Automation with GitHub Actions', 'Infrastructure as Code (Terraform)'], description: 'Advanced cloud infrastructure and DevOps practices for site reliability and automated deployments.', companyId: this.COMPANY_ID, createdAt: firebase.firestore.FieldValue.serverTimestamp() }
+    ];
+
+    programs.forEach(p => {
+      const ref = db.collection('trainingPrograms').doc(p.id);
+      batch.set(ref, p, { merge: true });
     });
 
     await batch.commit();

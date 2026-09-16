@@ -72,17 +72,31 @@ const ModalManager = {
     return modalBackdrop;
   },
 
-  closeModal() {
-    if (this.activeModal) {
-      this.activeModal.classList.remove('active');
-      const el = this.activeModal;
+  closeModal(id) {
+    const modalToClose = id ? (document.getElementById(id) || this.activeModal) : this.activeModal;
+    if (modalToClose) {
+      modalToClose.classList.remove('active');
+      const el = modalToClose;
       setTimeout(() => {
         if (el && el.parentNode) {
           el.parentNode.removeChild(el);
         }
       }, 200);
-      this.activeModal = null;
+      if (this.activeModal === modalToClose) {
+        this.activeModal = null;
+      }
     }
+  },
+
+  showModal(options = {}) {
+    return this.openModal({
+      id: options.id || 'generic-modal',
+      title: options.title || '',
+      subtitle: options.subtitle || '',
+      contentHtml: options.contentHtml || options.body || '',
+      footerHtml: options.footerHtml || '',
+      size: options.size || (options.width && parseInt(options.width) > 600 ? 'lg' : 'md')
+    });
   },
 
   openDrawer({ id = 'generic-drawer', title, contentHtml, footerHtml = '' }) {

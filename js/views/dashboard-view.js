@@ -5,7 +5,7 @@
 
 const DashboardView = {
   getRoleView() {
-    const roleId = AuthGuard.userProfile?.roleId || 'EMPLOYEE';
+    const roleId = (AuthGuard._previewRoleId || AuthGuard.userProfile?.roleId || 'EMPLOYEE').toString().toUpperCase().trim();
 
     if (roleId === 'SUPER_ADMIN' || roleId === 'COMPANY_ADMIN' || roleId === 'HR' || roleId === 'PAYROLL') {
       return window.AdminDashboardView;

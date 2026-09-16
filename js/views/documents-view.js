@@ -24,13 +24,12 @@ const DocumentsView = {
       documentService.getExpiringDocuments(null, 30)
     ]);
 
-    // Scope for EMPLOYEE role: only own documents or company-wide files
+    // Scope for EMPLOYEE role: strictly only own documents or general company-wide policies
     if (isEmployee) {
       docs = docs.filter(d => 
         d.employeeId === currentEmpId || 
         (d.employeeName && d.employeeName.toLowerCase() === currentEmpName.toLowerCase()) || 
-        d.categoryCode === 'COMPANY' || 
-        d.visibility === 'ALL'
+        (d.categoryCode === 'COMPANY' && (!d.employeeId || d.employeeId === 'ALL'))
       );
       requests = requests.filter(r => 
         r.employeeId === currentEmpId || 

@@ -13,8 +13,7 @@ const compensationService = {
       }
 
       // Fallback: If not yet defined, construct from employee master record
-      const emp = await employeeService.getEmployee(employeeId);
-      const rawSalary = emp?.salary ? parseInt(emp.salary.replace(/[^0-9]/g, '')) || 50000 : 50000;
+      const rawSalary = typeof emp?.salary === 'number' ? emp.salary : (emp?.salary ? parseInt(String(emp.salary).replace(/[^0-9]/g, '')) || 50000 : 50000);
       const monthlyGross = rawSalary;
       const annualCTC = monthlyGross * 12;
 

@@ -227,15 +227,23 @@ const RecruitmentView = {
             <div class="card-subtitle">Visual candidate journey across recruitment stages</div>
           </div>
           <div style="display: flex; align-items: center; gap: 8px;">
+            <div style="display: inline-flex; border: 1px solid var(--border-main); border-radius: var(--radius-sm); overflow: hidden; background: var(--bg-card);">
+              <button class="btn btn-ghost btn-sm" style="padding: 5px 10px;" onclick="document.getElementById('recruitment-kanban-board').scrollBy({ left: -320, behavior: 'smooth' })" title="Scroll Left (Previous Stages)">
+                <svg width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/></svg>
+              </button>
+              <button class="btn btn-ghost btn-sm" style="padding: 5px 10px;" onclick="document.getElementById('recruitment-kanban-board').scrollBy({ left: 320, behavior: 'smooth' })" title="Scroll Right (Next Stages)">
+                <svg width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg>
+              </button>
+            </div>
             <button class="btn btn-primary btn-sm" onclick="RecruitmentView.openAddCandidateModal()">+ Add Candidate</button>
           </div>
         </div>
-        <div class="card-body" style="padding: 16px; overflow-x: auto;">
-          <div style="display: flex; gap: 14px; min-width: 1200px;">
+        <div class="card-body" id="recruitment-kanban-board" style="padding: 16px; overflow-x: auto; scroll-behavior: smooth;">
+          <div style="display: flex; gap: 16px; width: max-content; padding-bottom: 8px;">
             ${stages.map(s => {
               const appsInStage = applications.filter(a => a.currentStage === s.key);
               return `
-                <div style="flex: 1; min-width: 200px; background: var(--bg-surface, var(--bg-hover)); border: 1px solid var(--border-main); border-radius: var(--radius-md); padding: 12px; display: flex; flex-direction: column;">
+                <div style="width: 290px; min-width: 290px; flex: 0 0 290px; background: var(--bg-surface, var(--bg-hover)); border: 1px solid var(--border-main); border-radius: var(--radius-md); padding: 12px; display: flex; flex-direction: column;">
                   <div class="flex items-center justify-between" style="padding-bottom: 8px; border-bottom: 2px solid ${s.color}; margin-bottom: 10px;">
                     <strong class="text-main" style="font-size: 0.82rem; text-transform: uppercase;">${s.label}</strong>
                     <span class="badge badge-neutral font-bold" style="font-size: 0.72rem;">${appsInStage.length}</span>

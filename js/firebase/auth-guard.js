@@ -203,7 +203,10 @@ const AuthGuard = {
   async switchRole(roleId) {
     if (!this.userProfile) return;
 
-    const actualRole = (this.userProfile.roleId || 'EMPLOYEE').toString().toUpperCase().trim();
+    if (!this._actualRoleId) {
+      this._actualRoleId = (this.userProfile.roleId || 'EMPLOYEE').toString().toUpperCase().trim();
+    }
+    const actualRole = this._actualRoleId;
     const isLocalhost = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1' || window.location.protocol === 'file:';
     const isProjectOwner = this.currentUser?.email === 'ayanislight@gmail.com' || (this.userProfile.email && this.userProfile.email.includes('ayan'));
     const canPreview = isLocalhost || isProjectOwner || actualRole === 'SUPER_ADMIN' || actualRole === 'COMPANY_ADMIN' || actualRole === 'ADMIN';
@@ -219,6 +222,7 @@ const AuthGuard = {
     // renders/gates via hasPermission() for the remainder of the session.
     this._previewRoleId = roleId;
     const normalizedRole = (roleId || 'EMPLOYEE').toString().toUpperCase().trim();
+    this.userProfile.roleId = normalizedRole;
 
     if (normalizedRole === 'SUPER_ADMIN') {
       this.permissions = new Set(['*']);
@@ -237,11 +241,11 @@ const AuthGuard = {
       this.userRole = { name: 'Line Manager', id: 'MANAGER' };
     } else {
       this.userRole = { name: 'Employee (ESS)', id: 'EMPLOYEE' };
-      if (window.PermissionService) {
-        this.permissions = PermissionService.getUserPermissions(this.userProfile, this.userRole);
-      } else {
-        this.permissions = new Set(['own.profile', 'attendance.view', 'leave.view', 'payroll.view', 'communication.view']);
-      }
+      this.permissions = new Set([
+        'own.profile', 'attendance.view', 'attendance.punch', 'leave.view', 'leave.create',
+        'payroll.view', 'expenses.view', 'expenses.create', 'assets.view', 'performance.view',
+        'documents.view', 'requests.view', 'requests.create', 'communication.view', 'reports.view', 'training.view'
+      ]);
     }
 
     this.syncHeaderProfile();
@@ -251,6 +255,9 @@ const AuthGuard = {
         window.Router.renderDynamicSidebar();
       }
       window.Router.navigate('dashboard');
+      if (window.location.hash === '#dashboard' && window.Router.handleHashChange) {
+        window.Router.handleHashChange();
+      }
     }
 
     const roleName = roleId === 'SUPER_ADMIN' ? 'Super Admin' : (roleId === 'COMPANY_ADMIN' ? 'Company Admin' : (roleId === 'HR' ? 'HR Manager' : 'Employee (ESS)'));
