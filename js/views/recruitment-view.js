@@ -791,7 +791,11 @@ const RecruitmentView = {
                     <td>${i.interviewer}</td>
                     <td><strong>${i.date}</strong> at ${i.time}</td>
                     <td>
-                      ${i.interviewType === 'IN_PERSON' || !i.meetingLink || !i.meetingLink.startsWith('http') ? `
+                      ${i.status === 'COMPLETED' ? `
+                        <span class="badge badge-neutral" style="font-size: 0.78rem;">
+                          ${i.interviewType === 'IN_PERSON' ? 'In-Person (Concluded)' : (i.interviewType === 'PHONE' ? 'Phone (Concluded)' : 'Video Call (Ended)')}
+                        </span>
+                      ` : (i.interviewType === 'IN_PERSON' || !i.meetingLink || !i.meetingLink.startsWith('http')) ? `
                         <span class="badge badge-neutral" style="font-size: 0.78rem;" title="${i.location || 'Office Venue'}">
                           Walk-In: ${i.location || 'Office Venue'}
                         </span>
@@ -803,7 +807,9 @@ const RecruitmentView = {
                     <td>
                       ${i.status !== 'COMPLETED' ? `
                         <button class="btn btn-primary btn-sm" onclick="RecruitmentView.openFeedbackModal('${i.id}', '${i.candidateId}', '${i.candidateName}', '${i.applicationId}')">Score</button>
-                      ` : '<span class="text-muted" style="font-size: 0.8rem;">Scored</span>'}
+                      ` : `
+                        <button class="btn btn-soft btn-sm" onclick="RecruitmentView.viewScorecard('${i.id}', '${(i.candidateName || 'Candidate').replace(/'/g, "\\'")}')">View Scorecard</button>
+                      `}
                     </td>
                   </tr>
                 `).join('')}
@@ -990,6 +996,49 @@ const RecruitmentView = {
       this.switchTab('interviews');
     } catch (e) {
       Toast.error(`Failed: ${e.message}`);
+    }
+  },
+
+  async viewScorecard(interviewId, candidateName) {
+    try {
+      const snap = await db.collection('interviewFeedback').where('interviewId', '==', interviewId).limit(1).get();
+      if (snap.empty) {
+        Toast.info('Scorecard details not found.');
+        return;
+      }
+      const fb = snap.docs[0].data();
+      ModalManager.openModal({
+        id: 'view-scorecard-modal',
+        title: `Interview Scorecard: ${candidateName}`,
+        subtitle: `Evaluated by ${fb.interviewerName || 'Panel'} on ${fb.submittedAt ? new Date(fb.submittedAt).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }) : 'Recent'}`,
+        contentHtml: `
+          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 16px;">
+            <div style="padding: 12px; background: var(--bg-hover); border-radius: var(--radius-md);">
+              <div class="text-secondary" style="font-size: 0.78rem;">Technical Rating</div>
+              <div class="font-bold text-main" style="font-size: 1.1rem;">${fb.technicalRating || 4} / 5</div>
+            </div>
+            <div style="padding: 12px; background: var(--bg-hover); border-radius: var(--radius-md);">
+              <div class="text-secondary" style="font-size: 0.78rem;">Communication Rating</div>
+              <div class="font-bold text-main" style="font-size: 1.1rem;">${fb.communicationRating || 4} / 5</div>
+            </div>
+          </div>
+          <div style="margin-bottom: 14px;">
+            <div class="text-secondary" style="font-size: 0.78rem; margin-bottom: 4px;">Recommendation</div>
+            <span class="badge ${fb.recommendation === 'PASS' ? 'badge-success' : (fb.recommendation === 'FAIL' ? 'badge-danger' : 'badge-warning')}" style="font-size: 0.85rem; font-weight: 700;">
+              ${fb.recommendation || 'PASS'}
+            </span>
+          </div>
+          <div style="margin-bottom: 8px;">
+            <div class="text-secondary" style="font-size: 0.78rem; margin-bottom: 4px;">Evaluation Comments</div>
+            <div style="padding: 12px; background: var(--bg-card); border: 1px solid var(--border-main); border-radius: var(--radius-md); font-size: 0.88rem; line-height: 1.5; color: var(--text-main);">
+              ${fb.comments || 'No written remarks provided.'}
+            </div>
+          </div>
+        `,
+        footerHtml: `<button class="btn btn-secondary btn-sm" data-modal-close>Close</button>`
+      });
+    } catch (e) {
+      Toast.error(`Could not load scorecard: ${e.message}`);
     }
   },
 
