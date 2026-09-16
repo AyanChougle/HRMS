@@ -30,7 +30,16 @@ const employeeService = {
         .where('companyId', '==', companyId)
         .get();
       
-      const count = snapshot.size + 1;
+      const existingCodes = new Set();
+      snapshot.docs.forEach(d => {
+        const c = d.data().employeeCode;
+        if (c) existingCodes.add(c.trim().toUpperCase());
+      });
+
+      let count = snapshot.size + 1;
+      while (existingCodes.has(`EMP-${String(count).padStart(4, '0')}`)) {
+        count++;
+      }
       return `EMP-${String(count).padStart(4, '0')}`;
     } catch (e) {
       return `EMP-0001`;

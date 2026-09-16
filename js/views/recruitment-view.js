@@ -243,22 +243,88 @@ const RecruitmentView = {
                 
                 <div class="flex flex-col gap-2" style="flex: 1; min-height: 250px;">
                   ${appsInStage.length === 0 ? `
-                    <div style="padding: 32px 8px; text-align: center; color: var(--text-muted); font-size: 0.78rem; border: 1px dashed var(--border-main); border-radius: var(--radius-md); background: var(--bg-hover); margin: 8px 0;">
+                    <div style="padding: 24px 8px; text-align: center; color: var(--text-muted); font-size: 0.76rem; border: 1px dashed var(--border-main); border-radius: var(--radius-md); background: var(--bg-hover); margin: 6px 0;">
                       No candidates in ${s.label}
                     </div>
                   ` : appsInStage.map(a => `
-                    <div class="card" style="padding: 12px; border: 1px solid var(--border-main); box-shadow: var(--shadow-xs); background: var(--bg-surface);">
-                      <div class="font-bold text-main" style="font-size: 0.85rem;">${a.candidateName || 'Candidate'}</div>
-                      <div class="text-secondary" style="font-size: 0.75rem; margin: 2px 0 6px 0;">${a.jobTitle || 'Open Position'}</div>
-                      <div class="flex items-center justify-between" style="font-size: 0.7rem; color: var(--text-muted); margin-bottom: 8px;">
-                        <span>Source: ${a.source || 'Direct'}</span>
+                    <div class="card" style="padding: 12px 14px; border: 1px solid var(--border-main); box-shadow: var(--shadow-xs); background: var(--bg-card); border-radius: var(--radius-md); margin-bottom: 6px;">
+                      <!-- Card Header: Avatar, Name & Delete button -->
+                      <div class="flex items-center justify-between" style="margin-bottom: 6px;">
+                        <div class="flex items-center gap-2" style="min-width: 0;">
+                          <div style="width: 28px; height: 28px; border-radius: 50%; background: var(--primary-light); color: var(--primary); font-weight: 700; font-size: 0.75rem; display: flex; align-items: center; justify-content: center; flex-shrink: 0;">
+                            ${(a.candidateName || 'CA').split(' ').map(n=>n[0]).join('').substring(0, 2).toUpperCase()}
+                          </div>
+                          <div style="min-width: 0;">
+                            <div class="font-bold text-main" style="font-size: 0.85rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;" title="${a.candidateName || 'Candidate'}">
+                              ${a.candidateName || 'Candidate'}
+                            </div>
+                            <div class="text-secondary" style="font-size: 0.72rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
+                              ${a.jobTitle || 'Open Position'}
+                            </div>
+                          </div>
+                        </div>
+                        <button class="btn btn-ghost btn-sm" style="padding: 2px 6px; color: var(--text-muted); font-size: 0.8rem; line-height: 1;" onclick="RecruitmentView.deleteApplication('${a.id}', '${a.candidateName}')" title="Remove Application">✕</button>
                       </div>
+
+                      <!-- Tag row: Source & Date -->
+                      <div class="flex items-center justify-between" style="font-size: 0.72rem; color: var(--text-muted); margin-bottom: 8px; padding-bottom: 6px; border-bottom: 1px solid var(--border-light);">
+                        <span class="badge badge-neutral" style="font-size: 0.68rem; padding: 2px 6px;">${(a.source || 'Career Page').replace(/_/g, ' ')}</span>
+                        <span style="font-size: 0.7rem;">${a.appliedAt ? new Date(a.appliedAt).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' }) : 'Recent'}</span>
+                      </div>
+
+                      <!-- Contextual Actions tailored to Stage -->
                       <div class="flex items-center gap-1" style="flex-wrap: wrap;">
-                        ${s.key !== 'HIRED' ? `
-                          <button class="btn btn-soft btn-sm" style="font-size: 0.7rem; padding: 2px 6px;" onclick="RecruitmentView.advanceStage('${a.id}', '${s.key}')">Advance ➔</button>
-                        ` : '<span class="badge badge-success" style="font-size: 0.7rem;">✓ Onboarded</span>'}
-                        <button class="btn btn-ghost btn-sm" style="font-size: 0.7rem; padding: 2px 4px;" onclick="RecruitmentView.openInterviewModal('${a.id}', '${a.candidateId}', '${a.candidateName}', '${a.jobTitle}')">Interview</button>
-                        <button class="btn btn-ghost btn-sm" style="font-size: 0.7rem; padding: 2px 4px;" onclick="RecruitmentView.openCreateOfferModal('${a.id}', '${a.candidateId}', '${a.candidateName}', '${a.candidateEmail || ''}', '${a.jobTitle}')">Offer</button>
+                        ${s.key === 'APPLIED' ? `
+                          <button class="btn btn-soft btn-sm" style="font-size: 0.72rem; padding: 3px 8px;" onclick="RecruitmentView.advanceStage('${a.id}', 'APPLIED', '${a.candidateId || ''}', '${a.candidateName || ''}', '${a.candidateEmail || ''}', '${a.jobTitle || ''}')">Screen ➔</button>
+                          <button class="btn btn-ghost btn-sm" style="font-size: 0.72rem; padding: 3px 6px;" onclick="RecruitmentView.openInterviewModal('${a.id}', '${a.candidateId}', '${a.candidateName}', '${a.jobTitle}')">Interview</button>
+                        ` : ''}
+
+                        ${s.key === 'SCREENING' ? `
+                          <button class="btn btn-soft btn-sm" style="font-size: 0.72rem; padding: 3px 8px;" onclick="RecruitmentView.advanceStage('${a.id}', 'SCREENING', '${a.candidateId || ''}', '${a.candidateName || ''}', '${a.candidateEmail || ''}', '${a.jobTitle || ''}')">Shortlist ➔</button>
+                          <button class="btn btn-ghost btn-sm" style="font-size: 0.72rem; padding: 3px 6px;" onclick="RecruitmentView.openInterviewModal('${a.id}', '${a.candidateId}', '${a.candidateName}', '${a.jobTitle}')">Interview</button>
+                        ` : ''}
+
+                        ${s.key === 'SHORTLISTED' ? `
+                          <button class="btn btn-primary btn-sm" style="font-size: 0.72rem; padding: 3px 8px;" onclick="RecruitmentView.openInterviewModal('${a.id}', '${a.candidateId}', '${a.candidateName}', '${a.jobTitle}')">📅 Interview</button>
+                          <button class="btn btn-soft btn-sm" style="font-size: 0.72rem; padding: 3px 6px;" onclick="RecruitmentView.advanceStage('${a.id}', 'SHORTLISTED', '${a.candidateId || ''}', '${a.candidateName || ''}', '${a.candidateEmail || ''}', '${a.jobTitle || ''}')">Skip ➔</button>
+                        ` : ''}
+
+                        ${s.key === 'INTERVIEW' ? `
+                          <button class="btn btn-primary btn-sm" style="font-size: 0.72rem; padding: 3px 8px;" onclick="RecruitmentView.openFeedbackModal('${a.id}', '${a.candidateId}', '${a.candidateName}', '${a.id}')">✍️ Score</button>
+                          <button class="btn btn-soft btn-sm" style="font-size: 0.72rem; padding: 3px 6px;" onclick="RecruitmentView.advanceStage('${a.id}', 'INTERVIEW', '${a.candidateId || ''}', '${a.candidateName || ''}', '${a.candidateEmail || ''}', '${a.jobTitle || ''}')">Select ➔</button>
+                        ` : ''}
+
+                        ${s.key === 'SELECTED' ? `
+                          <button class="btn btn-primary btn-sm" style="font-size: 0.72rem; padding: 3px 8px;" onclick="RecruitmentView.openCreateOfferModal('${a.id}', '${a.candidateId}', '${a.candidateName}', '${a.candidateEmail || ''}', '${a.jobTitle}')">📄 Offer</button>
+                          <button class="btn btn-soft btn-sm" style="font-size: 0.72rem; padding: 3px 6px;" onclick="RecruitmentView.advanceStage('${a.id}', 'SELECTED', '${a.candidateId || ''}', '${a.candidateName || ''}', '${a.candidateEmail || ''}', '${a.jobTitle || ''}')">Advance ➔</button>
+                        ` : ''}
+
+                        ${s.key === 'OFFER' ? `
+                          <button class="btn btn-soft btn-sm" style="font-size: 0.72rem; padding: 3px 8px;" onclick="RecruitmentView.switchTab('offers')">Offer Details</button>
+                          <button class="btn btn-primary btn-sm" style="font-size: 0.72rem; padding: 3px 8px; background: var(--success);" onclick="RecruitmentView.hireAndConvertCandidate('${a.id}', '${a.candidateId || ''}', '${a.candidateName || ''}', '${a.candidateEmail || ''}', '${a.jobTitle || ''}')">✓ Hire & Add</button>
+                        ` : ''}
+
+                        ${s.key === 'HIRED' ? `
+                          ${a.employeeCode ? `
+                            <span class="badge badge-success" style="font-size: 0.72rem;">✓ ${a.employeeCode}</span>
+                            <button class="btn btn-soft btn-sm" style="font-size: 0.7rem; padding: 2px 6px;" onclick="Router.navigate('employees')">Directory ➔</button>
+                          ` : `
+                            <button class="btn btn-primary btn-sm" style="font-size: 0.72rem; padding: 4px 8px; background: var(--success); font-weight: 600;" onclick="RecruitmentView.hireAndConvertCandidate('${a.id}', '${a.candidateId || ''}', '${a.candidateName || ''}', '${a.candidateEmail || ''}', '${a.jobTitle || ''}')">👤 Add to Employees</button>
+                          `}
+                        ` : ''}
+
+                        <!-- Quick Move Stage Selector -->
+                        <select class="form-control" style="font-size: 0.68rem; padding: 2px 4px; height: 24px; width: auto; max-width: 80px; margin-left: auto; border-radius: var(--radius-sm);" onchange="RecruitmentView.quickMoveStage('${a.id}', this.value, '${a.candidateId || ''}', '${a.candidateName || ''}', '${a.candidateEmail || ''}', '${a.jobTitle || ''}')" title="Change stage">
+                          <option value="" disabled selected>Move…</option>
+                          <option value="APPLIED">Applied</option>
+                          <option value="SCREENING">Screening</option>
+                          <option value="SHORTLISTED">Shortlisted</option>
+                          <option value="INTERVIEW">Interview</option>
+                          <option value="SELECTED">Selected</option>
+                          <option value="OFFER">Offer</option>
+                          <option value="HIRED">Hired (Employee)</option>
+                          <option value="REJECTED">🚫 Reject</option>
+                        </select>
                       </div>
                     </div>
                   `).join('')}
@@ -271,7 +337,7 @@ const RecruitmentView = {
     `;
   },
 
-  async advanceStage(appId, currentStage) {
+  async advanceStage(appId, currentStage, candidateId = '', candidateName = '', candidateEmail = '', jobTitle = '') {
     const nextStages = {
       'APPLIED': 'SCREENING',
       'SCREENING': 'SHORTLISTED',
@@ -282,12 +348,90 @@ const RecruitmentView = {
     };
 
     const next = nextStages[currentStage] || 'SHORTLISTED';
+    if (next === 'HIRED') {
+      await this.hireAndConvertCandidate(appId, candidateId, candidateName, candidateEmail, jobTitle);
+      return;
+    }
+
     try {
       await recruitmentService.updateApplicationStage(appId, next);
       Toast.success(`Candidate advanced to ${next} stage.`);
       Router.navigate('recruitment');
     } catch (e) {
       Toast.error(`Could not advance stage: ${e.message}`);
+    }
+  },
+
+  async quickMoveStage(appId, newStage, candidateId = '', candidateName = '', candidateEmail = '', jobTitle = '') {
+    if (!newStage) return;
+    if (newStage === 'HIRED') {
+      await this.hireAndConvertCandidate(appId, candidateId, candidateName, candidateEmail, jobTitle);
+      return;
+    }
+    if (newStage === 'REJECTED') {
+      if (!confirm(`Are you sure you want to reject this candidate application?`)) return;
+      try {
+        await recruitmentService.rejectApplication(appId);
+        Toast.info('Candidate application marked as Rejected.');
+        Router.navigate('recruitment');
+      } catch (e) {
+        Toast.error(`Failed: ${e.message}`);
+      }
+      return;
+    }
+    try {
+      await recruitmentService.updateApplicationStage(appId, newStage);
+      Toast.success(`Application moved to ${newStage} stage.`);
+      Router.navigate('recruitment');
+    } catch (e) {
+      Toast.error(`Failed: ${e.message}`);
+    }
+  },
+
+  async hireAndConvertCandidate(appId, candidateId = '', candidateName = '', candidateEmail = '', jobTitle = '') {
+    ModalManager.confirm({
+      title: `Hire & Add to Employee Directory`,
+      message: `Confirm hiring ${candidateName || 'this candidate'} for '${jobTitle || 'Open Role'}'? This will immediately create an active Employee profile with official employee code (e.g. EMP-0014) in the People & Employees directory (#employees).`,
+      confirmText: 'Hire & Create Employee',
+      confirmClass: 'btn-primary',
+      onConfirm: async () => {
+        try {
+          const newEmp = await recruitmentService.convertCandidateToEmployee(
+            { candidateId, candidateName, candidateEmail, applicationId: appId, jobTitle },
+            { positionTitle: jobTitle, department: 'Technology', branch: 'HQ - Mumbai', joiningDate: new Date().toISOString().slice(0, 10) }
+          );
+          Toast.success(`🎉 ${newEmp.fullName} hired! Created official record: ${newEmp.employeeCode} in Employees directory.`);
+          Router.navigate('employees');
+        } catch (err) {
+          Toast.error(`Could not hire candidate: ${err.message}`);
+        }
+      }
+    });
+  },
+
+  async deleteApplication(appId, candidateName = '') {
+    if (!confirm(`Are you sure you want to remove ${candidateName ? `'${candidateName}'` : 'this application'} from the recruitment pipeline?`)) {
+      return;
+    }
+    try {
+      await recruitmentService.deleteApplication(appId);
+      Toast.success('Application removed from pipeline.');
+      Router.navigate('recruitment');
+    } catch (e) {
+      Toast.error(`Could not delete application: ${e.message}`);
+    }
+  },
+
+  async deleteCandidate(candidateId, candidateName = '') {
+    if (!confirm(`Are you sure you want to delete candidate profile '${candidateName || 'Candidate'}' and their applications? This action cannot be undone.`)) {
+      return;
+    }
+    try {
+      await recruitmentService.deleteCandidate(candidateId);
+      Toast.success(`Candidate '${candidateName || 'Candidate'}' deleted from Talent Pool.`);
+      Router.navigate('recruitment');
+    } catch (e) {
+      Toast.error(`Could not delete candidate: ${e.message}`);
     }
   },
 
@@ -332,7 +476,7 @@ const RecruitmentView = {
                     <td><span class="badge badge-neutral">${j.workMode}</span></td>
                     <td><strong>${j.openings}</strong></td>
                     <td>${j.salaryRange}</td>
-                    <td><span class="font-medium" style="font-size: 0.85rem; color: var(--text-secondary);">${j.closingDate || 'Open-ended'}</span></td>
+                    <td><span class="font-medium" style="font-size: 0.85rem; color: var(--text-secondary);">${RecruitmentView.formatDate(j.closingDate)}</span></td>
                     <td>
                       <span class="badge ${j.status === 'PUBLISHED' ? 'badge-success' : (j.status === 'CLOSED' ? 'badge-danger' : 'badge-warning')}">
                         <span class="badge-dot"></span> ${j.status === 'PUBLISHED' ? 'Active / Open' : (j.status === 'CLOSED' ? 'Closed' : j.status)}
@@ -378,6 +522,18 @@ const RecruitmentView = {
       Router.navigate('recruitment');
     } catch (e) {
       Toast.error(`Failed to reopen position: ${e.message}`);
+    }
+  },
+
+  formatDate(dateStr) {
+    if (!dateStr) return 'Open-ended';
+    try {
+      const clean = String(dateStr).trim().replace(/\s+/g, '-');
+      const d = new Date(clean);
+      if (isNaN(d.getTime())) return dateStr;
+      return d.toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' });
+    } catch (e) {
+      return dateStr;
     }
   },
 
@@ -1039,12 +1195,19 @@ const RecruitmentView = {
   renderCandidatesTab(candidates) {
     return `
       <div class="card">
-        <div class="card-header">
+        <div class="card-header" style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px;">
           <div>
             <div class="card-title">Talent Pool Database (${candidates.length})</div>
             <div class="card-subtitle">Curated candidate profiles across technology, product, and operations</div>
           </div>
-          <button class="btn btn-primary btn-sm" onclick="RecruitmentView.openAddCandidateModal()">+ Add Candidate</button>
+          <div style="display: flex; align-items: center; gap: 8px;">
+            ${candidates.length > 0 ? `
+              <button class="btn btn-secondary btn-sm" style="color: var(--danger); border-color: rgba(220, 38, 38, 0.3);" onclick="RecruitmentView.cleanupTestCandidates()" title="Remove junk or incomplete test candidate entries">
+                🗑️ Purge Test Candidates
+              </button>
+            ` : ''}
+            <button class="btn btn-primary btn-sm" onclick="RecruitmentView.openAddCandidateModal()">+ Add Candidate</button>
+          </div>
         </div>
         <div class="card-body" style="padding: 0;">
           ${candidates.length === 0 ? `
@@ -1053,7 +1216,11 @@ const RecruitmentView = {
               <div class="empty-state-desc">Click "Add Candidate" to register applicants into the talent pool.</div>
             </div>
           ` : `
-            <table class="data-table">
+            <div style="padding: 12px 16px; border-bottom: 1px solid var(--border-main); display: flex; gap: 12px; align-items: center; background: var(--bg-hover);">
+              <input type="text" id="talent-search-input" class="form-control" placeholder="🔍 Search by candidate name, designation, email, skills..." oninput="RecruitmentView.filterTalentPool(this.value)" style="max-width: 380px; font-size: 0.85rem;" />
+              <span class="text-muted" style="font-size: 0.8rem;">Showing <span id="talent-visible-count">${candidates.length}</span> candidate(s)</span>
+            </div>
+            <table class="data-table" id="talent-pool-table">
               <thead>
                 <tr>
                   <th>Candidate Name</th>
@@ -1063,26 +1230,89 @@ const RecruitmentView = {
                   <th>Contact Email</th>
                   <th>Source</th>
                   <th>Status</th>
+                  <th style="text-align: right;">Actions</th>
                 </tr>
               </thead>
               <tbody>
-                ${candidates.map(c => `
-                  <tr>
-                    <td class="font-bold text-main">${c.fullName}</td>
-                    <td>${c.currentDesignation}</td>
-                    <td><strong>${c.totalExperience} Years</strong></td>
-                    <td>${c.location}</td>
+                ${candidates.map(c => {
+                  const safeName = (c.fullName || '').replace(/'/g, "\\'");
+                  const safeDesig = (c.currentDesignation || 'General Role').replace(/'/g, "\\'");
+                  const initials = (c.fullName || 'C').split(' ').map(p => p[0]).filter(Boolean).slice(0, 2).join('').toUpperCase() || 'C';
+                  const isHired = c.profileStatus === 'HIRED' || !!c.employeeCode;
+                  return `
+                  <tr class="talent-row" data-search="${((c.fullName || '') + ' ' + (c.currentDesignation || '') + ' ' + (c.email || '') + ' ' + (c.skills || '')).toLowerCase()}">
+                    <td class="font-bold text-main">
+                      <div style="display: flex; align-items: center; gap: 10px;">
+                        <div style="width: 30px; height: 30px; border-radius: 50%; background: ${isHired ? 'var(--success-light, #dcfce7)' : 'var(--primary-light, #e0e7ff)'}; color: ${isHired ? 'var(--success)' : 'var(--primary)'}; display: flex; align-items: center; justify-content: center; font-size: 0.75rem; font-weight: 700; flex-shrink: 0;">
+                          ${initials}
+                        </div>
+                        <div>
+                          <div>${c.fullName}</div>
+                          ${c.employeeCode ? `<span style="font-size: 0.72rem; color: var(--success); font-weight: 600;">✓ Code: ${c.employeeCode}</span>` : ''}
+                        </div>
+                      </div>
+                    </td>
+                    <td>${c.currentDesignation || '—'}</td>
+                    <td><strong>${c.totalExperience || 0} Years</strong></td>
+                    <td>${c.location || 'Mumbai'}</td>
                     <td>${c.email}</td>
-                    <td><span class="badge badge-neutral">${c.source}</span></td>
-                    <td><span class="badge badge-success">${c.profileStatus || 'ACTIVE'}</span></td>
+                    <td><span class="badge badge-neutral">${c.source || 'Direct'}</span></td>
+                    <td>
+                      <span class="badge ${isHired ? 'badge-success' : 'badge-primary'}">
+                        ${isHired ? 'HIRED' : (c.profileStatus || 'ACTIVE')}
+                      </span>
+                    </td>
+                    <td style="text-align: right;">
+                      <div style="display: inline-flex; align-items: center; gap: 6px;">
+                        <button class="btn btn-soft btn-sm" style="font-size: 0.75rem; padding: 4px 8px;" onclick="RecruitmentView.openInterviewModal('', '${c.id}', '${safeName}', '${safeDesig}')" title="Schedule Interview">
+                          📅 Interview
+                        </button>
+                        <button class="btn btn-secondary btn-sm" style="font-size: 0.75rem; padding: 4px 8px; color: var(--danger); border-color: rgba(220, 38, 38, 0.3);" onclick="RecruitmentView.deleteCandidate('${c.id}', '${safeName}')" title="Delete Candidate">
+                          🗑️
+                        </button>
+                      </div>
+                    </td>
                   </tr>
-                `).join('')}
+                `;
+                }).join('')}
               </tbody>
             </table>
           `}
         </div>
       </div>
     `;
+  },
+
+  filterTalentPool(query) {
+    const q = (query || '').toLowerCase().trim();
+    const rows = document.querySelectorAll('.talent-row');
+    let visible = 0;
+    rows.forEach(r => {
+      const text = r.getAttribute('data-search') || '';
+      const match = !q || text.includes(q);
+      r.style.display = match ? '' : 'none';
+      if (match) visible++;
+    });
+    const countEl = document.getElementById('talent-visible-count');
+    if (countEl) countEl.textContent = visible;
+  },
+
+  async cleanupTestCandidates() {
+    ModalManager.confirm({
+      title: 'Purge Dummy & Test Candidates',
+      message: 'This will scan the Talent Pool for incomplete test candidates (e.g. repeated test names like "aaa", "bbb", "dad dadad", or invalid emails) and permanently remove them along with their test applications. Are you sure?',
+      confirmText: 'Purge Test Candidates',
+      confirmClass: 'btn-danger',
+      onConfirm: async () => {
+        try {
+          const count = await recruitmentService.purgeTestCandidates();
+          Toast.success(`Purged ${count} test candidate(s).`);
+          Router.navigate('recruitment');
+        } catch (e) {
+          Toast.error(`Purge failed: ${e.message}`);
+        }
+      }
+    });
   },
 
   openAddCandidateModal(defaultJobId = null, defaultJobTitle = null) {

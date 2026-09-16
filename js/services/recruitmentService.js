@@ -281,6 +281,80 @@ const recruitmentService = {
     }
   },
 
+  async deleteApplication(appId) {
+    try {
+      await db.collection('jobApplications').doc(appId).delete();
+      await auditService.log('APPLICATION_DELETED', 'RECRUITMENT', 'jobApplications', appId, {});
+      return true;
+    } catch (err) {
+      console.error('Error deleting application:', err);
+      throw err;
+    }
+  },
+
+  async rejectApplication(appId, reason = 'Candidate disqualified / withdrawn') {
+    return this.updateApplicationStage(appId, 'REJECTED', reason);
+  },
+
+  async deleteCandidate(candidateId) {
+    try {
+      // 1. Delete Candidate Document
+      await db.collection('candidates').doc(candidateId).delete();
+
+      // 2. Cascade delete linked applications
+      const appsSnap = await db.collection('jobApplications').where('candidateId', '==', candidateId).get();
+      const batch = db.batch();
+      appsSnap.docs.forEach(doc => {
+        batch.delete(doc.ref);
+      });
+      await batch.commit();
+
+      await auditService.log('CANDIDATE_DELETED', 'RECRUITMENT', 'candidates', candidateId, {});
+      return true;
+    } catch (err) {
+      console.error('Error deleting candidate:', err);
+      throw err;
+    }
+  },
+
+  async purgeTestCandidates() {
+    try {
+      const snap = await db.collection('candidates').get();
+      let purgedCount = 0;
+      const batch = db.batch();
+
+      for (const doc of snap.docs) {
+        const data = doc.data();
+        const name = (data.fullName || '').trim().toLowerCase();
+        const email = (data.email || '').trim().toLowerCase();
+
+        // Detect test/dummy patterns (repeated chars, common dummy inputs, invalid emails)
+        const isTestName = ['aaa', 'bbb', 'ccc', 'awd', 'asdf', 'test', 'dad dadad'].includes(name) ||
+                           /^([a-z])\1{2,}$/.test(name) ||
+                           name.length <= 2;
+        const isTestEmail = !email || !email.includes('@') || email.includes('test') || email.includes('example.com') || email.length < 5;
+
+        if (isTestName || isTestEmail) {
+          batch.delete(doc.ref);
+          purgedCount++;
+
+          // Cascade delete linked applications
+          const appSnap = await db.collection('jobApplications').where('candidateId', '==', doc.id).get();
+          appSnap.docs.forEach(aDoc => batch.delete(aDoc.ref));
+        }
+      }
+
+      if (purgedCount > 0) {
+        await batch.commit();
+        await auditService.log('TEST_CANDIDATES_PURGED', 'RECRUITMENT', 'candidates', 'batch', { count: purgedCount });
+      }
+      return purgedCount;
+    } catch (err) {
+      console.error('Error purging test candidates:', err);
+      throw err;
+    }
+  },
+
   // 4. SCREENING & EVALUATION
   async createScreening(data) {
     try {
@@ -341,7 +415,9 @@ const recruitmentService = {
       };
 
       const docRef = await db.collection('interviews').add(payload);
-      await this.updateApplicationStage(data.applicationId, 'INTERVIEW', `Scheduled ${payload.round}`);
+      if (data.applicationId) {
+        await this.updateApplicationStage(data.applicationId, 'INTERVIEW', `Scheduled ${payload.round}`);
+      }
       await auditService.log('INTERVIEW_CREATED', 'RECRUITMENT', 'interviews', docRef.id, payload);
       return { id: docRef.id, ...payload };
     } catch (e) {
@@ -459,49 +535,108 @@ const recruitmentService = {
   },
 
   // 7. SEAMLESS HANDOVER: HIRED CANDIDATE -> EMPLOYEE & ONBOARDING (PHASE 4)
-  async convertCandidateToEmployee(candidateData, offerData) {
+  async convertCandidateToEmployee(candidateData, offerData = {}) {
     try {
-      // 1. Generate Employee Code
-      const employees = await employeeService.getEmployees();
-      const code = `EMP${String(employees.length + 1).padStart(3, '0')}`;
+      const companyId = offerData.companyId || candidateData.companyId || AuthGuard.userProfile?.companyId || 'comp_diallo_india';
 
-      // 2. Create Employee Master record
+      // 1. Generate Employee Code (e.g. EMP-0014)
+      const code = await employeeService.getNextEmployeeCode(companyId);
+
+      // 2. Resolve Candidate Information
+      let fullName = candidateData.candidateName || candidateData.fullName || 'Candidate Staff';
+      let email = candidateData.candidateEmail || candidateData.email || '';
+      let phone = candidateData.phone || '';
+      let designation = offerData.positionTitle || candidateData.jobTitle || 'Software Engineer';
+      let department = offerData.department || candidateData.department || 'Technology';
+
+      if (candidateData.candidateId) {
+        try {
+          const cDoc = await db.collection('candidates').doc(candidateData.candidateId).get();
+          if (cDoc.exists) {
+            const cData = cDoc.data();
+            fullName = cData.fullName || fullName;
+            email = cData.email || email;
+            phone = cData.phone || phone;
+            designation = cData.currentDesignation || designation;
+          }
+        } catch (e) {
+          console.warn('Could not fetch candidate details:', e);
+        }
+      }
+
+      const parts = fullName.split(' ');
+      const firstName = candidateData.firstName || parts[0] || 'Staff';
+      const lastName = candidateData.lastName || parts.slice(1).join(' ') || '';
+      const safeEmail = (email && email.includes('@')) ? email : `${firstName.toLowerCase().replace(/[^a-z0-9]/g, '') || 'staff'}@diallo.in`;
+
+      // 3. Create Employee Master record
       const newEmp = await employeeService.createEmployee({
         employeeCode: code,
-        fullName: candidateData.candidateName || candidateData.fullName,
-        email: candidateData.candidateEmail || candidateData.email,
-        workEmail: `${(candidateData.candidateName || candidateData.fullName).toLowerCase().replace(/\s+/g, '.')}@diallo.in`,
-        department: offerData.department || 'Technology',
-        designation: offerData.positionTitle || 'Software Engineer',
+        firstName,
+        lastName,
+        fullName,
+        email: safeEmail,
+        personalEmail: safeEmail,
+        workEmail: `${firstName.toLowerCase().replace(/[^a-z0-9]/g, '') || 'emp'}.${(lastName || 'diallo').toLowerCase().replace(/[^a-z0-9]/g, '')}@diallo.in`,
+        phone: phone || '+91 98200 12345',
+        department: department,
+        designation: designation,
         location: offerData.branch || 'HQ - Mumbai',
+        branchId: 'branch_mumbai',
         branchName: offerData.branch || 'HQ - Mumbai',
         joiningDate: offerData.joiningDate || new Date().toISOString().slice(0, 10),
         employmentStatus: 'ACTIVE',
-        employmentType: 'Full-Time',
+        employmentType: 'Permanent',
         source: 'RECRUITMENT_ATS',
-        candidateId: candidateData.candidateId || candidateData.id,
-        companyId: offerData.companyId || 'comp_diallo_india'
+        candidateId: candidateData.candidateId || candidateData.id || '',
+        companyId: companyId
       });
 
-      // 3. Initialize Standard Onboarding Checklist tasks
-      await onboardingService.createTask({
-        title: `Verify Identity & Background Checks for ${newEmp.fullName}`,
-        employeeId: newEmp.id,
-        employeeName: newEmp.fullName,
-        assignedTo: 'HR Operations',
-        dueDate: offerData.joiningDate || '2026-11-01'
-      });
-      await onboardingService.createTask({
-        title: `Issue IT Equipment & Workspace Credentials for ${newEmp.fullName}`,
-        employeeId: newEmp.id,
-        employeeName: newEmp.fullName,
-        assignedTo: 'IT Administration',
-        dueDate: offerData.joiningDate || '2026-11-01'
-      });
+      // 4. Initialize Standard Onboarding Checklist tasks
+      if (typeof onboardingService !== 'undefined' && onboardingService.createTask) {
+        try {
+          await onboardingService.createTask({
+            title: `Verify Identity & Background Checks for ${newEmp.fullName}`,
+            employeeId: newEmp.id,
+            employeeName: newEmp.fullName,
+            assignedTo: 'HR Operations',
+            dueDate: offerData.joiningDate || new Date().toISOString().slice(0, 10)
+          });
+          await onboardingService.createTask({
+            title: `Issue IT Equipment & Workspace Credentials for ${newEmp.fullName}`,
+            employeeId: newEmp.id,
+            employeeName: newEmp.fullName,
+            assignedTo: 'IT Administration',
+            dueDate: offerData.joiningDate || new Date().toISOString().slice(0, 10)
+          });
+        } catch (taskErr) {
+          console.warn('Onboarding task creation warning:', taskErr);
+        }
+      }
 
-      // 4. Update Application status to HIRED
+      // 5. Update Application status to HIRED and record employeeCode
       if (candidateData.applicationId) {
-        await this.updateApplicationStage(candidateData.applicationId, 'HIRED', `Converted to employee ${code}`);
+        await db.collection('jobApplications').doc(candidateData.applicationId).update({
+          currentStage: 'HIRED',
+          employeeCode: code,
+          employeeId: newEmp.id,
+          hiredAt: firebase.firestore.FieldValue.serverTimestamp(),
+          updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+        });
+      }
+
+      // 6. Update Candidate document status to HIRED
+      if (candidateData.candidateId) {
+        try {
+          await db.collection('candidates').doc(candidateData.candidateId).update({
+            profileStatus: 'HIRED',
+            employeeCode: code,
+            employeeId: newEmp.id,
+            updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+          });
+        } catch (cErr) {
+          console.warn('Candidate status update warning:', cErr);
+        }
       }
 
       await auditService.log('CANDIDATE_HIRED', 'RECRUITMENT', 'employees', newEmp.id, { employeeCode: code, fullName: newEmp.fullName });
