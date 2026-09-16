@@ -81,6 +81,17 @@ const recruitmentService = {
     }
   },
 
+  async deleteRequisition(id) {
+    try {
+      await db.collection('jobRequisitions').doc(id).delete();
+      await auditService.log('REQUISITION_DELETED', 'RECRUITMENT', 'jobRequisitions', id, {});
+      return true;
+    } catch (e) {
+      console.error('Error deleting requisition:', e);
+      throw e;
+    }
+  },
+
   // 2. JOB POSITIONS & PUBLISHING
   async getJobs(filters = {}) {
     try {
@@ -138,6 +149,41 @@ const recruitmentService = {
       await auditService.log('JOB_STATUS_CHANGED', 'RECRUITMENT', 'jobPositions', jobId, { status: newStatus });
       return true;
     } catch (e) {
+      throw e;
+    }
+  },
+
+  async updateJob(jobId, jobData) {
+    try {
+      const payload = {
+        title: jobData.title,
+        department: jobData.department || 'Technology',
+        location: jobData.location || 'Mumbai, Maharashtra',
+        employmentType: jobData.employmentType || 'FULL_TIME',
+        workMode: jobData.workMode || 'HYBRID',
+        experience: jobData.experience || '2–5 Years',
+        openings: Number(jobData.openings) || 1,
+        salaryRange: jobData.salaryRange || '₹8,00,000 – ₹12,00,000',
+        description: jobData.description || '',
+        closingDate: jobData.closingDate || '2026-12-31',
+        updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+      };
+      await db.collection('jobPositions').doc(jobId).update(payload);
+      await auditService.log('JOB_UPDATED', 'RECRUITMENT', 'jobPositions', jobId, payload);
+      return true;
+    } catch (e) {
+      console.error('Error updating job position:', e);
+      throw e;
+    }
+  },
+
+  async deleteJob(jobId) {
+    try {
+      await db.collection('jobPositions').doc(jobId).delete();
+      await auditService.log('JOB_DELETED', 'RECRUITMENT', 'jobPositions', jobId, {});
+      return true;
+    } catch (e) {
+      console.error('Error deleting job position:', e);
       throw e;
     }
   },
@@ -355,6 +401,36 @@ const recruitmentService = {
     }
   },
 
+  async applyCandidateToJob(candidateId, jobId, jobTitle) {
+    try {
+      const cDoc = await db.collection('candidates').doc(candidateId).get();
+      if (!cDoc.exists) throw new Error('Candidate not found');
+      const cData = cDoc.data();
+
+      const existing = await db.collection('jobApplications')
+        .where('candidateId', '==', candidateId)
+        .where('jobId', '==', jobId)
+        .get();
+
+      if (!existing.empty) {
+        throw new Error('This candidate already has an active application for this job opening.');
+      }
+
+      return await this.createApplication({
+        candidateId,
+        candidateName: cData.fullName,
+        candidateEmail: cData.email,
+        jobId,
+        jobTitle,
+        companyId: cData.companyId || 'comp_diallo_india',
+        source: cData.source || 'TALENT_POOL'
+      });
+    } catch (e) {
+      console.error('Error applying candidate to job:', e);
+      throw e;
+    }
+  },
+
   // 4. SCREENING & EVALUATION
   async createScreening(data) {
     try {
@@ -454,6 +530,23 @@ const recruitmentService = {
     }
   },
 
+  async deleteInterview(interviewId) {
+    try {
+      await db.collection('interviews').doc(interviewId).delete();
+      const fbSnap = await db.collection('interviewFeedback').where('interviewId', '==', interviewId).get();
+      const batch = db.batch();
+      fbSnap.forEach(doc => batch.delete(doc.ref));
+      if (!fbSnap.empty) {
+        await batch.commit();
+      }
+      await auditService.log('INTERVIEW_DELETED', 'RECRUITMENT', 'interviews', interviewId, {});
+      return true;
+    } catch (e) {
+      console.error('Error deleting interview:', e);
+      throw e;
+    }
+  },
+
   // 6. JOB OFFERS & PRE-EMPLOYMENT
   async getOffers(companyId = null) {
     try {
@@ -530,6 +623,17 @@ const recruitmentService = {
       await auditService.log('OFFER_ACCEPTED', 'RECRUITMENT', 'jobOffers', offerId, {});
       return true;
     } catch (e) {
+      throw e;
+    }
+  },
+
+  async deleteOffer(offerId) {
+    try {
+      await db.collection('jobOffers').doc(offerId).delete();
+      await auditService.log('OFFER_DELETED', 'RECRUITMENT', 'jobOffers', offerId, {});
+      return true;
+    } catch (e) {
+      console.error('Error deleting offer:', e);
       throw e;
     }
   },

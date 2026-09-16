@@ -10,9 +10,9 @@ const seedService = {
     try {
       const companiesSnap = await db.collection('companies').limit(1).get();
       if (companiesSnap.empty) {
-        console.log('⚡ Initializing Diallo HRMS Indian Corporate Setup in Firestore...');
+        console.log('[Seed] Initializing Diallo HRMS Indian Corporate Setup in Firestore...');
         await this.seedAll();
-        console.log('✓ Firestore Database Seed Completed.');
+        console.log('[Seed] Firestore Database Seed Completed.');
       }
     } catch (err) {
       console.warn('Bootstrap check note:', err);
@@ -29,7 +29,7 @@ const seedService = {
     await this.seedAssets();
     await this.seedPerformance();
     await this.seedRecruitment();
-    console.log('✓ All demo data seeded successfully.');
+    console.log('[Seed] All demo data seeded successfully.');
   },
 
   async seedCoreStructure() {

@@ -440,7 +440,7 @@ const RecruitmentView = {
   renderJobsTab(jobs) {
     return `
       <div class="card">
-        <div class="card-header">
+        <div class="card-header" style="display: flex; justify-content: space-between; align-items: center;">
           <div>
             <div class="card-title">Job Openings & Positions (${jobs.length})</div>
             <div class="card-subtitle">Published vacancies open for public and internal candidate applications</div>
@@ -449,9 +449,21 @@ const RecruitmentView = {
         </div>
         <div class="card-body" style="padding: 0;">
           ${jobs.length === 0 ? `
-            <div class="empty-state" style="border: none; padding: 40px;">
-              <div class="empty-state-title">No Job Openings Published</div>
-              <div class="empty-state-desc">Click "Post New Job" to establish a new hiring requirement.</div>
+            <div style="padding: 60px 16px; text-align: center;">
+              <div style="width: 48px; height: 48px; border-radius: 50%; background: var(--primary-light, #eff6ff); color: var(--primary, #2563eb); display: inline-flex; align-items: center; justify-content: center; margin-bottom: 16px;">
+                <svg width="24" height="24" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 13.255A23.931 23.931 0 0112 15c-3.183 0-6.22-.62-9-1.745M16 6V4a2 2 0 00-2-2h-4a2 2 0 00-2 2v2m4 6h.01M5 20h14a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/>
+                </svg>
+              </div>
+              <div style="font-weight: 700; font-size: 1.05rem; color: var(--text-main); margin-bottom: 6px;">
+                No Job Openings Published
+              </div>
+              <div style="color: var(--text-secondary); font-size: 0.85rem; max-width: 460px; margin: 0 auto 20px auto;">
+                Create and publish vacant job positions to attract, evaluate, and track candidate applications.
+              </div>
+              <div style="display: flex; gap: 8px; justify-content: center;">
+                <button class="btn btn-primary btn-sm" onclick="RecruitmentView.openCreateJobModal()">+ Post New Job</button>
+              </div>
             </div>
           ` : `
             <table class="data-table">
@@ -469,7 +481,9 @@ const RecruitmentView = {
                 </tr>
               </thead>
               <tbody>
-                ${jobs.map(j => `
+                ${jobs.map(j => {
+                  const safeTitle = (j.title || '').replace(/'/g, "\\'");
+                  return `
                   <tr>
                     <td class="font-bold text-main">${j.title}</td>
                     <td>${j.department}</td>
@@ -486,15 +500,20 @@ const RecruitmentView = {
                     <td style="text-align: right;">
                       <div style="display: inline-flex; align-items: center; gap: 6px;">
                         ${j.status === 'PUBLISHED' ? `
-                          <button class="btn btn-soft btn-sm" onclick="RecruitmentView.openAddCandidateModal('${j.id}', '${j.title}')">+ Candidate</button>
-                          <button class="btn btn-secondary btn-sm" style="color: var(--danger); border-color: rgba(220, 38, 38, 0.3);" onclick="RecruitmentView.closeJobPosition('${j.id}', '${j.title}')" title="Close this job position">Close Position</button>
+                          <button class="btn btn-soft btn-sm" onclick="RecruitmentView.openAddCandidateModal('${j.id}', '${safeTitle}')">+ Candidate</button>
+                        ` : ''}
+                        <button class="btn btn-soft btn-sm" onclick="RecruitmentView.openEditJobModal('${j.id}')">Edit</button>
+                        ${j.status === 'PUBLISHED' ? `
+                          <button class="btn btn-secondary btn-sm" style="color: var(--danger); border-color: rgba(220, 38, 38, 0.3);" onclick="RecruitmentView.closeJobPosition('${j.id}', '${safeTitle}')" title="Close this job position">Close</button>
                         ` : `
-                          <button class="btn btn-soft btn-sm" onclick="RecruitmentView.reopenJobPosition('${j.id}', '${j.title}')">Reopen Position</button>
+                          <button class="btn btn-soft btn-sm" onclick="RecruitmentView.reopenJobPosition('${j.id}', '${safeTitle}')">Reopen</button>
                         `}
+                        <button class="btn btn-secondary btn-sm" style="color: var(--danger); border-color: rgba(220, 38, 38, 0.3);" onclick="RecruitmentView.deleteJob('${j.id}', '${safeTitle}')" title="Delete job position">Delete</button>
                       </div>
                     </td>
                   </tr>
-                `).join('')}
+                `;
+                }).join('')}
               </tbody>
             </table>
           `}
@@ -526,6 +545,125 @@ const RecruitmentView = {
     }
   },
 
+  async deleteJob(jobId, jobTitle = 'Job Position') {
+    if (!confirm(`Are you sure you want to delete the job position '${jobTitle}'? This will remove the position listing.`)) return;
+    try {
+      await recruitmentService.deleteJob(jobId);
+      Toast.success(`Job position '${jobTitle}' deleted.`);
+      Router.navigate('recruitment');
+    } catch (e) {
+      Toast.error(`Could not delete job position: ${e.message}`);
+    }
+  },
+
+  async openEditJobModal(jobId) {
+    try {
+      const snap = await db.collection('jobPositions').doc(jobId).get();
+      if (!snap.exists) {
+        Toast.error('Job position not found.');
+        return;
+      }
+      const job = snap.data();
+      ModalManager.openModal({
+        id: 'edit-job-modal',
+        title: `Edit Job Position: ${job.title || ''}`,
+        subtitle: 'Update job details, openings, salary or closing date',
+        size: 'lg',
+        contentHtml: `
+          <form id="edit-job-form" onsubmit="event.preventDefault(); RecruitmentView.saveJobEdit('${jobId}')">
+            <div class="form-row">
+              <div class="col-8 form-group">
+                <label class="form-label required">Job Title</label>
+                <input type="text" id="edit-job-title" class="form-control" value="${job.title || ''}" required />
+              </div>
+              <div class="col-4 form-group">
+                <label class="form-label required">Number of Openings</label>
+                <input type="number" id="edit-job-openings" class="form-control" value="${job.openings || 1}" min="1" required />
+              </div>
+            </div>
+
+            <div class="form-row">
+              <div class="col-4 form-group">
+                <label class="form-label required">Department</label>
+                <select id="edit-job-dept" class="form-control">
+                  <option value="Technology" ${job.department === 'Technology' ? 'selected' : ''}>Technology</option>
+                  <option value="Product" ${job.department === 'Product' ? 'selected' : ''}>Product</option>
+                  <option value="Operations" ${job.department === 'Operations' ? 'selected' : ''}>Operations</option>
+                  <option value="Human Resources" ${job.department === 'Human Resources' ? 'selected' : ''}>Human Resources</option>
+                  <option value="Finance" ${job.department === 'Finance' ? 'selected' : ''}>Finance</option>
+                </select>
+              </div>
+              <div class="col-4 form-group">
+                <label class="form-label required">Work Mode</label>
+                <select id="edit-job-workmode" class="form-control">
+                  <option value="HYBRID" ${job.workMode === 'HYBRID' ? 'selected' : ''}>Hybrid (2 Days Office)</option>
+                  <option value="ON_SITE" ${job.workMode === 'ON_SITE' ? 'selected' : ''}>On-Site (Office Hub)</option>
+                  <option value="REMOTE" ${job.workMode === 'REMOTE' ? 'selected' : ''}>100% Remote</option>
+                </select>
+              </div>
+              <div class="col-4 form-group">
+                <label class="form-label required">Location</label>
+                <input type="text" id="edit-job-loc" class="form-control" value="${job.location || 'Mumbai, Maharashtra'}" required />
+              </div>
+            </div>
+
+            <div class="form-row">
+              <div class="col-4 form-group">
+                <label class="form-label required">Experience Requirement</label>
+                <input type="text" id="edit-job-exp" class="form-control" value="${job.experience || '3–6 Years'}" required />
+              </div>
+              <div class="col-4 form-group">
+                <label class="form-label required">Target Salary Range (Annual CTC)</label>
+                <input type="text" id="edit-job-salary" class="form-control" value="${job.salaryRange || '₹10,00,000 – ₹16,00,000'}" required />
+              </div>
+              <div class="col-4 form-group">
+                <label class="form-label required">Application Closing Date</label>
+                <input type="date" id="edit-job-closing-date" class="form-control" value="${job.closingDate || ''}" required />
+              </div>
+            </div>
+
+            <div class="form-group">
+              <label class="form-label required">Role Description & Responsibilities</label>
+              <textarea id="edit-job-desc" class="form-control" rows="3" required>${job.description || ''}</textarea>
+            </div>
+          </form>
+        `,
+        footerHtml: `
+          <button class="btn btn-secondary btn-sm" data-modal-close>Cancel</button>
+          <button class="btn btn-primary btn-sm" onclick="RecruitmentView.saveJobEdit('${jobId}')">Update Position</button>
+        `
+      });
+    } catch (e) {
+      Toast.error(`Could not load job: ${e.message}`);
+    }
+  },
+
+  async saveJobEdit(jobId) {
+    const title = document.getElementById('edit-job-title')?.value.trim();
+    const openings = document.getElementById('edit-job-openings')?.value;
+    const department = document.getElementById('edit-job-dept')?.value;
+    const workMode = document.getElementById('edit-job-workmode')?.value;
+    const location = document.getElementById('edit-job-loc')?.value.trim();
+    const experience = document.getElementById('edit-job-exp')?.value.trim();
+    const salaryRange = document.getElementById('edit-job-salary')?.value.trim();
+    const closingDate = document.getElementById('edit-job-closing-date')?.value;
+    const description = document.getElementById('edit-job-desc')?.value.trim();
+
+    if (!title || !description) {
+      Toast.error('Please fill in all required job fields.');
+      return;
+    }
+
+    try {
+      await recruitmentService.updateJob(jobId, { title, openings, department, workMode, location, experience, salaryRange, closingDate, description });
+      Toast.success(`Job position '${title}' updated!`);
+      ModalManager.closeModal();
+      this.switchTab('jobs');
+    } catch (e) {
+      Toast.error(`Failed to update: ${e.message}`);
+    }
+  },
+
   formatDate(dateStr) {
     if (!dateStr) return 'Open-ended';
     try {
@@ -538,11 +676,15 @@ const RecruitmentView = {
     }
   },
 
-  openCreateJobModal() {
-    const defaultClosing = new Date(Date.now() + 30 * 86400000).toISOString().slice(0, 10);
+  openCreateJobModal(prefill = {}) {
+    const defaultClosing = prefill.closingDate || new Date(Date.now() + 30 * 86400000).toISOString().slice(0, 10);
+    const titleVal = prefill.title || '';
+    const openingsVal = prefill.openings || 2;
+    const deptVal = prefill.department || 'Technology';
+
     ModalManager.openModal({
       id: 'create-job-modal',
-      title: 'Post New Job Opening',
+      title: prefill.title ? `Create Job Position from Requisition` : 'Post New Job Opening',
       subtitle: 'Publish an open role for talent acquisition',
       size: 'lg',
       contentHtml: `
@@ -550,11 +692,11 @@ const RecruitmentView = {
           <div class="form-row">
             <div class="col-8 form-group">
               <label class="form-label required">Job Title</label>
-              <input type="text" id="job-title" class="form-control" placeholder="e.g. Lead Frontend Engineer" required />
+              <input type="text" id="job-title" class="form-control" value="${titleVal}" placeholder="e.g. Lead Frontend Engineer" required />
             </div>
             <div class="col-4 form-group">
               <label class="form-label required">Number of Openings</label>
-              <input type="number" id="job-openings" class="form-control" value="2" min="1" required />
+              <input type="number" id="job-openings" class="form-control" value="${openingsVal}" min="1" required />
             </div>
           </div>
 
@@ -562,11 +704,11 @@ const RecruitmentView = {
             <div class="col-4 form-group">
               <label class="form-label required">Department</label>
               <select id="job-dept" class="form-control">
-                <option value="Technology">Technology</option>
-                <option value="Product">Product</option>
-                <option value="Operations">Operations</option>
-                <option value="Human Resources">Human Resources</option>
-                <option value="Finance">Finance</option>
+                <option value="Technology" ${deptVal === 'Technology' ? 'selected' : ''}>Technology</option>
+                <option value="Product" ${deptVal === 'Product' ? 'selected' : ''}>Product</option>
+                <option value="Operations" ${deptVal === 'Operations' ? 'selected' : ''}>Operations</option>
+                <option value="Human Resources" ${deptVal === 'Human Resources' ? 'selected' : ''}>Human Resources</option>
+                <option value="Finance" ${deptVal === 'Finance' ? 'selected' : ''}>Finance</option>
               </select>
             </div>
             <div class="col-4 form-group">
@@ -600,7 +742,7 @@ const RecruitmentView = {
 
           <div class="form-group">
             <label class="form-label required">Role Description & Responsibilities</label>
-            <textarea id="job-desc" class="form-control" rows="3" placeholder="Core mission and key deliverables..." required></textarea>
+            <textarea id="job-desc" class="form-control" rows="3" placeholder="Core mission and key deliverables..." required>${prefill.title ? `Headcount authorized position for ${titleVal} in ${deptVal}. Responsible for key deliverables and department objectives.` : ''}</textarea>
           </div>
         </form>
       `,
@@ -638,7 +780,7 @@ const RecruitmentView = {
   renderRequisitionsTab(requisitions) {
     return `
       <div class="card">
-        <div class="card-header">
+        <div class="card-header" style="display: flex; justify-content: space-between; align-items: center;">
           <div>
             <div class="card-title">Workforce Hiring Requisitions (${requisitions.length})</div>
             <div class="card-subtitle">Headcount authorization requests submitted by line managers</div>
@@ -647,9 +789,21 @@ const RecruitmentView = {
         </div>
         <div class="card-body" style="padding: 0;">
           ${requisitions.length === 0 ? `
-            <div class="empty-state" style="border: none; padding: 40px;">
-              <div class="empty-state-title">No Pending Requisitions</div>
-              <div class="empty-state-desc">Click "Request Headcount" to submit a hiring requirement.</div>
+            <div style="padding: 60px 16px; text-align: center;">
+              <div style="width: 48px; height: 48px; border-radius: 50%; background: var(--primary-light, #eff6ff); color: var(--primary, #2563eb); display: inline-flex; align-items: center; justify-content: center; margin-bottom: 16px;">
+                <svg width="24" height="24" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
+                </svg>
+              </div>
+              <div style="font-weight: 700; font-size: 1.05rem; color: var(--text-main); margin-bottom: 6px;">
+                No Workforce Requisitions Found
+              </div>
+              <div style="color: var(--text-secondary); font-size: 0.85rem; max-width: 460px; margin: 0 auto 20px auto;">
+                Submit department headcount requests for executive budget approval before posting public job vacancies.
+              </div>
+              <div style="display: flex; gap: 8px; justify-content: center;">
+                <button class="btn btn-primary btn-sm" onclick="RecruitmentView.openCreateRequisitionModal()">+ Request Headcount</button>
+              </div>
             </div>
           ` : `
             <table class="data-table">
@@ -661,11 +815,14 @@ const RecruitmentView = {
                   <th>Requested By</th>
                   <th>Target Date</th>
                   <th>Status</th>
-                  <th>Actions</th>
+                  <th style="text-align: right;">Actions</th>
                 </tr>
               </thead>
               <tbody>
-                ${requisitions.map(r => `
+                ${requisitions.map(r => {
+                  const safePos = (r.positionTitle || '').replace(/'/g, "\\'");
+                  const safeDept = (r.departmentName || '').replace(/'/g, "\\'");
+                  return `
                   <tr>
                     <td class="font-bold text-main">${r.positionTitle}</td>
                     <td>${r.departmentName}</td>
@@ -677,19 +834,45 @@ const RecruitmentView = {
                         ${r.status}
                       </span>
                     </td>
-                    <td>
-                      ${r.status !== 'APPROVED' ? `
-                        <button class="btn btn-primary btn-sm" onclick="RecruitmentView.approveRequisition('${r.id}')">Approve</button>
-                      ` : '<span class="text-muted" style="font-size: 0.8rem;">Approved</span>'}
+                    <td style="text-align: right;">
+                      <div style="display: inline-flex; align-items: center; gap: 6px;">
+                        ${r.status !== 'APPROVED' ? `
+                          <button class="btn btn-primary btn-sm" onclick="RecruitmentView.approveRequisition('${r.id}')">Approve</button>
+                        ` : `
+                          <button class="btn btn-soft btn-sm" style="color: var(--primary); font-weight: 600;" onclick="RecruitmentView.createJobFromRequisition('${safePos}', '${safeDept}', ${r.numberOfPositions || 1}, '${r.targetJoiningDate || ''}')">+ Post Job</button>
+                        `}
+                        <button class="btn btn-secondary btn-sm" style="color: var(--danger); border-color: rgba(220, 38, 38, 0.3);" onclick="RecruitmentView.deleteRequisition('${r.id}', '${safePos}')" title="Delete Requisition">Delete</button>
+                      </div>
                     </td>
                   </tr>
-                `).join('')}
+                `;
+                }).join('')}
               </tbody>
             </table>
           `}
         </div>
       </div>
     `;
+  },
+
+  createJobFromRequisition(title, department, openings, date) {
+    this.openCreateJobModal({
+      title,
+      department,
+      openings,
+      closingDate: date
+    });
+  },
+
+  async deleteRequisition(id, positionTitle = 'Requisition') {
+    if (!confirm(`Are you sure you want to delete the requisition for '${positionTitle}'?`)) return;
+    try {
+      await recruitmentService.deleteRequisition(id);
+      Toast.success(`Requisition '${positionTitle}' deleted.`);
+      Router.navigate('recruitment');
+    } catch (e) {
+      Toast.error(`Could not delete requisition: ${e.message}`);
+    }
   },
 
   openCreateRequisitionModal() {
@@ -756,17 +939,30 @@ const RecruitmentView = {
   renderInterviewsTab(interviews, applications) {
     return `
       <div class="card">
-        <div class="card-header">
+        <div class="card-header" style="display: flex; justify-content: space-between; align-items: center;">
           <div>
             <div class="card-title">Scheduled Candidate Interviews (${interviews.length})</div>
             <div class="card-subtitle">Upcoming video, technical, and executive panel evaluations</div>
           </div>
+          <button class="btn btn-primary btn-sm" onclick="RecruitmentView.switchTab('pipeline')">Pipeline (Kanban)</button>
         </div>
         <div class="card-body" style="padding: 0;">
           ${interviews.length === 0 ? `
-            <div class="empty-state" style="border: none; padding: 40px;">
-              <div class="empty-state-title">No Interviews Scheduled</div>
-              <div class="empty-state-desc">Schedule candidate interviews directly from the Kanban pipeline.</div>
+            <div style="padding: 60px 16px; text-align: center;">
+              <div style="width: 48px; height: 48px; border-radius: 50%; background: var(--primary-light, #eff6ff); color: var(--primary, #2563eb); display: inline-flex; align-items: center; justify-content: center; margin-bottom: 16px;">
+                <svg width="24" height="24" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/>
+                </svg>
+              </div>
+              <div style="font-weight: 700; font-size: 1.05rem; color: var(--text-main); margin-bottom: 6px;">
+                No Interviews Scheduled
+              </div>
+              <div style="color: var(--text-secondary); font-size: 0.85rem; max-width: 460px; margin: 0 auto 20px auto;">
+                Schedule candidate interviews directly from the Candidate Pipeline or Talent Pool.
+              </div>
+              <div style="display: flex; gap: 8px; justify-content: center;">
+                <button class="btn btn-primary btn-sm" onclick="RecruitmentView.switchTab('pipeline')">Go to Pipeline</button>
+              </div>
             </div>
           ` : `
             <table class="data-table">
@@ -779,11 +975,13 @@ const RecruitmentView = {
                   <th>Date & Time</th>
                   <th>Mode / Venue</th>
                   <th>Status</th>
-                  <th>Actions</th>
+                  <th style="text-align: right;">Actions</th>
                 </tr>
               </thead>
               <tbody>
-                ${interviews.map(i => `
+                ${interviews.map(i => {
+                  const safeName = (i.candidateName || 'Candidate').replace(/'/g, "\\'");
+                  return `
                   <tr>
                     <td class="font-bold text-main">${i.candidateName || 'Candidate'}</td>
                     <td>${i.jobTitle || 'Open Role'}</td>
@@ -804,21 +1002,36 @@ const RecruitmentView = {
                       `}
                     </td>
                     <td><span class="badge ${i.status === 'COMPLETED' ? 'badge-success' : 'badge-warning'}">${i.status}</span></td>
-                    <td>
-                      ${i.status !== 'COMPLETED' ? `
-                        <button class="btn btn-primary btn-sm" onclick="RecruitmentView.openFeedbackModal('${i.id}', '${i.candidateId}', '${i.candidateName}', '${i.applicationId}')">Score</button>
-                      ` : `
-                        <button class="btn btn-soft btn-sm" onclick="RecruitmentView.viewScorecard('${i.id}', '${(i.candidateName || 'Candidate').replace(/'/g, "\\'")}')">View Scorecard</button>
-                      `}
+                    <td style="text-align: right;">
+                      <div style="display: inline-flex; align-items: center; gap: 6px;">
+                        ${i.status !== 'COMPLETED' ? `
+                          <button class="btn btn-primary btn-sm" onclick="RecruitmentView.openFeedbackModal('${i.id}', '${i.candidateId}', '${safeName}', '${i.applicationId}')">Score</button>
+                        ` : `
+                          <button class="btn btn-soft btn-sm" onclick="RecruitmentView.viewScorecard('${i.id}', '${safeName}')">View Scorecard</button>
+                        `}
+                        <button class="btn btn-secondary btn-sm" style="color: var(--danger); border-color: rgba(220, 38, 38, 0.3);" onclick="RecruitmentView.deleteInterview('${i.id}', '${safeName}')" title="Delete Interview">Delete</button>
+                      </div>
                     </td>
                   </tr>
-                `).join('')}
+                `;
+                }).join('')}
               </tbody>
             </table>
           `}
         </div>
       </div>
     `;
+  },
+
+  async deleteInterview(id, candidateName = 'Candidate') {
+    if (!confirm(`Are you sure you want to delete the scheduled interview for '${candidateName}'?`)) return;
+    try {
+      await recruitmentService.deleteInterview(id);
+      Toast.success('Interview removed successfully.');
+      Router.navigate('recruitment');
+    } catch (e) {
+      Toast.error(`Could not delete interview: ${e.message}`);
+    }
   },
 
   handleInterviewModeChange(mode) {
@@ -1075,17 +1288,30 @@ const RecruitmentView = {
   renderOffersTab(offers, applications) {
     return `
       <div class="card">
-        <div class="card-header">
+        <div class="card-header" style="display: flex; justify-content: space-between; align-items: center;">
           <div>
             <div class="card-title">Job Offers & Pre-Employment Verification (${offers.length})</div>
             <div class="card-subtitle">Formal appointment letters, compensation packages, and employee conversions</div>
           </div>
+          <button class="btn btn-primary btn-sm" onclick="RecruitmentView.switchTab('pipeline')">Pipeline (Kanban)</button>
         </div>
         <div class="card-body" style="padding: 0;">
           ${offers.length === 0 ? `
-            <div class="empty-state" style="border: none; padding: 40px;">
-              <div class="empty-state-title">No Offers Prepared</div>
-              <div class="empty-state-desc">Generate job offers for selected candidates from the pipeline.</div>
+            <div style="padding: 60px 16px; text-align: center;">
+              <div style="width: 48px; height: 48px; border-radius: 50%; background: var(--primary-light, #eff6ff); color: var(--primary, #2563eb); display: inline-flex; align-items: center; justify-content: center; margin-bottom: 16px;">
+                <svg width="24" height="24" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                </svg>
+              </div>
+              <div style="font-weight: 700; font-size: 1.05rem; color: var(--text-main); margin-bottom: 6px;">
+                No Job Offers Prepared
+              </div>
+              <div style="color: var(--text-secondary); font-size: 0.85rem; max-width: 460px; margin: 0 auto 20px auto;">
+                Generate and approve employment appointment letters for selected candidates in the recruitment pipeline.
+              </div>
+              <div style="display: flex; gap: 8px; justify-content: center;">
+                <button class="btn btn-primary btn-sm" onclick="RecruitmentView.switchTab('pipeline')">Go to Pipeline</button>
+              </div>
             </div>
           ` : `
             <table class="data-table">
@@ -1096,11 +1322,17 @@ const RecruitmentView = {
                   <th>Annual CTC</th>
                   <th>Target Joining</th>
                   <th>Status</th>
-                  <th>Actions</th>
+                  <th style="text-align: right;">Actions</th>
                 </tr>
               </thead>
               <tbody>
-                ${offers.map(o => `
+                ${offers.map(o => {
+                  const safeName = (o.candidateName || 'Candidate').replace(/'/g, "\\'");
+                  const safeTitle = (o.positionTitle || 'Position').replace(/'/g, "\\'");
+                  const safeEmail = (o.candidateEmail || '').replace(/'/g, "\\'");
+                  const safeDept = (o.department || 'Technology').replace(/'/g, "\\'");
+                  const safeBranch = (o.branch || 'HQ - Mumbai').replace(/'/g, "\\'");
+                  return `
                   <tr>
                     <td class="font-bold text-main">${o.candidateName}</td>
                     <td>${o.positionTitle}</td>
@@ -1111,9 +1343,9 @@ const RecruitmentView = {
                         ${o.status}
                       </span>
                     </td>
-                    <td>
-                      <div class="flex items-center gap-1">
-                        <button class="btn btn-soft btn-sm" onclick="RecruitmentView.viewOfferLetter('${o.id}', '${o.candidateName}', '${o.positionTitle}', ${o.annualCtc}, '${o.joiningDate}')">Letter</button>
+                    <td style="text-align: right;">
+                      <div class="flex items-center gap-1" style="justify-content: flex-end;">
+                        <button class="btn btn-soft btn-sm" onclick="RecruitmentView.viewOfferLetter('${o.id}', '${safeName}', '${safeTitle}', ${o.annualCtc || 0}, '${o.joiningDate || ''}')">Letter</button>
                         ${o.status === 'PENDING_APPROVAL' ? `
                           <button class="btn btn-primary btn-sm" onclick="RecruitmentView.approveOffer('${o.id}')">Approve</button>
                         ` : ''}
@@ -1121,18 +1353,31 @@ const RecruitmentView = {
                           <button class="btn btn-primary btn-sm" onclick="RecruitmentView.acceptOffer('${o.id}', '${o.candidateId}', '${o.applicationId}')">Accept Offer</button>
                         ` : ''}
                         ${o.status === 'ACCEPTED' ? `
-                          <button class="btn btn-primary btn-sm" style="background: var(--success);" onclick="RecruitmentView.convertToEmployee('${o.candidateId}', '${o.candidateName}', '${o.candidateEmail}', '${o.positionTitle}', '${o.department}', '${o.branch}', '${o.joiningDate}', '${o.id}', '${o.applicationId}')">Convert to Employee</button>
+                          <button class="btn btn-primary btn-sm" style="background: var(--success);" onclick="RecruitmentView.convertToEmployee('${o.candidateId}', '${safeName}', '${safeEmail}', '${safeTitle}', '${safeDept}', '${safeBranch}', '${o.joiningDate}', '${o.id}', '${o.applicationId}')">Convert to Employee</button>
                         ` : ''}
+                        <button class="btn btn-secondary btn-sm" style="color: var(--danger); border-color: rgba(220, 38, 38, 0.3);" onclick="RecruitmentView.deleteOffer('${o.id}', '${safeName}')" title="Delete Offer">Delete</button>
                       </div>
                     </td>
                   </tr>
-                `).join('')}
+                `;
+                }).join('')}
               </tbody>
             </table>
           `}
         </div>
       </div>
     `;
+  },
+
+  async deleteOffer(id, candidateName = 'Candidate') {
+    if (!confirm(`Are you sure you want to delete the job offer for '${candidateName}'?`)) return;
+    try {
+      await recruitmentService.deleteOffer(id);
+      Toast.success('Job offer removed successfully.');
+      Router.navigate('recruitment');
+    } catch (e) {
+      Toast.error(`Could not delete offer: ${e.message}`);
+    }
   },
 
   openCreateOfferModal(applicationId, candidateId, candidateName, candidateEmail, positionTitle) {
@@ -1290,9 +1535,21 @@ const RecruitmentView = {
         </div>
         <div class="card-body" style="padding: 0;">
           ${candidates.length === 0 ? `
-            <div class="empty-state" style="border: none; padding: 40px;">
-              <div class="empty-state-title">No Candidate Profiles</div>
-              <div class="empty-state-desc">Click "Add Candidate" to register applicants into the talent pool.</div>
+            <div style="padding: 60px 16px; text-align: center;">
+              <div style="width: 48px; height: 48px; border-radius: 50%; background: var(--primary-light, #eff6ff); color: var(--primary, #2563eb); display: inline-flex; align-items: center; justify-content: center; margin-bottom: 16px;">
+                <svg width="24" height="24" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"/>
+                </svg>
+              </div>
+              <div style="font-weight: 700; font-size: 1.05rem; color: var(--text-main); margin-bottom: 6px;">
+                No Candidates in Talent Pool
+              </div>
+              <div style="color: var(--text-secondary); font-size: 0.85rem; max-width: 460px; margin: 0 auto 20px auto;">
+                Register candidate profiles into the talent pool to track skills, schedule rounds, and match to job openings.
+              </div>
+              <div style="display: flex; gap: 8px; justify-content: center;">
+                <button class="btn btn-primary btn-sm" onclick="RecruitmentView.openAddCandidateModal()">+ Add Candidate</button>
+              </div>
             </div>
           ` : `
             <div style="padding: 12px 16px; border-bottom: 1px solid var(--border-main); display: flex; gap: 12px; align-items: center; background: var(--bg-hover);">
@@ -1343,6 +1600,9 @@ const RecruitmentView = {
                     </td>
                     <td style="text-align: right;">
                       <div style="display: inline-flex; align-items: center; gap: 6px;">
+                        <button class="btn btn-soft btn-sm" style="font-size: 0.75rem; padding: 4px 8px;" onclick="RecruitmentView.openApplyToJobModal('${c.id}', '${safeName}')" title="Assign Candidate to Open Job Position">
+                          Apply to Job
+                        </button>
                         <button class="btn btn-soft btn-sm" style="font-size: 0.75rem; padding: 4px 8px;" onclick="RecruitmentView.openInterviewModal('', '${c.id}', '${safeName}', '${safeDesig}')" title="Schedule Interview">
                           Interview
                         </button>
@@ -1360,6 +1620,66 @@ const RecruitmentView = {
         </div>
       </div>
     `;
+  },
+
+  async openApplyToJobModal(candidateId, candidateName) {
+    let publishedJobs = [];
+    try {
+      publishedJobs = await recruitmentService.getJobs({ status: 'PUBLISHED' });
+    } catch (e) {
+      console.warn('Could not fetch jobs:', e);
+    }
+
+    if (publishedJobs.length === 0) {
+      Toast.info('No open job positions available. Please post a job opening first.');
+      return;
+    }
+
+    ModalManager.openModal({
+      id: 'apply-candidate-job-modal',
+      title: `Apply to Job: ${candidateName}`,
+      subtitle: 'Assign this candidate from Talent Pool to an active job opening',
+      contentHtml: `
+        <div class="form-group">
+          <label class="form-label required">Select Open Job Position</label>
+          <select id="apply-job-select" class="form-control" required>
+            ${publishedJobs.map(j => `
+              <option value="${j.id}" data-title="${j.title}">
+                ${j.title} (${j.department} • ${j.openings} opening(s))
+              </option>
+            `).join('')}
+          </select>
+        </div>
+        <div style="font-size: 0.82rem; color: var(--text-secondary); line-height: 1.4; padding: 12px; background: var(--bg-hover); border-radius: var(--radius-md);">
+          This will create a new recruitment application in the <strong>Candidate Pipeline</strong> (Applied stage) and link it directly to this job vacancy.
+        </div>
+      `,
+      footerHtml: `
+        <button class="btn btn-secondary btn-sm" data-modal-close>Cancel</button>
+        <button class="btn btn-primary btn-sm" onclick="RecruitmentView.submitCandidateApplication('${candidateId}')">Apply to Position</button>
+      `
+    });
+  },
+
+  async submitCandidateApplication(candidateId) {
+    const jobSelect = document.getElementById('apply-job-select');
+    const jobId = jobSelect?.value;
+    const selectedOption = jobSelect?.options[jobSelect.selectedIndex];
+    const jobTitle = selectedOption?.getAttribute('data-title');
+
+    if (!jobId) {
+      Toast.error('Please select a valid job position.');
+      return;
+    }
+
+    try {
+      await recruitmentService.applyCandidateToJob(candidateId, jobId, jobTitle);
+      Toast.success(`Candidate applied to '${jobTitle}' successfully!`);
+      ModalManager.closeModal();
+      this.switchTab('pipeline');
+    } catch (e) {
+      Toast.error(`Application failed: ${e.message}`);
+    }
   },
 
   filterTalentPool(query) {
@@ -1394,12 +1714,33 @@ const RecruitmentView = {
     });
   },
 
-  openAddCandidateModal(defaultJobId = null, defaultJobTitle = null) {
+  async openAddCandidateModal(defaultJobId = null, defaultJobTitle = null) {
+    let publishedJobs = [];
+    try {
+      publishedJobs = await recruitmentService.getJobs({ status: 'PUBLISHED' });
+    } catch (e) {
+      console.warn('Could not fetch jobs for candidate modal:', e);
+    }
+
     ModalManager.openModal({
       id: 'add-candidate-modal',
       title: 'Register Candidate Profile',
       subtitle: 'Add applicant into talent pool with automated duplicate detection',
       contentHtml: `
+        <div class="form-group">
+          <label class="form-label">Assign to Job Opening</label>
+          <select id="cand-job-select" class="form-control">
+            <option value="" ${!defaultJobId ? 'selected' : ''}>General Talent Pool (No active application)</option>
+            ${publishedJobs.map(j => `
+              <option value="${j.id}" data-title="${j.title}" ${j.id === defaultJobId ? 'selected' : ''}>
+                ${j.title} (${j.department} • ${j.location})
+              </option>
+            `).join('')}
+          </select>
+          <div style="font-size: 0.75rem; color: var(--text-muted); margin-top: 4px;">
+            Selecting a job opening immediately places the candidate into the 'Applied' stage of the Candidate Pipeline.
+          </div>
+        </div>
         <div class="form-row">
           <div class="col-6 form-group">
             <label class="form-label required">First Name</label>
@@ -1437,12 +1778,17 @@ const RecruitmentView = {
       `,
       footerHtml: `
         <button class="btn btn-secondary btn-sm" data-modal-close>Cancel</button>
-        <button class="btn btn-primary btn-sm" onclick="RecruitmentView.saveCandidate('${defaultJobId || ''}', '${defaultJobTitle || ''}')">Save Candidate</button>
+        <button class="btn btn-primary btn-sm" onclick="RecruitmentView.saveCandidate()">Save Candidate</button>
       `
     });
   },
 
-  async saveCandidate(jobId, jobTitle) {
+  async saveCandidate() {
+    const jobSelect = document.getElementById('cand-job-select');
+    const jobId = jobSelect?.value || null;
+    const selectedOption = jobSelect?.options[jobSelect.selectedIndex];
+    const jobTitle = selectedOption?.getAttribute('data-title') || null;
+
     const firstName = document.getElementById('cand-first')?.value.trim();
     const lastName = document.getElementById('cand-last')?.value.trim();
     const email = document.getElementById('cand-email')?.value.trim();
@@ -1451,13 +1797,16 @@ const RecruitmentView = {
     const totalExperience = Number(document.getElementById('cand-exp')?.value) || 3;
     const skills = document.getElementById('cand-skills')?.value.trim();
 
-    if (!firstName || !email) return;
+    if (!firstName || !email) {
+      Toast.error('Please enter first name and email.');
+      return;
+    }
 
     try {
       await recruitmentService.createCandidate({ firstName, lastName, email, phone, currentDesignation, totalExperience, skills, jobId, jobTitle });
       Toast.success(`Candidate '${firstName} ${lastName}' registered!`);
       ModalManager.closeModal();
-      this.switchTab('pipeline');
+      this.switchTab(jobId ? 'pipeline' : 'candidates');
     } catch (e) {
       Toast.error(`Registration failed: ${e.message}`);
     }

@@ -270,7 +270,7 @@ const ReportsView = {
           Statutory & Compliance (${statutoryCount})
         </button>
         <button class="btn ${this.selectedCategory === 'FAVOURITES' ? 'btn-primary' : 'btn-soft'} btn-sm" onclick="ReportsView.filterCategory('FAVOURITES')" style="border-radius: 20px; padding: 4px 14px;">
-          ★ Bookmarks (${favCount})
+          Bookmarks (${favCount})
         </button>
       </div>
 

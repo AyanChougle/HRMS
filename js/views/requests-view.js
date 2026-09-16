@@ -216,7 +216,11 @@ const RequestsView = {
         <div class="card-body" style="padding: 0;">
           ${list.length === 0 ? `
             <div class="empty-state" style="border: none; padding: 48px 16px;">
-              <div style="font-size: 2.5rem; margin-bottom: 12px;">📂</div>
+              <div style="width: 48px; height: 48px; border-radius: 50%; background: var(--primary-light, #eff6ff); color: var(--primary, #2563eb); display: inline-flex; align-items: center; justify-content: center; margin-bottom: 16px;">
+                <svg width="24" height="24" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z"/>
+                </svg>
+              </div>
               <div class="empty-state-title">No Requests Found</div>
               <div class="empty-state-desc">You haven't submitted any HR requests yet or none match your filter.</div>
               <button class="btn btn-primary btn-sm" style="margin-top: 14px;" onclick="RequestsView.openNewRequestModal()">+ Submit First Request</button>

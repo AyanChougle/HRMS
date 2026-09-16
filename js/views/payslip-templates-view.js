@@ -65,7 +65,7 @@ const PayslipTemplatesView = {
         <div style="padding: 14px 16px 10px 16px; display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--border-light);">
           <div style="display: flex; align-items: center; gap: 8px;">
             <strong style="font-size: 1rem; color: var(--text-main);">${t.name}</strong>
-            ${t.isDefault ? '<span class="badge badge-primary" style="font-size: 0.65rem; padding: 2px 6px;">✓ Default</span>' : ''}
+            ${t.isDefault ? '<span class="badge badge-primary" style="font-size: 0.65rem; padding: 2px 6px;">Default</span>' : ''}
           </div>
           <span class="badge badge-neutral" style="font-size: 0.7rem;">${t.category || 'Preset'}</span>
         </div>
@@ -154,7 +154,7 @@ const PayslipTemplatesView = {
                   <div style="font-weight: 900; font-size: 6.5px;">DIALLO INDIA</div>
                   <div style="font-size: 4px; opacity: 0.85;">Salary Voucher • August 2026</div>
                 </div>
-                <div style="font-size: 4px; background: rgba(255,255,255,0.2); padding: 1px 3px; border-radius: 2px;">QR SEAL ✓</div>
+                <div style="font-size: 4px; background: rgba(255,255,255,0.2); padding: 1px 3px; border-radius: 2px;">QR SEAL</div>
               </div>
               <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 3px; margin-bottom: 4px; font-size: 4.8px;">
                 <div style="background: #f8fafc; padding: 2px; border-radius: 2px;"><strong>Emp:</strong> Rahul Sharma</div>

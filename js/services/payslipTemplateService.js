@@ -716,7 +716,7 @@ const payslipTemplateService = {
             <strong>Diallo Cloud Security:</strong> Digitally encrypted & certified. ${cfg.footerNote}
           </div>
           <div style="background: #f5f3ff; color: #7c3aed; font-weight: 700; padding: 4px 10px; border-radius: 20px; font-size: 0.7rem;">
-            VERIFIED PAYSLIP ✓
+            VERIFIED PAYSLIP
           </div>
         </div>
       </div>
