@@ -606,7 +606,15 @@ const PerformanceView = {
         </div>
         <div class="card-body" style="padding: 0;">
           ${team.length === 0 ? `
-            <div class="empty-state" style="border: none; padding: 40px;">
+            <div class="empty-state">
+              <div class="empty-state-icon">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/>
+                  <circle cx="9" cy="7" r="4"/>
+                  <path d="M23 21v-2a4 4 0 00-3-3.87"/>
+                  <path d="M16 3.13a4 4 0 010 7.75"/>
+                </svg>
+              </div>
               <div class="empty-state-title">No Direct Reports Found</div>
               <div class="empty-state-desc">Employees assigned with you as manager will appear here.</div>
             </div>
@@ -988,7 +996,14 @@ const PerformanceView = {
         </div>
         <div class="card-body" style="padding: 0;">
           ${recs.length === 0 ? `
-            <div class="empty-state" style="border: none; padding: 48px 16px;">
+            <div class="empty-state">
+              <div class="empty-state-icon">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <circle cx="12" cy="12" r="10"/>
+                  <circle cx="12" cy="12" r="6"/>
+                  <circle cx="12" cy="12" r="2"/>
+                </svg>
+              </div>
               <div class="empty-state-title">No Pending Appraisal Decisions</div>
               <div class="empty-state-desc">All appraisal cycle recommendations have been processed.</div>
             </div>

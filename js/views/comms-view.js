@@ -237,24 +237,73 @@ const CommsView = {
           </div>
 
           ${notifications.length === 0 ? `
-            <div class="empty-state" style="border: none; padding: 48px;">
+            <div class="empty-state">
+              <div class="empty-state-icon">
+                <svg width="24" height="24" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"/>
+                </svg>
+              </div>
               <div class="empty-state-title">No Notifications</div>
               <div class="empty-state-desc">You are all caught up! No active alerts in this stream.</div>
             </div>
           ` : `
             <div class="flex flex-col">
-              ${notifications.map(n => `
-                <div style="padding: 16px 20px; border-bottom: 1px solid var(--border-light); ${n.read ? 'opacity: 0.75;' : 'background: rgba(37, 99, 235, 0.04); font-weight: 500;'} display: flex; justify-content: space-between; align-items: center; gap: 16px;">
-                  <div style="flex: 1;">
-                    <div class="flex items-center gap-2" style="margin-bottom: 4px;">
-                      <span class="badge ${n.priority === 'URGENT' ? 'badge-danger' : (n.priority === 'HIGH' ? 'badge-warning' : 'badge-soft')}">${n.relatedModule || 'SYSTEM'}</span>
-                      <strong class="font-semibold text-main" style="font-size: 0.95rem;">${n.title}</strong>
-                      ${!n.read ? `<span class="badge badge-primary" style="font-size: 0.65rem;">NEW</span>` : ''}
+              ${notifications.map(n => {
+                const mod = (n.relatedModule || 'SYSTEM').toUpperCase();
+                let iconSvg = `
+                  <svg width="18" height="18" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"/>
+                  </svg>
+                `;
+                let iconBg = 'var(--primary-light)';
+                let iconColor = 'var(--primary)';
+
+                if (mod.includes('LEAVE')) {
+                  iconBg = 'var(--info-light, #e0f2fe)';
+                  iconColor = 'var(--info, #0284c7)';
+                  iconSvg = `<svg width="18" height="18" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg>`;
+                } else if (mod.includes('ATTENDANCE')) {
+                  iconBg = 'var(--success-light, #dcfce7)';
+                  iconColor = 'var(--success, #16a34a)';
+                  iconSvg = `<svg width="18" height="18" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>`;
+                } else if (mod.includes('PAYROLL')) {
+                  iconBg = 'var(--warning-light, #fef3c7)';
+                  iconColor = 'var(--warning, #d97706)';
+                  iconSvg = `<svg width="18" height="18" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>`;
+                } else if (mod.includes('EXPENSE')) {
+                  iconBg = 'var(--accent-light, #f3e8ff)';
+                  iconColor = 'var(--accent, #7c3aed)';
+                  iconSvg = `<svg width="18" height="18" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 14l6-6m-5.5.5h.01m4.99 5h.01M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16l3.5-2 3.5 2 3.5-2 3.5 2z"/></svg>`;
+                } else if (mod.includes('REQUEST') || mod.includes('HARDWARE')) {
+                  iconBg = 'var(--primary-light, #eff6ff)';
+                  iconColor = 'var(--primary, #2563eb)';
+                  iconSvg = `<svg width="18" height="18" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>`;
+                }
+
+                return `
+                <div style="padding: 14px 20px; border-bottom: 1px solid var(--border-light); ${n.read ? 'opacity: 0.78;' : 'background: rgba(37, 99, 235, 0.03); font-weight: 500;'} display: flex; justify-content: space-between; align-items: center; gap: 16px; transition: background 0.15s ease;">
+                  <div style="display: flex; align-items: flex-start; gap: 14px; flex: 1; min-width: 0;">
+                    <div style="width: 36px; height: 36px; border-radius: 50%; background: ${iconBg}; color: ${iconColor}; display: flex; align-items: center; justify-content: center; flex-shrink: 0; margin-top: 2px;">
+                      ${iconSvg}
                     </div>
-                    <div style="font-size: 0.85rem; color: var(--text-secondary); margin-bottom: 4px;">${n.message}</div>
-                    <div class="text-muted" style="font-size: 0.75rem;">${n.createdAt ? new Date(n.createdAt.seconds ? n.createdAt.seconds * 1000 : n.createdAt).toLocaleString() : 'Just now'}</div>
+                    <div style="flex: 1; min-width: 0;">
+                      <div class="flex items-center gap-2" style="margin-bottom: 4px; flex-wrap: wrap;">
+                        <span class="badge ${n.priority === 'URGENT' ? 'badge-danger' : (n.priority === 'HIGH' ? 'badge-warning' : 'badge-neutral')}" style="font-size: 0.72rem; padding: 2px 6px;">
+                          ${n.relatedModule || 'SYSTEM'}
+                        </span>
+                        <strong class="text-main" style="font-size: 0.92rem;">${n.title}</strong>
+                        ${!n.read ? `<span class="badge badge-primary" style="font-size: 0.65rem; padding: 1px 5px;">NEW</span>` : ''}
+                      </div>
+                      <div style="font-size: 0.84rem; color: var(--text-secondary); margin-bottom: 4px; line-height: 1.45;">${n.message}</div>
+                      <div class="text-muted" style="font-size: 0.74rem; display: flex; align-items: center; gap: 4px;">
+                        <svg width="12" height="12" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                        </svg>
+                        <span>${n.createdAt ? new Date(n.createdAt.seconds ? n.createdAt.seconds * 1000 : n.createdAt).toLocaleString('en-GB') : 'Just now'}</span>
+                      </div>
+                    </div>
                   </div>
-                  <div class="flex items-center gap-2">
+                  <div class="flex items-center gap-2" style="flex-shrink: 0;">
                     ${n.relatedModule ? `
                       <button class="btn btn-primary btn-sm" onclick="notificationService.handleNotificationClick('${n.relatedModule}', '${n.relatedId}')">
                         Open
@@ -267,7 +316,8 @@ const CommsView = {
                     ` : ''}
                   </div>
                 </div>
-              `).join('')}
+              `;
+              }).join('')}
             </div>
           `}
         </div>

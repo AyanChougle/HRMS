@@ -284,9 +284,9 @@ const AttendanceView = {
         </div>
         <div class="card-body" style="padding: 0;">
           ${records.length === 0 ? `
-            <div class="empty-state" style="border: none; padding: 48px 16px;">
-              <div class="empty-state-icon" style="width: 44px; height: 44px; margin-bottom: 8px; background: var(--primary-light); color: var(--primary);">
-                <svg width="22" height="22" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <div class="empty-state">
+              <div class="empty-state-icon">
+                <svg width="24" height="24" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/>
                 </svg>
               </div>
@@ -449,9 +449,17 @@ const AttendanceView = {
         </div>
         <div class="card-body" style="padding: 0;">
           ${history.length === 0 ? `
-            <div class="empty-state" style="border: none; padding: 40px;">
+            <div class="empty-state">
+              <div class="empty-state-icon">
+                <svg width="24" height="24" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                </svg>
+              </div>
               <div class="empty-state-title">No Attendance Records Logged Yet</div>
-              <div class="empty-state-desc">Click "Web Check In" to record your first daily shift.</div>
+              <div class="empty-state-desc">Record your daily work shift presence or submit missed punch adjustments.</div>
+              <div class="empty-state-actions">
+                <button class="btn btn-primary btn-sm" onclick="AttendanceView.recordCheckIn()">Web Check In</button>
+              </div>
             </div>
           ` : `
             <table class="data-table">
@@ -567,9 +575,14 @@ const AttendanceView = {
         </div>
         <div class="card-body" style="padding: 0;">
           ${team.length === 0 ? `
-            <div class="empty-state" style="border: none; padding: 40px;">
+            <div class="empty-state">
+              <div class="empty-state-icon">
+                <svg width="24" height="24" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"/>
+                </svg>
+              </div>
               <div class="empty-state-title">No Direct Reporting Staff Found</div>
-              <div class="empty-state-desc">Employees assigned with you as reporting manager will appear here.</div>
+              <div class="empty-state-desc">Employees assigned with you as reporting manager will appear here for shift monitoring.</div>
             </div>
           ` : `
             <table class="data-table">
@@ -639,9 +652,17 @@ const AttendanceView = {
         </div>
         <div class="card-body" style="padding: 0;">
           ${requests.length === 0 ? `
-            <div class="empty-state" style="border: none; padding: 40px;">
+            <div class="empty-state">
+              <div class="empty-state-icon">
+                <svg width="24" height="24" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                </svg>
+              </div>
               <div class="empty-state-title">No Pending Regularizations</div>
-              <div class="empty-state-desc">All historical attendance corrections have been reviewed.</div>
+              <div class="empty-state-desc">All historical attendance punch corrections have been reviewed and approved.</div>
+              <div class="empty-state-actions">
+                <button class="btn btn-primary btn-sm" onclick="AttendanceView.openRegularizationModal()">+ Submit Request</button>
+              </div>
             </div>
           ` : `
             <table class="data-table">

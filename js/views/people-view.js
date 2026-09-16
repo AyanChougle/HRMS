@@ -208,15 +208,17 @@ const PeopleView = {
         </div>
         <div class="card-body" style="padding: 0;">
           ${employees.length === 0 ? `
-            <div class="empty-state" style="border: none; padding: 48px 16px;">
-              <div class="empty-state-icon" style="width: 48px; height: 48px; margin-bottom: 12px; background: var(--primary-light); color: var(--primary);">
+            <div class="empty-state">
+              <div class="empty-state-icon">
                 <svg width="24" height="24" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"/>
                 </svg>
               </div>
               <div class="empty-state-title">No Employees Found</div>
               <div class="empty-state-desc">No employee records match the active search or filter criteria.</div>
-              <button class="btn btn-soft btn-sm" onclick="Forms.openEmployeeModal()">+ Add New Employee</button>
+              <div class="empty-state-actions">
+                <button class="btn btn-primary btn-sm" onclick="Forms.openEmployeeModal()">+ Onboard New Employee</button>
+              </div>
             </div>
           ` : `
             <table class="data-table">
@@ -587,9 +589,17 @@ const PeopleView = {
         </div>
         <div class="card-body" style="padding: 0;">
           ${tasks.length === 0 ? `
-            <div class="empty-state" style="border: none; padding: 40px;">
+            <div class="empty-state">
+              <div class="empty-state-icon">
+                <svg width="24" height="24" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                </svg>
+              </div>
               <div class="empty-state-title">All Onboarding Tasks Complete</div>
-              <div class="empty-state-desc">No pending tasks for new joiners.</div>
+              <div class="empty-state-desc">No pending checklist items for newly hired employees.</div>
+              <div class="empty-state-actions">
+                <button class="btn btn-primary btn-sm" onclick="PeopleView.openCreateOnboardingTaskModal()">+ Add Onboarding Task</button>
+              </div>
             </div>
           ` : `
             <table class="data-table">
@@ -773,9 +783,14 @@ const PeopleView = {
         </div>
         <div class="card-body" style="padding: 0;">
           ${exits.length === 0 ? `
-            <div class="empty-state" style="border: none; padding: 40px;">
+            <div class="empty-state">
+              <div class="empty-state-icon">
+                <svg width="24" height="24" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"/>
+                </svg>
+              </div>
               <div class="empty-state-title">No Active Separations</div>
-              <div class="empty-state-desc">No employees are currently on notice period.</div>
+              <div class="empty-state-desc">All organizational staff are in good standing; no active resignations or notice periods.</div>
             </div>
           ` : `
             <table class="data-table">

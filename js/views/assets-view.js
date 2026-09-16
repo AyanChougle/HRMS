@@ -254,9 +254,19 @@ const AssetsView = {
         </div>
         <div class="card-body" style="padding: 0;">
           ${list.length === 0 ? `
-            <div class="empty-state" style="border: none; padding: 48px 16px;">
+            <div class="empty-state">
+              <div class="empty-state-icon">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <rect x="2" y="3" width="20" height="14" rx="2" ry="2"/>
+                  <line x1="8" y1="21" x2="16" y2="21"/>
+                  <line x1="12" y1="17" x2="12" y2="21"/>
+                </svg>
+              </div>
               <div class="empty-state-title">No Assets Found</div>
               <div class="empty-state-desc">No asset records match your filter criteria.</div>
+              <div class="empty-state-actions">
+                <button class="btn btn-primary btn-sm" onclick="AssetsView.openCreateAssetModal()">+ Register Asset</button>
+              </div>
             </div>
           ` : `
             <table class="data-table">
@@ -328,9 +338,19 @@ const AssetsView = {
         </div>
         <div class="card-body" style="padding: 0;">
           ${assignedAssets.length === 0 ? `
-            <div class="empty-state" style="border: none; padding: 48px 16px;">
+            <div class="empty-state">
+              <div class="empty-state-icon">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <path d="M16 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/>
+                  <circle cx="8.5" cy="7" r="4"/>
+                  <polyline points="17 11 19 13 23 9"/>
+                </svg>
+              </div>
               <div class="empty-state-title">No Active Assignments</div>
               <div class="empty-state-desc">All registered company assets are currently stored in inventory.</div>
+              <div class="empty-state-actions">
+                <button class="btn btn-primary btn-sm" onclick="AssetsView.openAssignModal()">+ Assign Custody</button>
+              </div>
             </div>
           ` : `
             <table class="data-table">
@@ -386,7 +406,12 @@ const AssetsView = {
         </div>
         <div class="card-body" style="padding: 0;">
           ${maintenanceAssets.length === 0 ? `
-            <div class="empty-state" style="border: none; padding: 48px 16px;">
+            <div class="empty-state">
+              <div class="empty-state-icon">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <path d="M14.7 6.3a1 1 0 000 1.4l1.6 1.6a1 1 0 001.4 0l3.77-3.77a6 6 0 01-7.94 7.94l-6.91 6.91a2.12 2.12 0 01-3-3l6.91-6.91a6 6 0 017.94-7.94l-3.76 3.76z"/>
+                </svg>
+              </div>
               <div class="empty-state-title">No Active Repairs</div>
               <div class="empty-state-desc">All registered hardware is operational.</div>
             </div>
@@ -440,7 +465,13 @@ const AssetsView = {
           </div>
         </div>
         <div class="card-body">
-          <div class="empty-state" style="border: none; padding: 32px 16px;">
+          <div class="empty-state">
+            <div class="empty-state-icon">
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M9 11l3 3L22 4"/>
+                <path d="M21 12v7a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2h11"/>
+              </svg>
+            </div>
             <div class="empty-state-title">Asset Return Audit Ready</div>
             <div class="empty-state-desc">All returned assets have been inspected and returned to Available inventory.</div>
           </div>
@@ -981,13 +1012,15 @@ const AssetsView = {
           </div>
           <div class="card-body" style="padding: 0;">
             ${assetList.length === 0 ? `
-              <div class="empty-state" style="border: none; padding: 48px 16px;">
-                <div class="empty-state-icon" style="width: 44px; height: 44px; margin-bottom: 8px; background: var(--primary-light); color: var(--primary);">
+              <div class="empty-state">
+                <div class="empty-state-icon">
                   <svg width="24" height="24" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/></svg>
                 </div>
                 <div class="empty-state-title">No Assets Assigned</div>
                 <div class="empty-state-desc">You currently do not have any company hardware or devices issued to your custody. When IT assigns an asset to your profile, it will appear here.</div>
-                <button class="btn btn-primary btn-sm" style="margin-top: 14px;" onclick="AssetsView.openRequestHardwareModal()">+ Request Work Equipment</button>
+                <div class="empty-state-actions">
+                  <button class="btn btn-primary btn-sm" onclick="AssetsView.openRequestHardwareModal()">+ Request Work Equipment</button>
+                </div>
               </div>
             ` : `
               <table class="data-table">
@@ -1044,13 +1077,15 @@ const AssetsView = {
           </div>
           <div class="card-body" style="padding: 0;">
             ${myRequests.length === 0 ? `
-              <div class="empty-state" style="border: none; padding: 48px 16px;">
-                <div class="empty-state-icon" style="width: 44px; height: 44px; margin-bottom: 8px; background: var(--primary-light); color: var(--primary);">
+              <div class="empty-state">
+                <div class="empty-state-icon">
                   <svg width="24" height="24" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
                 </div>
                 <div class="empty-state-title">No Hardware Requests Found</div>
                 <div class="empty-state-desc">You have not submitted any hardware requisitions yet.</div>
-                <button class="btn btn-primary btn-sm" style="margin-top: 14px;" onclick="AssetsView.openRequestHardwareModal()">+ Request Work Equipment</button>
+                <div class="empty-state-actions">
+                  <button class="btn btn-primary btn-sm" onclick="AssetsView.openRequestHardwareModal()">+ Request Work Equipment</button>
+                </div>
               </div>
             ` : `
               <table class="data-table">

@@ -189,24 +189,16 @@
    KPI CARD STAGGERED ENTRANCE
    ---------------------------------------------------- */
 .kpi-grid {
-  animation: fadeIn 0.3s ease both;
+  /* Clean immediate grid rendering */
 }
 
 .kpi-card {
-  animation: staggerIn 0.4s var(--transition-ease) both;
+  opacity: 1;
 }
 
-.kpi-card:nth-child(1) { animation-delay: 0.08s; }
-.kpi-card:nth-child(2) { animation-delay: 0.14s; }
-.kpi-card:nth-child(3) { animation-delay: 0.20s; }
-.kpi-card:nth-child(4) { animation-delay: 0.26s; }
-.kpi-card:nth-child(5) { animation-delay: 0.32s; }
-.kpi-card:nth-child(6) { animation-delay: 0.38s; }
-
-/* KPI numbers count reveal */
+/* KPI numbers always visible immediately */
 .kpi-value {
-  animation: countReveal 0.5s var(--transition-ease) both;
-  animation-delay: 0.3s;
+  opacity: 1;
 }
 
 /* Enhanced KPI card hover */

@@ -220,9 +220,17 @@ const DocumentsView = {
         </div>
         <div class="card-body" style="padding: 0;">
           ${list.length === 0 ? `
-            <div class="empty-state" style="border: none; padding: 48px 16px;">
+            <div class="empty-state">
+              <div class="empty-state-icon">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <path d="M22 19a2 2 0 01-2 2H4a2 2 0 01-2-2V5a2 2 0 012-2h5l2 3h9a2 2 0 012 2z"/>
+                </svg>
+              </div>
               <div class="empty-state-title">No Documents Found</div>
               <div class="empty-state-desc">No employee documents match your active filters.</div>
+              <div class="empty-state-actions">
+                <button class="btn btn-primary btn-sm" onclick="DocumentsView.openUploadModal()">+ Upload Document</button>
+              </div>
             </div>
           ` : `
             <table class="data-table">
@@ -292,8 +300,8 @@ const DocumentsView = {
         </div>
         <div class="card-body" style="padding: 0;">
           ${requests.length === 0 ? `
-            <div class="empty-state" style="border: none; padding: 48px 16px;">
-              <div class="empty-state-icon" style="width: 44px; height: 44px; margin-bottom: 8px; background: var(--success-light); color: var(--success);">
+            <div class="empty-state">
+              <div class="empty-state-icon">
                 <svg width="24" height="24" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
               </div>
               <div class="empty-state-title">No Pending Document Requests</div>
@@ -371,7 +379,12 @@ const DocumentsView = {
         </div>
         <div class="card-body" style="padding: 0;">
           ${expiringDocs.length === 0 ? `
-            <div class="empty-state" style="border: none; padding: 48px 16px;">
+            <div class="empty-state">
+              <div class="empty-state-icon">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
+                </svg>
+              </div>
               <div class="empty-state-title">All Documents Compliant</div>
               <div class="empty-state-desc">${isEmployee ? 'None of your registered documents are expiring soon.' : 'No employee documents are expiring in the next 30 days.'}</div>
             </div>

@@ -263,9 +263,9 @@ const LeaveView = {
         </div>
         <div class="card-body" style="padding: 0;">
           ${requests.length === 0 ? `
-            <div class="empty-state" style="border: none; padding: 48px 16px;">
-              <div class="empty-state-icon" style="width: 44px; height: 44px; margin-bottom: 8px; background: var(--primary-light); color: var(--primary);">
-                <svg width="22" height="22" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <div class="empty-state">
+              <div class="empty-state-icon">
+                <svg width="24" height="24" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/>
                 </svg>
               </div>
@@ -412,9 +412,17 @@ const LeaveView = {
         </div>
         <div class="card-body" style="padding: 0;">
           ${requests.length === 0 ? `
-            <div class="empty-state" style="border: none; padding: 40px;">
+            <div class="empty-state">
+              <div class="empty-state-icon">
+                <svg width="24" height="24" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/>
+                </svg>
+              </div>
               <div class="empty-state-title">No Leave Requests Submitted</div>
-              <div class="empty-state-desc">Click "Apply Leave" to schedule planned time-off or sick absence.</div>
+              <div class="empty-state-desc">Schedule planned vacation, personal time-off, or statutory sick absence.</div>
+              <div class="empty-state-actions">
+                <button class="btn btn-primary btn-sm" onclick="LeaveView.openApplyLeaveModal()">+ Apply Leave</button>
+              </div>
             </div>
           ` : `
             <table class="data-table">
@@ -472,9 +480,14 @@ const LeaveView = {
         </div>
         <div class="card-body" style="padding: 0;">
           ${teamRequests.length === 0 ? `
-            <div class="empty-state" style="border: none; padding: 40px;">
+            <div class="empty-state">
+              <div class="empty-state-icon">
+                <svg width="24" height="24" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                </svg>
+              </div>
               <div class="empty-state-title">No Team Leave Requests</div>
-              <div class="empty-state-desc">All team member leave requests have been reviewed.</div>
+              <div class="empty-state-desc">All team member leave requests have been reviewed and resolved.</div>
             </div>
           ` : `
             <table class="data-table">

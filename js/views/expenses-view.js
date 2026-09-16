@@ -206,9 +206,21 @@ const ExpensesView = {
         </div>
         <div class="card-body" style="padding: 0;">
           ${list.length === 0 ? `
-            <div class="empty-state" style="border: none; padding: 48px 16px;">
+            <div class="empty-state">
+              <div class="empty-state-icon">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/>
+                  <polyline points="14 2 14 8 20 8"/>
+                  <line x1="16" y1="13" x2="8" y2="13"/>
+                  <line x1="16" y1="17" x2="8" y2="17"/>
+                  <polyline points="10 9 9 9 8 9"/>
+                </svg>
+              </div>
               <div class="empty-state-title">No Expense Claims Found</div>
               <div class="empty-state-desc">No expense records match the active criteria.</div>
+              <div class="empty-state-actions">
+                <button class="btn btn-primary btn-sm" onclick="ExpensesView.openCreateExpenseModal()">+ New Claim</button>
+              </div>
             </div>
           ` : `
             <table class="data-table">
@@ -275,9 +287,18 @@ const ExpensesView = {
         </div>
         <div class="card-body" style="padding: 0;">
           ${myExpenses.length === 0 ? `
-            <div class="empty-state" style="border: none; padding: 48px 16px;">
+            <div class="empty-state">
+              <div class="empty-state-icon">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <rect x="2" y="4" width="20" height="16" rx="2"/>
+                  <line x1="2" y1="10" x2="22" y2="10"/>
+                </svg>
+              </div>
               <div class="empty-state-title">No Personal Claims Filed</div>
               <div class="empty-state-desc">You have not submitted any reimbursement claims yet.</div>
+              <div class="empty-state-actions">
+                <button class="btn btn-primary btn-sm" onclick="ExpensesView.openCreateExpenseModal()">+ Submit First Claim</button>
+              </div>
             </div>
           ` : `
             <table class="data-table">
@@ -331,7 +352,12 @@ const ExpensesView = {
           </div>
           <div class="card-body" style="padding: 0;">
             ${pending.length === 0 ? `
-              <div class="empty-state" style="border: none; padding: 32px 16px;">
+              <div class="empty-state">
+                <div class="empty-state-icon">
+                  <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <polyline points="20 6 9 17 4 12"/>
+                  </svg>
+                </div>
                 <div class="empty-state-title">All Caught Up!</div>
                 <div class="empty-state-desc">No expense claims currently pending manager or finance approval.</div>
               </div>
@@ -382,7 +408,13 @@ const ExpensesView = {
           </div>
           <div class="card-body" style="padding: 0;">
             ${approved.length === 0 ? `
-              <div class="empty-state" style="border: none; padding: 32px 16px;">
+              <div class="empty-state">
+                <div class="empty-state-icon">
+                  <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <circle cx="12" cy="12" r="10"/>
+                    <polyline points="12 6 12 12 16 14"/>
+                  </svg>
+                </div>
                 <div class="empty-state-title">No Pending Disbursements</div>
                 <div class="empty-state-desc">All approved claims have been settled.</div>
               </div>
