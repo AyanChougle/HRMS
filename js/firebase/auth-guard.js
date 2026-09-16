@@ -101,12 +101,30 @@ const AuthGuard = {
       }
 
       // Compute Active Permissions Set via PermissionService
-      if (this.userProfile.roleId === 'SUPER_ADMIN' || !this.userProfile.roleId) {
+      const normalizedRoleId = (this.userProfile.roleId || 'EMPLOYEE').toString().toUpperCase().trim();
+      if (normalizedRoleId === 'SUPER_ADMIN' || normalizedRoleId === 'COMPANY_ADMIN' || normalizedRoleId === 'ADMIN' || !this.userProfile.roleId) {
         this.permissions = new Set(['*']);
       } else if (window.PermissionService) {
         this.permissions = PermissionService.getUserPermissions(this.userProfile, roleDocData);
       } else {
         this.permissions = new Set(['*']);
+      }
+
+      // Initialize userRole object if not already populated from Firestore roles collection
+      if (!this.userRole) {
+        if (normalizedRoleId === 'SUPER_ADMIN') {
+          this.userRole = { name: 'Super Admin', id: 'SUPER_ADMIN' };
+        } else if (normalizedRoleId === 'COMPANY_ADMIN' || normalizedRoleId === 'ADMIN') {
+          this.userRole = { name: 'Company Admin', id: 'COMPANY_ADMIN' };
+        } else if (normalizedRoleId === 'HR' || normalizedRoleId === 'HR_MANAGER') {
+          this.userRole = { name: 'HR Manager', id: 'HR' };
+        } else if (normalizedRoleId === 'PAYROLL') {
+          this.userRole = { name: 'Payroll Officer', id: 'PAYROLL' };
+        } else if (normalizedRoleId === 'MANAGER') {
+          this.userRole = { name: 'Line Manager', id: 'MANAGER' };
+        } else {
+          this.userRole = { name: 'Employee (ESS)', id: 'EMPLOYEE' };
+        }
       }
     } else {
       // First-time Superadmin Profile
@@ -123,6 +141,7 @@ const AuthGuard = {
         createdAt: new Date().toISOString()
       };
       this.permissions = new Set(['*']);
+      this.userRole = { name: 'Super Admin', id: 'SUPER_ADMIN' };
     }
   },
 
@@ -131,7 +150,8 @@ const AuthGuard = {
     if (!permissionName) return true;
     if (!this.isInitialized) return true; // Auth still resolving, will re-verify on init
     const role = this.userProfile?.roleId || 'EMPLOYEE';
-    if (role === 'SUPER_ADMIN') return true;
+    const normalizedRole = role.toString().toUpperCase().trim();
+    if (normalizedRole === 'SUPER_ADMIN' || normalizedRole === 'COMPANY_ADMIN' || normalizedRole === 'ADMIN') return true;
 
     if (window.PermissionService) {
       return PermissionService.hasPermission(permissionName, this.permissions, role);
@@ -143,16 +163,23 @@ const AuthGuard = {
   async switchRole(roleId) {
     if (!this.userProfile) return;
     this.userProfile.roleId = roleId;
+    const normalizedRole = (roleId || 'EMPLOYEE').toString().toUpperCase().trim();
 
-    if (roleId === 'SUPER_ADMIN') {
+    if (normalizedRole === 'SUPER_ADMIN') {
       this.permissions = new Set(['*']);
       this.userRole = { name: 'Super Admin', id: 'SUPER_ADMIN' };
-    } else if (roleId === 'COMPANY_ADMIN') {
+    } else if (normalizedRole === 'COMPANY_ADMIN' || normalizedRole === 'ADMIN') {
       this.permissions = new Set(['*']);
       this.userRole = { name: 'Company Admin', id: 'COMPANY_ADMIN' };
-    } else if (roleId === 'HR') {
-      this.permissions = new Set(['*']);
+    } else if (normalizedRole === 'HR' || normalizedRole === 'HR_MANAGER') {
+      this.permissions = window.PermissionService ? PermissionService.getUserPermissions({ roleId: 'HR' }) : new Set(['*']);
       this.userRole = { name: 'HR Manager', id: 'HR' };
+    } else if (normalizedRole === 'PAYROLL') {
+      this.permissions = window.PermissionService ? PermissionService.getUserPermissions({ roleId: 'PAYROLL' }) : new Set(['*']);
+      this.userRole = { name: 'Payroll Officer', id: 'PAYROLL' };
+    } else if (normalizedRole === 'MANAGER') {
+      this.permissions = window.PermissionService ? PermissionService.getUserPermissions({ roleId: 'MANAGER' }) : new Set(['*']);
+      this.userRole = { name: 'Line Manager', id: 'MANAGER' };
     } else {
       this.userRole = { name: 'Employee (ESS)', id: 'EMPLOYEE' };
       if (window.PermissionService) {

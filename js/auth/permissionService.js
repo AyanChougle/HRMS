@@ -26,6 +26,8 @@ const PermissionService = {
       'audit.view'
     ],
 
+    ADMIN: ['*'],
+
     HR: [
       'people.*',
       'people.view',
@@ -42,6 +44,12 @@ const PermissionService = {
       'leave.create',
       'leave.edit',
       'leave.approve',
+      'payroll.*',
+      'payroll.view',
+      'payroll.manage',
+      'payroll.process',
+      'payroll.export',
+      'payroll.templates',
       'documents.*',
       'documents.view',
       'documents.upload',
@@ -56,7 +64,58 @@ const PermissionService = {
       'recruitment.*',
       'performance.*',
       'expenses.*',
-      'assets.*'
+      'assets.*',
+      'compliance.*',
+      'workflows.*',
+      'own.profile',
+      'own.payslips',
+      'own.attendance',
+      'own.leave'
+    ],
+
+    HR_MANAGER: [
+      'people.*',
+      'people.view',
+      'people.create',
+      'people.edit',
+      'people.deactivate',
+      'attendance.*',
+      'attendance.view',
+      'attendance.create',
+      'attendance.edit',
+      'attendance.approve',
+      'leave.*',
+      'leave.view',
+      'leave.create',
+      'leave.edit',
+      'leave.approve',
+      'payroll.*',
+      'payroll.view',
+      'payroll.manage',
+      'payroll.process',
+      'payroll.export',
+      'payroll.templates',
+      'documents.*',
+      'documents.view',
+      'documents.upload',
+      'reports.*',
+      'reports.view',
+      'reports.export',
+      'communication.*',
+      'approvals.*',
+      'approvals.process',
+      'companies.view',
+      'settings.manage',
+      'recruitment.*',
+      'performance.*',
+      'expenses.*',
+      'assets.*',
+      'compliance.*',
+      'workflows.*',
+      'own.profile',
+      'own.payslips',
+      'own.attendance',
+      'own.leave'
     ],
 
     PAYROLL: [
@@ -128,14 +187,19 @@ const PermissionService = {
 
   // Get active permissions set for a user profile
   getUserPermissions(userProfile, roleDoc = null) {
-    const roleId = userProfile?.roleId || 'EMPLOYEE';
+    const rawRoleId = userProfile?.roleId || 'EMPLOYEE';
+    const roleId = rawRoleId.toString().toUpperCase().trim();
     
-    if (roleId === 'SUPER_ADMIN') {
+    if (roleId === 'SUPER_ADMIN' || roleId === 'COMPANY_ADMIN' || roleId === 'ADMIN') {
       return new Set(['*']);
     }
 
-    // Always start with built-in default permissions for the role
-    const defaultPerms = this.ROLE_PERMISSIONS[roleId] || this.ROLE_PERMISSIONS.EMPLOYEE || [];
+    // Resolve built-in permissions
+    const defaultPerms = this.ROLE_PERMISSIONS[roleId] 
+      || (roleId.includes('HR') ? this.ROLE_PERMISSIONS.HR : null)
+      || this.ROLE_PERMISSIONS[rawRoleId] 
+      || this.ROLE_PERMISSIONS.EMPLOYEE 
+      || [];
     const permsSet = new Set(defaultPerms);
 
     // Merge in any custom permissions from roleDoc if present
@@ -160,7 +224,11 @@ const PermissionService = {
   // Evaluate if user has a specific permission key
   hasPermission(permissionName, userPermissions, userRole = 'EMPLOYEE') {
     if (!permissionName) return true;
-    if (userRole === 'SUPER_ADMIN') return true;
+    const normalizedRole = (userRole || 'EMPLOYEE').toString().toUpperCase().trim();
+
+    if (normalizedRole === 'SUPER_ADMIN' || normalizedRole === 'COMPANY_ADMIN' || normalizedRole === 'ADMIN') {
+      return true;
+    }
 
     // Direct match or Global Superadmin Wildcard
     if (userPermissions && userPermissions instanceof Set) {
@@ -168,7 +236,7 @@ const PermissionService = {
         return true;
       }
 
-      // Category Wildcard check (e.g. 'people.*' grants 'people.view', 'people.create')
+      // Category Wildcard check (e.g. 'payroll.*' grants 'payroll.view', 'payroll.process')
       const parts = permissionName.split('.');
       if (parts.length === 2) {
         const wildcard = `${parts[0]}.*`;
@@ -185,8 +253,46 @@ const PermissionService = {
       }
     }
 
-    // Role-based baseline guarantees
-    if (userRole === 'EMPLOYEE') {
+    // Role-based baseline guarantees for HR / HR Manager
+    if (normalizedRole === 'HR' || normalizedRole === 'HR_MANAGER' || normalizedRole.includes('HR')) {
+      const hrAllowedPerms = [
+        'people.view', 'people.create', 'people.edit', 'people.deactivate',
+        'attendance.view', 'attendance.create', 'attendance.edit', 'attendance.approve',
+        'leave.view', 'leave.create', 'leave.edit', 'leave.approve',
+        'payroll.view', 'payroll.manage', 'payroll.process', 'payroll.export', 'payroll.templates',
+        'recruitment.view', 'recruitment.manage',
+        'performance.view', 'performance.manage',
+        'expenses.view', 'expenses.manage',
+        'assets.view', 'assets.manage',
+        'compliance.view', 'compliance.manage',
+        'workflows.view', 'workflows.manage',
+        'reports.view', 'reports.export',
+        'communication.view', 'communication.manage',
+        'settings.manage', 'documents.view', 'documents.upload',
+        'own.profile', 'own.payslips', 'own.attendance', 'own.leave'
+      ];
+      if (hrAllowedPerms.includes(permissionName) || 
+          permissionName.startsWith('payroll.') || 
+          permissionName.startsWith('people.') || 
+          permissionName.startsWith('attendance.') || 
+          permissionName.startsWith('leave.') || 
+          permissionName.startsWith('reports.')) {
+        return true;
+      }
+    }
+
+    // Payroll Officer baseline guarantees
+    if (normalizedRole === 'PAYROLL') {
+      if (permissionName.startsWith('payroll.') || 
+          permissionName.startsWith('reports.') || 
+          permissionName === 'expenses.view' || 
+          permissionName === 'people.view') {
+        return true;
+      }
+    }
+
+    // Role-based baseline guarantees for Employee
+    if (normalizedRole === 'EMPLOYEE') {
       const employeeAllowedPerms = [
         'attendance.view', 'attendance.punch', 'leave.view', 'leave.create',
         'payroll.view', 'communication.view', 'reports.view', 'own.profile',
@@ -198,7 +304,8 @@ const PermissionService = {
       }
     }
 
-    if (userRole === 'MANAGER') {
+    // Role-based baseline guarantees for Line Manager
+    if (normalizedRole === 'MANAGER') {
       const managerAllowedPerms = [
         'attendance.view', 'attendance.punch', 'leave.view', 'leave.create', 'leave.approve',
         'payroll.view', 'communication.view', 'reports.view', 'own.profile',

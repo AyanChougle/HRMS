@@ -76,6 +76,11 @@
   --bg-badge: #f1f5f9;
   --bg-overlay: rgba(15, 23, 42, 0.5);
 
+  /* Surface & Body Aliases */
+  --bg-body: var(--bg-app);
+  --bg-surface: var(--bg-card);
+  --font-family-base: var(--font-family);
+
   /* Text Colors */
   --text-main: #0f172a;
   --text-primary: #1e293b;
@@ -138,6 +143,11 @@
   --bg-table-stripe: #121419;
   --bg-badge: #21242d;
   --bg-overlay: rgba(0, 0, 0, 0.85);
+
+  /* Dark Surface & Body Aliases */
+  --bg-body: var(--bg-app);
+  --bg-surface: var(--bg-card);
+  --font-family-base: var(--font-family);
 
   /* Dark Theme Text: Pure Whites & Bright Silver */
   --text-main: #ffffff;

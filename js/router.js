@@ -188,13 +188,14 @@ const Router = {
     const sidebarSection = document.querySelector('.app-sidebar .sidebar-nav-section');
     if (!sidebarSection) return;
 
-    const role = AuthGuard.userProfile?.roleId || 'EMPLOYEE';
+    const rawRole = AuthGuard.userProfile?.roleId || 'EMPLOYEE';
+    const role = rawRole.toString().toUpperCase().trim();
     let coreItems = [];
     let systemItems = [];
     let coreLabel = 'Core HR';
     let systemLabel = 'System';
 
-    if (role === 'SUPER_ADMIN' || role === 'COMPANY_ADMIN' || role === 'HR') {
+    if (role === 'SUPER_ADMIN' || role === 'COMPANY_ADMIN' || role === 'ADMIN' || role === 'HR' || role === 'HR_MANAGER' || role.includes('HR')) {
       coreItems = [
         { route: 'dashboard', label: 'Dashboard', icon: 'M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z' },
         { route: 'people', label: 'People', icon: 'M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z' },

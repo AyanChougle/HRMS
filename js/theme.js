@@ -5,6 +5,7 @@
 
 const ThemeManager = {
   STORAGE_KEY: 'diallo_theme_preference',
+  _isBound: false,
 
   init() {
     const savedTheme = localStorage.getItem(this.STORAGE_KEY);
@@ -36,9 +37,13 @@ const ThemeManager = {
     const current = this.getCurrentTheme();
     const next = current === 'dark' ? 'light' : 'dark';
     this.setTheme(next);
-    if (window.Toast) {
+    if (window.Toast && typeof Toast.info === 'function') {
       Toast.info(`Switched to ${next === 'dark' ? 'Dark' : 'Light'} Mode`);
     }
+  },
+
+  toggleTheme() {
+    this.toggle();
   },
 
   updateToggleButtons(theme) {
@@ -64,10 +69,13 @@ const ThemeManager = {
   },
 
   bindEvents() {
+    if (this._isBound) return;
+    this._isBound = true;
     document.addEventListener('click', (e) => {
       const toggleBtn = e.target.closest('.theme-toggle-btn');
       if (toggleBtn) {
         e.preventDefault();
+        e.stopPropagation();
         this.toggle();
       }
     });
