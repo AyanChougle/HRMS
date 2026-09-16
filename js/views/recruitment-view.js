@@ -838,6 +838,26 @@ const RecruitmentView = {
     if (phoneInput) phoneInput.required = mode === 'PHONE';
   },
 
+  handleInterviewRoundChange(round) {
+    const interviewerInput = document.getElementById('int-interviewer');
+    const hint = document.getElementById('int-interviewer-hint');
+    if (!interviewerInput) return;
+
+    if (round.includes('Round 1')) {
+      interviewerInput.value = 'HR Operations';
+      if (hint) hint.textContent = 'Round 1 is conducted by HR.';
+    } else if (round.includes('Round 2')) {
+      interviewerInput.value = 'Team Lead (TL) & Operations';
+      if (hint) hint.textContent = 'Round 2 is technical evaluation conducted by TL & Operations.';
+    } else if (round.includes('Round 3')) {
+      interviewerInput.value = 'Hiring Manager';
+      if (hint) hint.textContent = 'Round 3 is conducted by the Hiring Manager.';
+    } else if (round.includes('Round 4')) {
+      interviewerInput.value = 'Executive Panel / Director';
+      if (hint) hint.textContent = 'Round 4 is final approval conducted by Executive Panel.';
+    }
+  },
+
   openInterviewModal(applicationId, candidateId, candidateName, jobTitle) {
     ModalManager.openModal({
       id: 'schedule-interview-modal',
@@ -855,13 +875,20 @@ const RecruitmentView = {
           </div>
           <div class="col-6 form-group">
             <label class="form-label required">Interview Round</label>
-            <select id="int-round" class="form-control">
-              <option value="Walk-in / In-Person Interview" selected>Walk-in / In-Person Interview</option>
-              <option value="Round 1: HR Screening">Round 1: HR Screening</option>
-              <option value="Round 2: Technical Assessment">Round 2: Technical Assessment</option>
+            <select id="int-round" class="form-control" onchange="RecruitmentView.handleInterviewRoundChange(this.value)">
+              <option value="Round 1: HR Screening" selected>Round 1: HR Screening</option>
+              <option value="Round 2: Technical Assessment (TL & Ops)">Round 2: Technical Assessment (TL & Ops)</option>
               <option value="Round 3: Hiring Manager">Round 3: Hiring Manager</option>
               <option value="Round 4: Executive Panel">Round 4: Executive Panel</option>
             </select>
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label required">Interviewer / Taken By</label>
+          <input type="text" id="int-interviewer" class="form-control" value="HR Operations" placeholder="e.g. HR Manager, Team Lead (TL), Operations Lead" required />
+          <div class="form-hint" id="int-interviewer-hint" style="font-size: 0.76rem; color: var(--text-muted); margin-top: 4px;">
+            Round 1 is conducted by HR.
           </div>
         </div>
 
@@ -899,8 +926,9 @@ const RecruitmentView = {
   },
 
   async saveInterview(applicationId, candidateId, candidateName, jobTitle) {
-    const round = document.getElementById('int-round')?.value;
+    const round = document.getElementById('int-round')?.value || 'Round 1: HR Screening';
     const mode = document.getElementById('int-mode')?.value || 'IN_PERSON';
+    const interviewer = document.getElementById('int-interviewer')?.value.trim() || 'HR Operations';
     const date = document.getElementById('int-date')?.value;
     const time = document.getElementById('int-time')?.value;
     let location = '';
@@ -922,6 +950,7 @@ const RecruitmentView = {
         candidateName,
         jobTitle,
         round,
+        interviewer,
         date,
         time,
         interviewType: mode,
