@@ -329,12 +329,13 @@ const recruitmentService = {
         candidateName: data.candidateName,
         jobTitle: data.jobTitle,
         companyId: data.companyId || 'comp_diallo_india',
-        round: data.round || 'Round 1: Technical', // Round 1: HR, Round 2: Technical, Round 3: Manager, Round 4: Final
-        interviewType: data.interviewType || 'VIDEO', // VIDEO, IN_PERSON, PHONE
+        round: data.round || 'Walk-in / In-Person Interview',
+        interviewType: data.interviewType || (data.meetingLink?.startsWith('http') ? 'VIDEO' : 'IN_PERSON'),
         interviewer: data.interviewer || AuthGuard.userProfile?.displayName || 'Hiring Lead',
         date: data.date,
         time: data.time || '14:00',
-        meetingLink: data.meetingLink || 'https://meet.google.com/xyz-diallo-interview',
+        location: data.location || (data.interviewType === 'IN_PERSON' ? (data.meetingLink || 'HQ - Mumbai, Meeting Room 2') : ''),
+        meetingLink: data.meetingLink || '',
         status: 'SCHEDULED', // SCHEDULED, COMPLETED, CANCELLED
         createdAt: firebase.firestore.FieldValue.serverTimestamp()
       };

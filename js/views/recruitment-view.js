@@ -5,6 +5,12 @@
 
 const RecruitmentView = {
   activeTab: 'pipeline',
+  forceShowKanban: false,
+
+  toggleKanbanView(force = null) {
+    this.forceShowKanban = force !== null ? force : !this.forceShowKanban;
+    Router.navigate('recruitment');
+  },
 
   async renderHub() {
     let requisitions = [];
@@ -160,6 +166,53 @@ const RecruitmentView = {
 
   // 1. KANBAN CANDIDATE PIPELINE TAB
   renderPipelineTab(applications, jobs) {
+    if (applications.length === 0 && !this.forceShowKanban) {
+      return `
+        <div class="card">
+          <div class="card-header">
+            <div>
+              <div class="card-title">Candidate Pipeline (Active Applications)</div>
+              <div class="card-subtitle">0 applications verified in Cloud Firestore</div>
+            </div>
+            <div class="card-actions" style="display: flex; gap: 8px;">
+              <button class="btn btn-secondary btn-sm" onclick="RecruitmentView.toggleKanbanView(true)">
+                <svg width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 17V7m0 10a2 2 0 01-2 2H5a2 2 0 01-2-2V7a2 2 0 012-2h2a2 2 0 012 2m0 10a2 2 0 002 2h2a2 2 0 002-2M9 7a2 2 0 012-2h2a2 2 0 012 2m0 10V7m0 10a2 2 0 002 2h2a2 2 0 002-2V7a2 2 0 00-2-2h-2a2 2 0 00-2 2"/>
+                </svg>
+                View Pipeline Stages
+              </button>
+              <button class="btn btn-primary btn-sm" onclick="RecruitmentView.openAddCandidateModal()">+ Add Candidate</button>
+            </div>
+          </div>
+          <div class="card-body" style="padding: 0;">
+            <div class="empty-state" style="border: none; padding: 48px 16px;">
+              <div class="empty-state-icon" style="width: 44px; height: 44px; margin-bottom: 8px; background: var(--primary-light); color: var(--primary);">
+                <svg width="22" height="22" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"/>
+                </svg>
+              </div>
+              <div class="empty-state-title">No Candidates in Active Pipeline</div>
+              <div class="empty-state-desc">Candidates will appear here as they apply or get added to published job openings.</div>
+              <div style="margin-top: 16px; display: flex; gap: 8px; justify-content: center;">
+                <button class="btn btn-primary btn-sm" onclick="RecruitmentView.openAddCandidateModal()">
+                  <svg width="15" height="15" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z"/>
+                  </svg>
+                  Add Candidate
+                </button>
+                <button class="btn btn-secondary btn-sm" onclick="RecruitmentView.openCreateJobModal()">
+                  <svg width="15" height="15" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/>
+                  </svg>
+                  Post Job Position
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      `;
+    }
+
     const stages = [
       { key: 'APPLIED', label: 'Applied', color: 'var(--primary)' },
       { key: 'SCREENING', label: 'Screening', color: 'var(--info)' },
@@ -171,6 +224,12 @@ const RecruitmentView = {
     ];
 
     return `
+      ${applications.length === 0 ? `
+        <div class="flex items-center justify-between" style="margin-bottom: 12px; padding: 10px 16px; background: var(--bg-card); border: 1px solid var(--border-main); border-radius: var(--radius-md);">
+          <span class="text-secondary" style="font-size: 0.85rem;">Showing empty Kanban pipeline stages (7 stages)</span>
+          <button class="btn btn-soft btn-sm" onclick="RecruitmentView.toggleKanbanView(false)">← Return to Summary Card</button>
+        </div>
+      ` : ''}
       <div style="overflow-x: auto; padding-bottom: 16px;">
         <div style="display: flex; gap: 16px; min-width: 1200px;">
           ${stages.map(s => {
@@ -184,7 +243,9 @@ const RecruitmentView = {
                 
                 <div class="flex flex-col gap-2" style="flex: 1; min-height: 250px;">
                   ${appsInStage.length === 0 ? `
-                    <div style="padding: 24px 8px; text-align: center; color: var(--text-muted); font-size: 0.75rem;">No candidates in ${s.label}</div>
+                    <div style="padding: 32px 8px; text-align: center; color: var(--text-muted); font-size: 0.78rem; border: 1px dashed var(--border-main); border-radius: var(--radius-md); background: var(--bg-hover); margin: 8px 0;">
+                      No candidates in ${s.label}
+                    </div>
                   ` : appsInStage.map(a => `
                     <div class="card" style="padding: 12px; border: 1px solid var(--border-main); box-shadow: var(--shadow-xs); background: var(--bg-surface);">
                       <div class="font-bold text-main" style="font-size: 0.85rem;">${a.candidateName || 'Candidate'}</div>
@@ -257,8 +318,9 @@ const RecruitmentView = {
                   <th>Work Mode</th>
                   <th>Openings</th>
                   <th>Salary Range</th>
+                  <th>Closing Date</th>
                   <th>Status</th>
-                  <th>Actions</th>
+                  <th style="text-align: right;">Actions</th>
                 </tr>
               </thead>
               <tbody>
@@ -270,9 +332,21 @@ const RecruitmentView = {
                     <td><span class="badge badge-neutral">${j.workMode}</span></td>
                     <td><strong>${j.openings}</strong></td>
                     <td>${j.salaryRange}</td>
-                    <td><span class="badge badge-success">${j.status}</span></td>
+                    <td><span class="font-medium" style="font-size: 0.85rem; color: var(--text-secondary);">${j.closingDate || 'Open-ended'}</span></td>
                     <td>
-                      <button class="btn btn-soft btn-sm" onclick="RecruitmentView.openAddCandidateModal('${j.id}', '${j.title}')">+ Add Candidate</button>
+                      <span class="badge ${j.status === 'PUBLISHED' ? 'badge-success' : (j.status === 'CLOSED' ? 'badge-danger' : 'badge-warning')}">
+                        <span class="badge-dot"></span> ${j.status === 'PUBLISHED' ? 'Active / Open' : (j.status === 'CLOSED' ? 'Closed' : j.status)}
+                      </span>
+                    </td>
+                    <td style="text-align: right;">
+                      <div style="display: inline-flex; align-items: center; gap: 6px;">
+                        ${j.status === 'PUBLISHED' ? `
+                          <button class="btn btn-soft btn-sm" onclick="RecruitmentView.openAddCandidateModal('${j.id}', '${j.title}')">+ Candidate</button>
+                          <button class="btn btn-secondary btn-sm" style="color: var(--danger); border-color: rgba(220, 38, 38, 0.3);" onclick="RecruitmentView.closeJobPosition('${j.id}', '${j.title}')" title="Close this job position">Close Position</button>
+                        ` : `
+                          <button class="btn btn-soft btn-sm" onclick="RecruitmentView.reopenJobPosition('${j.id}', '${j.title}')">Reopen Position</button>
+                        `}
+                      </div>
                     </td>
                   </tr>
                 `).join('')}
@@ -284,7 +358,31 @@ const RecruitmentView = {
     `;
   },
 
+  async closeJobPosition(jobId, jobTitle) {
+    if (!confirm(`Are you sure you want to close the job position '${jobTitle}'? Closed positions will no longer accept new candidate applications.`)) {
+      return;
+    }
+    try {
+      await recruitmentService.updateJobStatus(jobId, 'CLOSED');
+      Toast.success(`Job position '${jobTitle}' closed successfully.`);
+      Router.navigate('recruitment');
+    } catch (e) {
+      Toast.error(`Failed to close position: ${e.message}`);
+    }
+  },
+
+  async reopenJobPosition(jobId, jobTitle) {
+    try {
+      await recruitmentService.updateJobStatus(jobId, 'PUBLISHED');
+      Toast.success(`Job position '${jobTitle}' reopened and active!`);
+      Router.navigate('recruitment');
+    } catch (e) {
+      Toast.error(`Failed to reopen position: ${e.message}`);
+    }
+  },
+
   openCreateJobModal() {
+    const defaultClosing = new Date(Date.now() + 30 * 86400000).toISOString().slice(0, 10);
     ModalManager.openModal({
       id: 'create-job-modal',
       title: 'Post New Job Opening',
@@ -329,13 +427,17 @@ const RecruitmentView = {
           </div>
 
           <div class="form-row">
-            <div class="col-6 form-group">
+            <div class="col-4 form-group">
               <label class="form-label required">Experience Requirement</label>
               <input type="text" id="job-exp" class="form-control" value="3–6 Years" required />
             </div>
-            <div class="col-6 form-group">
+            <div class="col-4 form-group">
               <label class="form-label required">Target Salary Range (Annual CTC)</label>
               <input type="text" id="job-salary" class="form-control" value="₹10,00,000 – ₹16,00,000" required />
+            </div>
+            <div class="col-4 form-group">
+              <label class="form-label required">Application Closing Date</label>
+              <input type="date" id="job-closing-date" class="form-control" value="${defaultClosing}" required />
             </div>
           </div>
 
@@ -360,12 +462,13 @@ const RecruitmentView = {
     const location = document.getElementById('job-loc')?.value.trim();
     const experience = document.getElementById('job-exp')?.value.trim();
     const salaryRange = document.getElementById('job-salary')?.value.trim();
+    const closingDate = document.getElementById('job-closing-date')?.value || new Date(Date.now() + 30 * 86400000).toISOString().slice(0, 10);
     const description = document.getElementById('job-desc')?.value.trim();
 
     if (!title || !description) return;
 
     try {
-      await recruitmentService.createJob({ title, openings, department, workMode, location, experience, salaryRange, description });
+      await recruitmentService.createJob({ title, openings, department, workMode, location, experience, salaryRange, closingDate, description });
       Toast.success(`Job position '${title}' published!`);
       ModalManager.closeModal();
       this.switchTab('jobs');
@@ -517,7 +620,7 @@ const RecruitmentView = {
                   <th>Round</th>
                   <th>Interviewer</th>
                   <th>Date & Time</th>
-                  <th>Meeting Link</th>
+                  <th>Mode / Venue</th>
                   <th>Status</th>
                   <th>Actions</th>
                 </tr>
@@ -530,7 +633,15 @@ const RecruitmentView = {
                     <td><span class="badge badge-primary">${i.round}</span></td>
                     <td>${i.interviewer}</td>
                     <td><strong>${i.date}</strong> at ${i.time}</td>
-                    <td><a href="${i.meetingLink}" target="_blank" class="btn btn-soft btn-sm">Join Video</a></td>
+                    <td>
+                      ${i.interviewType === 'IN_PERSON' || !i.meetingLink || !i.meetingLink.startsWith('http') ? `
+                        <span class="badge badge-neutral" style="font-size: 0.78rem;" title="${i.location || 'Office Venue'}">
+                          🏢 Walk-In: ${i.location || 'Office Venue'}
+                        </span>
+                      ` : `
+                        <a href="${i.meetingLink}" target="_blank" class="btn btn-soft btn-sm">📹 Join Video</a>
+                      `}
+                    </td>
                     <td><span class="badge ${i.status === 'COMPLETED' ? 'badge-success' : 'badge-warning'}">${i.status}</span></td>
                     <td>
                       ${i.status !== 'COMPLETED' ? `
@@ -547,21 +658,50 @@ const RecruitmentView = {
     `;
   },
 
+  handleInterviewModeChange(mode) {
+    const locGroup = document.getElementById('int-location-group');
+    const linkGroup = document.getElementById('int-link-group');
+    const phoneGroup = document.getElementById('int-phone-group');
+    const locInput = document.getElementById('int-location');
+    const linkInput = document.getElementById('int-link');
+    const phoneInput = document.getElementById('int-phone');
+
+    if (locGroup) locGroup.style.display = mode === 'IN_PERSON' ? 'block' : 'none';
+    if (linkGroup) linkGroup.style.display = mode === 'VIDEO' ? 'block' : 'none';
+    if (phoneGroup) phoneGroup.style.display = mode === 'PHONE' ? 'block' : 'none';
+
+    if (locInput) locInput.required = mode === 'IN_PERSON';
+    if (linkInput) linkInput.required = mode === 'VIDEO';
+    if (phoneInput) phoneInput.required = mode === 'PHONE';
+  },
+
   openInterviewModal(applicationId, candidateId, candidateName, jobTitle) {
     ModalManager.openModal({
       id: 'schedule-interview-modal',
       title: `Schedule Interview: ${candidateName}`,
       subtitle: `Setting up evaluation for ${jobTitle}`,
       contentHtml: `
-        <div class="form-group">
-          <label class="form-label required">Interview Round</label>
-          <select id="int-round" class="form-control">
-            <option value="Round 1: HR Screening">Round 1: HR Screening</option>
-            <option value="Round 2: Technical Assessment" selected>Round 2: Technical Assessment</option>
-            <option value="Round 3: Hiring Manager">Round 3: Hiring Manager</option>
-            <option value="Round 4: Executive Panel">Round 4: Executive Panel</option>
-          </select>
+        <div class="form-row">
+          <div class="col-6 form-group">
+            <label class="form-label required">Interview Mode / Format</label>
+            <select id="int-mode" class="form-control" onchange="RecruitmentView.handleInterviewModeChange(this.value)">
+              <option value="IN_PERSON" selected>Walk-In / In-Person (Office Venue)</option>
+              <option value="VIDEO">Virtual Video Call (Google Meet / Zoom)</option>
+              <option value="PHONE">Telephonic Interview</option>
+            </select>
+          </div>
+          <div class="col-6 form-group">
+            <label class="form-label required">Interview Round</label>
+            <select id="int-round" class="form-control">
+              <option value="Walk-in / In-Person Interview" selected>Walk-in / In-Person Interview</option>
+              <option value="Round 1: HR Screening">Round 1: HR Screening</option>
+              <option value="Round 2: Technical Assessment">Round 2: Technical Assessment</option>
+              <option value="Round 3: Hiring Manager">Round 3: Hiring Manager</option>
+              <option value="Round 4: Executive Panel">Round 4: Executive Panel</option>
+            </select>
+          </div>
         </div>
+
         <div class="form-row">
           <div class="col-6 form-group">
             <label class="form-label required">Date</label>
@@ -572,9 +712,20 @@ const RecruitmentView = {
             <input type="time" id="int-time" class="form-control" value="14:30" required />
           </div>
         </div>
-        <div class="form-group">
+
+        <div id="int-location-group" class="form-group">
+          <label class="form-label required">Office Location / Venue / Desk</label>
+          <input type="text" id="int-location" class="form-control" value="HQ - Mumbai, Floor 4, Meeting Room 2" placeholder="e.g. HQ - Mumbai, Reception Desk / Room 3" required />
+        </div>
+
+        <div id="int-link-group" class="form-group" style="display: none;">
           <label class="form-label required">Google Meet / Video Link</label>
-          <input type="url" id="int-link" class="form-control" value="https://meet.google.com/xyz-diallo-ats" required />
+          <input type="url" id="int-link" class="form-control" value="https://meet.google.com/xyz-diallo-ats" placeholder="https://meet.google.com/..." />
+        </div>
+
+        <div id="int-phone-group" class="form-group" style="display: none;">
+          <label class="form-label required">Candidate Contact Number</label>
+          <input type="text" id="int-phone" class="form-control" value="+91 98200 12345" placeholder="+91 98..." />
         </div>
       `,
       footerHtml: `
@@ -586,13 +737,35 @@ const RecruitmentView = {
 
   async saveInterview(applicationId, candidateId, candidateName, jobTitle) {
     const round = document.getElementById('int-round')?.value;
+    const mode = document.getElementById('int-mode')?.value || 'IN_PERSON';
     const date = document.getElementById('int-date')?.value;
     const time = document.getElementById('int-time')?.value;
-    const meetingLink = document.getElementById('int-link')?.value.trim();
+    let location = '';
+    let meetingLink = '';
+
+    if (mode === 'IN_PERSON') {
+      location = document.getElementById('int-location')?.value.trim() || 'HQ - Mumbai, Meeting Room 2';
+    } else if (mode === 'VIDEO') {
+      meetingLink = document.getElementById('int-link')?.value.trim() || 'https://meet.google.com/xyz-diallo-ats';
+      location = 'Google Meet';
+    } else {
+      location = `Phone: ${document.getElementById('int-phone')?.value.trim() || ''}`;
+    }
 
     try {
-      await recruitmentService.scheduleInterview({ applicationId, candidateId, candidateName, jobTitle, round, date, time, meetingLink });
-      Toast.success('Interview scheduled and invite dispatched!');
+      await recruitmentService.scheduleInterview({
+        applicationId,
+        candidateId,
+        candidateName,
+        jobTitle,
+        round,
+        date,
+        time,
+        interviewType: mode,
+        location,
+        meetingLink
+      });
+      Toast.success(`${mode === 'IN_PERSON' ? 'Walk-in' : 'Virtual'} Interview scheduled and recorded!`);
       ModalManager.closeModal();
       this.switchTab('interviews');
     } catch (e) {
