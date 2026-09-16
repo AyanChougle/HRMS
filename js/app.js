@@ -48,7 +48,7 @@ const App = {
       seedService.bootstrapIfEmpty().catch(err => console.warn('Seed warning:', err));
     }
 
-    console.log('✓ Diallo HRMS Enterprise Application Initialized.');
+    console.log('[App] Diallo HRMS Enterprise Application Initialized.');
   },
 
   // Sidebar Collapse and Mobile Drawer
@@ -207,7 +207,7 @@ const App = {
             <div class="font-semibold">${c.name}</div>
             <div class="text-muted" style="font-size: 0.72rem;">${c.country || 'India'} • ${c.cin || 'Active Entity'}</div>
           </div>
-          ${c.name === currentComp ? '✓' : ''}
+          ${c.name === currentComp ? '<svg width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="currentColor" style="color: var(--primary);"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7"/></svg>' : ''}
         </button>
       `).join('')}
     `;
@@ -261,7 +261,7 @@ const App = {
             <div class="font-semibold">${b.name}</div>
             <div class="text-muted" style="font-size: 0.72rem;">${b.city || ''} • ${b.timezone || 'IST'}</div>
           </div>
-          ${b.name === currentBranch ? '✓' : ''}
+          ${b.name === currentBranch ? '<svg width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="currentColor" style="color: var(--primary);"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7"/></svg>' : ''}
         </button>
       `).join('')}
     `;

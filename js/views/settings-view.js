@@ -435,6 +435,12 @@ const SettingsView = {
             <p class="page-subtitle">Auto-numbering code series, SMTP gateways, notification channels and payslip design layouts</p>
           </div>
           <div class="page-actions">
+            <button class="btn btn-secondary btn-sm" onclick="seedService.seedAll(true).then(() => { if (window.Router) Router.navigate('dashboard'); })">
+              <svg width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/>
+              </svg>
+              <span>Seed Demo Datasets</span>
+            </button>
             <button class="btn btn-primary btn-sm" onclick="Toast.success('All system settings are up to date.')">Save Global Config</button>
           </div>
         </div>
@@ -545,6 +551,28 @@ const SettingsView = {
           <div class="module-card-footer">
             <span style="color: #15803d; font-weight: 600;">Open template designer</span>
             <svg class="arrow-icon" fill="none" viewBox="0 0 24 24" stroke="currentColor" style="color: #15803d;"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg>
+          </div>
+        </div>
+
+        <!-- 6. Realistic Demo Datasets Seeder Card -->
+        <div class="module-nav-card" onclick="seedService.seedAll(true).then(() => { if (window.Router) Router.navigate('dashboard'); })" style="border: 1.5px solid rgba(16, 185, 129, 0.4);">
+          <div>
+            <div class="module-nav-card-top">
+              <div class="module-card-icon-box" style="background: rgba(16, 185, 129, 0.12); color: #10b981;">
+                <svg width="22" height="22" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/>
+                </svg>
+              </div>
+              <span class="module-card-badge" style="background: rgba(16, 185, 129, 0.15); color: #10b981;">Database Sync</span>
+            </div>
+            <div class="module-card-content">
+              <h3>Synchronize Demo Datasets</h3>
+              <p>Populate realistic Indian corporate data across all modules (25 employees, attendance trends, leave ledgers, ATS pipeline, and expenses).</p>
+            </div>
+          </div>
+          <div class="module-card-footer">
+            <span style="color: #10b981; font-weight: 600;">Run Dataset Sync</span>
+            <svg class="arrow-icon" fill="none" viewBox="0 0 24 24" stroke="currentColor" style="color: #10b981;"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg>
           </div>
         </div>
       </div>

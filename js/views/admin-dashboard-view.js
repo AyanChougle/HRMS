@@ -393,7 +393,9 @@ const AdminDashboardView = {
       document.getElementById("bar-leave-fill").style.width = `${leavePct}%`;
 
       // SVG Charts
-      Charts.renderTrendChart("attendance-trend-chart");
+      const trend = await attendanceService.getWeeklyTrend();
+      Charts.renderTrendChart("attendance-trend-chart", trend.data, trend.labels);
+
       const deptColors = [
         "#2563eb",
         "#0891b2",
@@ -406,7 +408,7 @@ const AdminDashboardView = {
       ];
       const deptSegments = departments.map((d, i) => ({
         label: d.name,
-        count: employees.filter((e) => e.department === d.name).length,
+        count: employees.filter((e) => e.department === d.name || (e.department && e.department.toLowerCase().includes(d.name.toLowerCase()))).length,
         color: deptColors[i % deptColors.length],
       }));
       Charts.renderDonutChart("department-donut-chart", deptSegments);

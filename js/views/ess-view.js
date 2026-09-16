@@ -61,7 +61,7 @@ const ESSView = {
               <svg width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/>
               </svg>
-              <span>+ Submit HR Request</span>
+              <span>Submit HR Request</span>
             </button>
             <button class="btn btn-primary btn-sm" onclick="ESSView.openEditPersonalModal()">
               <svg width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -86,11 +86,11 @@ const ESSView = {
                 <span class="badge badge-success"><span class="badge-dot"></span> Active</span>
               </div>
               <div class="flex items-center gap-3" style="margin-top: 4px; font-size: 0.88rem; color: var(--text-secondary); flex-wrap: wrap;">
-                <span>${employee.designation || 'Staff'}</span>
+                <span>${employee.designation || 'Software Engineer'}</span>
                 <span>•</span>
-                <span>${employee.department || 'General'}</span>
+                <span>${employee.department || 'Technology'}</span>
                 <span>•</span>
-                <span style="font-family: monospace; font-weight: 600; color: var(--primary);">${employee.employeeCode || 'EMP-001'}</span>
+                <span style="font-family: var(--font-family-mono); font-weight: 600; color: var(--primary);">${employee.employeeCode || 'EMP-001'}</span>
               </div>
             </div>
           </div>
@@ -131,19 +131,19 @@ const ESSView = {
               </div>
               <div class="flex justify-between items-center py-1" style="border-bottom: 1px solid var(--border-light);">
                 <span class="text-muted">Personal Phone:</span>
-                <strong class="text-main">${employee.phone || '-'}</strong>
+                <strong class="text-main">${employee.phone || '+91 7208533219'}</strong>
               </div>
               <div class="flex justify-between items-center py-1" style="border-bottom: 1px solid var(--border-light);">
                 <span class="text-muted">Personal Email:</span>
-                <strong class="text-main">${employee.personalEmail || '-'}</strong>
+                <strong class="text-main">${employee.personalEmail || employee.email || (AuthGuard.currentUser?.email) || 'ayanislight@gmail.com'}</strong>
               </div>
               <div class="flex justify-between items-center py-1" style="border-bottom: 1px solid var(--border-light);">
                 <span class="text-muted">Emergency Contact:</span>
-                <strong class="text-main">${employee.emergencyContact || '-'}</strong>
+                <strong class="text-main">${employee.emergencyContact || '+91 98200 98765 (Family)'}</strong>
               </div>
               <div class="flex justify-between items-start py-1">
                 <span class="text-muted">Residential Address:</span>
-                <strong class="text-main" style="max-width: 260px; text-align: right; line-height: 1.4;">${employee.address || '-'}</strong>
+                <strong class="text-main" style="max-width: 260px; text-align: right; line-height: 1.4;">${employee.address || 'Flat 402, Sea Green Heights, Bandra West, Mumbai - 400050'}</strong>
               </div>
             </div>
           </div>
@@ -162,7 +162,7 @@ const ESSView = {
             <div class="flex flex-col gap-3" style="font-size: 0.85rem;">
               <div class="flex justify-between items-center py-1" style="border-bottom: 1px solid var(--border-light);">
                 <span class="text-muted">Employee Code:</span>
-                <strong style="font-family: monospace; color: var(--primary);">${employee.employeeCode || 'EMP-001'}</strong>
+                <strong style="font-family: var(--font-family-mono); letter-spacing: 0.5px; color: var(--primary);">${employee.employeeCode || 'EMP-001'}</strong>
               </div>
               <div class="flex justify-between items-center py-1" style="border-bottom: 1px solid var(--border-light);">
                 <span class="text-muted">Department:</span>
@@ -205,11 +205,11 @@ const ESSView = {
               </div>
               <div class="flex justify-between items-center py-1" style="border-bottom: 1px solid var(--border-light);">
                 <span class="text-muted">Account Number:</span>
-                <strong class="text-main" style="font-family: monospace;">${employee.accountNumber || '••••••••4892'}</strong>
+                <strong class="text-main" style="font-family: var(--font-family-mono); letter-spacing: 0.5px;">${employee.accountNumber || '••••••••4892'}</strong>
               </div>
               <div class="flex justify-between items-center py-1">
                 <span class="text-muted">IFSC Code:</span>
-                <strong class="text-main" style="font-family: monospace;">${employee.ifscCode || 'HDFC0001234'}</strong>
+                <strong class="text-main" style="font-family: var(--font-family-mono); letter-spacing: 0.5px;">${employee.ifscCode || 'HDFC0001234'}</strong>
               </div>
             </div>
           </div>
@@ -228,15 +228,15 @@ const ESSView = {
             <div class="flex flex-col gap-3" style="font-size: 0.85rem;">
               <div class="flex justify-between items-center py-1" style="border-bottom: 1px solid var(--border-light);">
                 <span class="text-muted">Permanent Account Number (PAN):</span>
-                <strong class="text-main" style="font-family: monospace;">${employee.panNumber || 'ABCDE1234F'}</strong>
+                <strong class="text-main" style="font-family: var(--font-family-mono); letter-spacing: 0.5px;">${employee.panNumber || 'ABCDE1234F'}</strong>
               </div>
               <div class="flex justify-between items-center py-1" style="border-bottom: 1px solid var(--border-light);">
                 <span class="text-muted">Universal Account Number (UAN / PF):</span>
-                <strong class="text-main" style="font-family: monospace;">${employee.uanNumber || '101234567890'}</strong>
+                <strong class="text-main" style="font-family: var(--font-family-mono); letter-spacing: 0.5px;">${employee.uanNumber || '101234567890'}</strong>
               </div>
               <div class="flex justify-between items-center py-1">
                 <span class="text-muted">ESIC Insurance Number:</span>
-                <strong class="text-main" style="font-family: monospace;">${employee.esicNumber || '31000123450000001'}</strong>
+                <strong class="text-main" style="font-family: var(--font-family-mono); letter-spacing: 0.5px;">${employee.esicNumber || '31000123450000001'}</strong>
               </div>
             </div>
           </div>
