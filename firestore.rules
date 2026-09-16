@@ -2,33 +2,261 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
 
-    // Helper function
+    // =========================================================================
+    // DIALLO HRMS — SECURITY RULES (PRODUCTION AUDIT FIX — finding #2)
+    //
+    // Previously this file was a single wildcard:
+    //   match /{document=**} { allow read, write: if isAuthenticated(); }
+    // which meant ANY signed-in user could read/write EVERY document in EVERY
+    // collection for EVERY company. That is fixed here by checking the caller's
+    // `companyId` and `roleId` custom claims (set server-side by the
+    // `onUserCreated` Cloud Function in functions/index.js — never client-writable)
+    // against each document's own `companyId` field.
+    //
+    // IMPORTANT: custom claims are only present on a *refreshed* ID token. The
+    // client must call `user.getIdToken(true)` after login (and after any role
+    // change) so `request.auth.token.companyId` / `.roleId` are populated —
+    // otherwise these rules correctly deny access rather than fail open.
+    // =========================================================================
+
     function isAuthenticated() {
       return request.auth != null;
     }
 
-    // DIALLO HRMS — PHASES 1 to 19 COLLECTIONS:
-    // users, roles, companies, companySettings, branches, departments, designations, jobLevels,
-    // employmentTypes, workLocations, shifts, holidays, leaveTypes, policies, organizationHistory,
-    // grades, costCenters, employees, employeeHistory, onboardingTasks, employeeExits, attendanceRecords, punchLogs,
-    // attendanceSettings, attendanceRegularizations, leaveApplications, leaveBalances,
-    // salaryStructures, payrollRuns, payslips, approvalRequests, goals, reviewCycles,
-    // performanceReviews, 360Feedback, jobRequisitions, jobPositions, candidates, jobApplications,
-    // interviewFeedback, jobOffers, announcements, notifications,
-    // expenses, expenseCategories, expensePolicies, expenseApprovals,
-    // assets, assetCategories, assetAssignments, assetReturns, assetMaintenance, vendors,
-    // employeeDocuments, documentRequests, employeeRequests, requestHistory, documentTemplates,
-    // savedReports, analytics, scheduledReports,
-    // userDevices, notificationPreferences, notificationTemplates, notificationDeliveries,
-    // workflowDefinitions, workflowInstances, approvalTasks, workflowHistory, workflowDelegations,
-    // employmentRecords, employmentHistory, probationRecords, probationReviews, promotions, transfers,
-    // salaryHistory, letterTemplates, employeeLetters, certifications, trainingRecords, hrCases, hrCaseEvents,
-    // grievances, hrRequests, complianceRecords, policyAcknowledgements,
-    // auditLogs, securityEvents, securityIncidents, securitySettings, accessReviews, userSessions, operationLogs,
-    // qaBugs, qaTestRuns
-
-    match /{document=**} {
-      allow read, write: if isAuthenticated();
+    function tokenCompanyId() {
+      return request.auth.token.companyId;
     }
+
+    function tokenRole() {
+      return request.auth.token.roleId;
+    }
+
+    function isSameCompany(companyId) {
+      return isAuthenticated() && tokenCompanyId() != null && tokenCompanyId() == companyId;
+    }
+
+    function isAdmin() {
+      return isAuthenticated() && tokenRole() in ['SUPER_ADMIN', 'COMPANY_ADMIN', 'ADMIN'];
+    }
+
+    // "Privileged" = can manage most company data (admins, HR, payroll for their domain).
+    function isPrivileged() {
+      return isAuthenticated() && (isAdmin() || tokenRole() in ['HR', 'PAYROLL']);
+    }
+
+    function isPrivilegedInCompany(companyId) {
+      return isSameCompany(companyId) && isPrivileged();
+    }
+
+    function isAdminInCompany(companyId) {
+      return isSameCompany(companyId) && isAdmin();
+    }
+
+    // Read access for ordinary company-scoped reference/record data: any authenticated
+    // member of the same company can read it (e.g. directory, departments, policies).
+    function canReadCompanyDoc(companyId) {
+      return isSameCompany(companyId);
+    }
+
+    // Write access for ordinary company-scoped data: privileged roles only.
+    function canWriteCompanyDoc(companyId) {
+      return isPrivilegedInCompany(companyId);
+    }
+
+    // ---------------------------------------------------------------------
+    // USERS — self-owned profile, or same-company privileged roles.
+    // A user can never grant themselves an elevated role through this path:
+    // creation is forced to roleId == 'EMPLOYEE' (matches authService.js),
+    // and self-updates cannot change roleId/companyId/status — only a
+    // privileged same-company admin/HR user can do that.
+    // ---------------------------------------------------------------------
+    match /users/{userId} {
+      allow get: if (isAuthenticated() && request.auth.uid == userId) || isPrivilegedInCompany(resource.data.companyId);
+      allow list: if isPrivileged();
+
+      allow create: if isAuthenticated() && request.auth.uid == userId
+                    && request.resource.data.uid == userId
+                    && request.resource.data.roleId == 'EMPLOYEE';
+
+      allow update: if (
+                      isAuthenticated() && request.auth.uid == userId
+                      && request.resource.data.roleId == resource.data.roleId
+                      && request.resource.data.companyId == resource.data.companyId
+                      && request.resource.data.status == resource.data.status
+                    ) || isPrivilegedInCompany(resource.data.companyId);
+
+      allow delete: if isAdminInCompany(resource.data.companyId);
+    }
+
+    // ---------------------------------------------------------------------
+    // COMPANIES — the tenant root record itself (doc id == companyId).
+    // ---------------------------------------------------------------------
+    match /companies/{companyId} {
+      allow read: if isSameCompany(companyId);
+      // Creation of a brand-new tenant happens once, from a trusted signup flow;
+      // narrow this further (e.g. to a Cloud Function only) once finding #8
+      // (real multi-tenant provisioning) is implemented.
+      allow create: if isAuthenticated();
+      allow update, delete: if isAdminInCompany(companyId);
+    }
+
+    // ---------------------------------------------------------------------
+    // AUDIT / SECURITY TRAILS — append-only. No one, including admins, can
+    // edit or delete history through the client. Reads restricted to
+    // privileged same-company roles.
+    // ---------------------------------------------------------------------
+    match /auditLogs/{logId} {
+      allow read: if isPrivilegedInCompany(resource.data.companyId);
+      allow create: if isSameCompany(request.resource.data.companyId);
+      allow update, delete: if false;
+    }
+
+    match /securityEvents/{id} {
+      allow read: if isPrivilegedInCompany(resource.data.companyId);
+      allow create: if isSameCompany(request.resource.data.companyId);
+      allow update, delete: if false;
+    }
+
+    match /securityIncidents/{id} {
+      allow read: if isPrivilegedInCompany(resource.data.companyId);
+      allow create: if isSameCompany(request.resource.data.companyId);
+      allow update: if isPrivilegedInCompany(resource.data.companyId);
+      allow delete: if false;
+    }
+
+    match /operationLogs/{id} {
+      allow read: if isPrivilegedInCompany(resource.data.companyId);
+      allow create: if isSameCompany(request.resource.data.companyId);
+      allow update, delete: if false;
+    }
+
+    // ---------------------------------------------------------------------
+    // COMPANY-SCOPED REFERENCE & RECORD DATA
+    // Read: any same-company member. Write: privileged roles only.
+    // (Covers master data, payroll, performance, recruitment, comms, expenses,
+    // assets, documents, workflow definitions, HR case management, reports.)
+    // ---------------------------------------------------------------------
+    match /{col}/{docId} {
+      allow read: if col in [
+          'roles', 'companySettings', 'branches', 'departments', 'designations',
+          'jobLevels', 'employmentTypes', 'workLocations', 'shifts', 'holidays',
+          'leaveTypes', 'policies', 'organizationHistory', 'grades', 'costCenters',
+          'employees', 'employeeHistory', 'onboardingTasks', 'employeeExits',
+          'attendanceSettings', 'salaryStructures', 'payrollRuns', 'payslips',
+          'goals', 'reviewCycles', 'performanceReviews', 'jobRequisitions',
+          'jobPositions', 'candidates', 'jobApplications', 'interviews', 'interviewFeedback',
+          'candidateScreenings', 'applicationStageHistory',
+          'jobOffers', 'announcements', 'expenseCategories', 'expensePolicies',
+          'assets', 'assetCategories', 'assetMaintenance', 'vendors',
+          'documentTemplates', 'savedReports', 'analytics', 'scheduledReports',
+          'notificationTemplates', 'workflowDefinitions', 'workflowHistory',
+          'employmentRecords', 'employmentHistory', 'probationRecords',
+          'probationReviews', 'promotions', 'transfers', 'salaryHistory',
+          'letterTemplates', 'employeeLetters', 'certifications',
+          'trainingRecords', 'hrCases', 'hrCaseEvents', 'grievances',
+          'complianceRecords', 'policyAcknowledgements', 'securitySettings',
+          'accessReviews', 'qaBugs', 'qaTestRuns', 'documents'
+        ] && canReadCompanyDoc(resource.data.companyId);
+
+      allow create: if col in [
+          'roles', 'companySettings', 'branches', 'departments', 'designations',
+          'jobLevels', 'employmentTypes', 'workLocations', 'shifts', 'holidays',
+          'leaveTypes', 'policies', 'organizationHistory', 'grades', 'costCenters',
+          'employees', 'employeeHistory', 'onboardingTasks', 'employeeExits',
+          'attendanceSettings', 'salaryStructures', 'payrollRuns', 'payslips',
+          'goals', 'reviewCycles', 'performanceReviews', 'jobRequisitions',
+          'jobPositions', 'candidates', 'jobApplications', 'interviews', 'interviewFeedback',
+          'candidateScreenings', 'applicationStageHistory',
+          'jobOffers', 'announcements', 'expenseCategories', 'expensePolicies',
+          'assets', 'assetCategories', 'assetMaintenance', 'vendors',
+          'documentTemplates', 'savedReports', 'analytics', 'scheduledReports',
+          'notificationTemplates', 'workflowDefinitions', 'workflowHistory',
+          'employmentRecords', 'employmentHistory', 'probationRecords',
+          'probationReviews', 'promotions', 'transfers', 'salaryHistory',
+          'letterTemplates', 'employeeLetters', 'certifications',
+          'trainingRecords', 'hrCases', 'hrCaseEvents', 'grievances',
+          'complianceRecords', 'policyAcknowledgements', 'securitySettings',
+          'accessReviews', 'qaBugs', 'qaTestRuns', 'documents'
+        ] && canWriteCompanyDoc(request.resource.data.companyId);
+
+      allow update, delete: if col in [
+          'roles', 'companySettings', 'branches', 'departments', 'designations',
+          'jobLevels', 'employmentTypes', 'workLocations', 'shifts', 'holidays',
+          'leaveTypes', 'policies', 'organizationHistory', 'grades', 'costCenters',
+          'employees', 'employeeHistory', 'onboardingTasks', 'employeeExits',
+          'attendanceSettings', 'salaryStructures', 'payrollRuns', 'payslips',
+          'goals', 'reviewCycles', 'performanceReviews', 'jobRequisitions',
+          'jobPositions', 'candidates', 'jobApplications', 'interviews', 'interviewFeedback',
+          'candidateScreenings', 'applicationStageHistory',
+          'jobOffers', 'announcements', 'expenseCategories', 'expensePolicies',
+          'assets', 'assetCategories', 'assetMaintenance', 'vendors',
+          'documentTemplates', 'savedReports', 'analytics', 'scheduledReports',
+          'notificationTemplates', 'workflowDefinitions', 'workflowHistory',
+          'employmentRecords', 'employmentHistory', 'probationRecords',
+          'probationReviews', 'promotions', 'transfers', 'salaryHistory',
+          'letterTemplates', 'employeeLetters', 'certifications',
+          'trainingRecords', 'hrCases', 'hrCaseEvents', 'grievances',
+          'complianceRecords', 'policyAcknowledgements', 'securitySettings',
+          'accessReviews', 'qaBugs', 'qaTestRuns', 'documents'
+        ] && canWriteCompanyDoc(resource.data.companyId);
+    }
+
+    // ---------------------------------------------------------------------
+    // SELF-SERVICE COLLECTIONS
+    // The employee who owns the record can create it and read their own;
+    // privileged same-company roles can read/manage everyone's.
+    // Ownership field varies by collection (employeeId / requestedById /
+    // recipientId / uid) — checked generically against request.auth.uid,
+    // since these apps consistently use the Firebase uid as that identifier.
+    // ---------------------------------------------------------------------
+    match /{col}/{docId} {
+      allow read: if col in [
+          'attendanceRecords', 'punchLogs', 'attendanceRegularizations',
+          'leaveApplications', 'leaveBalances', 'approvalRequests', 'expenses',
+          'expenseApprovals', 'assetAssignments', 'assetReturns',
+          'employeeDocuments', 'documentRequests', 'employeeRequests',
+          'requestHistory', 'notifications', 'notificationPreferences',
+          'notificationDeliveries', 'userDevices', 'userSessions',
+          'workflowInstances', 'approvalTasks', 'workflowDelegations', 'hrRequests'
+        ] && (
+          isPrivilegedInCompany(resource.data.companyId) ||
+          (isSameCompany(resource.data.companyId) && (
+            resource.data.employeeId == request.auth.uid ||
+            resource.data.requestedById == request.auth.uid ||
+            resource.data.recipientId == request.auth.uid ||
+            resource.data.uid == request.auth.uid
+          ))
+        );
+
+      allow create: if col in [
+          'attendanceRecords', 'punchLogs', 'attendanceRegularizations',
+          'leaveApplications', 'leaveBalances', 'approvalRequests', 'expenses',
+          'expenseApprovals', 'assetAssignments', 'assetReturns',
+          'employeeDocuments', 'documentRequests', 'employeeRequests',
+          'requestHistory', 'notifications', 'notificationPreferences',
+          'notificationDeliveries', 'userDevices', 'userSessions',
+          'workflowInstances', 'approvalTasks', 'workflowDelegations', 'hrRequests'
+        ] && isSameCompany(request.resource.data.companyId);
+
+      allow update, delete: if col in [
+          'attendanceRecords', 'punchLogs', 'attendanceRegularizations',
+          'leaveApplications', 'leaveBalances', 'approvalRequests', 'expenses',
+          'expenseApprovals', 'assetAssignments', 'assetReturns',
+          'employeeDocuments', 'documentRequests', 'employeeRequests',
+          'requestHistory', 'notifications', 'notificationPreferences',
+          'notificationDeliveries', 'userDevices', 'userSessions',
+          'workflowInstances', 'approvalTasks', 'workflowDelegations', 'hrRequests'
+        ] && (
+          isPrivilegedInCompany(resource.data.companyId) ||
+          (isSameCompany(resource.data.companyId) && (
+            resource.data.employeeId == request.auth.uid ||
+            resource.data.requestedById == request.auth.uid ||
+            resource.data.recipientId == request.auth.uid ||
+            resource.data.uid == request.auth.uid
+          ))
+        );
+    }
+
+    // Anything not explicitly listed above is denied by default (no catch-all).
   }
 }

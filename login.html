@@ -269,21 +269,15 @@
       </div>
 
       <div class="form-row">
-        <div class="col-6 form-group" style="margin-bottom: 14px;">
-          <label class="form-label required">Account Role</label>
-          <select id="signup-role" class="form-control">
-            <option value="SUPER_ADMIN">Super Administrator</option>
-            <option value="HR">HR Administrator</option>
-            <option value="PAYROLL">Payroll Officer</option>
-            <option value="MANAGER">Line Manager</option>
-            <option value="EMPLOYEE">Employee (Self Service)</option>
-          </select>
-        </div>
-        <div class="col-6 form-group" style="margin-bottom: 14px;">
+        <div class="col-12 form-group" style="margin-bottom: 14px;">
           <label class="form-label">Phone Number</label>
           <input type="text" id="signup-phone" class="form-control" placeholder="+91 98765 43210" />
         </div>
       </div>
+      <p style="font-size: 12px; color: var(--text-muted, #888); margin: -8px 0 14px;">
+        New accounts start as Employee (Self Service). An administrator can grant elevated
+        access afterward from the Users module.
+      </p>
 
       <div class="form-group" style="margin-bottom: 14px;">
         <label class="form-label required">Password</label>
@@ -452,7 +446,6 @@
       const lastName = document.getElementById('signup-lastname').value.trim();
       const email = document.getElementById('signup-email').value.trim();
       const company = document.getElementById('signup-company').value.trim();
-      const role = document.getElementById('signup-role').value;
       const phone = document.getElementById('signup-phone').value.trim();
       const password = document.getElementById('signup-password').value;
       const confirmPassword = document.getElementById('signup-confirm-password').value;
@@ -476,7 +469,6 @@
         firstName,
         lastName,
         displayName: `${firstName} ${lastName}`.trim() || email.split('@')[0],
-        roleId: role,
         companyName: company,
         companyId: 'comp_diallo_india',
         branchId: 'branch_mumbai',
@@ -489,6 +481,10 @@
         if (res.success) {
           signupBtn.innerHTML = '<span>Account Created! Logging in...</span>';
           Toast.success('Account created successfully! Redirecting...');
+          // Give onUserCreated (Cloud Function) a moment to set custom claims,
+          // then force-refresh so firestore.rules see companyId/roleId right away.
+          await new Promise((r) => setTimeout(r, 1500));
+          try { await res.user.getIdToken(true); } catch (e) { /* non-fatal */ }
           window.location.replace('index.html#dashboard');
         } else {
           signupBtn.disabled = false;

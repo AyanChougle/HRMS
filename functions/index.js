@@ -20,7 +20,10 @@ exports.onUserCreated = functions.auth.user().onCreate(async (user) => {
     const email = user.email || '';
     const uid = user.uid;
 
-    // Check if user already has an invited record in Firestore
+    // Check if user already has an invited/self-registered record in Firestore
+    // (the client is only ever allowed to write itself as roleId 'EMPLOYEE' — see
+    // authService.js and the updated firestore.rules — so anything else present here
+    // can only have been placed by a trusted admin invite flow).
     const userDocRef = db.collection('users').doc(uid);
     const existingDoc = await userDocRef.get();
 
@@ -33,13 +36,29 @@ exports.onUserCreated = functions.auth.user().onCreate(async (user) => {
       companyId = data.companyId || companyId;
     }
 
+    // SECURITY BOOTSTRAP (PRODUCTION AUDIT finding #4):
+    // A brand-new deployment needs exactly one way to get its first administrator, and it
+    // must not be reachable from client code. This trusted, server-side Cloud Function is
+    // that one way: if this is genuinely the *first user account ever created* in the whole
+    // system, it is promoted to SUPER_ADMIN here — regardless of what the client wrote to
+    // Firestore. Every subsequent signup falls through to the EMPLOYEE default above.
+    // Note: uses a count of existing users at the moment this trigger runs; if two accounts
+    // are created in the same instant this could theoretically both promote, which is an
+    // acceptable one-time bootstrap risk, not a standing vulnerability, since it only ever
+    // applies while the `users` collection is still empty.
+    const otherUsersSnap = await db.collection('users').limit(2).get();
+    const isFirstUserInSystem = otherUsersSnap.docs.every(d => d.id === uid);
+    if (isFirstUserInSystem) {
+      roleId = 'SUPER_ADMIN';
+    }
+
     // Set Custom Claims for fast Security Rules evaluation
     await admin.auth().setCustomUserClaims(uid, {
       roleId,
       companyId
     });
 
-    // Write / Update user profile
+    // Write / Update user profile (authoritative — overrides any client-written roleId)
     await userDocRef.set({
       uid,
       email,

@@ -42,11 +42,16 @@ const authService = {
       const userCredential = await auth.createUserWithEmailAndPassword(email, password);
       const user = userCredential.user;
 
+      // SECURITY: roleId is never accepted from the caller. Every public self-registration
+      // is created as a plain EMPLOYEE. The only trusted place a user can become an admin
+      // is the server-side `onUserCreated` Cloud Function (one-time bootstrap for the very
+      // first account) or a subsequent promotion by an existing privileged admin through the
+      // Users module — never this client-side signup path. See PRODUCTION AUDIT finding #1/#4.
       const profile = {
         uid: user.uid,
         email: user.email,
         displayName: profileData.displayName || `${profileData.firstName || ''} ${profileData.lastName || ''}`.trim() || email.split('@')[0],
-        roleId: profileData.roleId || 'SUPER_ADMIN',
+        roleId: 'EMPLOYEE',
         companyName: profileData.companyName || 'Diallo India Private Limited',
         companyId: profileData.companyId || 'comp_diallo_india',
         branchId: profileData.branchId || 'branch_mumbai',
@@ -57,6 +62,10 @@ const authService = {
         updatedAt: firebase.firestore.FieldValue.serverTimestamp()
       };
 
+      // NOTE: this initial write only succeeds under the new firestore.rules because it is
+      // self-owned (request.auth.uid == uid) and roleId is forced to EMPLOYEE. The
+      // onUserCreated Cloud Function may subsequently promote the very first user in the
+      // system to SUPER_ADMIN server-side (trusted context, not client-controlled).
       try {
         await db.collection('users').doc(user.uid).set(profile);
       } catch (dbErr) {

@@ -166,172 +166,173 @@ const RecruitmentView = {
 
   // 1. KANBAN CANDIDATE PIPELINE TAB
   renderPipelineTab(applications, jobs) {
-    if (applications.length === 0 && !this.forceShowKanban) {
-      return `
-        <div class="card">
-          <div class="card-header">
-            <div>
-              <div class="card-title">Candidate Pipeline (Active Applications)</div>
-              <div class="card-subtitle">0 applications verified in Cloud Firestore</div>
-            </div>
-            <div class="card-actions" style="display: flex; gap: 8px;">
-              <button class="btn btn-secondary btn-sm" onclick="RecruitmentView.toggleKanbanView(true)">
-                <svg width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 17V7m0 10a2 2 0 01-2 2H5a2 2 0 01-2-2V7a2 2 0 012-2h2a2 2 0 012 2m0 10a2 2 0 002 2h2a2 2 0 002-2M9 7a2 2 0 012-2h2a2 2 0 012 2m0 10V7m0 10a2 2 0 002 2h2a2 2 0 002-2V7a2 2 0 00-2-2h-2a2 2 0 00-2 2"/>
-                </svg>
-                View Pipeline Stages
-              </button>
-              <button class="btn btn-primary btn-sm" onclick="RecruitmentView.openAddCandidateModal()">+ Add Candidate</button>
-            </div>
-          </div>
-          <div class="card-body" style="padding: 0;">
-            <div class="empty-state" style="border: none; padding: 48px 16px;">
-              <div class="empty-state-icon" style="width: 44px; height: 44px; margin-bottom: 8px; background: var(--primary-light); color: var(--primary);">
-                <svg width="22" height="22" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"/>
-                </svg>
-              </div>
-              <div class="empty-state-title">No Candidates in Active Pipeline</div>
-              <div class="empty-state-desc">Candidates will appear here as they apply or get added to published job openings.</div>
-              <div style="margin-top: 16px; display: flex; gap: 8px; justify-content: center;">
-                <button class="btn btn-primary btn-sm" onclick="RecruitmentView.openAddCandidateModal()">
-                  <svg width="15" height="15" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z"/>
-                  </svg>
-                  Add Candidate
-                </button>
-                <button class="btn btn-secondary btn-sm" onclick="RecruitmentView.openCreateJobModal()">
-                  <svg width="15" height="15" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/>
-                  </svg>
-                  Post Job Position
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
-      `;
-    }
-
     const stages = [
       { key: 'APPLIED', label: 'Applied', color: 'var(--primary)' },
       { key: 'SCREENING', label: 'Screening', color: 'var(--info)' },
       { key: 'SHORTLISTED', label: 'Shortlisted', color: 'var(--accent-people)' },
       { key: 'INTERVIEW', label: 'Interview', color: 'var(--warning)' },
       { key: 'SELECTED', label: 'Selected', color: '#059669' },
-      { key: 'OFFER', label: 'Offer Sent', color: '#0284c7' },
+      { key: 'OFFER', label: 'Offer', color: '#0284c7' },
       { key: 'HIRED', label: 'Hired & Onboard', color: 'var(--success)' }
     ];
 
-    return `
-      ${applications.length === 0 ? `
-        <div class="flex items-center justify-between" style="margin-bottom: 12px; padding: 10px 16px; background: var(--bg-card); border: 1px solid var(--border-main); border-radius: var(--radius-md);">
-          <span class="text-secondary" style="font-size: 0.85rem;">Showing empty Kanban pipeline stages (7 stages)</span>
-          <button class="btn btn-soft btn-sm" onclick="RecruitmentView.toggleKanbanView(false)">← Return to Summary Card</button>
+    const activeApps = applications.filter(a =>
+      stages.some(s => s.key === a.currentStage)
+    );
+
+    // If no candidate applications exist in the 7 pipeline stages, render ONE clean empty card
+    if (activeApps.length === 0) {
+      return `
+        <div class="card">
+          <div class="card-header" style="display: flex; justify-content: space-between; align-items: center;">
+            <div>
+              <div class="card-title">Candidate Pipeline</div>
+              <div class="card-subtitle">0 candidate applications in hiring stages</div>
+            </div>
+            <div style="display: flex; gap: 8px;">
+              <button class="btn btn-primary btn-sm" onclick="RecruitmentView.openAddCandidateModal()">+ Add Candidate</button>
+            </div>
+          </div>
+          <div class="card-body" style="padding: 60px 16px; text-align: center;">
+            <div style="width: 48px; height: 48px; border-radius: 50%; background: var(--primary-light, #eff6ff); color: var(--primary, #2563eb); display: inline-flex; align-items: center; justify-content: center; margin-bottom: 16px;">
+              <svg width="24" height="24" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" />
+              </svg>
+            </div>
+            <div style="font-weight: 700; font-size: 1.05rem; color: var(--text-main); margin-bottom: 6px;">
+              No Candidates in Active Pipeline
+            </div>
+            <div style="color: var(--text-secondary); font-size: 0.85rem; max-width: 460px; margin: 0 auto 20px auto;">
+              Candidates will appear across recruitment stages as they apply or are assigned to published job openings.
+            </div>
+            <div style="display: flex; gap: 8px; justify-content: center;">
+              <button class="btn btn-primary btn-sm" onclick="RecruitmentView.openAddCandidateModal()">
+                + Add Candidate
+              </button>
+              <button class="btn btn-secondary btn-sm" onclick="RecruitmentView.openCreateJobModal()">
+                Post Job Position
+              </button>
+            </div>
+          </div>
         </div>
-      ` : ''}
-      <div style="overflow-x: auto; padding-bottom: 16px;">
-        <div style="display: flex; gap: 16px; min-width: 1200px;">
-          ${stages.map(s => {
-            const appsInStage = applications.filter(a => a.currentStage === s.key);
-            return `
-              <div style="flex: 1; min-width: 200px; background: var(--bg-card); border: 1px solid var(--border-main); border-radius: var(--radius-lg); padding: 12px; display: flex; flex-direction: column;">
-                <div class="flex items-center justify-between" style="padding-bottom: 10px; border-bottom: 2px solid ${s.color}; margin-bottom: 12px;">
-                  <strong class="text-main" style="font-size: 0.85rem; text-transform: uppercase;">${s.label}</strong>
-                  <span class="badge badge-neutral font-bold">${appsInStage.length}</span>
-                </div>
-                
-                <div class="flex flex-col gap-2" style="flex: 1; min-height: 250px;">
-                  ${appsInStage.length === 0 ? `
-                    <div style="padding: 24px 8px; text-align: center; color: var(--text-muted); font-size: 0.76rem; border: 1px dashed var(--border-main); border-radius: var(--radius-md); background: var(--bg-hover); margin: 6px 0;">
-                      No candidates in ${s.label}
-                    </div>
-                  ` : appsInStage.map(a => `
-                    <div class="card" style="padding: 12px 14px; border: 1px solid var(--border-main); box-shadow: var(--shadow-xs); background: var(--bg-card); border-radius: var(--radius-md); margin-bottom: 6px;">
-                      <!-- Card Header: Avatar, Name & Delete button -->
-                      <div class="flex items-center justify-between" style="margin-bottom: 6px;">
-                        <div class="flex items-center gap-2" style="min-width: 0;">
-                          <div style="width: 28px; height: 28px; border-radius: 50%; background: var(--primary-light); color: var(--primary); font-weight: 700; font-size: 0.75rem; display: flex; align-items: center; justify-content: center; flex-shrink: 0;">
-                            ${(a.candidateName || 'CA').split(' ').map(n=>n[0]).join('').substring(0, 2).toUpperCase()}
-                          </div>
-                          <div style="min-width: 0;">
-                            <div class="font-bold text-main" style="font-size: 0.85rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;" title="${a.candidateName || 'Candidate'}">
-                              ${a.candidateName || 'Candidate'}
+      `;
+    }
+
+    // When there ARE candidates, render all stages inside ONE unified Card
+    return `
+      <div class="card">
+        <div class="card-header" style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px;">
+          <div>
+            <div class="card-title">Candidate Pipeline (${activeApps.length})</div>
+            <div class="card-subtitle">Visual candidate journey across recruitment stages</div>
+          </div>
+          <div style="display: flex; align-items: center; gap: 8px;">
+            <button class="btn btn-primary btn-sm" onclick="RecruitmentView.openAddCandidateModal()">+ Add Candidate</button>
+          </div>
+        </div>
+        <div class="card-body" style="padding: 16px; overflow-x: auto;">
+          <div style="display: flex; gap: 14px; min-width: 1200px;">
+            ${stages.map(s => {
+              const appsInStage = applications.filter(a => a.currentStage === s.key);
+              return `
+                <div style="flex: 1; min-width: 200px; background: var(--bg-surface, var(--bg-hover)); border: 1px solid var(--border-main); border-radius: var(--radius-md); padding: 12px; display: flex; flex-direction: column;">
+                  <div class="flex items-center justify-between" style="padding-bottom: 8px; border-bottom: 2px solid ${s.color}; margin-bottom: 10px;">
+                    <strong class="text-main" style="font-size: 0.82rem; text-transform: uppercase;">${s.label}</strong>
+                    <span class="badge badge-neutral font-bold" style="font-size: 0.72rem;">${appsInStage.length}</span>
+                  </div>
+                  
+                  <div class="flex flex-col gap-2" style="flex: 1; min-height: 220px;">
+                    ${appsInStage.length === 0 ? `
+                      <div style="padding: 24px 8px; text-align: center; color: var(--text-muted); font-size: 0.76rem; border: 1px dashed var(--border-main); border-radius: var(--radius-md); background: var(--bg-card); margin: 6px 0;">
+                        No candidates in ${s.label}
+                      </div>
+                    ` : appsInStage.map(a => `
+                      <div class="card" style="padding: 12px 14px; border: 1px solid var(--border-main); box-shadow: var(--shadow-xs); background: var(--bg-card); border-radius: var(--radius-md); margin-bottom: 6px;">
+                        <!-- Card Header: Avatar, Name & Delete button -->
+                        <div class="flex items-center justify-between" style="margin-bottom: 6px;">
+                          <div class="flex items-center gap-2" style="min-width: 0;">
+                            <div style="width: 28px; height: 28px; border-radius: 50%; background: var(--primary-light); color: var(--primary); font-weight: 700; font-size: 0.75rem; display: flex; align-items: center; justify-content: center; flex-shrink: 0;">
+                              ${(a.candidateName || 'CA').split(' ').map(n=>n[0]).join('').substring(0, 2).toUpperCase()}
                             </div>
-                            <div class="text-secondary" style="font-size: 0.72rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
-                              ${a.jobTitle || 'Open Position'}
+                            <div style="min-width: 0;">
+                              <div class="font-bold text-main" style="font-size: 0.85rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;" title="${a.candidateName || 'Candidate'}">
+                                ${a.candidateName || 'Candidate'}
+                              </div>
+                              <div class="text-secondary" style="font-size: 0.72rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
+                                ${a.jobTitle || 'Open Position'}
+                              </div>
                             </div>
                           </div>
+                          <button class="btn btn-ghost btn-sm" style="padding: 2px 6px; color: var(--text-muted); font-size: 0.8rem; line-height: 1;" onclick="RecruitmentView.deleteApplication('${a.id}', '${a.candidateName}')" title="Remove Application">x</button>
                         </div>
-                        <button class="btn btn-ghost btn-sm" style="padding: 2px 6px; color: var(--text-muted); font-size: 0.8rem; line-height: 1;" onclick="RecruitmentView.deleteApplication('${a.id}', '${a.candidateName}')" title="Remove Application">✕</button>
+
+                        <!-- Tag row: Source & Date -->
+                        <div class="flex items-center justify-between" style="font-size: 0.72rem; color: var(--text-muted); margin-bottom: 8px; padding-bottom: 6px; border-bottom: 1px solid var(--border-light);">
+                          <span class="badge badge-neutral" style="font-size: 0.68rem; padding: 2px 6px;">${(a.source || 'Career Page').replace(/_/g, ' ')}</span>
+                          <span style="font-size: 0.7rem;">${a.appliedAt ? new Date(a.appliedAt).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' }) : 'Recent'}</span>
+                        </div>
+
+                        <!-- Contextual Actions tailored to Stage -->
+                        <div class="flex items-center gap-1" style="flex-wrap: wrap;">
+                          ${s.key === 'APPLIED' ? `
+                            <button class="btn btn-soft btn-sm" style="font-size: 0.72rem; padding: 3px 8px;" onclick="RecruitmentView.advanceStage('${a.id}', 'APPLIED', '${a.candidateId || ''}', '${a.candidateName || ''}', '${a.candidateEmail || ''}', '${a.jobTitle || ''}')">Screen</button>
+                            <button class="btn btn-ghost btn-sm" style="font-size: 0.72rem; padding: 3px 6px;" onclick="RecruitmentView.openInterviewModal('${a.id}', '${a.candidateId}', '${a.candidateName}', '${a.jobTitle}')">Interview</button>
+                          ` : ''}
+
+                          ${s.key === 'SCREENING' ? `
+                            <button class="btn btn-soft btn-sm" style="font-size: 0.72rem; padding: 3px 8px;" onclick="RecruitmentView.advanceStage('${a.id}', 'SCREENING', '${a.candidateId || ''}', '${a.candidateName || ''}', '${a.candidateEmail || ''}', '${a.jobTitle || ''}')">Shortlist</button>
+                            <button class="btn btn-ghost btn-sm" style="font-size: 0.72rem; padding: 3px 6px;" onclick="RecruitmentView.openInterviewModal('${a.id}', '${a.candidateId}', '${a.candidateName}', '${a.jobTitle}')">Interview</button>
+                          ` : ''}
+
+                          ${s.key === 'SHORTLISTED' ? `
+                            <button class="btn btn-primary btn-sm" style="font-size: 0.72rem; padding: 3px 8px;" onclick="RecruitmentView.openInterviewModal('${a.id}', '${a.candidateId}', '${a.candidateName}', '${a.jobTitle}')">Interview</button>
+                            <button class="btn btn-soft btn-sm" style="font-size: 0.72rem; padding: 3px 6px;" onclick="RecruitmentView.advanceStage('${a.id}', 'SHORTLISTED', '${a.candidateId || ''}', '${a.candidateName || ''}', '${a.candidateEmail || ''}', '${a.jobTitle || ''}')">Next</button>
+                          ` : ''}
+
+                          ${s.key === 'INTERVIEW' ? `
+                            <button class="btn btn-primary btn-sm" style="font-size: 0.72rem; padding: 3px 8px;" onclick="RecruitmentView.openFeedbackModal('${a.id}', '${a.candidateId}', '${a.candidateName}', '${a.id}')">Score</button>
+                            <button class="btn btn-soft btn-sm" style="font-size: 0.72rem; padding: 3px 6px;" onclick="RecruitmentView.advanceStage('${a.id}', 'INTERVIEW', '${a.candidateId || ''}', '${a.candidateName || ''}', '${a.candidateEmail || ''}', '${a.jobTitle || ''}')">Select</button>
+                          ` : ''}
+
+                          ${s.key === 'SELECTED' ? `
+                            <button class="btn btn-primary btn-sm" style="font-size: 0.72rem; padding: 3px 8px;" onclick="RecruitmentView.openCreateOfferModal('${a.id}', '${a.candidateId}', '${a.candidateName}', '${a.candidateEmail || ''}', '${a.jobTitle}')">Offer</button>
+                            <button class="btn btn-soft btn-sm" style="font-size: 0.72rem; padding: 3px 6px;" onclick="RecruitmentView.advanceStage('${a.id}', 'SELECTED', '${a.candidateId || ''}', '${a.candidateName || ''}', '${a.candidateEmail || ''}', '${a.jobTitle || ''}')">Advance</button>
+                          ` : ''}
+
+                          ${s.key === 'OFFER' ? `
+                            <button class="btn btn-soft btn-sm" style="font-size: 0.72rem; padding: 3px 8px;" onclick="RecruitmentView.switchTab('offers')">Offer Details</button>
+                            <button class="btn btn-primary btn-sm" style="font-size: 0.72rem; padding: 3px 8px; background: var(--success);" onclick="RecruitmentView.hireAndConvertCandidate('${a.id}', '${a.candidateId || ''}', '${a.candidateName || ''}', '${a.candidateEmail || ''}', '${a.jobTitle || ''}')">Hire & Add</button>
+                          ` : ''}
+
+                          ${s.key === 'HIRED' ? `
+                            ${a.employeeCode ? `
+                              <span class="badge badge-success" style="font-size: 0.72rem;">${a.employeeCode}</span>
+                              <button class="btn btn-soft btn-sm" style="font-size: 0.7rem; padding: 2px 6px;" onclick="Router.navigate('employees')">Directory</button>
+                            ` : `
+                              <button class="btn btn-primary btn-sm" style="font-size: 0.72rem; padding: 4px 8px; background: var(--success); font-weight: 600;" onclick="RecruitmentView.hireAndConvertCandidate('${a.id}', '${a.candidateId || ''}', '${a.candidateName || ''}', '${a.candidateEmail || ''}', '${a.jobTitle || ''}')">Add to Employees</button>
+                            `}
+                          ` : ''}
+
+                          <!-- Quick Move Stage Selector -->
+                          <select class="form-control" style="font-size: 0.68rem; padding: 2px 4px; height: 24px; width: auto; max-width: 80px; margin-left: auto; border-radius: var(--radius-sm);" onchange="RecruitmentView.quickMoveStage('${a.id}', this.value, '${a.candidateId || ''}', '${a.candidateName || ''}', '${a.candidateEmail || ''}', '${a.jobTitle || ''}')" title="Change stage">
+                            <option value="" disabled selected>Move…</option>
+                            <option value="APPLIED">Applied</option>
+                            <option value="SCREENING">Screening</option>
+                            <option value="SHORTLISTED">Shortlisted</option>
+                            <option value="INTERVIEW">Interview</option>
+                            <option value="SELECTED">Selected</option>
+                            <option value="OFFER">Offer</option>
+                            <option value="HIRED">Hired (Employee)</option>
+                            <option value="REJECTED">Reject Candidate</option>
+                          </select>
+                        </div>
                       </div>
-
-                      <!-- Tag row: Source & Date -->
-                      <div class="flex items-center justify-between" style="font-size: 0.72rem; color: var(--text-muted); margin-bottom: 8px; padding-bottom: 6px; border-bottom: 1px solid var(--border-light);">
-                        <span class="badge badge-neutral" style="font-size: 0.68rem; padding: 2px 6px;">${(a.source || 'Career Page').replace(/_/g, ' ')}</span>
-                        <span style="font-size: 0.7rem;">${a.appliedAt ? new Date(a.appliedAt).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' }) : 'Recent'}</span>
-                      </div>
-
-                      <!-- Contextual Actions tailored to Stage -->
-                      <div class="flex items-center gap-1" style="flex-wrap: wrap;">
-                        ${s.key === 'APPLIED' ? `
-                          <button class="btn btn-soft btn-sm" style="font-size: 0.72rem; padding: 3px 8px;" onclick="RecruitmentView.advanceStage('${a.id}', 'APPLIED', '${a.candidateId || ''}', '${a.candidateName || ''}', '${a.candidateEmail || ''}', '${a.jobTitle || ''}')">Screen ➔</button>
-                          <button class="btn btn-ghost btn-sm" style="font-size: 0.72rem; padding: 3px 6px;" onclick="RecruitmentView.openInterviewModal('${a.id}', '${a.candidateId}', '${a.candidateName}', '${a.jobTitle}')">Interview</button>
-                        ` : ''}
-
-                        ${s.key === 'SCREENING' ? `
-                          <button class="btn btn-soft btn-sm" style="font-size: 0.72rem; padding: 3px 8px;" onclick="RecruitmentView.advanceStage('${a.id}', 'SCREENING', '${a.candidateId || ''}', '${a.candidateName || ''}', '${a.candidateEmail || ''}', '${a.jobTitle || ''}')">Shortlist ➔</button>
-                          <button class="btn btn-ghost btn-sm" style="font-size: 0.72rem; padding: 3px 6px;" onclick="RecruitmentView.openInterviewModal('${a.id}', '${a.candidateId}', '${a.candidateName}', '${a.jobTitle}')">Interview</button>
-                        ` : ''}
-
-                        ${s.key === 'SHORTLISTED' ? `
-                          <button class="btn btn-primary btn-sm" style="font-size: 0.72rem; padding: 3px 8px;" onclick="RecruitmentView.openInterviewModal('${a.id}', '${a.candidateId}', '${a.candidateName}', '${a.jobTitle}')">📅 Interview</button>
-                          <button class="btn btn-soft btn-sm" style="font-size: 0.72rem; padding: 3px 6px;" onclick="RecruitmentView.advanceStage('${a.id}', 'SHORTLISTED', '${a.candidateId || ''}', '${a.candidateName || ''}', '${a.candidateEmail || ''}', '${a.jobTitle || ''}')">Skip ➔</button>
-                        ` : ''}
-
-                        ${s.key === 'INTERVIEW' ? `
-                          <button class="btn btn-primary btn-sm" style="font-size: 0.72rem; padding: 3px 8px;" onclick="RecruitmentView.openFeedbackModal('${a.id}', '${a.candidateId}', '${a.candidateName}', '${a.id}')">✍️ Score</button>
-                          <button class="btn btn-soft btn-sm" style="font-size: 0.72rem; padding: 3px 6px;" onclick="RecruitmentView.advanceStage('${a.id}', 'INTERVIEW', '${a.candidateId || ''}', '${a.candidateName || ''}', '${a.candidateEmail || ''}', '${a.jobTitle || ''}')">Select ➔</button>
-                        ` : ''}
-
-                        ${s.key === 'SELECTED' ? `
-                          <button class="btn btn-primary btn-sm" style="font-size: 0.72rem; padding: 3px 8px;" onclick="RecruitmentView.openCreateOfferModal('${a.id}', '${a.candidateId}', '${a.candidateName}', '${a.candidateEmail || ''}', '${a.jobTitle}')">📄 Offer</button>
-                          <button class="btn btn-soft btn-sm" style="font-size: 0.72rem; padding: 3px 6px;" onclick="RecruitmentView.advanceStage('${a.id}', 'SELECTED', '${a.candidateId || ''}', '${a.candidateName || ''}', '${a.candidateEmail || ''}', '${a.jobTitle || ''}')">Advance ➔</button>
-                        ` : ''}
-
-                        ${s.key === 'OFFER' ? `
-                          <button class="btn btn-soft btn-sm" style="font-size: 0.72rem; padding: 3px 8px;" onclick="RecruitmentView.switchTab('offers')">Offer Details</button>
-                          <button class="btn btn-primary btn-sm" style="font-size: 0.72rem; padding: 3px 8px; background: var(--success);" onclick="RecruitmentView.hireAndConvertCandidate('${a.id}', '${a.candidateId || ''}', '${a.candidateName || ''}', '${a.candidateEmail || ''}', '${a.jobTitle || ''}')">✓ Hire & Add</button>
-                        ` : ''}
-
-                        ${s.key === 'HIRED' ? `
-                          ${a.employeeCode ? `
-                            <span class="badge badge-success" style="font-size: 0.72rem;">✓ ${a.employeeCode}</span>
-                            <button class="btn btn-soft btn-sm" style="font-size: 0.7rem; padding: 2px 6px;" onclick="Router.navigate('employees')">Directory ➔</button>
-                          ` : `
-                            <button class="btn btn-primary btn-sm" style="font-size: 0.72rem; padding: 4px 8px; background: var(--success); font-weight: 600;" onclick="RecruitmentView.hireAndConvertCandidate('${a.id}', '${a.candidateId || ''}', '${a.candidateName || ''}', '${a.candidateEmail || ''}', '${a.jobTitle || ''}')">👤 Add to Employees</button>
-                          `}
-                        ` : ''}
-
-                        <!-- Quick Move Stage Selector -->
-                        <select class="form-control" style="font-size: 0.68rem; padding: 2px 4px; height: 24px; width: auto; max-width: 80px; margin-left: auto; border-radius: var(--radius-sm);" onchange="RecruitmentView.quickMoveStage('${a.id}', this.value, '${a.candidateId || ''}', '${a.candidateName || ''}', '${a.candidateEmail || ''}', '${a.jobTitle || ''}')" title="Change stage">
-                          <option value="" disabled selected>Move…</option>
-                          <option value="APPLIED">Applied</option>
-                          <option value="SCREENING">Screening</option>
-                          <option value="SHORTLISTED">Shortlisted</option>
-                          <option value="INTERVIEW">Interview</option>
-                          <option value="SELECTED">Selected</option>
-                          <option value="OFFER">Offer</option>
-                          <option value="HIRED">Hired (Employee)</option>
-                          <option value="REJECTED">🚫 Reject</option>
-                        </select>
-                      </div>
-                    </div>
-                  `).join('')}
+                    `).join('')}
+                  </div>
                 </div>
-              </div>
-            `;
-          }).join('')}
+              `;
+            }).join('')}
+          </div>
         </div>
       </div>
     `;
@@ -400,7 +401,7 @@ const RecruitmentView = {
             { candidateId, candidateName, candidateEmail, applicationId: appId, jobTitle },
             { positionTitle: jobTitle, department: 'Technology', branch: 'HQ - Mumbai', joiningDate: new Date().toISOString().slice(0, 10) }
           );
-          Toast.success(`🎉 ${newEmp.fullName} hired! Created official record: ${newEmp.employeeCode} in Employees directory.`);
+          Toast.success(`${newEmp.fullName} hired! Created official record: ${newEmp.employeeCode} in Employees directory.`);
           Router.navigate('employees');
         } catch (err) {
           Toast.error(`Could not hire candidate: ${err.message}`);
@@ -679,7 +680,7 @@ const RecruitmentView = {
                     <td>
                       ${r.status !== 'APPROVED' ? `
                         <button class="btn btn-primary btn-sm" onclick="RecruitmentView.approveRequisition('${r.id}')">Approve</button>
-                      ` : '<span class="text-muted" style="font-size: 0.8rem;">✓ Approved</span>'}
+                      ` : '<span class="text-muted" style="font-size: 0.8rem;">Approved</span>'}
                     </td>
                   </tr>
                 `).join('')}
@@ -792,17 +793,17 @@ const RecruitmentView = {
                     <td>
                       ${i.interviewType === 'IN_PERSON' || !i.meetingLink || !i.meetingLink.startsWith('http') ? `
                         <span class="badge badge-neutral" style="font-size: 0.78rem;" title="${i.location || 'Office Venue'}">
-                          🏢 Walk-In: ${i.location || 'Office Venue'}
+                          Walk-In: ${i.location || 'Office Venue'}
                         </span>
                       ` : `
-                        <a href="${i.meetingLink}" target="_blank" class="btn btn-soft btn-sm">📹 Join Video</a>
+                        <a href="${i.meetingLink}" target="_blank" class="btn btn-soft btn-sm">Join Video</a>
                       `}
                     </td>
                     <td><span class="badge ${i.status === 'COMPLETED' ? 'badge-success' : 'badge-warning'}">${i.status}</span></td>
                     <td>
                       ${i.status !== 'COMPLETED' ? `
                         <button class="btn btn-primary btn-sm" onclick="RecruitmentView.openFeedbackModal('${i.id}', '${i.candidateId}', '${i.candidateName}', '${i.applicationId}')">Score</button>
-                      ` : '<span class="text-muted" style="font-size: 0.8rem;">✓ Scored</span>'}
+                      ` : '<span class="text-muted" style="font-size: 0.8rem;">Scored</span>'}
                     </td>
                   </tr>
                 `).join('')}
@@ -1042,7 +1043,7 @@ const RecruitmentView = {
                           <button class="btn btn-primary btn-sm" onclick="RecruitmentView.acceptOffer('${o.id}', '${o.candidateId}', '${o.applicationId}')">Accept Offer</button>
                         ` : ''}
                         ${o.status === 'ACCEPTED' ? `
-                          <button class="btn btn-primary btn-sm" style="background: var(--success);" onclick="RecruitmentView.convertToEmployee('${o.candidateId}', '${o.candidateName}', '${o.candidateEmail}', '${o.positionTitle}', '${o.department}', '${o.branch}', '${o.joiningDate}', '${o.id}', '${o.applicationId}')">✓ Convert to Employee</button>
+                          <button class="btn btn-primary btn-sm" style="background: var(--success);" onclick="RecruitmentView.convertToEmployee('${o.candidateId}', '${o.candidateName}', '${o.candidateEmail}', '${o.positionTitle}', '${o.department}', '${o.branch}', '${o.joiningDate}', '${o.id}', '${o.applicationId}')">Convert to Employee</button>
                         ` : ''}
                       </div>
                     </td>
@@ -1203,7 +1204,7 @@ const RecruitmentView = {
           <div style="display: flex; align-items: center; gap: 8px;">
             ${candidates.length > 0 ? `
               <button class="btn btn-secondary btn-sm" style="color: var(--danger); border-color: rgba(220, 38, 38, 0.3);" onclick="RecruitmentView.cleanupTestCandidates()" title="Remove junk or incomplete test candidate entries">
-                🗑️ Purge Test Candidates
+                Purge Test Candidates
               </button>
             ` : ''}
             <button class="btn btn-primary btn-sm" onclick="RecruitmentView.openAddCandidateModal()">+ Add Candidate</button>
@@ -1217,7 +1218,7 @@ const RecruitmentView = {
             </div>
           ` : `
             <div style="padding: 12px 16px; border-bottom: 1px solid var(--border-main); display: flex; gap: 12px; align-items: center; background: var(--bg-hover);">
-              <input type="text" id="talent-search-input" class="form-control" placeholder="🔍 Search by candidate name, designation, email, skills..." oninput="RecruitmentView.filterTalentPool(this.value)" style="max-width: 380px; font-size: 0.85rem;" />
+              <input type="text" id="talent-search-input" class="form-control" placeholder="Search candidate by name, designation, email, skills..." oninput="RecruitmentView.filterTalentPool(this.value)" style="max-width: 380px; font-size: 0.85rem;" />
               <span class="text-muted" style="font-size: 0.8rem;">Showing <span id="talent-visible-count">${candidates.length}</span> candidate(s)</span>
             </div>
             <table class="data-table" id="talent-pool-table">
@@ -1248,7 +1249,7 @@ const RecruitmentView = {
                         </div>
                         <div>
                           <div>${c.fullName}</div>
-                          ${c.employeeCode ? `<span style="font-size: 0.72rem; color: var(--success); font-weight: 600;">✓ Code: ${c.employeeCode}</span>` : ''}
+                          ${c.employeeCode ? `<span style="font-size: 0.72rem; color: var(--success); font-weight: 600;">Code: ${c.employeeCode}</span>` : ''}
                         </div>
                       </div>
                     </td>
@@ -1265,10 +1266,10 @@ const RecruitmentView = {
                     <td style="text-align: right;">
                       <div style="display: inline-flex; align-items: center; gap: 6px;">
                         <button class="btn btn-soft btn-sm" style="font-size: 0.75rem; padding: 4px 8px;" onclick="RecruitmentView.openInterviewModal('', '${c.id}', '${safeName}', '${safeDesig}')" title="Schedule Interview">
-                          📅 Interview
+                          Interview
                         </button>
                         <button class="btn btn-secondary btn-sm" style="font-size: 0.75rem; padding: 4px 8px; color: var(--danger); border-color: rgba(220, 38, 38, 0.3);" onclick="RecruitmentView.deleteCandidate('${c.id}', '${safeName}')" title="Delete Candidate">
-                          🗑️
+                          Delete
                         </button>
                       </div>
                     </td>
