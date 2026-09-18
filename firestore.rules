@@ -117,6 +117,31 @@ service cloud.firestore {
       allow update, delete: if false;
     }
 
+    // LIVE PRESENCE — employees may publish only their own presence;
+    // privileged same-company roles may read all presence. Presence events
+    // are append-only from the client.
+    match /employeePresence/{employeeId} {
+      allow read: if isPrivilegedInCompany(resource.data.companyId)
+                  || (isSameCompany(resource.data.companyId)
+                      && employeeId == request.auth.uid);
+      allow create: if isSameCompany(request.resource.data.companyId)
+                    && employeeId == request.auth.uid
+                    && request.resource.data.employeeId == request.auth.uid;
+      allow update: if isSameCompany(resource.data.companyId)
+                    && employeeId == request.auth.uid
+                    && request.resource.data.employeeId == request.auth.uid;
+      allow delete: if false;
+    }
+
+    match /presenceEvents/{eventId} {
+      allow read: if isPrivilegedInCompany(resource.data.companyId)
+                  || (isSameCompany(resource.data.companyId)
+                      && resource.data.employeeId == request.auth.uid);
+      allow create: if isSameCompany(request.resource.data.companyId)
+                    && request.resource.data.employeeId == request.auth.uid;
+      allow update, delete: if false;
+    }
+
     match /securityIncidents/{id} {
       allow read: if isPrivilegedInCompany(resource.data.companyId);
       allow create: if isSameCompany(request.resource.data.companyId);

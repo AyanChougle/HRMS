@@ -197,6 +197,9 @@ const AttendanceView = {
         ` : ''}
         <button class="tab-btn ${this.activeTab === 'regularizations' ? 'active' : ''}" onclick="AttendanceView.switchTab('regularizations')">Regularization Queue</button>
         <button class="tab-btn ${this.activeTab === 'holidays' ? 'active' : ''}" onclick="AttendanceView.switchTab('holidays')">Holidays & Shifts</button>
+        ${role === 'SUPER_ADMIN' || role === 'COMPANY_ADMIN' || role === 'HR' || role === 'MANAGER' ? `
+          <button class="tab-btn ${this.activeTab === 'presence' ? 'active' : ''}" onclick="AttendanceView.switchTab('presence')">Live Presence (Desktop & Web)</button>
+        ` : ''}
         ${role === 'SUPER_ADMIN' || role === 'COMPANY_ADMIN' || role === 'HR' ? `
           <button class="tab-btn ${this.activeTab === 'settings' ? 'active' : ''}" onclick="AttendanceView.switchTab('settings')">Attendance Settings</button>
         ` : ''}
@@ -214,6 +217,8 @@ const AttendanceView = {
       return await this.renderMyAttendanceTab(todayRecord);
     } else if (this.activeTab === 'team') {
       return await this.renderTeamAttendanceTab();
+    } else if (this.activeTab === 'presence') {
+      return await (window.LivePresenceView ? LivePresenceView.render() : '<div class="card p-6">Loading presence...</div>');
     } else if (this.activeTab === 'regularizations') {
       return await this.renderRegularizationsTab();
     } else if (this.activeTab === 'holidays') {

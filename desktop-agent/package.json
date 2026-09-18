@@ -1,0 +1,8 @@
+{
+  "name":"hrms-live-attendance-agent",
+  "version":"3.0.0",
+  "private":true,
+  "main":"main.js",
+  "scripts":{"start":"electron .","check":"node --check main.js && node --check agent-core.js && node --check preload.js"},
+  "dependencies":{"electron":"^38.1.0","firebase":"^12.2.1"}
+}

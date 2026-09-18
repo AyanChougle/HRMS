@@ -27,6 +27,11 @@ const App = {
     try {
       const user = await AuthGuard.init({ isPublicPage: false });
       if (!user) return; // User was redirected to login.html
+
+      // Start Live Presence Heartbeat for authenticated user
+      if (typeof presenceService !== 'undefined' && presenceService.start) {
+        presenceService.start();
+      }
     } catch (e) {
       console.warn('Auth guard warning:', e);
     }
