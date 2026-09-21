@@ -382,6 +382,8 @@
       document.getElementById('signup-firstname').focus();
     }
 
+    let isAuthenticating = false;
+
     // Explicit Sign In Handler (always called directly by onsubmit)
     async function handleLoginSubmit(event) {
       event.preventDefault();
@@ -393,6 +395,7 @@
 
       if (!email || !password) return;
 
+      isAuthenticating = true;
       alertBox.className = 'auth-alert';
       alertBox.style.display = 'none';
 
@@ -409,15 +412,18 @@
           sessionStorage.removeItem('redirect_after_login');
           window.location.replace(redirect);
         } else {
+          isAuthenticating = false;
           loginBtn.disabled = false;
           loginBtn.innerHTML = '<span>Sign In to HRMS</span>';
 
-          if (res.code === 'auth/user-not-found' || res.code === 'auth/invalid-credential') {
+          if (res.code === 'auth/user-not-found' || res.code === 'auth/invalid-credential' || res.code === 'auth/invalid-login-credentials' || res.code === 'auth/wrong-password') {
+            const safeEmail = email.replace(/'/g, "\\'");
+            const safePassword = password.replace(/'/g, "\\'");
             alertBox.innerHTML = `
               <div><strong>Account not found or invalid credentials.</strong></div>
               <div style="margin-top: 6px; font-size: 0.8rem;">
                 If you haven't created this account in Firebase yet, 
-                <a href="javascript:void(0)" onclick="quickFillSignUp('${email}', '${password}')" style="color: var(--primary); text-decoration: underline; font-weight: 600;">
+                <a href="javascript:void(0)" onclick="quickFillSignUp('${safeEmail}', '${safePassword}')" style="color: var(--primary); text-decoration: underline; font-weight: 600;">
                   Click here to register ${email}
                 </a>
               </div>
@@ -430,6 +436,7 @@
           alertBox.style.display = 'block';
         }
       } catch (err) {
+        isAuthenticating = false;
         loginBtn.disabled = false;
         loginBtn.innerHTML = '<span>Sign In to HRMS</span>';
         alertBox.textContent = err.message || 'An unexpected error occurred during sign in.';
@@ -459,6 +466,7 @@
         return;
       }
 
+      isAuthenticating = true;
       alertBox.className = 'auth-alert';
       alertBox.style.display = 'none';
 
@@ -469,9 +477,10 @@
         firstName,
         lastName,
         displayName: `${firstName} ${lastName}`.trim() || email.split('@')[0],
-        companyName: company,
+        companyName: company || 'Diallo India Private Limited',
         companyId: 'comp_diallo_india',
         branchId: 'branch_mumbai',
+        branchName: 'HQ - Mumbai',
         phone: phone || ''
       };
 
@@ -479,14 +488,13 @@
         const res = await authService.signUp(email, password, profileData);
 
         if (res.success) {
-          signupBtn.innerHTML = '<span>Account Created! Logging in...</span>';
+          signupBtn.innerHTML = '<span>Account Created! Opening Dashboard...</span>';
           Toast.success('Account created successfully! Redirecting...');
-          // Give onUserCreated (Cloud Function) a moment to set custom claims,
-          // then force-refresh so firestore.rules see companyId/roleId right away.
-          await new Promise((r) => setTimeout(r, 1500));
-          try { await res.user.getIdToken(true); } catch (e) { /* non-fatal */ }
-          window.location.replace('index.html#dashboard');
+          const redirect = sessionStorage.getItem('redirect_after_login') || 'index.html#dashboard';
+          sessionStorage.removeItem('redirect_after_login');
+          window.location.replace(redirect);
         } else {
+          isAuthenticating = false;
           signupBtn.disabled = false;
           signupBtn.innerHTML = '<span>Create Account & Start Session</span>';
 
@@ -495,6 +503,7 @@
           alertBox.style.display = 'block';
         }
       } catch (err) {
+        isAuthenticating = false;
         signupBtn.disabled = false;
         signupBtn.innerHTML = '<span>Create Account & Start Session</span>';
         alertBox.textContent = err.message || 'An unexpected error occurred during sign up.';
@@ -517,11 +526,17 @@
         switchAuthTab('signup');
       }
 
-      // If user is already authenticated, redirect to dashboard
+      // If user is already authenticated on initial page load, redirect to dashboard
       try {
-        AuthGuard.init({ isPublicPage: true });
+        auth.onAuthStateChanged((user) => {
+          if (user && !isAuthenticating) {
+            const redirect = sessionStorage.getItem('redirect_after_login') || 'index.html#dashboard';
+            sessionStorage.removeItem('redirect_after_login');
+            window.location.replace(redirect);
+          }
+        });
       } catch (e) {
-        console.warn('Auth guard check:', e);
+        console.warn('Auth state check warning:', e);
       }
     });
   </script>
