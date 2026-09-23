@@ -63,14 +63,27 @@ const storageService = {
   // Fetch all documents for an employee
   async getEmployeeDocuments(employeeId) {
     try {
-      const snapshot = await db.collection('employeeDocuments')
-        .where('employeeId', '==', employeeId)
-        .orderBy('uploadedAt', 'desc')
-        .get();
+      let snapshot;
+      try {
+        snapshot = await db.collection('employeeDocuments')
+          .where('employeeId', '==', employeeId)
+          .orderBy('uploadedAt', 'desc')
+          .get();
+      } catch (idxErr) {
+        snapshot = await db.collection('employeeDocuments')
+          .where('employeeId', '==', employeeId)
+          .get();
+      }
 
-      return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+      const list = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+      list.sort((a, b) => {
+        const tA = a.uploadedAt?.seconds ? a.uploadedAt.seconds * 1000 : (new Date(a.uploadedAt || 0).getTime() || 0);
+        const tB = b.uploadedAt?.seconds ? b.uploadedAt.seconds * 1000 : (new Date(b.uploadedAt || 0).getTime() || 0);
+        return tB - tA;
+      });
+      return list;
     } catch (err) {
-      console.error('Error fetching employee documents:', err);
+      console.warn('Error fetching employee documents:', err);
       return [];
     }
   }

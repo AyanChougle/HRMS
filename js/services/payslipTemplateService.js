@@ -177,25 +177,26 @@ const payslipTemplateService = {
       payDate: '05 September 2026',
       companySnapshot: {
         name: 'DIALLO INDIA PRIVATE LIMITED',
+        brandName: 'Diallo %',
         cin: 'U72900MH2026PTC123456',
         pan: 'AAACD1234E',
         gstin: '27AAACD1234E1Z5',
-        address: 'BKC Innovation Tower, Bandra Kurla Complex, Mumbai, Maharashtra - 400051'
+        address: 'Ghansoli Mahape, Navi Mumbai, Maharashtra'
       },
       employeeSnapshot: {
-        fullName: 'Rahul S. Sharma',
-        employeeCode: 'EMP-1042',
-        designation: 'Senior Full Stack Engineer',
-        department: 'Product & Engineering',
+        fullName: 'Employee Staff',
+        employeeCode: 'EMP-0001',
+        designation: 'Operations Executive',
+        department: 'Operations',
         pan: 'ABCDE1234F',
         uan: '100987654321',
         pfNumber: 'MH/BAN/0012345/000/1042',
         esicNumber: '31001234560001001',
-        doj: '12-Jan-2023',
+        doj: '12-Jan-2024',
         bankName: 'HDFC Bank Ltd',
         bankAccount: '••••••••4892',
         ifsc: 'HDFC0001234',
-        location: 'HQ - Mumbai'
+        location: 'Ghansoli Mahape'
       },
       attendanceSnapshot: {
         totalDays: 31,

@@ -25,8 +25,19 @@ const documentService = {
       if (filters.categoryCode && filters.categoryCode !== 'All') query = query.where('categoryCode', '==', filters.categoryCode);
       if (filters.status && filters.status !== 'All') query = query.where('status', '==', filters.status);
 
-      const snapshot = await query.orderBy('uploadedAt', 'desc').get();
-      return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+      let snapshot;
+      try {
+        snapshot = await query.orderBy('uploadedAt', 'desc').get();
+      } catch (idxErr) {
+        snapshot = await query.get();
+      }
+      const list = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+      list.sort((a, b) => {
+        const tA = a.uploadedAt?.seconds ? a.uploadedAt.seconds * 1000 : (new Date(a.uploadedAt || 0).getTime() || 0);
+        const tB = b.uploadedAt?.seconds ? b.uploadedAt.seconds * 1000 : (new Date(b.uploadedAt || 0).getTime() || 0);
+        return tB - tA;
+      });
+      return list;
     } catch (e) {
       console.warn('Error fetching employee documents:', e);
       return [];
@@ -140,8 +151,19 @@ const documentService = {
       if (filters.employeeId) query = query.where('employeeId', '==', filters.employeeId);
       if (filters.status && filters.status !== 'All') query = query.where('status', '==', filters.status);
 
-      const snapshot = await query.orderBy('createdAt', 'desc').get();
-      return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+      let snapshot;
+      try {
+        snapshot = await query.orderBy('createdAt', 'desc').get();
+      } catch (idxErr) {
+        snapshot = await query.get();
+      }
+      const list = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+      list.sort((a, b) => {
+        const tA = a.createdAt?.seconds ? a.createdAt.seconds * 1000 : (new Date(a.createdAt || 0).getTime() || 0);
+        const tB = b.createdAt?.seconds ? b.createdAt.seconds * 1000 : (new Date(b.createdAt || 0).getTime() || 0);
+        return tB - tA;
+      });
+      return list;
     } catch (e) {
       return [];
     }

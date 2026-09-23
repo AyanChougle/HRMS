@@ -24,8 +24,19 @@ const employeeRequestService = {
       if (filters.status && filters.status !== 'All') query = query.where('status', '==', filters.status);
       if (filters.requestType && filters.requestType !== 'All') query = query.where('requestType', '==', filters.requestType);
 
-      const snapshot = await query.orderBy('createdAt', 'desc').get();
-      return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+      let snapshot;
+      try {
+        snapshot = await query.orderBy('createdAt', 'desc').get();
+      } catch (idxErr) {
+        snapshot = await query.get();
+      }
+      const list = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+      list.sort((a, b) => {
+        const tA = a.createdAt?.seconds ? a.createdAt.seconds * 1000 : (new Date(a.createdAt || 0).getTime() || 0);
+        const tB = b.createdAt?.seconds ? b.createdAt.seconds * 1000 : (new Date(b.createdAt || 0).getTime() || 0);
+        return tB - tA;
+      });
+      return list;
     } catch (e) {
       console.warn('Error fetching employee requests:', e);
       return [];
@@ -36,7 +47,7 @@ const employeeRequestService = {
   async createRequest(reqData) {
     try {
       const companyId = reqData.companyId || AuthGuard.userProfile?.companyId || 'comp_diallo_india';
-      const employeeId = reqData.employeeId || AuthGuard.userProfile?.employeeId || AuthGuard.currentUser?.uid || 'EMP001';
+      const employeeId = reqData.employeeId || AuthGuard.userProfile?.employeeId || AuthGuard.currentUser?.uid || '';
       const employeeName = reqData.employeeName || AuthGuard.userProfile?.displayName || 'Employee';
 
       const typeObj = this.REQUEST_TYPES.find(t => t.code === reqData.requestType) || this.REQUEST_TYPES[0];

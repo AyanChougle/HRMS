@@ -51,8 +51,18 @@ const assetService = {
       if (filters.categoryCode && filters.categoryCode !== 'All') query = query.where('categoryCode', '==', filters.categoryCode);
       if (filters.currentEmployeeId) query = query.where('currentEmployeeId', '==', filters.currentEmployeeId);
 
-      const snapshot = await query.orderBy('createdAt', 'desc').get();
+      let snapshot;
+      try {
+        snapshot = await query.orderBy('createdAt', 'desc').get();
+      } catch (idxErr) {
+        snapshot = await query.get();
+      }
       let list = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+      list.sort((a, b) => {
+        const tA = a.createdAt?.seconds ? a.createdAt.seconds * 1000 : (new Date(a.createdAt || 0).getTime() || 0);
+        const tB = b.createdAt?.seconds ? b.createdAt.seconds * 1000 : (new Date(b.createdAt || 0).getTime() || 0);
+        return tB - tA;
+      });
 
       if (filters.search && filters.search.trim()) {
         const s = filters.search.toLowerCase().trim();

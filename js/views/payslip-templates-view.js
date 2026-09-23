@@ -81,7 +81,7 @@ const PayslipTemplatesView = {
                 <span style="display: inline-block; background: #0f172a; color: #fff; font-size: 4.5px; font-weight: 700; padding: 1px 4px; border-radius: 2px; margin-top: 2px;">SALARY PAYSLIP</span>
               </div>
               <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 2px; background: #f8fafc; padding: 2px; border: 0.5px solid #cbd5e1; margin-bottom: 4px;">
-                <div><strong>Emp Name:</strong> Rahul Sharma</div>
+                <div><strong>Emp Name:</strong> Employee Name</div>
                 <div><strong>Emp Code:</strong> EMP-1042</div>
                 <div><strong>Designation:</strong> Tech Lead</div>
                 <div><strong>Days:</strong> 26 Worked</div>
@@ -108,7 +108,7 @@ const PayslipTemplatesView = {
                 <span style="background: rgba(255,255,255,0.25); padding: 1px 4px; border-radius: 8px; font-size: 4.5px;">PAID</span>
               </div>
               <div style="background: #f8fafc; padding: 3px; border-radius: 3px; margin-bottom: 4px; font-size: 5px;">
-                <strong>Rahul S. Sharma</strong> (EMP-1042) • Product Engineering
+                <strong>Employee Staff</strong> (EMP-0001) • Operations
               </div>
               <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 4px; margin-bottom: 4px;">
                 <div style="border: 0.5px solid #bae6fd; border-radius: 2px; padding: 2px;">
@@ -157,7 +157,7 @@ const PayslipTemplatesView = {
                 <div style="font-size: 4px; background: rgba(255,255,255,0.2); padding: 1px 3px; border-radius: 2px;">QR SEAL</div>
               </div>
               <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 3px; margin-bottom: 4px; font-size: 4.8px;">
-                <div style="background: #f8fafc; padding: 2px; border-radius: 2px;"><strong>Emp:</strong> Rahul Sharma</div>
+                <div style="background: #f8fafc; padding: 2px; border-radius: 2px;"><strong>Emp:</strong> Employee Name</div>
                 <div style="background: #f8fafc; padding: 2px; border-radius: 2px;"><strong>Role:</strong> Tech Lead</div>
               </div>
               <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 3px; margin-bottom: 4px;">
@@ -174,7 +174,7 @@ const PayslipTemplatesView = {
                 <span>DIALLO INDIA</span><span>AUG 2026</span>
               </div>
               <div style="font-size: 4.8px; margin-bottom: 4px;">
-                Rahul Sharma (EMP-1042) • PAN: ABCDE1234F
+                Employee Name (EMP-1042) • PAN: ABCDE1234F
               </div>
               <table style="width: 100%; border-collapse: collapse; font-size: 4.8px; margin-bottom: 4px;">
                 <tr style="border-bottom: 0.5px solid #0f172a;"><td>EARNINGS</td><td style="text-align: right;">65,000</td><td>DEDUCT</td><td style="text-align: right;">3,777</td></tr>

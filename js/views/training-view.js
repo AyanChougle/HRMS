@@ -481,7 +481,7 @@ const TrainingView = {
       traineeCode: 'TRN-2026',
       track: '7-Day Core Training Modules',
       department: 'Operations',
-      trainerName: 'Vikram Sharma',
+      trainerName: 'Lead Trainer',
       currentDay: 1,
       progress: 14,
       completedModules: 0,
@@ -819,7 +819,7 @@ const TrainingView = {
         <div class="grid" style="grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 14px;">
           <div class="form-group">
             <label class="form-label">Assigned Mentor / Trainer</label>
-            <input type="text" id="trn-mentor" class="form-control" placeholder="e.g. Vikram Sharma" value="Vikram Sharma" />
+            <input type="text" id="trn-mentor" class="form-control" placeholder="e.g. Lead Trainer" />
           </div>
           <div class="form-group">
             <label class="form-label">Batch Name</label>
@@ -992,7 +992,7 @@ const TrainingView = {
           </div>
           <div class="form-group">
             <label class="form-label">Lead Trainer / Mentor</label>
-            <input type="text" id="prg-trainer" class="form-control" placeholder="e.g. Vikram Sharma" value="Vikram Sharma" />
+            <input type="text" id="prg-trainer" class="form-control" placeholder="e.g. Lead Trainer" />
           </div>
         </div>
         <div class="form-group" style="margin-bottom: 14px;">
@@ -1166,7 +1166,7 @@ Module 4: Practical Capstone Evaluation</textarea>
     }
   },
 
-  openMentorConnectModal(mentorName = 'Vikram Sharma') {
+  openMentorConnectModal(mentorName = 'Mentor') {
     const modalHtml = `
       <div style="text-align: center; padding: 12px 0;">
         <div style="width: 52px; height: 52px; border-radius: 50%; background: var(--primary-light); color: var(--primary); display: inline-flex; align-items: center; justify-content: center; margin-bottom: 12px;">

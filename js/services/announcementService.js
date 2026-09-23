@@ -16,20 +16,22 @@ const announcementService = {
   ],
 
   // 1. GET ANNOUNCEMENTS (Filtered by company, audience, and status)
-  async getAnnouncements(filters = {}) {
+  async getAnnouncements(filters = {}, limitCount = 30) {
     try {
-      const companyId = filters.companyId || AuthGuard.userProfile?.companyId || 'comp_diallo_india';
+      const opts = filters || {};
+      const limit = typeof limitCount === 'number' ? limitCount : (opts.limit || 30);
+      const companyId = opts.companyId || (typeof AuthGuard !== 'undefined' && AuthGuard?.userProfile?.companyId) || 'comp_diallo_india';
       let query = db.collection('announcements').where('companyId', '==', companyId);
 
-      if (filters.status && filters.status !== 'ALL') {
-        query = query.where('status', '==', filters.status);
+      if (opts.status && opts.status !== 'ALL') {
+        query = query.where('status', '==', opts.status);
       }
 
       let snapshot;
       try {
-        snapshot = await query.orderBy('createdAt', 'desc').limit(filters.limit || 30).get();
+        snapshot = await query.orderBy('createdAt', 'desc').limit(limit).get();
       } catch (idxErr) {
-        snapshot = await query.limit(filters.limit || 30).get();
+        snapshot = await query.limit(limit).get();
       }
       let list = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
       list.sort((a, b) => {

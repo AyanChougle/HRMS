@@ -699,16 +699,15 @@ const attendanceService = {
       const targetCompany = companyId || AuthGuard.userProfile?.companyId || 'comp_diallo_india';
       const labels = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Today'];
       const todaySum = await this.getTodaySummary(targetCompany);
-      const totalEmp = todaySum.totalEmployees > 0 ? todaySum.totalEmployees : 25;
-      const todayPct = totalEmp > 0 ? Math.round((todaySum.present / totalEmp) * 100) : 92;
+      const totalEmp = todaySum.totalEmployees || 0;
+      const todayPct = totalEmp > 0 ? Math.round((todaySum.present / totalEmp) * 100) : 0;
 
-      // Realistic weekday attendance pattern (92%, 95%, 88%, 96%, 91%, 78%, today)
-      const data = [92, 95, 88, 96, 91, 78, Math.max(15, todayPct)];
+      const data = totalEmp > 0 ? [todayPct, todayPct, todayPct, todayPct, todayPct, todayPct, todayPct] : [0, 0, 0, 0, 0, 0, 0];
       return { labels, data };
     } catch (e) {
       return {
         labels: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Today'],
-        data: [92, 95, 88, 96, 91, 78, 92]
+        data: [0, 0, 0, 0, 0, 0, 0]
       };
     }
   }

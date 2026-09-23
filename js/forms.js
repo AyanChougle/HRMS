@@ -52,15 +52,15 @@ const Forms = {
           <div class="form-row">
             <div class="col-4 form-group">
               <label class="form-label required">First Name</label>
-              <input type="text" id="ef-first-name" class="form-control" value="${emp?.firstName || (emp?.fullName?.split(' ')[0] || '')}" placeholder="e.g. Rahul" required />
+              <input type="text" id="ef-first-name" class="form-control" value="${emp?.firstName || (emp?.fullName?.split(' ')[0] || '')}" placeholder="First Name" required />
             </div>
             <div class="col-4 form-group">
               <label class="form-label">Middle Name</label>
-              <input type="text" id="ef-middle-name" class="form-control" value="${emp?.middleName || ''}" placeholder="e.g. Kumar" />
+              <input type="text" id="ef-middle-name" class="form-control" value="${emp?.middleName || ''}" placeholder="Middle Name" />
             </div>
             <div class="col-4 form-group">
               <label class="form-label required">Last Name</label>
-              <input type="text" id="ef-last-name" class="form-control" value="${emp?.lastName || (emp?.fullName?.split(' ').slice(1).join(' ') || '')}" placeholder="e.g. Sharma" required />
+              <input type="text" id="ef-last-name" class="form-control" value="${emp?.lastName || (emp?.fullName?.split(' ').slice(1).join(' ') || '')}" placeholder="Last Name" required />
             </div>
           </div>
 
@@ -89,11 +89,11 @@ const Forms = {
           <div class="form-row">
             <div class="col-6 form-group">
               <label class="form-label required">Official Work Email</label>
-              <input type="email" id="ef-work-email" class="form-control" value="${emp?.workEmail || emp?.email || ''}" placeholder="rahul@diallo.in" required />
+              <input type="email" id="ef-work-email" class="form-control" value="${emp?.workEmail || emp?.email || ''}" placeholder="emp.code@diallo.in" required />
             </div>
             <div class="col-6 form-group">
               <label class="form-label">Personal Email</label>
-              <input type="email" id="ef-personal-email" class="form-control" value="${emp?.personalEmail || ''}" placeholder="rahul.personal@gmail.com" />
+              <input type="email" id="ef-personal-email" class="form-control" value="${emp?.personalEmail || ''}" placeholder="personal.email@example.com" />
             </div>
           </div>
 

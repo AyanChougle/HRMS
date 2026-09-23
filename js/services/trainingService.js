@@ -147,7 +147,7 @@ const trainingService = {
         department: data.department || 'Operations',
         track: data.track || '7-Day Core Training Modules',
         trainerId: data.trainerId || null,
-        trainerName: data.trainerName || 'Vikram Sharma',
+        trainerName: data.trainerName || (typeof AuthGuard !== 'undefined' && AuthGuard?.userProfile?.displayName) || 'Corporate Trainer',
         batchName: data.batchName || 'Batch 2026-Q3',
         currentDay: currentDay,
         totalDays: totalDays,

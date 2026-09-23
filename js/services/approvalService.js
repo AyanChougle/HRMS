@@ -19,8 +19,18 @@ const approvalService = {
         query = query.where('status', '==', 'PENDING');
       }
 
-      const snapshot = await query.orderBy('createdAt', 'desc').limit(50).get();
+      let snapshot;
+      try {
+        snapshot = await query.orderBy('createdAt', 'desc').limit(50).get();
+      } catch (idxErr) {
+        snapshot = await query.limit(50).get();
+      }
       let list = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+      list.sort((a, b) => {
+        const tA = a.createdAt?.seconds ? a.createdAt.seconds * 1000 : (new Date(a.createdAt || 0).getTime() || 0);
+        const tB = b.createdAt?.seconds ? b.createdAt.seconds * 1000 : (new Date(b.createdAt || 0).getTime() || 0);
+        return tB - tA;
+      });
 
       if (filters.module && filters.module !== 'ALL') {
         list = list.filter(t => t.module === filters.module);
@@ -240,12 +250,25 @@ const approvalService = {
   // 6. GET INSTANCE AUDIT TIMELINE
   async getWorkflowHistory(instanceId) {
     try {
-      const snap = await db.collection('workflowHistory')
-        .where('workflowInstanceId', '==', instanceId)
-        .orderBy('createdAt', 'asc')
-        .get();
+      let snap;
+      try {
+        snap = await db.collection('workflowHistory')
+          .where('workflowInstanceId', '==', instanceId)
+          .orderBy('createdAt', 'asc')
+          .get();
+      } catch (idxErr) {
+        snap = await db.collection('workflowHistory')
+          .where('workflowInstanceId', '==', instanceId)
+          .get();
+      }
 
-      return snap.docs.map(d => ({ id: d.id, ...d.data() }));
+      const list = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+      list.sort((a, b) => {
+        const tA = a.createdAt?.seconds ? a.createdAt.seconds * 1000 : (new Date(a.createdAt || 0).getTime() || 0);
+        const tB = b.createdAt?.seconds ? b.createdAt.seconds * 1000 : (new Date(b.createdAt || 0).getTime() || 0);
+        return tA - tB;
+      });
+      return list;
     } catch (e) {
       return [];
     }

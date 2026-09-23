@@ -439,15 +439,10 @@ const ReportsView = {
     `;
   },
 
-  // Generate dynamic sample / production dataset for report
+  // Generate dynamic production dataset for report
   generateReportData(reportId, employees) {
-    const list = employees && employees.length > 0 ? employees : [
-      { id: 'EMP-1001', name: 'Ayan Chougle', department: 'Executive Leadership', designation: 'Managing Director', location: 'HQ - Mumbai', salary: '₹1,50,000' },
-      { id: 'EMP-1002', name: 'Omkar Tapshale', department: 'Engineering', designation: 'Principal Architect', location: 'HQ - Mumbai', salary: '₹1,20,000' },
-      { id: 'EMP-1003', name: 'Rahul S. Sharma', department: 'Product', designation: 'Senior Full Stack Engineer', location: 'Bangalore', salary: '₹65,000' },
-      { id: 'EMP-1004', name: 'Priya K. Patel', department: 'Human Resources', designation: 'HR Operations Lead', location: 'HQ - Mumbai', salary: '₹55,000' },
-      { id: 'EMP-1005', name: 'Ananya Deshmukh', department: 'Finance & Accounts', designation: 'Statutory Payroll Manager', location: 'Pune', salary: '₹70,000' }
-    ];
+    const list = Array.isArray(employees) ? employees : [];
+    if (list.length === 0) return [];
 
     if (reportId === 'daily-attendance') {
       return list.map(e => ({

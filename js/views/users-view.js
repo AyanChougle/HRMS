@@ -118,11 +118,11 @@ const UsersView = {
           <div class="form-row">
             <div class="col-6 form-group">
               <label class="form-label required">Display Name</label>
-              <input type="text" id="usr-name" class="form-control" placeholder="e.g. Priya Patel" required />
+              <input type="text" id="usr-name" class="form-control" placeholder="e.g. Full Name" required />
             </div>
             <div class="col-6 form-group">
               <label class="form-label required">Official Email Address</label>
-              <input type="email" id="usr-email" class="form-control" placeholder="priya@company.com" required />
+              <input type="email" id="usr-email" class="form-control" placeholder="user@diallo.in" required />
             </div>
             <div class="col-6 form-group">
               <label class="form-label required">Account Role</label>

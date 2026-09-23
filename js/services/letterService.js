@@ -148,8 +148,19 @@ const letterService = {
       if (employeeId) {
         query = query.where('employeeId', '==', employeeId);
       }
-      const snap = await query.orderBy('createdAt', 'desc').get();
-      return snap.docs.map(d => ({ id: d.id, ...d.data() }));
+      let snap;
+      try {
+        snap = await query.orderBy('createdAt', 'desc').get();
+      } catch (idxErr) {
+        snap = await query.get();
+      }
+      const list = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+      list.sort((a, b) => {
+        const tA = a.createdAt?.seconds ? a.createdAt.seconds * 1000 : (new Date(a.createdAt || 0).getTime() || 0);
+        const tB = b.createdAt?.seconds ? b.createdAt.seconds * 1000 : (new Date(b.createdAt || 0).getTime() || 0);
+        return tB - tA;
+      });
+      return list;
     } catch (e) {
       console.warn('Error fetching employee letters:', e);
       return [];

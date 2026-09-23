@@ -26,11 +26,20 @@ const hrService = {
 
   async getEmploymentHistory(employeeId) {
     try {
-      const snap = await db.collection('employmentHistory')
-        .where('employeeId', '==', employeeId)
-        .orderBy('effectiveFrom', 'desc')
-        .get();
-      return snap.docs.map(d => ({ id: d.id, ...d.data() }));
+      let snap;
+      try {
+        snap = await db.collection('employmentHistory')
+          .where('employeeId', '==', employeeId)
+          .orderBy('effectiveFrom', 'desc')
+          .get();
+      } catch (idxErr) {
+        snap = await db.collection('employmentHistory')
+          .where('employeeId', '==', employeeId)
+          .get();
+      }
+      const list = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+      list.sort((a, b) => new Date(b.effectiveFrom || 0) - new Date(a.effectiveFrom || 0));
+      return list;
     } catch (e) {
       console.warn('Error fetching employment history:', e);
       return [];
@@ -106,11 +115,20 @@ const hrService = {
   // 3. PROMOTION & TRANSFER MANAGEMENT
   async getPromotions(companyId = this.DEFAULT_COMPANY_ID) {
     try {
-      const snap = await db.collection('promotions')
-        .where('companyId', '==', companyId)
-        .orderBy('effectiveDate', 'desc')
-        .get();
-      return snap.docs.map(d => ({ id: d.id, ...d.data() }));
+      let snap;
+      try {
+        snap = await db.collection('promotions')
+          .where('companyId', '==', companyId)
+          .orderBy('effectiveDate', 'desc')
+          .get();
+      } catch (idxErr) {
+        snap = await db.collection('promotions')
+          .where('companyId', '==', companyId)
+          .get();
+      }
+      const list = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+      list.sort((a, b) => new Date(b.effectiveDate || 0) - new Date(a.effectiveDate || 0));
+      return list;
     } catch (e) {
       console.warn('Error fetching promotions:', e);
       return [];
@@ -167,11 +185,20 @@ const hrService = {
 
   async getTransfers(companyId = this.DEFAULT_COMPANY_ID) {
     try {
-      const snap = await db.collection('transfers')
-        .where('companyId', '==', companyId)
-        .orderBy('effectiveDate', 'desc')
-        .get();
-      return snap.docs.map(d => ({ id: d.id, ...d.data() }));
+      let snap;
+      try {
+        snap = await db.collection('transfers')
+          .where('companyId', '==', companyId)
+          .orderBy('effectiveDate', 'desc')
+          .get();
+      } catch (idxErr) {
+        snap = await db.collection('transfers')
+          .where('companyId', '==', companyId)
+          .get();
+      }
+      const list = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+      list.sort((a, b) => new Date(b.effectiveDate || 0) - new Date(a.effectiveDate || 0));
+      return list;
     } catch (e) {
       console.warn('Error fetching transfers:', e);
       return [];
@@ -240,8 +267,15 @@ const hrService = {
       if (employeeId) {
         query = query.where('employeeId', '==', employeeId);
       }
-      const snap = await query.orderBy('effectiveDate', 'desc').get();
-      return snap.docs.map(d => ({ id: d.id, ...d.data() }));
+      let snap;
+      try {
+        snap = await query.orderBy('effectiveDate', 'desc').get();
+      } catch (idxErr) {
+        snap = await query.get();
+      }
+      const list = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+      list.sort((a, b) => new Date(b.effectiveDate || 0) - new Date(a.effectiveDate || 0));
+      return list;
     } catch (e) {
       console.warn('Error fetching salary history:', e);
       return [];
@@ -281,14 +315,26 @@ const hrService = {
   // 5. HR CASES & DISCIPLINARY WARNINGS
   async getHRCases(companyId = this.DEFAULT_COMPANY_ID) {
     try {
-      const snap = await db.collection('hrCases')
-        .where('companyId', '==', companyId)
-        .orderBy('createdAt', 'desc')
-        .get();
-      
-      return snap.docs.map(d => ({ id: d.id, ...d.data() }));
+      let snap;
+      try {
+        snap = await db.collection('hrCases')
+          .where('companyId', '==', companyId)
+          .orderBy('createdAt', 'desc')
+          .get();
+      } catch (idxErr) {
+        snap = await db.collection('hrCases')
+          .where('companyId', '==', companyId)
+          .get();
+      }
+      const list = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+      list.sort((a, b) => {
+        const tA = a.createdAt?.seconds ? a.createdAt.seconds * 1000 : (new Date(a.createdAt || 0).getTime() || 0);
+        const tB = b.createdAt?.seconds ? b.createdAt.seconds * 1000 : (new Date(b.createdAt || 0).getTime() || 0);
+        return tB - tA;
+      });
+      return list;
     } catch (e) {
-      console.error('Error fetching HR cases:', e);
+      console.warn('Error fetching HR cases:', e);
       return [];
     }
   },
@@ -353,8 +399,19 @@ const hrService = {
       if (employeeId) {
         query = query.where('submittedByEmployeeId', '==', employeeId);
       }
-      const snap = await query.orderBy('submittedAt', 'desc').get();
-      return snap.docs.map(d => ({ id: d.id, ...d.data() }));
+      let snap;
+      try {
+        snap = await query.orderBy('submittedAt', 'desc').get();
+      } catch (idxErr) {
+        snap = await query.get();
+      }
+      const list = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+      list.sort((a, b) => {
+        const tA = a.submittedAt?.seconds ? a.submittedAt.seconds * 1000 : (new Date(a.submittedAt || 0).getTime() || 0);
+        const tB = b.submittedAt?.seconds ? b.submittedAt.seconds * 1000 : (new Date(b.submittedAt || 0).getTime() || 0);
+        return tB - tA;
+      });
+      return list;
     } catch (e) {
       console.warn('Error fetching grievances:', e);
       return [];

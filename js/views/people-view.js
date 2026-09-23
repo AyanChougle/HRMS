@@ -31,6 +31,10 @@ const PeopleView = {
       console.warn('Could not load people directory data:', e);
     }
 
+    const demoIds = ['EMP001', 'EMP002', 'EMP003', 'EMP004', 'EMP005', 'EMP006', 'EMP007', 'EMP008', 'EMP009', 'EMP010', 'EMP011', 'EMP012', 'EMP013', 'EMP014', 'EMP015', 'EMP016', 'EMP017', 'EMP018', 'EMP019', 'EMP020', 'EMP021', 'EMP022', 'EMP023', 'EMP024', 'EMP025'];
+    const demoNames = ['Vikram Sharma', 'Priya Nair', 'Rahul Mehta', 'Ananya Gupta', 'Arjun Patel', 'Sneha Desai', 'Amit Kumar', 'Rohit Saxena', 'Tanvi Agarwal', 'Meera Iyer', 'Kavya Menon', 'Pooja Verma', 'Varun Bhatt', 'Suresh Reddy', 'Naveen Singh', 'Neha Pillai', 'Roshni Chatterjee', 'Siddharth Kapoor', 'Deepika Joshi', 'Shreya Das', 'Karan Malhotra', 'Ishita Bose'];
+    employees = employees.filter(e => !demoIds.includes(e.id) && !demoNames.includes(e.fullName || e.name) && !(e.id && e.id.startsWith('EMP0') && e.id.length <= 6));
+
     const total = employees.length;
     const active = employees.filter(e => e.employmentStatus === 'ACTIVE').length;
     const onNotice = employees.filter(e => e.employmentStatus === 'ON_NOTICE').length;
@@ -52,6 +56,12 @@ const PeopleView = {
             <p class="page-subtitle">Centralized employee records, organization structure, onboarding, and separation workflows</p>
           </div>
           <div class="page-actions">
+            <button class="btn btn-secondary btn-sm" onclick="PeopleView.purgeDemoEmployees()" style="color: var(--danger); border-color: rgba(239, 68, 68, 0.3);">
+              <svg width="15" height="15" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/>
+              </svg>
+              Purge Demo Records
+            </button>
             <button class="btn btn-secondary btn-sm" onclick="PeopleView.exportCSV()">
               <svg width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/>
@@ -540,35 +550,102 @@ const PeopleView = {
     });
   },
 
+  async purgeDemoEmployees() {
+    ModalManager.confirm({
+      title: 'Erase All Legacy Demo Data',
+      message: 'This will permanently delete all old demo staff records (EMP001-EMP025, fake trainees, fake tasks) from Cloud Firestore, leaving strictly real corporate staff and official Diallo masters. Proceed?',
+      confirmText: 'Purge Demo Records',
+      confirmClass: 'btn-danger',
+      onConfirm: async () => {
+        Toast.info('Purging demo records from Firestore...');
+        await seedService.purgeAllDemoData();
+        Router.navigate('employees');
+      }
+    });
+  },
+
   // C. DYNAMIC ORGANIZATION CHART TAB
   renderOrgChartTab(employees) {
-    const tree = orgService.buildOrgTree(employees);
+    const demoIds = ['EMP001', 'EMP002', 'EMP003', 'EMP004', 'EMP005', 'EMP006', 'EMP007', 'EMP008', 'EMP009', 'EMP010', 'EMP011', 'EMP012', 'EMP013', 'EMP014', 'EMP015', 'EMP016', 'EMP017', 'EMP018', 'EMP019', 'EMP020', 'EMP021', 'EMP022', 'EMP023', 'EMP024', 'EMP025'];
+    const demoNames = ['Vikram Sharma', 'Priya Nair', 'Rahul Mehta', 'Ananya Gupta', 'Arjun Patel', 'Sneha Desai', 'Amit Kumar', 'Rohit Saxena', 'Tanvi Agarwal', 'Meera Iyer', 'Kavya Menon', 'Pooja Verma', 'Varun Bhatt', 'Suresh Reddy', 'Naveen Singh', 'Neha Pillai', 'Roshni Chatterjee', 'Siddharth Kapoor', 'Deepika Joshi', 'Shreya Das', 'Karan Malhotra', 'Ishita Bose'];
+    const cleanList = employees.filter(e => !demoIds.includes(e.id) && !demoNames.includes(e.fullName || e.name) && !(e.id && e.id.startsWith('EMP0') && e.id.length <= 6));
+    const tree = orgService.buildOrgTree(cleanList);
 
-    const renderNode = (node) => `
-      <div class="org-node" style="display: inline-block; margin: 8px; vertical-align: top; text-align: center;">
-        <div class="card" style="padding: 12px 16px; min-width: 180px; display: inline-block; cursor: pointer;" onclick="PeopleView.openEmployeeDrawer('${node.id}')">
-          <div style="width: 36px; height: 36px; border-radius: 50%; background: var(--primary-light); color: var(--primary); margin: 0 auto 6px auto; display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 0.8rem;">
-            ${(node.fullName || node.name || 'EM').substring(0, 2).toUpperCase()}
+    const renderNode = (node) => {
+      const initials = (node.fullName || node.name || 'EM').substring(0, 2).toUpperCase();
+      const hasChildren = node.children && node.children.length > 0;
+      return `
+        <div class="tree-node" style="display: flex; flex-direction: column; align-items: center; position: relative;">
+          <!-- Node Card -->
+          <div class="card org-card" style="padding: 16px; width: 220px; text-align: center; cursor: pointer; border: 1.5px solid var(--border-main); border-radius: 12px; background: var(--bg-surface); box-shadow: 0 2px 8px rgba(0,0,0,0.04); transition: transform 0.15s ease, box-shadow 0.15s ease; position: relative;" onclick="PeopleView.openEmployeeDrawer('${node.id}')" onmouseenter="this.style.transform='translateY(-2px)'; this.style.boxShadow='0 6px 16px rgba(0,0,0,0.08)';" onmouseleave="this.style.transform='none'; this.style.boxShadow='0 2px 8px rgba(0,0,0,0.04)';">
+            <div style="width: 42px; height: 42px; border-radius: 50%; background: var(--primary-light); color: var(--primary); margin: 0 auto 8px auto; display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 0.9rem; border: 2px solid var(--primary-light);">
+              ${initials}
+            </div>
+            <div class="font-bold text-main" style="font-size: 0.95rem; margin-bottom: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;" title="${node.fullName || node.name}">${node.fullName || node.name}</div>
+            <div style="font-size: 0.8rem; font-weight: 600; color: var(--primary); margin-bottom: 6px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;" title="${node.designation || 'Staff'}">${node.designation || 'Staff'}</div>
+            <div style="margin-bottom: 8px;">
+              <span style="font-size: 0.72rem; padding: 2px 8px; border-radius: 9999px; background: var(--bg-hover); color: var(--text-secondary); display: inline-block;">${node.department || 'Operations'}</span>
+            </div>
+            <div style="font-size: 0.75rem; color: var(--text-muted); font-family: monospace; letter-spacing: 0.5px;">${node.employeeCode || ''}</div>
+            ${hasChildren ? `
+              <div style="margin-top: 10px; padding-top: 8px; border-top: 1px dashed var(--border-main);">
+                <span style="font-size: 0.72rem; font-weight: 600; color: var(--primary); background: var(--primary-light); padding: 3px 8px; border-radius: 6px;">
+                  ${node.children.length} Direct Report${node.children.length > 1 ? 's' : ''}
+                </span>
+              </div>
+            ` : ''}
           </div>
-          <div class="font-bold text-main" style="font-size: 0.85rem;">${node.fullName || node.name}</div>
-          <div class="text-secondary" style="font-size: 0.75rem;">${node.designation || 'Staff'}</div>
-          <div style="font-size: 0.7rem; color: var(--text-muted); font-family: monospace;">${node.employeeCode || ''}</div>
+
+          <!-- Tree Branch Connectors -->
+          ${hasChildren ? `
+            <div style="width: 2px; height: 20px; background: var(--primary);"></div>
+            <div class="tree-children" style="display: flex; justify-content: center; gap: 24px; position: relative; padding-top: 20px;">
+              ${node.children.length > 1 ? `
+                <div style="position: absolute; top: 0; left: calc(${100 / (node.children.length * 2)}%); right: calc(${100 / (node.children.length * 2)}%); height: 2px; background: var(--primary);"></div>
+              ` : `
+                <div style="position: absolute; top: 0; left: 50%; width: 2px; height: 20px; background: var(--primary);"></div>
+              `}
+              ${node.children.map((child, idx) => `
+                <div style="display: flex; flex-direction: column; align-items: center; position: relative;">
+                  ${node.children.length > 1 ? `<div style="position: absolute; top: -20px; width: 2px; height: 20px; background: var(--primary);"></div>` : ''}
+                  ${renderNode(child)}
+                </div>
+              `).join('')}
+            </div>
+          ` : ''}
         </div>
-        ${node.children && node.children.length > 0 ? `
-          <div style="margin-top: 12px; padding-top: 12px; border-top: 2px dashed var(--border-main); display: flex; justify-content: center; gap: 8px; flex-wrap: wrap;">
-            ${node.children.map(renderNode).join('')}
-          </div>
-        ` : ''}
-      </div>
-    `;
+      `;
+    };
 
     return `
-      <div class="card" style="padding: 24px; overflow-x: auto; text-align: center;">
-        <h3 style="font-size: 1.1rem; font-weight: 700; margin-bottom: 20px;">Diallo Organization Hierarchy Tree</h3>
+      <div class="card" style="padding: 24px; overflow-x: auto;">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 24px; flex-wrap: wrap; gap: 12px; border-bottom: 1px solid var(--border-main); padding-bottom: 16px;">
+          <div>
+            <h3 style="font-size: 1.15rem; font-weight: 700; color: var(--text-main); margin: 0 0 4px 0;">Diallo Organization Hierarchy Tree</h3>
+            <p style="font-size: 0.825rem; color: var(--text-muted); margin: 0;">Reporting relationships and organizational structure based on real personnel records</p>
+          </div>
+          <div style="display: flex; align-items: center; gap: 10px;">
+            <span class="badge badge-primary" style="font-size: 0.8rem; padding: 6px 12px;">${cleanList.length} Active Personnel</span>
+            <button class="btn btn-secondary btn-sm" onclick="PeopleView.purgeDemoEmployees()" style="color: var(--danger); border-color: rgba(239, 68, 68, 0.3);">
+              <svg width="15" height="15" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/>
+              </svg>
+              Clean Demo Records
+            </button>
+          </div>
+        </div>
+
         ${tree.length === 0 ? `
-          <div style="padding: 30px; color: var(--text-muted);">No employees registered to build hierarchy tree.</div>
+          <div style="padding: 48px; text-align: center; color: var(--text-muted);">
+            <div style="width: 48px; height: 48px; border-radius: 50%; background: var(--bg-hover); display: flex; align-items: center; justify-content: center; margin: 0 auto 12px auto; color: var(--text-muted);">
+              <svg width="24" height="24" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"/></svg>
+            </div>
+            <div style="font-weight: 600; font-size: 1rem; color: var(--text-main); margin-bottom: 4px;">No Hierarchy Records Found</div>
+            <div style="font-size: 0.85rem; margin-bottom: 16px;">Add real employees with designated reporting managers to visualize the organization hierarchy.</div>
+            <button class="btn btn-primary btn-sm" onclick="Forms.openEmployeeModal()">+ Onboard Employee</button>
+          </div>
         ` : `
-          <div style="display: inline-flex; justify-content: center; gap: 24px;">
+          <div style="min-width: 100%; display: flex; justify-content: center; gap: 48px; padding: 20px 10px; align-items: flex-start; overflow-x: auto;">
             ${tree.map(renderNode).join('')}
           </div>
         `}

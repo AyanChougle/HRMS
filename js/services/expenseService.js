@@ -55,8 +55,15 @@ const expenseService = {
       if (filters.status && filters.status !== 'All') query = query.where('status', '==', filters.status);
       if (filters.categoryId && filters.categoryId !== 'All') query = query.where('categoryCode', '==', filters.categoryId);
 
-      const snapshot = await query.orderBy('expenseDate', 'desc').get();
-      return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+      let snapshot;
+      try {
+        snapshot = await query.orderBy('expenseDate', 'desc').get();
+      } catch (idxErr) {
+        snapshot = await query.get();
+      }
+      const list = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+      list.sort((a, b) => new Date(b.expenseDate || 0) - new Date(a.expenseDate || 0));
+      return list;
     } catch (e) {
       console.warn('Error fetching expenses:', e);
       return [];
@@ -67,7 +74,7 @@ const expenseService = {
   async createExpense(expenseData) {
     try {
       const companyId = expenseData.companyId || AuthGuard.userProfile?.companyId || 'comp_diallo_india';
-      const employeeId = expenseData.employeeId || AuthGuard.userProfile?.employeeId || AuthGuard.currentUser?.uid || 'EMP001';
+      const employeeId = expenseData.employeeId || AuthGuard.userProfile?.employeeId || AuthGuard.currentUser?.uid || '';
       const employeeName = expenseData.employeeName || AuthGuard.userProfile?.displayName || 'Employee';
 
       const amount = Number(expenseData.amount) || 0;

@@ -78,11 +78,11 @@ const CreateEmployeeView = {
             <div class="grid" style="grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 16px; margin-bottom: 24px;">
               <div class="form-group">
                 <label class="form-label required">First Name</label>
-                <input type="text" id="new-emp-firstname" class="form-control" placeholder="e.g. Rahul" required />
+                <input type="text" id="new-emp-firstname" class="form-control" placeholder="e.g. First Name" required />
               </div>
               <div class="form-group">
                 <label class="form-label required">Last Name</label>
-                <input type="text" id="new-emp-lastname" class="form-control" placeholder="e.g. Sharma" required />
+                <input type="text" id="new-emp-lastname" class="form-control" placeholder="e.g. Last Name" required />
               </div>
               <div class="form-group">
                 <label class="form-label">Phone Number</label>
@@ -137,7 +137,7 @@ const CreateEmployeeView = {
               </div>
               <div class="form-group">
                 <label class="form-label">Assigned Mentor / Reporting Manager</label>
-                <input type="text" id="new-emp-mentor" class="form-control" placeholder="e.g. Vikram Sharma (Trainer)" />
+                <input type="text" id="new-emp-mentor" class="form-control" placeholder="e.g. Mentor / Manager Name" />
               </div>
               <div class="form-group">
                 <label class="form-label required">Date of Joining</label>
