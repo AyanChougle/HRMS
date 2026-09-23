@@ -34,12 +34,13 @@
   box-shadow: var(--shadow-xl);
   width: 100%;
   max-width: 580px;
-  max-height: 90vh;
+  max-height: calc(100vh - 32px);
   display: flex;
   flex-direction: column;
   transform: scale(0.96) translateY(8px);
   transition: transform 0.2s cubic-bezier(0.4, 0, 0.2, 1);
   overflow: hidden;
+  box-sizing: border-box;
 }
 
 .modal-dialog.modal-lg {

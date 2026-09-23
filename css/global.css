@@ -14,6 +14,9 @@ html {
   -webkit-text-size-adjust: 100%;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+  overflow-x: hidden;
+  max-width: 100vw;
+  width: 100%;
 }
 
 body {
@@ -21,9 +24,26 @@ body {
   background-color: var(--bg-app);
   color: var(--text-primary);
   overflow-x: hidden;
+  max-width: 100vw;
+  width: 100%;
   min-height: 100vh;
+  position: relative;
   transition: background-color var(--transition-speed) var(--transition-ease),
               color var(--transition-speed) var(--transition-ease);
+}
+
+/* Base Responsive Container Constraints */
+.app-container,
+.main-wrapper,
+.main-content,
+.card {
+  min-width: 0;
+  max-width: 100%;
+}
+
+img, svg, canvas, video {
+  max-width: 100%;
+  height: auto;
 }
 
 /* Scrollbar styling */
@@ -105,6 +125,35 @@ img, svg {
 .flex-wrap { flex-wrap: wrap; }
 
 .grid { display: grid; }
+.grid-responsive {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: 16px;
+}
+.grid-2-col {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 16px;
+}
+.grid-3-col {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 16px;
+}
+.grid-4-col {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 16px;
+}
+.flex-responsive {
+  display: flex;
+  flex-direction: row;
+}
+.truncate {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
 .w-full { width: 100%; }
 .text-center { text-align: center; }
 .text-right { text-align: right; }

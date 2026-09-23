@@ -139,6 +139,7 @@ const Router = {
   },
 
   navigate(route) {
+    document.querySelector('.app-container')?.classList.remove('mobile-sidebar-open');
     if (window.location.hash === `#${route}`) {
       this.handleHashChange();
     } else {

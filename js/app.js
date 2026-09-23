@@ -66,6 +66,8 @@ const App = {
       toggleBtn.addEventListener('click', () => {
         if (window.innerWidth < 768) {
           appContainer.classList.toggle('mobile-sidebar-open');
+        } else if (window.innerWidth <= 1024) {
+          appContainer.classList.toggle('sidebar-expanded');
         } else {
           appContainer.classList.toggle('sidebar-collapsed');
         }
@@ -77,6 +79,18 @@ const App = {
         appContainer.classList.remove('mobile-sidebar-open');
       });
     }
+
+    // Clean up mobile drawer and active popovers on screen resize
+    let resizeTimer = null;
+    window.addEventListener('resize', () => {
+      clearTimeout(resizeTimer);
+      resizeTimer = setTimeout(() => {
+        if (window.innerWidth >= 768 && appContainer.classList.contains('mobile-sidebar-open')) {
+          appContainer.classList.remove('mobile-sidebar-open');
+        }
+        document.querySelectorAll('.dropdown-popover.active').forEach(p => p.classList.remove('active'));
+      }, 100);
+    });
   },
 
   // Dropdowns (Company, Branch, Notifications, Profile)
