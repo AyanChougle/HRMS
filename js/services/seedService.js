@@ -32,26 +32,13 @@ const seedService = {
     }
   },
 
-  // Full re-seed on demand (can be triggered from Settings or console)
+  // System Initialization — ensures official Diallo facilities & 8 standardized departments
   async seedAll(force = false) {
-    console.log('[Seed] Commencing full system seed...');
+    console.log('[Seed] Verifying core organizational facilities and departments...');
     await this.seedCoreStructure();
-    await this.seedEmployees();
-    await this.seedAttendance();
-    await this.seedLeaveRecords();
-    await this.seedApprovalTasks();
-    await this.seedPayroll();
-    await this.seedExpenses();
-    await this.seedAssets();
-    await this.seedRecruitment();
-    await this.seedPerformance();
-    await this.seedDocuments();
-    await this.seedAnnouncements();
-    await this.seedNotifications();
-    await this.seedTraining();
-    console.log('[Seed] Full system seed finished successfully.');
+    console.log('[Seed] Core corporate structure verified.');
     if (typeof Toast !== 'undefined') {
-      Toast.success('Realistic corporate datasets populated across all modules!');
+      Toast.success('Core organizational structure and departments verified.');
     }
   },
 

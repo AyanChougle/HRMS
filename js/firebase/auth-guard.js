@@ -342,6 +342,21 @@ const AuthGuard = {
       avatarEls.forEach(el => { el.textContent = initials; });
       if (companyLabel) companyLabel.textContent = this.userProfile.companyName || 'Diallo India';
       if (branchLabel) branchLabel.textContent = this.userProfile.branchName || 'HQ - Mumbai';
+
+      // Hide or show admin-only actions in the profile popover
+      const rawRole = (this.userProfile.roleId || 'EMPLOYEE').toString().toUpperCase().trim();
+      const isSuperAdmin = rawRole === 'SUPER_ADMIN';
+      const isAdmin = isSuperAdmin || rawRole === 'COMPANY_ADMIN' || rawRole === 'ADMIN';
+
+      const permItem = document.getElementById('dropdown-permissions-item');
+      if (permItem) {
+        permItem.style.display = isSuperAdmin ? 'flex' : 'none';
+      }
+
+      const settingsItem = document.getElementById('dropdown-settings-item');
+      if (settingsItem) {
+        settingsItem.style.display = isAdmin ? 'flex' : 'none';
+      }
     }
   },
 

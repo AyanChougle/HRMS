@@ -52,16 +52,16 @@ const roleAccessService = {
       'documents', 'requests', 'workflows', 'communication', 'reports', 'settings', 'ess'
     ],
     HR: [
-      'dashboard', 'people', 'create-employee', 'attendance', 'leave', 'payroll',
-      'compliance', 'documents', 'requests', 'communication', 'reports', 'settings', 'ess'
+      'dashboard', 'people', 'create-employee', 'training', 'attendance', 'leave', 'payroll',
+      'recruitment', 'compliance', 'documents', 'requests', 'communication', 'reports', 'ess'
     ],
     HR_MANAGER: [
-      'dashboard', 'people', 'create-employee', 'attendance', 'leave', 'payroll',
-      'compliance', 'documents', 'requests', 'communication', 'reports', 'settings', 'ess'
+      'dashboard', 'people', 'create-employee', 'training', 'attendance', 'leave', 'payroll',
+      'recruitment', 'compliance', 'documents', 'requests', 'communication', 'reports', 'ess'
     ],
     TRAINER: [
       'dashboard', 'training', 'create-employee', 'attendance', 'leave',
-      'documents', 'communication', 'settings', 'ess'
+      'documents', 'communication', 'ess'
     ],
     TRAINEE: [
       'dashboard', 'training', 'compliance', 'attendance', 'leave',
@@ -69,7 +69,7 @@ const roleAccessService = {
     ],
     EMPLOYEE: [
       'dashboard', 'ess', 'attendance', 'leave', 'payroll', 'compliance',
-      'assets', 'documents', 'requests', 'communication', 'settings'
+      'assets', 'documents', 'requests', 'communication'
     ]
   },
 
@@ -128,8 +128,19 @@ const roleAccessService = {
   isRouteAllowed(roleId, routeKey) {
     const r = (roleId || 'EMPLOYEE').toUpperCase().trim();
     if (r === 'SUPER_ADMIN') return true;
+
+    // Normalize sub-route aliases to their primary permission key
+    let primaryKey = routeKey;
+    if (['employees', 'departments', 'org-chart'].includes(routeKey)) {
+      primaryKey = 'people';
+    } else if (['payslip-templates', 'email-config'].includes(routeKey)) {
+      primaryKey = 'payroll';
+    } else if (['security', 'qa', 'deployment', 'users', 'admin'].includes(routeKey)) {
+      primaryKey = 'settings';
+    }
+
     const allowed = this.getVisiblePagesForRole(r);
-    return allowed.includes(routeKey);
+    return allowed.includes(primaryKey);
   },
 
   async saveRolePermissions(roleId, pagesList) {

@@ -435,12 +435,6 @@ const SettingsView = {
             <p class="page-subtitle">Auto-numbering code series, SMTP gateways, notification channels and payslip design layouts</p>
           </div>
           <div class="page-actions">
-            <button class="btn btn-secondary btn-sm" onclick="seedService.seedAll(true).then(() => { if (window.Router) Router.navigate('dashboard'); })">
-              <svg width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/>
-              </svg>
-              <span>Seed Demo Datasets</span>
-            </button>
             <button class="btn btn-primary btn-sm" onclick="Toast.success('All system settings are up to date.')">Save Global Config</button>
           </div>
         </div>
@@ -554,25 +548,25 @@ const SettingsView = {
           </div>
         </div>
 
-        <!-- 6. Realistic Demo Datasets Seeder Card -->
-        <div class="module-nav-card" onclick="seedService.seedAll(true).then(() => { if (window.Router) Router.navigate('dashboard'); })" style="border: 1.5px solid rgba(16, 185, 129, 0.4);">
+        <!-- 6. Role & Page Access Governance Card -->
+        <div class="module-nav-card" onclick="Router.navigate('role-permissions')" style="border: 1.5px solid var(--primary-light);">
           <div>
             <div class="module-nav-card-top">
-              <div class="module-card-icon-box" style="background: rgba(16, 185, 129, 0.12); color: #10b981;">
+              <div class="module-card-icon-box" style="background: rgba(37, 99, 235, 0.12); color: var(--primary);">
                 <svg width="22" height="22" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/>
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"/>
                 </svg>
               </div>
-              <span class="module-card-badge" style="background: rgba(16, 185, 129, 0.15); color: #10b981;">Database Sync</span>
+              <span class="module-card-badge" style="background: var(--primary-light); color: var(--primary);">Governance</span>
             </div>
             <div class="module-card-content">
-              <h3>Synchronize Demo Datasets</h3>
-              <p>Populate realistic Indian corporate data across all modules (25 employees, attendance trends, leave ledgers, ATS pipeline, and expenses).</p>
+              <h3>Role & Page Visibility</h3>
+              <p>Configure which modules and sidebar pages are accessible or hidden for Super Admin, HR, Trainers, Trainees, and Employees.</p>
             </div>
           </div>
           <div class="module-card-footer">
-            <span style="color: #10b981; font-weight: 600;">Run Dataset Sync</span>
-            <svg class="arrow-icon" fill="none" viewBox="0 0 24 24" stroke="currentColor" style="color: #10b981;"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg>
+            <span style="color: var(--primary); font-weight: 600;">Manage Role Permissions</span>
+            <svg class="arrow-icon" fill="none" viewBox="0 0 24 24" stroke="currentColor" style="color: var(--primary);"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg>
           </div>
         </div>
       </div>

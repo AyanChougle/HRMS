@@ -7,7 +7,7 @@ const DashboardView = {
   getRoleView() {
     const roleId = (AuthGuard._previewRoleId || AuthGuard.userProfile?.roleId || 'EMPLOYEE').toString().toUpperCase().trim();
 
-    if (roleId === 'SUPER_ADMIN' || roleId === 'COMPANY_ADMIN' || roleId === 'HR' || roleId === 'PAYROLL') {
+    if (roleId === 'SUPER_ADMIN' || roleId === 'COMPANY_ADMIN' || roleId === 'ADMIN' || roleId === 'HR' || roleId === 'HR_MANAGER' || roleId === 'PAYROLL') {
       return window.AdminDashboardView;
     } else if (roleId === 'TRAINER') {
       return window.TrainerDashboardView || window.ManagerDashboardView;
