@@ -9,11 +9,17 @@ const attendanceSettingsService = {
     timezone: 'Asia/Kolkata',
     defaultStartTime: '10:00',
     defaultEndTime: '19:00',
-    graceMinutes: 15,
+    graceMinutes: 10, // Grace period up to 10:10 AM (late mark starts 10:10:01 AM)
+    halfDayAfterTime: '11:10', // Reporting after 11:10 AM marked as Half Day
+    halfDayAfterMinutes: 70, // 70 mins from 10:00 AM = 11:10 AM
+    lateMarksAllowed: 3, // Up to 3 late marks no deduction; 4th onwards = Half Day deduction
     minimumHalfDayMinutes: 270, // 4.5 hours
     minimumFullDayMinutes: 540, // 9 hours
     overtimeAfterMinutes: 540,  // 9 hours (OT starts after 9h on shift)
     weeklyOffDays: ['Sunday'],
+    workingDaysPerWeek: 6,
+    sandwichLeaveDeductionDays: 3, // 3 Days Salary Deduct for sandwich leave
+    unauthorizedLeaveDeductionDays: 2, // 2 days deduction for UL
     status: 'ACTIVE'
   },
 

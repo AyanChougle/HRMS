@@ -7,6 +7,96 @@
 const complianceService = {
   DEFAULT_COMPANY_ID: 'comp_diallo_india',
 
+  // Master Company Policies & Rules Format
+  MASTER_POLICIES: {
+    companyOverview: {
+      name: 'Diallo % (Diallo India Private Limited)',
+      location: 'Ghansoli Mahape, Navi Mumbai',
+      workingDays: '6 Days (Monday to Saturday)',
+      workingHours: '9 Hours (10:00 AM – 07:00 PM)',
+      weeklyOff: 'Sunday and Declared Government Holidays',
+      hrContact: '9372868617'
+    },
+    timingsAndDressCode: {
+      officeTimings: '10:00 AM to 07:00 PM',
+      dressCode: 'Monday to Wednesday: Formal | Thursday to Saturday: Casual'
+    },
+    attendanceRules: {
+      method: 'Biometric Attendance',
+      reportingTime: '10:00 AM',
+      gracePeriod: 'Up to 10:10 AM',
+      lateMarkStart: '10:10:01 AM',
+      lateMarkRules: 'Up to 3 late marks: No deduction. 4th late mark onwards: Half Day marked with salary deduction.',
+      halfDayRule: 'Reporting after 11:10 AM is marked as Half Day.',
+      correctionProcess: 'Attendance correction request must be sent by email on next working day.',
+      regularizationProcess: 'Must be approved by Reporting Manager.'
+    },
+    generalRules: {
+      absenceRules: 'Leave must be informed and approved by HR/Reporting Manager in advance. Uninformed absence is marked as UL (Unauthorized Leave) with 2 days salary deduction. Repeated unauthorized absence may lead to disciplinary action.',
+      leaveTypes: 'Only Paid Leave is applicable.',
+      sandwichLeave: 'Weekly offs/holidays between leave days are treated as leave (3 Days Salary Deducted).',
+      workplaceBehaviour: 'Maintain respectful, disciplined behaviour. No abusive language, harassment, or misconduct. Follow management instructions.',
+      disciplinaryAction: 'Violation of company rules may result in warning, salary deduction, suspension or termination.'
+    },
+    codeOfConduct: [
+      'Maintain respectful and professional behaviour at all times.',
+      'Follow company rules and management instructions promptly.',
+      'Maintain discipline, punctuality, and attendance integrity.',
+      'Keep company and client information strictly confidential.',
+      'Use company assets responsibly and prevent damage or loss.',
+      'Zero tolerance for harassment, misconduct, abusive language or discrimination.',
+      'Maintain a positive, collaborative, and professional workplace environment.'
+    ],
+    mobilePolicy: [
+      'Avoid unnecessary personal mobile phone usage during working hours.',
+      'Use mobile phones strictly when required for official purposes.',
+      'Prioritize official client and operational calls.',
+      'Do not take photos or videos of confidential company screens, documents, or data without explicit authorization.'
+    ],
+    confidentialityPolicy: [
+      'Do not share company or client information with unauthorized persons.',
+      'Keep employee data, contracts, financials, and trade records confidential.',
+      'Do not use or share company intellectual property for personal purposes.'
+    ],
+    kpiPolicy: [
+      'Employees must achieve their assigned monthly targets and KPIs.',
+      'Performance is reviewed periodically with transparent scorecards.',
+      'Regular constructive feedback is provided by Reporting Managers.',
+      'Consistent poor performance may lead to structured corrective action.',
+      'Consistent high performance is rewarded with incentives, appraisals, and promotions.'
+    ],
+    exitProcess: {
+      resignation: 'Resignation must be submitted in writing to HR.',
+      noticePeriodLess6Mo: '15 Days notice period for service under 6 months.',
+      noticePeriodMore6Mo: '30 Days notice period for service 6 months or more.',
+      handover: 'Complete all pending tasks and handover responsibilities before exit.',
+      assetReturn: 'All company assets (laptop, ID, SIM, headset) returned before last day.',
+      fnfSettlement: 'Full & Final (F&F) settlement processed after 60 days as per company policy.',
+      relievingLetter: 'Experience and Relieving Letter issued after 60 days upon full settlement.'
+    },
+    assetsProvided: [
+      'Laptop / Desktop Workstation',
+      'Company ID Card',
+      'Official SIM Card',
+      'Noise-Canceling Headset',
+      'Access Credentials & Tools'
+    ],
+    departments: [
+      { name: 'Digital Team', roles: 'Digital Executive', responsibilities: 'Digital activities and online support' },
+      { name: 'Operations', roles: 'Operations Executive', responsibilities: 'Daily operational activities' },
+      { name: 'Sales', roles: 'TL, Assistant TL, Sales Agent', responsibilities: 'Sales, Client handling and target achievement' },
+      { name: 'Real Estate', roles: 'Real Estate Executive', responsibilities: 'Real estate sales and client handling' },
+      { name: 'Car Rental', roles: 'Car Rental Executive', responsibilities: 'Car rental sales and customer handling' },
+      { name: 'Compliance', roles: 'Compliance Executive', responsibilities: 'Compliance and documentation' },
+      { name: 'Training', roles: 'Trainer', responsibilities: 'Employee training and development' },
+      { name: 'Human Resources', roles: 'Recruiter, HR Lead', responsibilities: 'Recruiter, Onboarding, Attendance, Employee Coordination & HR Operation' }
+    ]
+  },
+
+  getMasterPolicies() {
+    return this.MASTER_POLICIES;
+  },
+
   // 1. REAL-TIME COMPLIANCE AUDIT
   async getComplianceOverview(companyId = this.DEFAULT_COMPANY_ID) {
     try {

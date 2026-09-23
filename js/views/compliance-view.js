@@ -8,10 +8,15 @@ const ComplianceView = {
   activeTab: 'overview',
 
   async render() {
-    const role = AuthGuard.userProfile?.roleId || 'EMPLOYEE';
-    const isHRorAdmin = role === 'SUPER_ADMIN' || role === 'COMPANY_ADMIN' || role === 'HR_MANAGER' || role === 'HR';
+    const rawRole = (AuthGuard._previewRoleId || AuthGuard.userProfile?.roleId || 'EMPLOYEE').toString().toUpperCase().trim();
+    const isHRorAdmin = rawRole === 'SUPER_ADMIN' || rawRole === 'COMPANY_ADMIN' || rawRole === 'HR_MANAGER' || rawRole === 'HR';
+    const isTrainee = rawRole === 'TRAINEE';
     const companyId = AuthGuard.userProfile?.companyId || 'comp_diallo_india';
     const currentEmployeeId = AuthGuard.userProfile?.employeeId || AuthGuard.currentUser?.uid;
+
+    if (isTrainee && (this.activeTab === 'overview' || this.activeTab === 'probation' || this.activeTab === 'cases')) {
+      this.activeTab = 'policies';
+    }
 
     let [compliance, probations, promotions, transfers, letters, certs, trainings, cases, grievances, employees] = await Promise.all([
       complianceService.getComplianceOverview(companyId),
@@ -31,12 +36,12 @@ const ComplianceView = {
         <div class="breadcrumb">
           <a href="#dashboard">Dashboard</a>
           <span class="breadcrumb-separator">/</span>
-          <span class="breadcrumb-current">Advanced HR & Compliance</span>
+          <span class="breadcrumb-current">${isTrainee ? 'Company Policies & Handbook' : 'Advanced HR & Compliance'}</span>
         </div>
         <div class="page-title-row">
           <div>
-            <h1 class="page-title">Advanced HR & Compliance Management</h1>
-            <p class="page-subtitle">Employee lifecycle oversight, probations, promotions, official HR letters, certifications, and compliance audit</p>
+            <h1 class="page-title">${isTrainee ? 'Diallo Master HR Policies & Code of Conduct' : 'Advanced HR & Compliance Management'}</h1>
+            <p class="page-subtitle">${isTrainee ? 'Official company timings, dress code, biometric attendance rules, conduct standards, and employee policies' : 'Employee lifecycle oversight, probations, promotions, official HR letters, certifications, and compliance audit'}</p>
           </div>
           <div class="page-actions">
             ${isHRorAdmin ? `
@@ -46,11 +51,18 @@ const ComplianceView = {
                 </svg>
                 + Issue HR Letter
               </button>
+            ` : (isTrainee ? `
+              <a href="tel:9372868617" class="btn btn-primary btn-sm">
+                <svg width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z"/>
+                </svg>
+                HR Helpline: 9372868617
+              </a>
             ` : `
               <button class="btn btn-primary btn-sm" onclick="ComplianceView.openSubmitGrievanceModal()">
                 Submit Grievance
               </button>
-            `}
+            `)}
           </div>
         </div>
       </div>
@@ -114,38 +126,43 @@ const ComplianceView = {
         </div>
       </div>
 
-      <!-- Navigation Tabs (9 Tabs) -->
+      <!-- Navigation Tabs -->
       <div class="tabs-nav" style="margin-bottom: 20px; overflow-x: auto; white-space: nowrap;">
-        <button class="tab-btn ${this.activeTab === 'overview' ? 'active' : ''}" onclick="ComplianceView.switchTab('overview')">
-          Compliance Matrix
+        <button class="tab-btn ${this.activeTab === 'policies' ? 'active' : ''}" onclick="ComplianceView.switchTab('policies')">
+          Master HR Policies & Rules
         </button>
-        <button class="tab-btn ${this.activeTab === 'probation' ? 'active' : ''}" onclick="ComplianceView.switchTab('probation')">
-          Probation & Confirmation (${probations.length})
-        </button>
-        <button class="tab-btn ${this.activeTab === 'promotions' ? 'active' : ''}" onclick="ComplianceView.switchTab('promotions')">
-          Promotions & Transfers (${promotions.length + transfers.length})
-        </button>
-        <button class="tab-btn ${this.activeTab === 'letters' ? 'active' : ''}" onclick="ComplianceView.switchTab('letters')">
-          Official HR Letters (${letters.length})
-        </button>
-        <button class="tab-btn ${this.activeTab === 'certifications' ? 'active' : ''}" onclick="ComplianceView.switchTab('certifications')">
-          Certifications (${certs.length})
-        </button>
-        <button class="tab-btn ${this.activeTab === 'training' ? 'active' : ''}" onclick="ComplianceView.switchTab('training')">
-          Training & Learning (${trainings.length})
-        </button>
-        ${isHRorAdmin ? `
-          <button class="tab-btn ${this.activeTab === 'cases' ? 'active' : ''}" onclick="ComplianceView.switchTab('cases')">
-            Disciplinary & HR Cases (${cases.length})
+        ${!isTrainee ? `
+          <button class="tab-btn ${this.activeTab === 'overview' ? 'active' : ''}" onclick="ComplianceView.switchTab('overview')">
+            Compliance Matrix
           </button>
-        ` : ''}
-        <button class="tab-btn ${this.activeTab === 'grievances' ? 'active' : ''}" onclick="ComplianceView.switchTab('grievances')">
-          Grievances (${grievances.length})
-        </button>
-        ${isHRorAdmin ? `
-          <button class="tab-btn ${this.activeTab === 'salary-history' ? 'active' : ''}" onclick="ComplianceView.switchTab('salary-history')">
-            Salary Revision History
+          <button class="tab-btn ${this.activeTab === 'probation' ? 'active' : ''}" onclick="ComplianceView.switchTab('probation')">
+            Probation & Confirmation (${probations.length})
           </button>
+          <button class="tab-btn ${this.activeTab === 'promotions' ? 'active' : ''}" onclick="ComplianceView.switchTab('promotions')">
+            Promotions & Transfers (${promotions.length + transfers.length})
+          </button>
+          <button class="tab-btn ${this.activeTab === 'letters' ? 'active' : ''}" onclick="ComplianceView.switchTab('letters')">
+            Official HR Letters (${letters.length})
+          </button>
+          <button class="tab-btn ${this.activeTab === 'certifications' ? 'active' : ''}" onclick="ComplianceView.switchTab('certifications')">
+            Certifications (${certs.length})
+          </button>
+          <button class="tab-btn ${this.activeTab === 'training' ? 'active' : ''}" onclick="ComplianceView.switchTab('training')">
+            Training & Learning (${trainings.length})
+          </button>
+          ${isHRorAdmin ? `
+            <button class="tab-btn ${this.activeTab === 'cases' ? 'active' : ''}" onclick="ComplianceView.switchTab('cases')">
+              Disciplinary & HR Cases (${cases.length})
+            </button>
+          ` : ''}
+          <button class="tab-btn ${this.activeTab === 'grievances' ? 'active' : ''}" onclick="ComplianceView.switchTab('grievances')">
+            Grievances (${grievances.length})
+          </button>
+          ${isHRorAdmin ? `
+            <button class="tab-btn ${this.activeTab === 'salary-history' ? 'active' : ''}" onclick="ComplianceView.switchTab('salary-history')">
+              Salary Revision History
+            </button>
+          ` : ''}
         ` : ''}
       </div>
 
@@ -163,6 +180,7 @@ const ComplianceView = {
 
   async renderActiveTab(compliance, probations, promotions, transfers, letters, certs, trainings, cases, grievances, employees, isHRorAdmin, currentEmployeeId, companyId) {
     switch (this.activeTab) {
+      case 'policies': return this.renderPoliciesTab();
       case 'probation': return this.renderProbationTab(probations, isHRorAdmin);
       case 'promotions': return this.renderPromotionsTab(promotions, transfers, isHRorAdmin);
       case 'letters': return this.renderLettersTab(letters, isHRorAdmin);
@@ -171,8 +189,319 @@ const ComplianceView = {
       case 'cases': return this.renderCasesTab(cases, isHRorAdmin);
       case 'grievances': return this.renderGrievancesTab(grievances, isHRorAdmin);
       case 'salary-history': return await this.renderSalaryHistoryTab(companyId);
-      default: return this.renderOverviewTab(compliance);
+      default: return isHRorAdmin ? this.renderOverviewTab(compliance) : this.renderPoliciesTab();
     }
+  },
+
+  // MASTER HR POLICIES & COMPANY OVERVIEW TAB
+  renderPoliciesTab() {
+    const policies = (typeof complianceService !== 'undefined' && complianceService.getMasterPolicies) 
+      ? complianceService.getMasterPolicies() 
+      : {};
+    const overview = policies.companyOverview || {
+      name: 'Diallo % (Diallo India Private Limited)',
+      location: 'Ghansoli Mahape, Navi Mumbai',
+      workingDays: '6 Days (Monday to Saturday)',
+      workingHours: '9 Hours (10:00 AM – 07:00 PM)',
+      weeklyOff: 'Sunday and Declared Government Holidays',
+      hrContact: '9372868617'
+    };
+    const timings = policies.timingsAndDressCode || {
+      officeTimings: '10:00 AM to 07:00 PM',
+      dressCode: 'Monday to Wednesday: Formal | Thursday to Saturday: Casual'
+    };
+    const att = policies.attendanceRules || {};
+    const general = policies.generalRules || {};
+    const conduct = policies.codeOfConduct || [];
+    const mobile = policies.mobilePolicy || [];
+    const exit = policies.exitProcess || {};
+    const departments = policies.departments || [];
+
+    return `
+      <!-- Company Overview Hero Header -->
+      <div class="card" style="margin-bottom: 24px; background: linear-gradient(135deg, rgba(37,99,235,0.06), rgba(15,23,42,0.02)); border: 1px solid var(--border-main);">
+        <div class="card-body" style="padding: 24px;">
+          <div style="display: flex; justify-content: space-between; align-items: flex-start; flex-wrap: wrap; gap: 16px;">
+            <div>
+              <div style="display: inline-flex; align-items: center; gap: 8px; margin-bottom: 8px;">
+                <span class="badge badge-primary" style="font-weight: 700;">COMPANY OVERVIEW • MASTER FORMAT</span>
+                <span class="badge badge-success">Official Policy</span>
+              </div>
+              <h2 style="font-size: 1.5rem; font-weight: 800; color: var(--text-main); margin: 0 0 6px 0;">${overview.name}</h2>
+              <div style="font-size: 0.95rem; color: var(--text-secondary); display: flex; align-items: center; gap: 6px;">
+                <svg width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"/>
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"/>
+                </svg>
+                <span><strong>Location:</strong> ${overview.location}</span>
+              </div>
+            </div>
+
+            <!-- HR Contact Card -->
+            <div style="background: var(--bg-surface); border: 1px solid var(--border-main); border-radius: var(--radius-md); padding: 14px 20px; display: flex; align-items: center; gap: 14px; box-shadow: 0 2px 4px rgba(0,0,0,0.04);">
+              <div style="width: 44px; height: 44px; border-radius: 50%; background: var(--primary-light); color: var(--primary); display: flex; align-items: center; justify-content: center;">
+                <svg width="22" height="22" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z"/>
+                </svg>
+              </div>
+              <div>
+                <div style="font-size: 0.75rem; text-transform: uppercase; font-weight: 700; color: var(--text-muted); letter-spacing: 0.05em;">HR Official Helpline</div>
+                <div style="font-size: 1.25rem; font-weight: 800; color: var(--primary); font-family: var(--font-family-mono);">${overview.hrContact}</div>
+                <div style="font-size: 0.75rem; color: var(--text-secondary);">Direct Assistance & Queries</div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Quick Metrics Ribbon -->
+          <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 16px; margin-top: 20px; padding-top: 18px; border-top: 1px solid var(--border-main);">
+            <div>
+              <div style="font-size: 0.78rem; color: var(--text-muted); font-weight: 600;">Working Days</div>
+              <div style="font-size: 1.05rem; font-weight: 700; color: var(--text-main);">${overview.workingDays}</div>
+            </div>
+            <div>
+              <div style="font-size: 0.78rem; color: var(--text-muted); font-weight: 600;">Shift Duration</div>
+              <div style="font-size: 1.05rem; font-weight: 700; color: var(--text-main);">${overview.workingHours}</div>
+              <div style="font-size: 0.75rem; color: var(--text-muted);">8h Core Work • 1h Break</div>
+            </div>
+            <div>
+              <div style="font-size: 0.78rem; color: var(--text-muted); font-weight: 600;">Weekly Off</div>
+              <div style="font-size: 1.05rem; font-weight: 700; color: var(--text-main);">${overview.weeklyOff}</div>
+            </div>
+            <div>
+              <div style="font-size: 0.78rem; color: var(--text-muted); font-weight: 600;">Dress Code</div>
+              <div style="font-size: 0.88rem; font-weight: 600; color: var(--text-main);">${timings.dressCode}</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Core Policies Grid -->
+      <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(420px, 1fr)); gap: 20px; margin-bottom: 24px;">
+        
+        <!-- 1. Timings & Biometric Attendance -->
+        <div class="card">
+          <div class="card-header" style="border-left: 4px solid var(--primary);">
+            <div>
+              <div class="card-title">Office Timings & Biometric Rules</div>
+              <div class="card-subtitle">Punctuality standards and late-mark regulations</div>
+            </div>
+          </div>
+          <div class="card-body">
+            <div style="display: flex; flex-direction: column; gap: 12px; font-size: 0.9rem;">
+              <div style="display: flex; justify-content: space-between; padding-bottom: 8px; border-bottom: 1px solid var(--border-main);">
+                <span class="text-muted">Standard Timings:</span>
+                <strong style="color: var(--text-main);">${att.reportingTime || '10:00 AM'} to 07:00 PM</strong>
+              </div>
+              <div style="display: flex; justify-content: space-between; padding-bottom: 8px; border-bottom: 1px solid var(--border-main);">
+                <span class="text-muted">Grace Period:</span>
+                <strong style="color: var(--success);">${att.gracePeriod || 'Up to 10:10 AM'} (10 Minutes)</strong>
+              </div>
+              <div style="display: flex; justify-content: space-between; padding-bottom: 8px; border-bottom: 1px solid var(--border-main);">
+                <span class="text-muted">Late Mark Cutoff:</span>
+                <strong style="color: #d97706;">From ${att.lateMarkStart || '10:10:01 AM'}</strong>
+              </div>
+              <div style="background: rgba(217, 119, 6, 0.08); border-left: 3px solid #d97706; padding: 10px 12px; border-radius: var(--radius-sm); font-size: 0.85rem;">
+                <strong>Late Mark Policy:</strong> Up to 3 late marks: No deduction. 4th late mark onwards: <strong>Half Day marked with salary deduction</strong>.
+              </div>
+              <div style="background: rgba(220, 38, 38, 0.08); border-left: 3px solid var(--danger); padding: 10px 12px; border-radius: var(--radius-sm); font-size: 0.85rem;">
+                <strong>Half Day Threshold:</strong> Reporting after <strong>11:10 AM</strong> is automatically marked as Half Day.
+              </div>
+              <div style="font-size: 0.825rem; color: var(--text-muted); line-height: 1.5; margin-top: 4px;">
+                <strong>Attendance Lockout:</strong> Once punched out for the day, the timecard is strictly locked until <strong>09:30 AM next working day</strong>. Attendance corrections must be submitted via email on the next working day with Reporting Manager approval.
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- 2. Absence, Deductions & Sandwich Rules -->
+        <div class="card">
+          <div class="card-header" style="border-left: 4px solid var(--danger);">
+            <div>
+              <div class="card-title">Absence, UL & Sandwich Rules</div>
+              <div class="card-subtitle">Mandatory leave notice and deduction frameworks</div>
+            </div>
+          </div>
+          <div class="card-body">
+            <div style="display: flex; flex-direction: column; gap: 12px; font-size: 0.9rem;">
+              <div style="background: rgba(220, 38, 38, 0.08); border-left: 3px solid var(--danger); padding: 12px; border-radius: var(--radius-sm);">
+                <div style="font-weight: 700; color: var(--danger); margin-bottom: 4px;">Unauthorized Leave (UL) — 2 Days Deduction</div>
+                <div style="font-size: 0.85rem; color: var(--text-main); line-height: 1.45;">
+                  Absence without prior notice or HR approval is recorded as UL. <strong>2 Days of salary will be deducted</strong> for every unauthorized absence. Repeated UL is subject to immediate disciplinary termination.
+                </div>
+              </div>
+
+              <div style="background: rgba(217, 119, 6, 0.08); border-left: 3px solid #d97706; padding: 12px; border-radius: var(--radius-sm);">
+                <div style="font-weight: 700; color: #b45309; margin-bottom: 4px;">Sandwich Leave Rule — 3 Days Deduction</div>
+                <div style="font-size: 0.85rem; color: var(--text-main); line-height: 1.45;">
+                  Taking leave on both Saturday and Monday (or spanning Sunday / government holidays) triggers the sandwich policy. The intervening weekly offs are treated as leave, resulting in <strong>3 Days of salary deduction</strong>.
+                </div>
+              </div>
+
+              <div style="display: flex; justify-content: space-between; padding-top: 6px; font-size: 0.85rem;">
+                <span class="text-muted">Applicable Leave Type:</span>
+                <strong style="color: var(--primary);">Only Paid Leave is Applicable</strong>
+              </div>
+              <div style="font-size: 0.825rem; color: var(--text-muted); line-height: 1.45;">
+                Prior intimation and written approval from HR / Reporting Manager is mandatory for all planned leaves.
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- 3. Employee Code of Conduct -->
+        <div class="card">
+          <div class="card-header" style="border-left: 4px solid var(--success);">
+            <div>
+              <div class="card-title">Employee Code of Conduct</div>
+              <div class="card-subtitle">Workplace decorum, discipline, and professional integrity</div>
+            </div>
+          </div>
+          <div class="card-body">
+            <ul style="margin: 0; padding: 0; list-style: none; display: flex; flex-direction: column; gap: 10px;">
+              ${conduct.map(rule => `
+                <li style="display: flex; align-items: flex-start; gap: 10px; font-size: 0.88rem; line-height: 1.45;">
+                  <div style="width: 20px; height: 20px; border-radius: 50%; background: var(--success-light); color: var(--success); display: flex; align-items: center; justify-content: center; flex-shrink: 0; margin-top: 2px;">
+                    <svg width="12" height="12" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M5 13l4 4L19 7"/>
+                    </svg>
+                  </div>
+                  <span style="color: var(--text-main);">${rule}</span>
+                </li>
+              `).join('')}
+            </ul>
+          </div>
+        </div>
+
+        <!-- 4. Mobile / Phone & Confidentiality Policy -->
+        <div class="card">
+          <div class="card-header" style="border-left: 4px solid var(--info);">
+            <div>
+              <div class="card-title">Mobile Phone & Confidentiality Rules</div>
+              <div class="card-subtitle">Information security and phone usage protocol</div>
+            </div>
+          </div>
+          <div class="card-body">
+            <ul style="margin: 0; padding: 0; list-style: none; display: flex; flex-direction: column; gap: 10px;">
+              ${mobile.map(rule => `
+                <li style="display: flex; align-items: flex-start; gap: 10px; font-size: 0.88rem; line-height: 1.45;">
+                  <div style="width: 20px; height: 20px; border-radius: 50%; background: var(--info-light); color: var(--info); display: flex; align-items: center; justify-content: center; flex-shrink: 0; margin-top: 2px;">
+                    <svg width="12" height="12" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M12 18h.01M8 21h8a2 2 0 002-2V5a2 2 0 00-2-2H8a2 2 0 00-2 2v14a2 2 0 002 2z"/>
+                    </svg>
+                  </div>
+                  <span style="color: var(--text-main);">${rule}</span>
+                </li>
+              `).join('')}
+            </ul>
+            <div style="margin-top: 14px; padding: 10px 12px; background: var(--bg-hover); border-radius: var(--radius-sm); font-size: 0.825rem; color: var(--text-secondary);">
+              <strong>Confidentiality Warning:</strong> Taking photographs or recordings of client data or company screens is strictly prohibited and constitutes a criminal breach of confidentiality.
+            </div>
+          </div>
+        </div>
+
+        <!-- 5. Separation, Notice Period & Asset Return -->
+        <div class="card">
+          <div class="card-header" style="border-left: 4px solid var(--primary);">
+            <div>
+              <div class="card-title">Separation & Notice Period Policy</div>
+              <div class="card-subtitle">Resignation procedures, settlement timelines, and asset handover</div>
+            </div>
+          </div>
+          <div class="card-body">
+            <div style="display: flex; flex-direction: column; gap: 10px; font-size: 0.88rem;">
+              <div style="display: flex; justify-content: space-between; padding-bottom: 8px; border-bottom: 1px solid var(--border-main);">
+                <span class="text-muted">Notice Period (&lt; 6 Months Service):</span>
+                <strong style="color: var(--text-main);">${exit.noticePeriodLess6Mo || '15 Days'}</strong>
+              </div>
+              <div style="display: flex; justify-content: space-between; padding-bottom: 8px; border-bottom: 1px solid var(--border-main);">
+                <span class="text-muted">Notice Period (&ge; 6 Months Service):</span>
+                <strong style="color: var(--text-main);">${exit.noticePeriodMore6Mo || '30 Days'}</strong>
+              </div>
+              <div style="display: flex; justify-content: space-between; padding-bottom: 8px; border-bottom: 1px solid var(--border-main);">
+                <span class="text-muted">F&amp;F Settlement Timeline:</span>
+                <strong style="color: var(--primary);">${exit.fnfSettlement || '60 Days'}</strong>
+              </div>
+              <div style="display: flex; justify-content: space-between; padding-bottom: 8px; border-bottom: 1px solid var(--border-main);">
+                <span class="text-muted">Relieving / Experience Letters:</span>
+                <strong style="color: var(--text-main);">Issued after 60 Days (Upon F&amp;F Clearance)</strong>
+              </div>
+              <div style="margin-top: 6px; padding: 10px 12px; background: var(--bg-hover); border-radius: var(--radius-sm); font-size: 0.825rem;">
+                <strong>Mandatory Assets to Return:</strong> Laptop / Desktop workstation, ID Card, Official SIM Card, Noise-canceling Headset.
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- 6. KPI, Performance & Incentives -->
+        <div class="card">
+          <div class="card-header" style="border-left: 4px solid var(--success);">
+            <div>
+              <div class="card-title">Performance, KPIs & Appraisal Policy</div>
+              <div class="card-subtitle">Target achievement, periodic reviews, and incentive structures</div>
+            </div>
+          </div>
+          <div class="card-body">
+            <div style="display: flex; flex-direction: column; gap: 10px; font-size: 0.88rem;">
+              <div style="display: flex; align-items: flex-start; gap: 10px;">
+                <div style="width: 8px; height: 8px; border-radius: 50%; background: var(--primary); margin-top: 6px; flex-shrink: 0;"></div>
+                <span>Monthly KPIs and target milestones must be achieved consistently by all operational staff.</span>
+              </div>
+              <div style="display: flex; align-items: flex-start; gap: 10px;">
+                <div style="width: 8px; height: 8px; border-radius: 50%; background: var(--primary); margin-top: 6px; flex-shrink: 0;"></div>
+                <span>Performance is reviewed monthly and quarterly through transparent scorecards.</span>
+              </div>
+              <div style="display: flex; align-items: flex-start; gap: 10px;">
+                <div style="width: 8px; height: 8px; border-radius: 50%; background: var(--primary); margin-top: 6px; flex-shrink: 0;"></div>
+                <span>High performance is rewarded with structured monthly performance incentives and rapid promotions.</span>
+              </div>
+              <div style="display: flex; align-items: flex-start; gap: 10px;">
+                <div style="width: 8px; height: 8px; border-radius: 50%; background: #d97706; margin-top: 6px; flex-shrink: 0;"></div>
+                <span>Continuous underperformance is supported with a formal 30-day Performance Improvement Plan (PIP).</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+      </div>
+
+      <!-- 7. Standardized Departments & Roles Directory -->
+      <div class="card">
+        <div class="card-header">
+          <div>
+            <div class="card-title">Diallo Standardized Departments & Roles Matrix</div>
+            <div class="card-subtitle">The 8 official functional departments, key designations, and operational responsibilities</div>
+          </div>
+        </div>
+        <div class="table-container">
+          <table class="data-table">
+            <thead>
+              <tr>
+                <th style="width: 60px;">Sr.</th>
+                <th>Department Name</th>
+                <th>Standard Designations &amp; Roles</th>
+                <th>Primary Responsibilities &amp; Operations</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${departments.map((dept, idx) => `
+                <tr>
+                  <td style="font-weight: 700; color: var(--text-muted);">${idx + 1}</td>
+                  <td>
+                    <span class="badge badge-primary" style="font-size: 0.85rem; font-weight: 700;">${dept.name}</span>
+                  </td>
+                  <td style="font-weight: 600; color: var(--text-main); font-size: 0.9rem;">
+                    ${dept.roles}
+                  </td>
+                  <td style="color: var(--text-secondary); font-size: 0.875rem;">
+                    ${dept.responsibilities}
+                  </td>
+                </tr>
+              `).join('')}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    `;
   },
 
   // 1. COMPLIANCE MATRIX OVERVIEW

@@ -45,36 +45,6 @@ const hrService = {
         .get();
       
       let list = snap.docs.map(d => ({ id: d.id, ...d.data() }));
-      if (list.length === 0) {
-        // Seed default probation tracking records for demo
-        const employees = await employeeService.getAllEmployees(companyId);
-        const probationEmps = employees.filter(e => e.status === 'PROBATION' || e.employmentStatus === 'PROBATION').slice(0, 4);
-        if (probationEmps.length === 0 && employees.length > 0) {
-          probationEmps.push(employees[0]);
-        }
-
-        const defaults = probationEmps.map((emp, i) => ({
-          employeeId: emp.id,
-          employeeName: emp.fullName || emp.name,
-          employeeCode: emp.employeeCode || `EMP-00${i+1}`,
-          department: emp.department || 'Engineering',
-          designation: emp.designation || 'Software Engineer',
-          startDate: '2026-06-01',
-          expectedEndDate: '2026-09-01',
-          durationMonths: 3,
-          status: 'ACTIVE',
-          reviewStatus: 'PENDING_HR_REVIEW',
-          companyId
-        }));
-
-        for (const p of defaults) {
-          const docRef = await db.collection('probationRecords').add({
-            ...p,
-            createdAt: firebase.firestore.FieldValue.serverTimestamp()
-          });
-          list.push({ id: docRef.id, ...p });
-        }
-      }
       return list;
     } catch (e) {
       console.error('Error fetching probations:', e);

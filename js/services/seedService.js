@@ -8,37 +8,11 @@
 const seedService = {
   COMPANY_ID: 'comp_diallo_india',
 
-  // Self-healing bootstrap: checks each module independently and populates if empty
+  // Ensure core corporate structure is set up without dumping demo/mock data
   async bootstrapIfEmpty() {
     try {
       console.log('[Seed] Verifying system datasets across collections...');
       await this.checkAndSeedModule('companies', () => this.seedCoreStructure());
-      await this.checkAndSeedModule('employees', () => this.seedEmployees());
-      await this.checkAndSeedModule('attendanceRecords', () => this.seedAttendance());
-      await this.checkAndSeedModule('leaveApplications', () => this.seedLeaveRecords());
-      await this.checkAndSeedModule('approvalTasks', () => this.seedApprovalTasks());
-      await this.checkAndSeedModule('payrollPeriods', () => this.seedPayroll());
-      await this.checkAndSeedModule('expenses', () => this.seedExpenses());
-      await this.checkAndSeedModule('assets', () => this.seedAssets());
-      await this.checkAndSeedModule('vendors', () => this.seedAssets());
-      await this.checkAndSeedModule('jobRequisitions', () => this.seedRecruitment());
-      await this.checkAndSeedModule('jobPositions', () => this.seedRecruitment());
-      await this.checkAndSeedModule('performanceGoals', () => this.seedPerformance());
-      await this.checkAndSeedModule('performanceCycles', () => this.seedPerformance());
-      await this.checkAndSeedModule('employeeDocuments', () => this.seedDocuments());
-      await this.checkAndSeedModule('announcements', () => this.seedAnnouncements());
-      await this.checkAndSeedModule('notifications', () => this.seedNotifications());
-      await this.checkAndSeedModule('trainees', () => this.seedTraining());
-
-      // Auto-heal DOC003 visibility if it was seeded as ALL
-      try {
-        const doc3Ref = db.collection('employeeDocuments').doc('DOC003');
-        const d3 = await doc3Ref.get();
-        if (d3.exists && d3.data().visibility === 'ALL') {
-          await doc3Ref.update({ visibility: 'EMPLOYEE' });
-        }
-      } catch (_) {}
-
       console.log('[Seed] System dataset verification complete.');
     } catch (err) {
       console.warn('[Seed] Bootstrap check warning:', err);
@@ -114,12 +88,9 @@ const seedService = {
       createdAt: firebase.firestore.FieldValue.serverTimestamp()
     }, { merge: true });
 
-    // Regional Branches
+    // Regional Branches & Facilities
     const branches = [
-      { id: 'branch_mumbai', companyId: this.COMPANY_ID, name: 'HQ - Mumbai', city: 'Mumbai (BKC)', state: 'Maharashtra', timezone: 'Asia/Kolkata', status: 'ACTIVE' },
-      { id: 'branch_bengaluru', companyId: this.COMPANY_ID, name: 'Bengaluru Tech Hub', city: 'Bengaluru (Whitefield)', state: 'Karnataka', timezone: 'Asia/Kolkata', status: 'ACTIVE' },
-      { id: 'branch_delhi', companyId: this.COMPANY_ID, name: 'Delhi NCR Office', city: 'Gurugram (Cyber City)', state: 'Haryana', timezone: 'Asia/Kolkata', status: 'ACTIVE' },
-      { id: 'branch_hyderabad', companyId: this.COMPANY_ID, name: 'Hyderabad Innovation Center', city: 'Hyderabad (HITEC City)', state: 'Telangana', timezone: 'Asia/Kolkata', status: 'ACTIVE' }
+      { id: 'branch_mumbai', companyId: this.COMPANY_ID, name: 'Diallo - Ghansoli Mahape', city: 'Navi Mumbai (Ghansoli Mahape)', state: 'Maharashtra', timezone: 'Asia/Kolkata', status: 'ACTIVE' }
     ];
 
     branches.forEach(b => {
@@ -127,15 +98,16 @@ const seedService = {
       batch.set(ref, { ...b, updatedAt: firebase.firestore.FieldValue.serverTimestamp() }, { merge: true });
     });
 
-    // 7 Standard Departments
+    // 8 Official Standardized Departments
     const departments = [
-      { id: 'dept_eng', name: 'Engineering & Technology', code: 'ENG', head: 'Vikram Sharma', members: 10, budget: 'INR 45,00,000' },
-      { id: 'dept_hr', name: 'Human Resources', code: 'HRD', head: 'Priya Nair', members: 4, budget: 'INR 12,00,000' },
-      { id: 'dept_fin', name: 'Finance, Accounts & Taxation', code: 'FIN', head: 'Rahul Mehta', members: 4, budget: 'INR 18,00,000' },
-      { id: 'dept_ops', name: 'Operations & Logistics', code: 'OPS', head: 'Suresh Reddy', members: 4, budget: 'INR 22,00,000' },
-      { id: 'dept_sales', name: 'Sales & Marketing', code: 'MKT', head: 'Ananya Gupta', members: 4, budget: 'INR 30,00,000' },
-      { id: 'dept_legal', name: 'Legal & Secretarial Compliance', code: 'LGL', head: 'Deepika Joshi', members: 2, budget: 'INR 8,00,000' },
-      { id: 'dept_design', name: 'Digital & Design', code: 'DGN', head: 'Karan Malhotra', members: 3, budget: 'INR 15,00,000' }
+      { id: 'dept_digital', name: 'Digital Team', code: 'DIG', head: 'Head of Digital', members: 0, budget: 'INR 15,00,000' },
+      { id: 'dept_ops', name: 'Operations', code: 'OPS', head: 'Head of Operations', members: 0, budget: 'INR 25,00,000' },
+      { id: 'dept_sales', name: 'Sales', code: 'SLS', head: 'Head of Sales', members: 0, budget: 'INR 30,00,000' },
+      { id: 'dept_realestate', name: 'Real Estate', code: 'RES', head: 'Head of Real Estate', members: 0, budget: 'INR 20,00,000' },
+      { id: 'dept_carrental', name: 'Car Rental', code: 'CAR', head: 'Head of Car Rental', members: 0, budget: 'INR 18,00,000' },
+      { id: 'dept_compliance', name: 'Compliance', code: 'CMP', head: 'Head of Compliance', members: 0, budget: 'INR 12,00,000' },
+      { id: 'dept_training', name: 'Training', code: 'TRN', head: 'Lead Corporate Trainer', members: 0, budget: 'INR 14,00,000' },
+      { id: 'dept_hr', name: 'Human Resources', code: 'HRD', head: 'HR Manager', members: 0, budget: 'INR 15,00,000' }
     ];
 
     departments.forEach(d => {

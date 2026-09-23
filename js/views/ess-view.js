@@ -1215,66 +1215,91 @@ const ESSView = {
       }
     }
 
-    // Work timer displays
+    // Break quota check (1 hr = 3600 seconds)
+    const isBreakExceeded = this.totalBreakSeconds > 3600;
+    const workDisplayFormatted = `8h / ${workTimeStr}`;
+    const breakDisplayFormatted = `1h / ${totalBreakStr}`;
+
+    // Work timer displays: 8hr / logged in time
     ['ess-timer-display', 'emp-live-timer'].forEach(id => {
       const el = document.getElementById(id);
-      if (el) el.textContent = workTimeStr;
+      if (el) el.textContent = workDisplayFormatted;
     });
 
-    // Break timer displays
+    // Current session break timer displays
     ['ess-break-display', 'emp-break-timer'].forEach(id => {
       const el = document.getElementById(id);
       if (el) {
         el.textContent = breakTimeStr;
-        el.style.color = (this.isPunchedIn && this.isOnBreak) ? 'var(--warning)' : 'var(--text-secondary)';
+        el.style.color = isBreakExceeded ? '#dc2626' : ((this.isPunchedIn && this.isOnBreak) ? 'var(--warning)' : 'var(--text-secondary)');
       }
     });
 
-    // Total break displays
+    // Total break displays: 1hr / break time
     ['ess-total-break-display', 'emp-total-break'].forEach(id => {
       const el = document.getElementById(id);
-      if (el) el.textContent = totalBreakStr;
+      if (el) {
+        el.textContent = breakDisplayFormatted;
+        el.style.color = isBreakExceeded ? '#dc2626' : '#d97706';
+      }
     });
 
     // Sub-status & Box highlight styling on dashboard
     const subStatusEl = document.getElementById('emp-timer-substatus');
     if (subStatusEl) {
       if (this.isShiftCompletedToday) {
-        subStatusEl.textContent = 'Shift Completed for Today • Next shift tomorrow 10:00 AM – 07:00 PM';
+        subStatusEl.textContent = 'Shift completed & punched out. Timecard station is locked until tomorrow at 09:30 AM.';
         subStatusEl.style.color = 'var(--accent-leave)';
       } else if (!this.isPunchedIn) {
-        subStatusEl.textContent = 'Shift Not Started • General Shift 10:00 AM – 07:00 PM';
+        subStatusEl.textContent = 'Shift Not Started • Shift: 10:00 AM – 07:00 PM (Opens 09:30 AM)';
         subStatusEl.style.color = 'var(--text-secondary)';
       } else if (this.isOnBreak) {
-        subStatusEl.textContent = 'Timer Paused for Break';
-        subStatusEl.style.color = 'var(--warning)';
+        subStatusEl.textContent = isBreakExceeded ? 'Break Exceeded (> 1h Quota) • Overbreak Active' : 'Timer Paused for Break (1h Quota)';
+        subStatusEl.style.color = isBreakExceeded ? 'var(--danger)' : 'var(--warning)';
       } else {
-        subStatusEl.textContent = 'Active On Duty';
+        subStatusEl.textContent = 'Active On Duty (8h Work Target)';
         subStatusEl.style.color = 'var(--primary)';
       }
     }
 
     const breakBadgeEl = document.getElementById('emp-break-badge-status');
     if (breakBadgeEl) {
-      breakBadgeEl.className = (this.isPunchedIn && this.isOnBreak) ? 'badge badge-warning' : 'badge badge-neutral';
-      breakBadgeEl.textContent = this.isShiftCompletedToday ? 'Shift Ended' : ((this.isPunchedIn && this.isOnBreak) ? 'Break in progress' : 'Break Idle');
+      if (isBreakExceeded) {
+        breakBadgeEl.className = 'badge badge-danger';
+        breakBadgeEl.textContent = 'Break Exceeded (> 1h)';
+      } else {
+        breakBadgeEl.className = (this.isPunchedIn && this.isOnBreak) ? 'badge badge-warning' : 'badge badge-neutral';
+        breakBadgeEl.textContent = this.isShiftCompletedToday ? 'Shift Ended' : ((this.isPunchedIn && this.isOnBreak) ? 'Break in progress' : 'Break Idle (1h Max)');
+      }
     }
 
     const headerBreakBadge = document.getElementById('emp-header-break-badge');
     if (headerBreakBadge) {
-      headerBreakBadge.innerHTML = (this.isPunchedIn && this.isOnBreak) ? '<span class="badge badge-warning" style="font-size: 0.75rem; animation: pulse 2s infinite; display: inline-flex; align-items: center; gap: 4px;"><svg width="12" height="12" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/></svg> Break Active</span>' : '';
+      headerBreakBadge.innerHTML = (this.isPunchedIn && this.isOnBreak) ? `<span class="badge ${isBreakExceeded ? 'badge-danger' : 'badge-warning'}" style="font-size: 0.75rem; animation: pulse 2s infinite; display: inline-flex; align-items: center; gap: 4px;"><svg width="12" height="12" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/></svg> ${isBreakExceeded ? 'Break Exceeded' : 'Break Active'}</span>` : '';
     }
 
+    // Break highlight box: Brown by default, turns RED if total break exceeds 1 hr (3600s)
     const breakBox = document.getElementById('emp-break-highlight-box');
     if (breakBox) {
-      breakBox.style.background = (this.isPunchedIn && this.isOnBreak) ? 'rgba(245, 158, 11, 0.12)' : 'var(--bg-hover)';
-      breakBox.style.borderColor = (this.isPunchedIn && this.isOnBreak) ? 'var(--warning)' : 'rgba(245, 158, 11, 0.3)';
+      if (isBreakExceeded) {
+        breakBox.style.background = 'rgba(220, 38, 38, 0.08)';
+        breakBox.style.borderColor = '#dc2626';
+        breakBox.style.borderWidth = '2px';
+      } else if (this.isPunchedIn && this.isOnBreak) {
+        breakBox.style.background = 'rgba(245, 158, 11, 0.12)';
+        breakBox.style.borderColor = '#d97706';
+        breakBox.style.borderWidth = '1.5px';
+      } else {
+        breakBox.style.background = 'var(--bg-hover)';
+        breakBox.style.borderColor = 'rgba(217, 119, 6, 0.4)';
+        breakBox.style.borderWidth = '1.5px';
+      }
     }
 
     const heroCard = document.getElementById('emp-timecard-hero-card');
     if (heroCard) {
-      heroCard.style.borderColor = (this.isPunchedIn && this.isOnBreak) ? 'var(--warning)' : 'var(--primary-light)';
-      heroCard.style.boxShadow = (this.isPunchedIn && this.isOnBreak) ? '0 0 16px rgba(245, 158, 11, 0.15)' : 'var(--shadow-sm)';
+      heroCard.style.borderColor = isBreakExceeded ? 'var(--danger)' : ((this.isPunchedIn && this.isOnBreak) ? 'var(--warning)' : 'var(--primary-light)');
+      heroCard.style.boxShadow = isBreakExceeded ? '0 0 16px rgba(220, 38, 38, 0.18)' : ((this.isPunchedIn && this.isOnBreak) ? '0 0 16px rgba(245, 158, 11, 0.15)' : 'var(--shadow-sm)');
     }
 
     // Shift status badges
@@ -1288,8 +1313,8 @@ const ESSView = {
           el.className = 'badge badge-neutral';
           el.innerHTML = '<span class="badge-dot"></span> Checked OUT';
         } else if (this.isOnBreak) {
-          el.className = 'badge badge-warning';
-          el.innerHTML = '<span class="badge-dot"></span> On Break (Paused)';
+          el.className = isBreakExceeded ? 'badge badge-danger' : 'badge badge-warning';
+          el.innerHTML = `<span class="badge-dot"></span> ${isBreakExceeded ? 'Overbreak (Paused)' : 'On Break (Paused)'}`;
         } else {
           el.className = 'badge badge-success';
           el.innerHTML = '<span class="badge-dot"></span> On Shift (Active)';
@@ -1308,9 +1333,9 @@ const ESSView = {
           el.style.cursor = 'not-allowed';
           el.innerHTML = `
             <svg width="20" height="20" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"/>
             </svg>
-            <span>Shift Completed Today</span>
+            <span>Shift Completed (Locked)</span>
           `;
         } else if (this.isPunchedIn) {
           el.className = 'btn btn-primary btn-lg';
@@ -1381,11 +1406,19 @@ const ESSView = {
     }
 
     if (this.isShiftCompletedToday) {
-      Toast.warning('Shift completed for today! Your check-out has already been recorded. Next shift opens tomorrow at 10:00 AM.');
+      Toast.warning('Shift completed for today! Your check-out has already been recorded. The timecard station is locked until tomorrow at 09:30 AM.');
       return false;
     }
 
     if (!this.isPunchedIn) {
+      const now = new Date();
+      const currentMinutes = now.getHours() * 60 + now.getMinutes();
+      const openMinutes = 9 * 60 + 30; // 09:30 AM
+      if (currentMinutes < openMinutes) {
+        Toast.warning('Shift check-in window opens at 09:30 AM (General Shift: 10:00 AM – 07:00 PM).');
+        return false;
+      }
+
       let locationText = 'HQ - Mumbai (BKC, Mumbai 400051)';
       if (navigator.geolocation) {
         navigator.geolocation.getCurrentPosition(

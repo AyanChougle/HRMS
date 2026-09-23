@@ -49,7 +49,7 @@ const EmployeeDashboardView = {
               <span>Daily Shift & Timecard Station</span>
               <span id="emp-header-break-badge">${(ESSView.isPunchedIn && ESSView.isOnBreak) ? '<span class="badge badge-warning" style="font-size: 0.75rem; animation: pulse 2s infinite; display: inline-flex; align-items: center; gap: 4px;"><svg width="12" height="12" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/></svg> Break Active</span>' : ''}</span>
             </div>
-            <div class="card-subtitle">General Shift: 10:00 AM – 07:00 PM IST (9h Schedule • 15m Grace)</div>
+            <div class="card-subtitle">General Shift: 10:00 AM – 07:00 PM IST (8h Work • 1h Break • 10m Grace)</div>
           </div>
           <span class="badge ${ESSView.isShiftCompletedToday ? 'badge-success' : (!ESSView.isPunchedIn ? 'badge-neutral' : (ESSView.isOnBreak ? 'badge-warning' : 'badge-success'))}" id="emp-shift-badge">
             <span class="badge-dot"></span> ${ESSView.isShiftCompletedToday ? 'Shift Completed (Today)' : (!ESSView.isPunchedIn ? 'Checked OUT' : (ESSView.isOnBreak ? 'On Break (Paused)' : 'Checked IN'))}
@@ -59,7 +59,7 @@ const EmployeeDashboardView = {
         <div class="card-body">
           <div class="grid" style="grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 24px; align-items: center;">
             
-            <!-- Left: Work Time Display -->
+            <!-- Left: Work Time Display (8hr / logged in time) -->
             <div class="flex items-center gap-4">
               <div style="width: 52px; height: 52px; border-radius: var(--radius-md); background: var(--primary-light); color: var(--primary); display: flex; align-items: center; justify-content: center; flex-shrink: 0;">
                 <svg width="26" height="26" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -67,18 +67,18 @@ const EmployeeDashboardView = {
                 </svg>
               </div>
               <div>
-                <div style="font-size: 0.75rem; color: var(--text-muted); text-transform: uppercase; font-weight: 700; letter-spacing: 0.05em;">Logged Work Time Today</div>
-                <div style="font-size: 2.4rem; font-weight: 800; font-family: monospace; color: var(--primary); line-height: 1.1; margin-top: 2px;" id="emp-live-timer">
-                  00:00:00
+                <div style="font-size: 0.75rem; color: var(--text-muted); text-transform: uppercase; font-weight: 700; letter-spacing: 0.05em;">Work Time (8h Target)</div>
+                <div style="font-size: 2.2rem; font-weight: 800; font-family: monospace; color: var(--primary); line-height: 1.1; margin-top: 2px;" id="emp-live-timer">
+                  8h / 00:00:00
                 </div>
                 <div style="font-size: 0.8rem; color: var(--text-secondary); margin-top: 4px;">
-                  Status: <strong id="emp-timer-substatus">${ESSView.isShiftCompletedToday ? 'Shift Completed for Today • Next shift tomorrow 10:00 AM – 07:00 PM' : (!ESSView.isPunchedIn ? 'Shift Not Started • General Shift 10:00 AM – 07:00 PM' : (ESSView.isOnBreak ? 'Timer Paused for Break' : 'Active On Duty'))}</strong>
+                  Status: <strong id="emp-timer-substatus">${ESSView.isShiftCompletedToday ? 'Shift completed & punched out. Timecard station is locked until tomorrow at 09:30 AM.' : (!ESSView.isPunchedIn ? 'Shift Not Started • Shift: 10:00 AM – 07:00 PM (Opens 09:30 AM)' : (ESSView.isOnBreak ? 'Timer Paused for Break (1h Quota)' : 'Active On Duty (8h Work Target)'))}</strong>
                 </div>
               </div>
             </div>
 
-            <!-- Center: HIGHLIGHTED BREAK TIME STATION -->
-            <div style="background: ${ESSView.isOnBreak ? 'rgba(245, 158, 11, 0.12)' : 'var(--bg-hover)'}; border: 1.5px solid ${ESSView.isOnBreak ? 'var(--warning)' : 'rgba(245, 158, 11, 0.3)'}; border-radius: var(--radius-md); padding: 16px 20px; position: relative;" id="emp-break-highlight-box">
+            <!-- Center: HIGHLIGHTED BREAK TIME STATION (1hr / break time) -->
+            <div style="background: ${ESSView.isOnBreak ? 'rgba(245, 158, 11, 0.12)' : 'var(--bg-hover)'}; border: 1.5px solid ${ESSView.isOnBreak ? '#d97706' : 'rgba(217, 119, 6, 0.4)'}; border-radius: var(--radius-md); padding: 16px 20px; position: relative;" id="emp-break-highlight-box">
               <div class="flex items-center justify-between" style="margin-bottom: 8px;">
                 <div class="flex items-center gap-2">
                   <span style="color: #d97706; display: flex; align-items: center;">
@@ -87,7 +87,7 @@ const EmployeeDashboardView = {
                   <span style="font-size: 0.8rem; font-weight: 700; color: #d97706; text-transform: uppercase; letter-spacing: 0.05em;">Break Time Tracker</span>
                 </div>
                 <span class="badge ${ESSView.isOnBreak ? 'badge-warning' : 'badge-neutral'}" style="font-size: 0.7rem;" id="emp-break-badge-status">
-                  ${ESSView.isShiftCompletedToday ? 'Shift Ended' : (ESSView.isOnBreak ? 'Break in progress' : 'Break Idle')}
+                  ${ESSView.isShiftCompletedToday ? 'Shift Ended' : (ESSView.isOnBreak ? 'Break in progress' : 'Break Idle (1h Max)')}
                 </span>
               </div>
               
@@ -99,9 +99,9 @@ const EmployeeDashboardView = {
                   </div>
                 </div>
                 <div style="text-align: right;">
-                  <div style="font-size: 0.75rem; color: var(--text-muted);">Total Break Taken:</div>
+                  <div style="font-size: 0.75rem; color: var(--text-muted);">Total Break (1h Quota):</div>
                   <div style="font-size: 1.5rem; font-weight: 800; font-family: monospace; color: #d97706;" id="emp-total-break">
-                    ${(typeof attendanceService !== 'undefined' && attendanceService.formatBreakDuration) ? attendanceService.formatBreakDuration(ESSView.totalBreakSeconds) : (Math.floor(ESSView.totalBreakSeconds / 60) + 'm')}
+                    1h / ${(typeof attendanceService !== 'undefined' && attendanceService.formatBreakDuration) ? attendanceService.formatBreakDuration(ESSView.totalBreakSeconds) : (Math.floor(ESSView.totalBreakSeconds / 60) + 'm')}
                   </div>
                 </div>
               </div>
@@ -112,10 +112,10 @@ const EmployeeDashboardView = {
               <button class="btn ${ESSView.isShiftCompletedToday ? 'btn-secondary btn-lg disabled' : 'btn-primary btn-lg'}" id="emp-punch-btn" onclick="ESSView.togglePunch()" style="min-width: 170px; ${ESSView.isShiftCompletedToday ? 'opacity: 0.75; cursor: not-allowed;' : ''}" ${ESSView.isShiftCompletedToday ? 'disabled' : ''}>
                 <svg width="20" height="20" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   ${ESSView.isShiftCompletedToday 
-                    ? '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>' 
+                    ? '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"/>' 
                     : '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/>'}
                 </svg>
-                <span>${ESSView.isShiftCompletedToday ? 'Shift Completed Today' : (ESSView.isPunchedIn ? 'Punch Out' : 'Web Punch In (GPS)')}</span>
+                <span>${ESSView.isShiftCompletedToday ? 'Shift Completed (Locked)' : (ESSView.isPunchedIn ? 'Punch Out' : 'Web Punch In (GPS)')}</span>
               </button>
               
               <button class="btn ${ESSView.isOnBreak ? 'btn-warning' : 'btn-secondary'} btn-lg" id="emp-break-btn" style="display: ${(ESSView.isPunchedIn && !ESSView.isShiftCompletedToday) ? 'inline-flex' : 'none'}; min-width: 140px;" onclick="ESSView.toggleBreak()">

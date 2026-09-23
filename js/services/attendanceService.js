@@ -168,61 +168,33 @@ const attendanceService = {
       const now = new Date();
       const checkInTimeStr = punchData.time || this.formatTime(now);
 
-      // If already has an existing record today
+      // 1. Check if already checked out today — Lock until tomorrow 09:30 AM
       if (existingDoc.exists && existingDoc.data().checkIn) {
         const rec = existingDoc.data();
-
-        // If currently on shift and not checked out, return existing
-        if (!rec.checkOut) {
-          return { id: recordId, ...rec };
+        if (rec.checkOut) {
+          throw new Error('Shift completed and punched out for today. The timecard station is locked until tomorrow at 09:30 AM.');
         }
-
-        // If checked out earlier, allow SHIFT RESUMPTION / RE-PUNCH IN on the same date!
-        const previousSessions = rec.sessions || [];
-        previousSessions.push({
-          checkIn: rec.currentCheckInTime || rec.checkIn,
-          checkOut: rec.checkOut,
-          grossMinutes: rec.grossMinutes || 0,
-          workedMinutes: rec.workedMinutes || 0
-        });
-
-        const resumePayload = {
-          currentCheckInTime: checkInTimeStr,
-          currentCheckInDateIso: now.toISOString(),
-          checkOut: null,
-          checkOutDateIso: null,
-          sessions: previousSessions,
-          status: 'PRESENT',
-          isOnBreak: false,
-          updatedAt: firebase.firestore.FieldValue.serverTimestamp()
-        };
-
-        await recordRef.update(resumePayload);
-
-        await db.collection('punchLogs').add({
-          employeeId,
-          name: rec.employeeName,
-          punchType: 'In (Resume)',
-          time: checkInTimeStr,
-          date: attendanceDate,
-          location: punchData.location || 'HQ - Mumbai',
-          device: 'Web Attendance Terminal',
-          status: 'Shift Resumed',
-          timestamp: firebase.firestore.FieldValue.serverTimestamp()
-        });
-
-        await auditService.log('ATTENDANCE_CHECK_IN_RESUME', 'ATTENDANCE', 'attendanceRecords', recordId, resumePayload);
-        return { id: recordId, ...rec, ...resumePayload };
+        return { id: recordId, ...rec };
       }
 
+      // 2. Morning Lockout: Punch-in window opens at 09:30 AM for 10:00 AM – 07:00 PM shift
       const currentMinutes = now.getHours() * 60 + now.getMinutes();
+      const openMinutes = 9 * 60 + 30; // 09:30 AM
+      if (currentMinutes < openMinutes && !punchData.forcePunch) {
+        throw new Error('Shift check-in window opens at 09:30 AM (General Shift: 10:00 AM – 07:00 PM).');
+      }
+
       const shiftStartMinutes = this.timeStringToMinutes(settings.defaultStartTime || '10:00');
-      const graceLimit = shiftStartMinutes + (settings.graceMinutes || 15);
+      const graceLimit = shiftStartMinutes + (settings.graceMinutes !== undefined ? settings.graceMinutes : 10);
+      const halfDayThreshold = shiftStartMinutes + (settings.halfDayAfterMinutes || 70); // Reporting after 11:10 AM is Half Day
 
       let status = 'PRESENT';
       let lateMinutes = 0;
 
-      if (currentMinutes > graceLimit) {
+      if (currentMinutes > halfDayThreshold) {
+        status = 'HALF_DAY';
+        lateMinutes = Math.min(720, Math.max(0, currentMinutes - shiftStartMinutes));
+      } else if (currentMinutes > graceLimit) {
         status = 'LATE';
         lateMinutes = Math.min(720, Math.max(0, currentMinutes - shiftStartMinutes));
       }

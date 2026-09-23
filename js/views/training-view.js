@@ -242,7 +242,7 @@ const TrainingView = {
                 <th>Track & Cohort</th>
                 <th>Department</th>
                 <th>Assigned Mentor</th>
-                <th>Curriculum Progress</th>
+                <th>Day &amp; Progress</th>
                 <th>Status</th>
                 <th style="text-align: right;">Actions</th>
               </tr>
@@ -255,12 +255,17 @@ const TrainingView = {
                   </td>
                 </tr>
               ` : trainees.map(t => {
-                const statusBadge = t.status === 'CERTIFIED' 
-                  ? 'badge-success' 
-                  : (t.status === 'IN_EVALUATION' ? 'badge-warning' : 'badge-primary');
-                const statusLabel = t.status === 'CERTIFIED'
-                  ? 'Certified'
-                  : (t.status === 'IN_EVALUATION' ? 'In Evaluation' : 'In Training');
+                const curDay = Number(t.currentDay) || 1;
+                const statusBadge = t.status === 'HANDED_OVER'
+                  ? 'badge-success'
+                  : (t.status === 'CERTIFIED'
+                    ? 'badge-primary'
+                    : (t.status === 'IN_EVALUATION' ? 'badge-warning' : 'badge-neutral'));
+                const statusLabel = t.status === 'HANDED_OVER'
+                  ? 'Handed Over to Floor'
+                  : (t.status === 'CERTIFIED'
+                    ? 'Certified Trainee'
+                    : (t.status === 'IN_EVALUATION' ? 'In Evaluation' : `Day ${curDay} Active`));
 
                 return `
                   <tr>
@@ -276,38 +281,56 @@ const TrainingView = {
                       </div>
                     </td>
                     <td>
-                      <div class="font-medium">${t.track}</div>
-                      <div class="text-muted" style="font-size: 0.75rem;">${t.batchName || 'General Batch'}</div>
+                      <div class="font-medium">${t.track || '7-Day Core Track'}</div>
+                      <div class="text-muted" style="font-size: 0.75rem;">${t.batchName || 'Diallo Onboarding'}</div>
                     </td>
                     <td>
-                      <span class="badge badge-neutral">${t.department}</span>
+                      <span class="badge badge-primary">${t.department || 'Operations'}</span>
                     </td>
                     <td>
                       <div class="flex items-center gap-2">
                         <div style="width: 24px; height: 24px; border-radius: 50%; background: var(--bg-hover); display: flex; align-items: center; justify-content: center; font-size: 0.7rem; font-weight: 700; color: var(--text-secondary);">
                           ${(t.trainerName || 'M').substring(0, 1)}
                         </div>
-                        <span class="font-medium" style="font-size: 0.85rem;">${t.trainerName || 'Unassigned'}</span>
+                        <span class="font-medium" style="font-size: 0.85rem;">${t.trainerName || 'Unassigned Mentor'}</span>
                       </div>
                     </td>
-                    <td style="min-width: 160px;">
-                      <div class="flex items-center justify-between" style="font-size: 0.78rem; margin-bottom: 4px;">
-                        <span>${t.completedModules || 0}/${t.totalModules || 5} Modules</span>
-                        <strong style="color: var(--primary);">${t.progress || 0}%</strong>
+                    <td style="min-width: 170px;">
+                      <div class="flex items-center justify-between" style="font-size: 0.8rem; margin-bottom: 4px;">
+                        <span><strong>Day ${curDay}</strong> of 7</span>
+                        <strong style="color: var(--primary);">${t.progress || Math.round((curDay / 7) * 100)}%</strong>
                       </div>
                       <div style="width: 100%; height: 6px; background: var(--border-main); border-radius: 3px; overflow: hidden;">
-                        <div style="width: ${t.progress || 0}%; height: 100%; background: ${t.progress >= 100 ? 'var(--success)' : 'var(--primary)'}; border-radius: 3px;"></div>
+                        <div style="width: ${t.progress || Math.round((curDay / 7) * 100)}%; height: 100%; background: ${t.status === 'HANDED_OVER' ? 'var(--success)' : 'var(--primary)'}; border-radius: 3px;"></div>
+                      </div>
+                      <div style="font-size: 0.72rem; color: var(--text-muted); margin-top: 2px;">
+                        ${(t.currentModuleTitle || 'Syllabus Module').slice(0, 28)}...
                       </div>
                     </td>
                     <td>
-                      <span class="badge ${statusBadge}" style="cursor: pointer;" onclick="TrainingView.openEvaluateModal('${t.id}', '${t.fullName.replace(/'/g, "\\'")}', ${t.progress || 0})" title="Click to evaluate trainee or update status">
+                      <span class="badge ${statusBadge}">
                         <span class="badge-dot"></span>
                         ${statusLabel}
                       </span>
                     </td>
                     <td style="text-align: right;">
-                      <div style="display: inline-flex; gap: 6px;">
-                        <button class="btn btn-soft btn-sm" onclick="TrainingView.openEvaluateModal('${t.id}', '${t.fullName.replace(/'/g, "\\'")}', ${t.progress || 0})">
+                      <div style="display: inline-flex; gap: 4px; flex-wrap: wrap; justify-content: flex-end;">
+                        ${curDay < 7 && t.status !== 'HANDED_OVER' ? `
+                          <button class="btn btn-primary btn-sm" onclick="TrainingView.advanceTraineeDay('${t.id}', ${curDay})" title="Advance to Day ${curDay + 1}">
+                            Advance Day (${curDay + 1}/7)
+                          </button>
+                        ` : ''}
+                        ${t.status !== 'CERTIFIED' && t.status !== 'HANDED_OVER' ? `
+                          <button class="btn btn-secondary btn-sm" onclick="TrainingView.openCertifyModal('${t.id}', '${(t.fullName || '').replace(/'/g, "\\'")}')" title="Award Day 6 Certification">
+                            Certify
+                          </button>
+                        ` : ''}
+                        ${t.status !== 'HANDED_OVER' ? `
+                          <button class="btn btn-soft btn-sm" onclick="TrainingView.openHandoverModal('${t.id}', '${(t.fullName || '').replace(/'/g, "\\'")}', '${(t.department || 'Operations').replace(/'/g, "\\'")}')" title="Complete Day 7 Floor Handover">
+                            Handover
+                          </button>
+                        ` : ''}
+                        <button class="btn btn-soft btn-sm" onclick="TrainingView.openEvaluateModal('${t.id}', '${(t.fullName || '').replace(/'/g, "\\'")}', ${t.progress || 0})">
                           Evaluate
                         </button>
                         <button class="btn btn-secondary btn-sm" onclick="TrainingView.deleteTrainee('${t.id}')" title="Delete record">
@@ -447,139 +470,167 @@ const TrainingView = {
     `;
   },
 
-  // 4. EMPLOYEE / TRAINEE LEARNING TAB
+  // 4. EMPLOYEE / TRAINEE LEARNING TAB — 7-DAY CORE CURRICULUM
   renderMyLearningTab(trainees, trainers, programs) {
-    const userEmail = AuthGuard.userProfile?.email || AuthGuard.currentUser?.email;
-    const userName = AuthGuard.userProfile?.displayName || 'Employee';
+    const userEmail = (AuthGuard.userProfile?.email || AuthGuard.currentUser?.email || '').toLowerCase();
+    const userName = AuthGuard.userProfile?.displayName || 'Trainee';
 
-    // Find personal trainee record or fallback to sample trainee
-    const myTraineeRecord = trainees.find(t => t.email && t.email.toLowerCase() === userEmail.toLowerCase()) || trainees[0] || {
+    // Find personal trainee record or fallback
+    const myTraineeRecord = trainees.find(t => t.email && t.email.toLowerCase() === userEmail) || trainees[0] || {
       fullName: userName,
-      traineeCode: 'EMP-T01',
-      track: 'Graduate Engineering Trainee (GET)',
-      department: 'Engineering & Technology',
+      traineeCode: 'TRN-2026',
+      track: '7-Day Core Training Modules',
+      department: 'Operations',
       trainerName: 'Vikram Sharma',
-      progress: 75,
-      completedModules: 4,
-      totalModules: 5,
+      currentDay: 1,
+      progress: 14,
+      completedModules: 0,
+      totalModules: 7,
       status: 'IN_TRAINING',
-      batchName: 'GET Batch 2026-Q3',
-      startDate: '2026-07-01',
-      targetEndDate: '2026-10-31'
+      batchName: 'Diallo Trainee Cohort 2026',
+      startDate: new Date().toISOString().slice(0, 10),
+      targetEndDate: '2026-12-31'
     };
+
+    const curDay = Number(myTraineeRecord.currentDay) || 1;
+    const progressPercent = myTraineeRecord.progress || Math.round((curDay / 7) * 100);
 
     const myTrainer = trainers.find(tr => tr.fullName === myTraineeRecord.trainerName) || trainers[0] || {
-      fullName: 'Vikram Sharma',
-      designation: 'Principal Software Architect',
-      specialization: 'Full Stack Architecture & Cloud',
-      email: 'vikram.sharma@diallo.in',
-      phone: '+91 98111 22334'
+      fullName: myTraineeRecord.trainerName || 'Assigned Lead Trainer',
+      designation: 'Senior Technical & Operations Trainer',
+      specialization: 'Financial Markets, Crypto & Operations',
+      email: 'trainer@diallo.in',
+      phone: '9372868617'
     };
 
-    const modulesList = [
-      { name: 'Module 1: Enterprise JavaScript (ES6+), Clean Architecture & Coding Standards', status: 'COMPLETED', score: '95%' },
-      { name: 'Module 2: Cloud Firestore Database Modeling, Indexing & Security Rules', status: 'COMPLETED', score: '92%' },
-      { name: 'Module 3: Modular Single-Page Application (SPA) Routing & State Management', status: 'COMPLETED', score: '90%' },
-      { name: 'Module 4: Indian Statutory Compliance (EPF, ESIC, PT, TDS & Wage Code 2026)', status: myTraineeRecord.progress >= 75 ? 'COMPLETED' : 'IN_PROGRESS', score: myTraineeRecord.progress >= 75 ? '88%' : 'Pending' },
-      { name: 'Module 5: End-to-End Capstone Project & Technical Architecture Viva', status: myTraineeRecord.progress >= 100 ? 'COMPLETED' : 'PENDING', score: 'Pending' }
-    ];
+    const modules = (typeof trainingService !== 'undefined' && trainingService.SEVEN_DAY_MODULES) 
+      ? trainingService.SEVEN_DAY_MODULES 
+      : [];
 
     return `
-      <div style="display: grid; grid-template-columns: 1fr 340px; gap: 24px; align-items: start;">
-        
-        <!-- Left: Course Syllabus & Checklist -->
-        <div>
-          <!-- Hero Progress Card -->
-          <div class="card" style="margin-bottom: 24px; background: linear-gradient(135deg, rgba(37,99,235,0.06), rgba(14,165,233,0.03)); border: 1px solid var(--primary-light);">
-            <div class="card-body" style="padding: 24px;">
-              <div class="flex items-center justify-between" style="flex-wrap: wrap; gap: 12px; margin-bottom: 16px;">
-                <div>
-                  <span class="badge badge-primary" style="margin-bottom: 6px;">COHORT TRACK</span>
-                  <h2 style="font-size: 1.3rem; font-weight: 800; color: var(--text-main); margin: 0;">${myTraineeRecord.track}</h2>
-                  <div style="font-size: 0.85rem; color: var(--text-secondary); margin-top: 4px;">
-                    Batch: <strong>${myTraineeRecord.batchName}</strong> • Start: ${myTraineeRecord.startDate} • Target Completion: ${myTraineeRecord.targetEndDate}
-                  </div>
-                </div>
-                <div style="text-align: right;">
-                  <div style="font-size: 2rem; font-weight: 800; color: var(--primary);">${myTraineeRecord.progress}%</div>
-                  <span class="badge badge-success">On Schedule</span>
-                </div>
+      <!-- 7-Day Curriculum Stepper Bar -->
+      <div class="card" style="margin-bottom: 24px; background: linear-gradient(135deg, rgba(37,99,235,0.06), rgba(15,23,42,0.02)); border: 1px solid var(--border-main);">
+        <div class="card-body" style="padding: 24px;">
+          <div class="flex items-center justify-between" style="flex-wrap: wrap; gap: 16px; margin-bottom: 20px;">
+            <div>
+              <div style="display: inline-flex; align-items: center; gap: 8px; margin-bottom: 6px;">
+                <span class="badge badge-primary" style="font-weight: 700;">7-DAY ONBOARDING CURRICULUM</span>
+                <span class="badge ${myTraineeRecord.status === 'HANDED_OVER' ? 'badge-success' : (myTraineeRecord.status === 'CERTIFIED' ? 'badge-primary' : 'badge-neutral')}">
+                  ${myTraineeRecord.status === 'HANDED_OVER' ? 'Handed Over to Floor' : (myTraineeRecord.status === 'CERTIFIED' ? 'Certified Graduate' : `Day ${curDay} in Progress`)}
+                </span>
               </div>
-
-              <div>
-                <div class="flex justify-between" style="font-size: 0.8rem; margin-bottom: 6px; font-weight: 600;">
-                  <span>Curriculum Progress (${myTraineeRecord.completedModules} of ${myTraineeRecord.totalModules} Milestones Cleared)</span>
-                  <span>${myTraineeRecord.progress}% Complete</span>
-                </div>
-                <div style="width: 100%; height: 8px; background: var(--border-main); border-radius: 4px; overflow: hidden;">
-                  <div style="width: ${myTraineeRecord.progress}%; height: 100%; background: var(--primary); border-radius: 4px;"></div>
-                </div>
+              <h2 style="font-size: 1.4rem; font-weight: 800; color: var(--text-main); margin: 0 0 4px 0;">${myTraineeRecord.track || '7-Day Core Training Track'}</h2>
+              <div style="font-size: 0.85rem; color: var(--text-secondary);">
+                Trainee: <strong>${myTraineeRecord.fullName}</strong> (${myTraineeRecord.traineeCode || 'TRN'}) • Department: <strong>${myTraineeRecord.department || 'Operations'}</strong> • Shift: <strong>10:00 AM – 07:00 PM</strong>
               </div>
+            </div>
+            <div style="text-align: right;">
+              <div style="font-size: 2.2rem; font-weight: 800; color: var(--primary); font-family: var(--font-family-mono);">${progressPercent}%</div>
+              <div style="font-size: 0.78rem; color: var(--text-muted);">Curriculum Completion</div>
             </div>
           </div>
 
-          <!-- Modules Checklist Card -->
-          <div class="card">
-            <div class="card-header">
-              <div class="card-title">Curriculum Modules & Assessment Record</div>
-              <div class="card-subtitle">Complete lessons, submit lab assignments, and take mentor assessments</div>
-            </div>
-            <div class="card-body" style="padding: 0;">
-              <div style="display: flex; flex-direction: column;">
-                ${modulesList.map((m, idx) => `
-                  <div style="display: flex; align-items: center; justify-content: space-between; padding: 16px 20px; border-bottom: 1px solid var(--border-main); gap: 12px;">
+          <!-- Stepper Dots Bar (Days 1 to 7) -->
+          <div style="display: grid; grid-template-columns: repeat(7, 1fr); gap: 8px; margin-top: 14px;">
+            ${modules.map(m => {
+              const isPassed = m.day < curDay;
+              const isCurrent = m.day === curDay;
+              return `
+                <div style="text-align: center;">
+                  <div style="height: 6px; border-radius: 3px; background: ${isPassed ? 'var(--success)' : (isCurrent ? 'var(--primary)' : 'var(--border-main)')}; margin-bottom: 6px;"></div>
+                  <div style="font-size: 0.75rem; font-weight: ${isCurrent ? '800' : '600'}; color: ${isPassed ? 'var(--success)' : (isCurrent ? 'var(--primary)' : 'var(--text-muted)')};">
+                    Day ${m.day}
+                  </div>
+                </div>
+              `;
+            }).join('')}
+          </div>
+        </div>
+      </div>
+
+      <!-- Main Layout: Left = 7 Days List, Right = Mentor & Certification -->
+      <div style="display: grid; grid-template-columns: 1fr 340px; gap: 24px; align-items: start;">
+        
+        <!-- Left: 7-Day Day-by-Day Module Stepper Cards -->
+        <div style="display: flex; flex-direction: column; gap: 16px;">
+          ${modules.map(m => {
+            const isPassed = m.day < curDay;
+            const isCurrent = m.day === curDay;
+            const cardBorder = isCurrent 
+              ? 'border-left: 4px solid var(--primary); box-shadow: 0 0 0 1px var(--primary-light);' 
+              : (isPassed ? 'border-left: 4px solid var(--success);' : 'border-left: 4px solid var(--border-main); opacity: 0.85;');
+
+            return `
+              <div class="card" style="${cardBorder}">
+                <div class="card-body" style="padding: 20px;">
+                  <div class="flex items-start justify-between" style="gap: 12px; margin-bottom: 12px; flex-wrap: wrap;">
                     <div class="flex items-center gap-3">
-                      <div style="width: 32px; height: 32px; border-radius: 50%; background: ${m.status === 'COMPLETED' ? 'var(--success-light)' : (m.status === 'IN_PROGRESS' ? 'var(--primary-light)' : 'var(--bg-hover)')}; color: ${m.status === 'COMPLETED' ? 'var(--success)' : (m.status === 'IN_PROGRESS' ? 'var(--primary)' : 'var(--text-muted)')}; display: flex; align-items: center; justify-content: center; flex-shrink: 0;">
-                        ${m.status === 'COMPLETED' ? `
-                          <svg width="18" height="18" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <div style="width: 36px; height: 36px; border-radius: 50%; background: ${isPassed ? 'var(--success-light)' : (isCurrent ? 'var(--primary-light)' : 'var(--bg-hover)')}; color: ${isPassed ? 'var(--success)' : (isCurrent ? 'var(--primary)' : 'var(--text-muted)')}; display: flex; align-items: center; justify-content: center; font-weight: 800; font-size: 0.95rem; flex-shrink: 0;">
+                        ${isPassed ? `
+                          <svg width="20" height="20" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7"/>
                           </svg>
-                        ` : `<span style="font-weight: 700; font-size: 0.85rem;">${idx + 1}</span>`}
+                        ` : m.day}
                       </div>
                       <div>
-                        <div style="font-weight: 600; font-size: 0.9rem; color: var(--text-main);">${m.name}</div>
-                        <div style="font-size: 0.78rem; color: var(--text-muted);">Assessment Score: <strong>${m.score}</strong></div>
+                        <div style="font-size: 0.75rem; text-transform: uppercase; font-weight: 700; color: var(--text-muted); letter-spacing: 0.05em;">Day ${m.day} Module</div>
+                        <h3 style="font-size: 1.05rem; font-weight: 700; color: var(--text-main); margin: 0;">${m.title}</h3>
                       </div>
                     </div>
                     <div>
-                      <span class="badge ${m.status === 'COMPLETED' ? 'badge-success' : (m.status === 'IN_PROGRESS' ? 'badge-primary' : 'badge-neutral')}">
-                        ${m.status === 'COMPLETED' ? 'Cleared' : (m.status === 'IN_PROGRESS' ? 'In Progress' : 'Pending')}
+                      <span class="badge ${isPassed ? 'badge-success' : (isCurrent ? 'badge-primary' : 'badge-neutral')}">
+                        ${isPassed ? 'Cleared' : (isCurrent ? 'Today Active' : 'Upcoming')}
                       </span>
                     </div>
                   </div>
-                `).join('')}
+
+                  <div style="display: flex; gap: 16px; font-size: 0.8rem; color: var(--text-secondary); margin-bottom: 12px; flex-wrap: wrap;">
+                    <div><strong>Shift Duration:</strong> ${m.duration}</div>
+                    <div><strong>Objective:</strong> ${m.learningObjectives}</div>
+                  </div>
+
+                  <div style="background: var(--bg-hover); border-radius: var(--radius-sm); padding: 12px 16px;">
+                    <div style="font-size: 0.75rem; text-transform: uppercase; font-weight: 700; color: var(--text-muted); margin-bottom: 6px;">Day ${m.day} Syllabus &amp; Key Topics</div>
+                    <ul style="margin: 0; padding-left: 18px; font-size: 0.85rem; color: var(--text-main); display: flex; flex-direction: column; gap: 4px; line-height: 1.45;">
+                      ${m.topics.map(t => `<li>${t}</li>`).join('')}
+                    </ul>
+                  </div>
+                </div>
               </div>
-            </div>
-          </div>
+            `;
+          }).join('')}
         </div>
 
-        <!-- Right: Mentor Card & Actions -->
-        <div>
-          <!-- Mentor Profile Card -->
-          <div class="card" style="margin-bottom: 20px;">
+        <!-- Right Column: Mentor & Certification -->
+        <div style="display: flex; flex-direction: column; gap: 20px;">
+          
+          <!-- Assigned Mentor Profile Card -->
+          <div class="card">
             <div class="card-header">
-              <div class="card-title">Assigned Mentor</div>
-              <div class="card-subtitle">Your dedicated guide & evaluator</div>
+              <div>
+                <div class="card-title">Assigned Training Mentor</div>
+                <div class="card-subtitle">Dedicated trainer & curriculum evaluator</div>
+              </div>
             </div>
             <div class="card-body" style="padding: 20px; text-align: center;">
-              <div style="width: 64px; height: 64px; border-radius: 50%; background: var(--primary-light); color: var(--primary); display: inline-flex; align-items: center; justify-content: center; font-size: 1.5rem; font-weight: 800; margin-bottom: 12px;">
-                ${myTrainer.fullName.substring(0, 2).toUpperCase()}
+              <div style="width: 60px; height: 60px; border-radius: 50%; background: var(--primary-light); color: var(--primary); display: inline-flex; align-items: center; justify-content: center; font-size: 1.4rem; font-weight: 800; margin-bottom: 12px;">
+                ${(myTrainer.fullName || 'M').substring(0, 2).toUpperCase()}
               </div>
-              <h3 style="font-size: 1.05rem; font-weight: 700; color: var(--text-main); margin: 0 0 2px 0;">${myTrainer.fullName}</h3>
-              <div style="font-size: 0.8rem; color: var(--text-muted); margin-bottom: 12px;">${myTrainer.designation}</div>
+              <h3 style="font-size: 1.1rem; font-weight: 700; color: var(--text-main); margin: 0 0 4px 0;">${myTrainer.fullName}</h3>
+              <div style="font-size: 0.82rem; color: var(--text-muted); margin-bottom: 12px;">${myTrainer.designation}</div>
               
-              <div class="badge badge-neutral" style="margin-bottom: 16px;">
+              <div class="badge badge-primary" style="margin-bottom: 16px;">
                 ${myTrainer.specialization}
               </div>
 
-              <div style="display: flex; flex-direction: column; gap: 8px; text-align: left; font-size: 0.8rem; background: var(--bg-hover); padding: 12px; border-radius: var(--radius-sm); margin-bottom: 16px;">
+              <div style="display: flex; flex-direction: column; gap: 8px; text-align: left; font-size: 0.82rem; background: var(--bg-hover); padding: 12px 14px; border-radius: var(--radius-sm); margin-bottom: 16px;">
                 <div class="flex items-center gap-2">
-                  <svg width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/></svg>
-                  <span>${myTrainer.email}</span>
+                  <svg width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"/></svg>
+                  <span>Diallo % — Ghansoli Mahape</span>
                 </div>
                 <div class="flex items-center gap-2">
                   <svg width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z"/></svg>
-                  <span>${myTrainer.phone}</span>
+                  <span><strong>HR Helpline:</strong> 9372868617</span>
                 </div>
               </div>
 
@@ -592,33 +643,140 @@ const TrainingView = {
             </div>
           </div>
 
-          <!-- Training Certification Card -->
+          <!-- Training Certification Status Card -->
           <div class="card">
             <div class="card-header">
-              <div class="card-title">Completion Certificate</div>
-              <div class="card-subtitle">Official credential</div>
+              <div>
+                <div class="card-title">Certification & Handover</div>
+                <div class="card-subtitle">Official training credential</div>
+              </div>
             </div>
             <div class="card-body" style="padding: 20px; text-align: center;">
-              <div style="width: 48px; height: 48px; border-radius: 50%; background: var(--success-light); color: var(--success); display: inline-flex; align-items: center; justify-content: center; margin-bottom: 12px;">
+              <div style="width: 48px; height: 48px; border-radius: 50%; background: ${myTraineeRecord.status === 'HANDED_OVER' ? 'var(--success-light)' : (myTraineeRecord.status === 'CERTIFIED' ? 'var(--primary-light)' : 'var(--bg-hover)')}; color: ${myTraineeRecord.status === 'HANDED_OVER' ? 'var(--success)' : (myTraineeRecord.status === 'CERTIFIED' ? 'var(--primary)' : 'var(--text-muted)')}; display: inline-flex; align-items: center; justify-content: center; margin-bottom: 12px;">
                 <svg width="24" height="24" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4M7.835 4.697a3.42 3.42 0 001.946-.806 3.42 3.42 0 014.438 0 3.42 3.42 0 001.946.806 3.42 3.42 0 013.138 3.138 3.42 3.42 0 00.806 1.946 3.42 3.42 0 010 4.438 3.42 3.42 0 00-.806 1.946 3.42 3.42 0 01-3.138 3.138 3.42 3.42 0 00-1.946.806 3.42 3.42 0 01-4.438 0 3.42 3.42 0 00-1.946-.806 3.42 3.42 0 01-3.138-3.138 3.42 3.42 0 00-.806-1.946 3.42 3.42 0 010-4.438 3.42 3.42 0 00.806-1.946 3.42 3.42 0 013.138-3.138z"/>
                 </svg>
               </div>
               <div style="font-weight: 700; font-size: 0.95rem; color: var(--text-main); margin-bottom: 4px;">
-                ${myTraineeRecord.status === 'CERTIFIED' ? 'Certified Graduate' : 'Pending 100% Completion'}
+                ${myTraineeRecord.status === 'HANDED_OVER' ? 'Handed Over to Production Floor' : (myTraineeRecord.status === 'CERTIFIED' ? 'Certified Trainee Graduate' : `In Training (Day ${curDay}/7)`)}
               </div>
-              <p style="font-size: 0.8rem; color: var(--text-muted); margin-bottom: 16px;">
-                ${myTraineeRecord.status === 'CERTIFIED' ? 'Certificate issued with verification key DL-CERT-2026.' : 'Upon completing all 5 curriculum modules and viva, your official Diallo HRMS completion certificate will unlock.'}
+              <p style="font-size: 0.8rem; color: var(--text-muted); margin-bottom: 14px; line-height: 1.45;">
+                ${myTraineeRecord.status === 'HANDED_OVER' ? 'Transitioned to live operations with complete handover sign-off.' : (myTraineeRecord.status === 'CERTIFIED' ? 'Day 6 Benchmark Mock Call and Theory examinations passed.' : 'Complete Day 6 Certification viva and Day 7 Floor Handover to graduate.')}
               </p>
-              <button class="btn btn-secondary btn-sm" style="width: 100%; justify-content: center;" onclick="Toast.info('Official certificate unlocks upon completion of final viva evaluation.')">
-                Download Certificate
-              </button>
+              <div style="font-size: 0.75rem; color: var(--text-secondary); background: var(--bg-hover); padding: 8px 10px; border-radius: var(--radius-sm);">
+                <strong>Milestones:</strong> Day 6 = Certification • Day 7 = Floor Handover
+              </div>
             </div>
           </div>
+
         </div>
 
       </div>
     `;
+  },
+
+  // PROGRESSION ACTION HANDLERS
+  async advanceTraineeDay(traineeId, currentDay) {
+    try {
+      await trainingService.advanceTraineeDay(traineeId, currentDay);
+      if (window.Router) Router.navigate('training');
+    } catch (e) {
+      Toast.error('Could not advance day: ' + (e.message || e));
+    }
+  },
+
+  openCertifyModal(traineeId, fullName) {
+    const modalHtml = `
+      <form id="certify-trainee-form" onsubmit="event.preventDefault(); TrainingView.submitCertify('${traineeId}');">
+        <p style="margin-bottom: 16px; font-size: 0.9rem; color: var(--text-secondary);">
+          Award official Day 6 Certification to <strong>${fullName}</strong> upon completion of theory exams and live benchmark mock calls.
+        </p>
+        <div class="form-group" style="margin-bottom: 14px;">
+          <label class="form-label">Evaluation Score / Rating (1 to 5) *</label>
+          <select id="cert-rating" class="form-control" required>
+            <option value="5">5.0 - Exceptional (Exceeds Standards)</option>
+            <option value="4">4.0 - Proficient (Meets Standards)</option>
+            <option value="3">3.0 - Satisfactory</option>
+          </select>
+        </div>
+        <div class="form-group" style="margin-bottom: 16px;">
+          <label class="form-label">Mentor Certification Remarks</label>
+          <textarea id="cert-notes" class="form-control" rows="3" placeholder="Enter evaluation notes, call quality observations and certification approval remarks..."></textarea>
+        </div>
+        <div style="display: flex; justify-content: flex-end; gap: 10px;">
+          <button type="button" class="btn btn-secondary" data-modal-close>Cancel</button>
+          <button type="submit" class="btn btn-primary">Award Official Certification</button>
+        </div>
+      </form>
+    `;
+    ModalManager.openModal({
+      id: 'certify-trainee-modal',
+      title: 'Award Day 6 Trainee Certification',
+      subtitle: fullName,
+      contentHtml: modalHtml,
+      size: 'md'
+    });
+  },
+
+  async submitCertify(traineeId) {
+    try {
+      const rating = document.getElementById('cert-rating').value;
+      const notes = document.getElementById('cert-notes').value;
+      await trainingService.certifyTrainee(traineeId, rating, notes);
+      ModalManager.closeModal();
+      if (window.Router) Router.navigate('training');
+    } catch (e) {
+      Toast.error('Could not certify trainee: ' + (e.message || e));
+    }
+  },
+
+  openHandoverModal(traineeId, fullName, defaultDept) {
+    const modalHtml = `
+      <form id="handover-trainee-form" onsubmit="event.preventDefault(); TrainingView.submitHandover('${traineeId}');">
+        <p style="margin-bottom: 16px; font-size: 0.9rem; color: var(--text-secondary);">
+          Complete official <strong>Day 7 Floor Handover</strong> for <strong>${fullName}</strong>. Trainee will transition from training track to live production operations.
+        </p>
+        <div class="form-group" style="margin-bottom: 14px;">
+          <label class="form-label">Assigned Production Department *</label>
+          <select id="hnd-dept" class="form-control" required>
+            <option value="Operations" ${defaultDept === 'Operations' ? 'selected' : ''}>Operations</option>
+            <option value="Digital Team" ${defaultDept === 'Digital Team' ? 'selected' : ''}>Digital Team</option>
+            <option value="Sales" ${defaultDept === 'Sales' ? 'selected' : ''}>Sales</option>
+            <option value="Real Estate" ${defaultDept === 'Real Estate' ? 'selected' : ''}>Real Estate</option>
+            <option value="Car Rental" ${defaultDept === 'Car Rental' ? 'selected' : ''}>Car Rental</option>
+            <option value="Compliance" ${defaultDept === 'Compliance' ? 'selected' : ''}>Compliance</option>
+            <option value="Human Resources" ${defaultDept === 'Human Resources' ? 'selected' : ''}>Human Resources</option>
+          </select>
+        </div>
+        <div class="form-group" style="margin-bottom: 16px;">
+          <label class="form-label">Assigned Reporting Manager / Team Lead *</label>
+          <input type="text" id="hnd-tl" class="form-control" placeholder="e.g. Operations TL" value="Assigned Reporting Manager" required />
+        </div>
+        <div style="display: flex; justify-content: flex-end; gap: 10px;">
+          <button type="button" class="btn btn-secondary" data-modal-close>Cancel</button>
+          <button type="submit" class="btn btn-primary">Complete Floor Handover</button>
+        </div>
+      </form>
+    `;
+    ModalManager.openModal({
+      id: 'handover-trainee-modal',
+      title: 'Day 7 Floor Handover Sign-Off',
+      subtitle: fullName,
+      contentHtml: modalHtml,
+      size: 'md'
+    });
+  },
+
+  async submitHandover(traineeId) {
+    try {
+      const dept = document.getElementById('hnd-dept').value;
+      const tl = document.getElementById('hnd-tl').value;
+      await trainingService.handoverToFloor(traineeId, dept, tl);
+      ModalManager.closeModal();
+      if (window.Router) Router.navigate('training');
+    } catch (e) {
+      Toast.error('Could not complete floor handover: ' + (e.message || e));
+    }
   },
 
   // MODALS
@@ -643,16 +801,19 @@ const TrainingView = {
           <div class="form-group">
             <label class="form-label">Department *</label>
             <select id="trn-dept" class="form-control" required>
-              <option value="Engineering & Technology">Engineering & Technology</option>
+              <option value="Operations">Operations</option>
+              <option value="Digital Team">Digital Team</option>
+              <option value="Sales">Sales</option>
+              <option value="Real Estate">Real Estate</option>
+              <option value="Car Rental">Car Rental</option>
+              <option value="Compliance">Compliance</option>
+              <option value="Training">Training</option>
               <option value="Human Resources">Human Resources</option>
-              <option value="Finance, Accounts & Taxation">Finance, Accounts & Taxation</option>
-              <option value="Operations & Logistics">Operations & Logistics</option>
-              <option value="Digital & Design">Digital & Design</option>
             </select>
           </div>
           <div class="form-group">
             <label class="form-label">Curriculum Track *</label>
-            <input type="text" id="trn-track" class="form-control" value="Graduate Engineering Trainee (GET)" required />
+            <input type="text" id="trn-track" class="form-control" value="7-Day Core Training Modules" required />
           </div>
         </div>
         <div class="grid" style="grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 14px;">
