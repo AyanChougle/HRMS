@@ -20,6 +20,7 @@
     <link rel="stylesheet" href="css/dashboard.css" />
     <link rel="stylesheet" href="css/responsive.css" />
     <link rel="stylesheet" href="css/animations.css" />
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='8' fill='%232563eb'/><text x='16' y='22' fill='%23ffffff' font-family='system-ui,sans-serif' font-weight='800' font-size='18' text-anchor='middle'>D</text></svg>" />
   </head>
   <body>
     <!-- Main Application Container Shell -->
@@ -309,6 +310,14 @@
                   <span style="display: inline-block; width: 8px; height: 8px; border-radius: 50%; background: #0891b2; margin-right: 6px;"></span>
                   <span>HR Manager</span>
                 </button>
+                <button class="dropdown-item" style="padding: 6px 8px; font-size: 0.82rem; border-radius: 4px;" onclick="AuthGuard.switchRole('TRAINER'); document.getElementById('profile-popover').classList.remove('active');">
+                  <span style="display: inline-block; width: 8px; height: 8px; border-radius: 50%; background: #0284c7; margin-right: 6px;"></span>
+                  <span>Corporate Trainer</span>
+                </button>
+                <button class="dropdown-item" style="padding: 6px 8px; font-size: 0.82rem; border-radius: 4px;" onclick="AuthGuard.switchRole('TRAINEE'); document.getElementById('profile-popover').classList.remove('active');">
+                  <span style="display: inline-block; width: 8px; height: 8px; border-radius: 50%; background: #d97706; margin-right: 6px;"></span>
+                  <span>Graduate Trainee</span>
+                </button>
                 <button class="dropdown-item" style="padding: 6px 8px; font-size: 0.82rem; border-radius: 4px;" onclick="AuthGuard.switchRole('EMPLOYEE'); document.getElementById('profile-popover').classList.remove('active');">
                   <span style="display: inline-block; width: 8px; height: 8px; border-radius: 50%; background: #16a34a; margin-right: 6px;"></span>
                   <span>Employee (ESS)</span>
@@ -462,6 +471,7 @@
     <script src="js/views/admin-dashboard-view.js"></script>
     <script src="js/views/manager-dashboard-view.js"></script>
     <script src="js/views/employee-dashboard-view.js"></script>
+    <script src="js/views/trainer-dashboard-view.js"></script>
     <script src="js/views/dashboard-view.js"></script>
     <script src="js/views/people-view.js"></script>
     <script src="js/views/recruitment-view.js"></script>

@@ -22,11 +22,23 @@ const recruitmentService = {
   async getRequisitions(companyId = null) {
     try {
       const targetCompany = companyId || AuthGuard.userProfile?.companyId || 'comp_diallo_india';
-      const snapshot = await db.collection('jobRequisitions')
-        .where('companyId', '==', targetCompany)
-        .orderBy('createdAt', 'desc')
-        .get();
-      return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+      let snapshot;
+      try {
+        snapshot = await db.collection('jobRequisitions')
+          .where('companyId', '==', targetCompany)
+          .orderBy('createdAt', 'desc')
+          .get();
+      } catch (idxErr) {
+        snapshot = await db.collection('jobRequisitions')
+          .where('companyId', '==', targetCompany)
+          .get();
+      }
+      const items = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+      return items.sort((a, b) => {
+        const timeA = a.createdAt?.seconds ? a.createdAt.seconds * 1000 : (new Date(a.createdAt || 0).getTime() || 0);
+        const timeB = b.createdAt?.seconds ? b.createdAt.seconds * 1000 : (new Date(b.createdAt || 0).getTime() || 0);
+        return timeB - timeA;
+      });
     } catch (e) {
       console.warn('Error fetching job requisitions:', e);
       return [];
@@ -551,11 +563,23 @@ const recruitmentService = {
   async getOffers(companyId = null) {
     try {
       const targetCompany = companyId || AuthGuard.userProfile?.companyId || 'comp_diallo_india';
-      const snapshot = await db.collection('jobOffers')
-        .where('companyId', '==', targetCompany)
-        .orderBy('createdAt', 'desc')
-        .get();
-      return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+      let snapshot;
+      try {
+        snapshot = await db.collection('jobOffers')
+          .where('companyId', '==', targetCompany)
+          .orderBy('createdAt', 'desc')
+          .get();
+      } catch (idxErr) {
+        snapshot = await db.collection('jobOffers')
+          .where('companyId', '==', targetCompany)
+          .get();
+      }
+      const items = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+      return items.sort((a, b) => {
+        const timeA = a.createdAt?.seconds ? a.createdAt.seconds * 1000 : (new Date(a.createdAt || 0).getTime() || 0);
+        const timeB = b.createdAt?.seconds ? b.createdAt.seconds * 1000 : (new Date(b.createdAt || 0).getTime() || 0);
+        return timeB - timeA;
+      });
     } catch (e) {
       return [];
     }

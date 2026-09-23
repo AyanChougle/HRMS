@@ -18,6 +18,8 @@ const EmployeeDashboardView = {
     const userDisplayName = AuthGuard.userProfile?.displayName || 'Team Member';
     const employeeCode = AuthGuard.userProfile?.employeeCode || 'EMP-0001';
     const department = AuthGuard.userProfile?.department || 'Operations';
+    const rawRole = (AuthGuard._previewRoleId || AuthGuard.userProfile?.roleId || 'EMPLOYEE').toString().toUpperCase().trim();
+    const isTrainee = rawRole === 'TRAINEE';
     const todayStr = new Date().toLocaleDateString('en-US', { weekday: 'long', month: 'short', day: 'numeric', year: 'numeric' });
 
     return `
@@ -25,11 +27,11 @@ const EmployeeDashboardView = {
       <div class="welcome-banner animate-fade-in" style="margin-bottom: 24px;">
         <div class="welcome-text">
           <div class="flex items-center gap-2" style="margin-bottom: 4px;">
-            <span class="badge badge-primary" style="font-size: 0.75rem;">${employeeCode}</span>
+            <span class="badge ${isTrainee ? 'badge-warning' : 'badge-primary'}" style="font-size: 0.75rem;">${isTrainee ? 'Graduate Trainee' : employeeCode}</span>
             <span class="text-muted" style="font-size: 0.8rem;">• ${department}</span>
           </div>
           <h1>Hello, ${userDisplayName}</h1>
-          <p>Your employee self-service workspace, daily timecard station, and personal HR portal</p>
+          <p>${isTrainee ? 'Your graduate trainee workspace, daily timecard station, and curriculum track' : 'Your employee self-service workspace, daily timecard station, and personal HR portal'}</p>
         </div>
         <div class="welcome-date-badge">
           <svg width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -137,6 +139,13 @@ const EmployeeDashboardView = {
         <div style="font-size: 0.8rem; font-weight: 700; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 12px;">Quick Self-Service Actions</div>
         <div class="grid" style="grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 12px;">
           
+          <button class="btn btn-soft" style="padding: 12px; height: auto; flex-direction: column; gap: 8px; justify-content: center; text-align: center; border-radius: var(--radius-md);" onclick="Router.navigate('training')">
+            <span style="color: var(--primary); display: flex; align-items: center; justify-content: center;">
+              <svg width="22" height="22" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253"/></svg>
+            </span>
+            <span style="font-size: 0.85rem; font-weight: 600;">${isTrainee ? 'My Learning Track' : 'Training & Mentors'}</span>
+          </button>
+
           <button class="btn btn-soft" style="padding: 12px; height: auto; flex-direction: column; gap: 8px; justify-content: center; text-align: center; border-radius: var(--radius-md);" onclick="Forms.openApplyLeaveModal()">
             <span style="color: var(--primary); display: flex; align-items: center; justify-content: center;">
               <svg width="22" height="22" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg>

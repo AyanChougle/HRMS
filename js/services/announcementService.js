@@ -25,8 +25,18 @@ const announcementService = {
         query = query.where('status', '==', filters.status);
       }
 
-      const snapshot = await query.orderBy('createdAt', 'desc').limit(filters.limit || 30).get();
+      let snapshot;
+      try {
+        snapshot = await query.orderBy('createdAt', 'desc').limit(filters.limit || 30).get();
+      } catch (idxErr) {
+        snapshot = await query.limit(filters.limit || 30).get();
+      }
       let list = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+      list.sort((a, b) => {
+        const timeA = a.createdAt?.seconds ? a.createdAt.seconds * 1000 : (new Date(a.createdAt || 0).getTime() || 0);
+        const timeB = b.createdAt?.seconds ? b.createdAt.seconds * 1000 : (new Date(b.createdAt || 0).getTime() || 0);
+        return timeB - timeA;
+      });
 
       if (filters.category && filters.category !== 'ALL') {
         list = list.filter(a => a.category === filters.category);

@@ -13,6 +13,7 @@
   <link rel="stylesheet" href="css/forms.css" />
   <link rel="stylesheet" href="css/modals.css" />
   <link rel="stylesheet" href="css/responsive.css" />
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='8' fill='%232563eb'/><text x='16' y='22' fill='%23ffffff' font-family='system-ui,sans-serif' font-weight='800' font-size='18' text-anchor='middle'>D</text></svg>" />
 
   <style>
     body {
@@ -274,10 +275,17 @@
           <input type="text" id="signup-phone" class="form-control" placeholder="+91 98765 43210" />
         </div>
       </div>
-      <p style="font-size: 12px; color: var(--text-muted, #888); margin: -8px 0 14px;">
-        New accounts start as Employee (Self Service). An administrator can grant elevated
-        access afterward from the Users module.
-      </p>
+      <div class="form-group" style="margin-bottom: 14px;">
+        <label class="form-label required">Designated Account Role & Workspace</label>
+        <select id="signup-role" class="form-control" required>
+          <option value="EMPLOYEE">Employee (Self Service)</option>
+          <option value="TRAINER">Corporate Trainer</option>
+          <option value="TRAINEE">Graduate Trainee / Intern</option>
+        </select>
+        <p style="font-size: 11px; color: var(--text-muted, #888); margin: 4px 0 0;">
+          Select your designated role to provision the appropriate workspace and permissions.
+        </p>
+      </div>
 
       <div class="form-group" style="margin-bottom: 14px;">
         <label class="form-label required">Password</label>
@@ -309,6 +317,30 @@
         <span>Create Account & Start Session</span>
       </button>
     </form>
+
+    <div style="margin-top: 24px; padding-top: 16px; border-top: 1px dashed var(--border-main);">
+      <div style="font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.05em; font-weight: 700; color: var(--text-muted); margin-bottom: 8px; text-align: center;">
+        Quick Testing Credentials
+      </div>
+      <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px;">
+        <button type="button" class="btn btn-secondary btn-sm" onclick="quickFillRole('admin@diallo.in', 'Admin@123', 'SUPER_ADMIN')" style="font-size: 0.75rem; padding: 6px 8px; justify-content: center;">
+          <span style="display: inline-block; width: 6px; height: 6px; border-radius: 50%; background: #2563eb; margin-right: 4px;"></span>
+          Super Admin
+        </button>
+        <button type="button" class="btn btn-secondary btn-sm" onclick="quickFillRole('vikram.sharma@diallo.in', 'Trainer@123', 'TRAINER')" style="font-size: 0.75rem; padding: 6px 8px; justify-content: center;">
+          <span style="display: inline-block; width: 6px; height: 6px; border-radius: 50%; background: #0284c7; margin-right: 4px;"></span>
+          Corporate Trainer
+        </button>
+        <button type="button" class="btn btn-secondary btn-sm" onclick="quickFillRole('tanvi.joshi@diallo.in', 'Trainee@123', 'TRAINEE')" style="font-size: 0.75rem; padding: 6px 8px; justify-content: center;">
+          <span style="display: inline-block; width: 6px; height: 6px; border-radius: 50%; background: #d97706; margin-right: 4px;"></span>
+          Graduate Trainee
+        </button>
+        <button type="button" class="btn btn-secondary btn-sm" onclick="quickFillRole('arjun.patel@diallo.in', 'Emp@12345', 'EMPLOYEE')" style="font-size: 0.75rem; padding: 6px 8px; justify-content: center;">
+          <span style="display: inline-block; width: 6px; height: 6px; border-radius: 50%; background: #16a34a; margin-right: 4px;"></span>
+          Employee (ESS)
+        </button>
+      </div>
+    </div>
 
     <div class="auth-footer">
       <p>© 2026 Diallo India Private Limited • Firebase Cloud Platform</p>
@@ -380,6 +412,20 @@
       document.getElementById('signup-password').value = password;
       document.getElementById('signup-confirm-password').value = password;
       document.getElementById('signup-firstname').focus();
+    }
+
+    function quickFillRole(email, password, roleId) {
+      switchAuthTab('login');
+      document.getElementById('login-email').value = email;
+      document.getElementById('login-password').value = password;
+      const roleSelect = document.getElementById('signup-role');
+      if (roleSelect && roleId) {
+        roleSelect.value = roleId;
+      }
+      if (typeof Toast !== 'undefined') {
+        Toast.info(`Loaded test credentials for ${roleId}`);
+      }
+      document.getElementById('login-submit-btn').focus();
     }
 
     let isAuthenticating = false;
@@ -473,10 +519,13 @@
       signupBtn.disabled = true;
       signupBtn.innerHTML = '<span>Creating Firebase Account & Profile...</span>';
 
+      const roleId = document.getElementById('signup-role')?.value || 'EMPLOYEE';
+
       const profileData = {
         firstName,
         lastName,
         displayName: `${firstName} ${lastName}`.trim() || email.split('@')[0],
+        roleId: roleId,
         companyName: company || 'Diallo India Private Limited',
         companyId: 'comp_diallo_india',
         branchId: 'branch_mumbai',

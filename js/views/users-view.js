@@ -77,7 +77,7 @@ const UsersView = {
                     </div>
                   </td>
                   <td>
-                    <span class="badge ${u.roleId === "SUPER_ADMIN" ? "badge-primary" : u.roleId === "HR" ? "badge-success" : "badge-neutral"}">
+                    <span class="badge ${u.roleId === "SUPER_ADMIN" ? "badge-primary" : u.roleId === "HR" ? "badge-success" : u.roleId === "TRAINER" ? "badge-info" : u.roleId === "TRAINEE" ? "badge-warning" : "badge-neutral"}">
                       ${u.roleId || "EMPLOYEE"}
                     </span>
                   </td>
@@ -130,6 +130,8 @@ const UsersView = {
                 <option value="SUPER_ADMIN">Super Administrator</option>
                 <option value="COMPANY_ADMIN">Company Administrator</option>
                 <option value="HR" selected>HR Administrator</option>
+                <option value="TRAINER">Corporate Trainer</option>
+                <option value="TRAINEE">Graduate Trainee</option>
                 <option value="PAYROLL">Payroll Officer</option>
                 <option value="MANAGER">Line Manager</option>
                 <option value="EMPLOYEE">Employee (Self Service)</option>
@@ -200,6 +202,8 @@ const UsersView = {
             <option value="SUPER_ADMIN" ${currentRole === "SUPER_ADMIN" ? "selected" : ""}>Super Administrator</option>
             <option value="COMPANY_ADMIN" ${currentRole === "COMPANY_ADMIN" ? "selected" : ""}>Company Administrator</option>
             <option value="HR" ${currentRole === "HR" ? "selected" : ""}>HR Administrator</option>
+            <option value="TRAINER" ${currentRole === "TRAINER" ? "selected" : ""}>Corporate Trainer</option>
+            <option value="TRAINEE" ${currentRole === "TRAINEE" ? "selected" : ""}>Graduate Trainee</option>
             <option value="PAYROLL" ${currentRole === "PAYROLL" ? "selected" : ""}>Payroll Officer</option>
             <option value="MANAGER" ${currentRole === "MANAGER" ? "selected" : ""}>Line Manager</option>
             <option value="EMPLOYEE" ${currentRole === "EMPLOYEE" ? "selected" : ""}>Employee (Self Service)</option>

@@ -111,6 +111,9 @@
   border-radius: var(--radius-lg);
   box-shadow: var(--shadow-xs);
   transition: all var(--transition-speed);
+  min-width: 0;
+  max-width: 100%;
+  box-sizing: border-box;
 }
 
 .card-header {
@@ -139,6 +142,11 @@
 
 .card-body {
   padding: 20px;
+  min-width: 0;
+  max-width: 100%;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  box-sizing: border-box;
 }
 
 .card-footer {

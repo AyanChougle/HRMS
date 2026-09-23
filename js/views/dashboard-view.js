@@ -9,6 +9,8 @@ const DashboardView = {
 
     if (roleId === 'SUPER_ADMIN' || roleId === 'COMPANY_ADMIN' || roleId === 'HR' || roleId === 'PAYROLL') {
       return window.AdminDashboardView;
+    } else if (roleId === 'TRAINER') {
+      return window.TrainerDashboardView || window.ManagerDashboardView;
     } else if (roleId === 'MANAGER') {
       return window.ManagerDashboardView;
     } else {

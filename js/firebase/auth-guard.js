@@ -150,6 +150,10 @@ const AuthGuard = {
           this.userRole = { name: 'Payroll Officer', id: 'PAYROLL' };
         } else if (normalizedRoleId === 'MANAGER') {
           this.userRole = { name: 'Line Manager', id: 'MANAGER' };
+        } else if (normalizedRoleId === 'TRAINER') {
+          this.userRole = { name: 'Corporate Trainer', id: 'TRAINER' };
+        } else if (normalizedRoleId === 'TRAINEE') {
+          this.userRole = { name: 'Graduate Trainee', id: 'TRAINEE' };
         } else {
           this.userRole = { name: 'Employee (ESS)', id: 'EMPLOYEE' };
         }
@@ -206,7 +210,17 @@ const AuthGuard = {
         this.userRole = { name: normalizedRoleId === 'SUPER_ADMIN' ? 'Super Admin' : 'Company Admin', id: normalizedRoleId };
       } else if (window.PermissionService) {
         this.permissions = PermissionService.getUserPermissions(this.userProfile);
-        this.userRole = { name: 'Employee (ESS)', id: 'EMPLOYEE' };
+        if (normalizedRoleId === 'TRAINER') {
+          this.userRole = { name: 'Corporate Trainer', id: 'TRAINER' };
+        } else if (normalizedRoleId === 'TRAINEE') {
+          this.userRole = { name: 'Graduate Trainee', id: 'TRAINEE' };
+        } else if (normalizedRoleId === 'HR' || normalizedRoleId === 'HR_MANAGER') {
+          this.userRole = { name: 'HR Manager', id: 'HR' };
+        } else if (normalizedRoleId === 'MANAGER') {
+          this.userRole = { name: 'Line Manager', id: 'MANAGER' };
+        } else {
+          this.userRole = { name: 'Employee (ESS)', id: 'EMPLOYEE' };
+        }
       } else {
         this.permissions = new Set(['*']);
         this.userRole = { name: 'Employee (ESS)', id: 'EMPLOYEE' };
@@ -277,6 +291,12 @@ const AuthGuard = {
     } else if (normalizedRole === 'MANAGER') {
       this.permissions = window.PermissionService ? PermissionService.getUserPermissions({ roleId: 'MANAGER' }) : new Set(['*']);
       this.userRole = { name: 'Line Manager', id: 'MANAGER' };
+    } else if (normalizedRole === 'TRAINER') {
+      this.permissions = window.PermissionService ? PermissionService.getUserPermissions({ roleId: 'TRAINER' }) : new Set(['training.*', 'attendance.punch', 'attendance.view', 'leave.view', 'leave.create', 'own.profile']);
+      this.userRole = { name: 'Corporate Trainer', id: 'TRAINER' };
+    } else if (normalizedRole === 'TRAINEE') {
+      this.permissions = window.PermissionService ? PermissionService.getUserPermissions({ roleId: 'TRAINEE' }) : new Set(['training.view', 'training.submit', 'attendance.punch', 'attendance.view', 'leave.view', 'leave.create', 'own.profile']);
+      this.userRole = { name: 'Graduate Trainee', id: 'TRAINEE' };
     } else {
       this.userRole = { name: 'Employee (ESS)', id: 'EMPLOYEE' };
       this.permissions = new Set([
@@ -298,7 +318,7 @@ const AuthGuard = {
       }
     }
 
-    const roleName = roleId === 'SUPER_ADMIN' ? 'Super Admin' : (roleId === 'COMPANY_ADMIN' ? 'Company Admin' : (roleId === 'HR' ? 'HR Manager' : 'Employee (ESS)'));
+    const roleName = roleId === 'SUPER_ADMIN' ? 'Super Admin' : (roleId === 'COMPANY_ADMIN' ? 'Company Admin' : (roleId === 'HR' ? 'HR Manager' : (roleId === 'TRAINER' ? 'Corporate Trainer' : (roleId === 'TRAINEE' ? 'Graduate Trainee' : 'Employee (ESS)'))));
     if (typeof Toast !== 'undefined') {
       Toast.success(`Active Role View changed to: ${roleName}`);
     }
@@ -314,7 +334,7 @@ const AuthGuard = {
 
     if (this.userProfile) {
       const name = this.userProfile.displayName || this.userProfile.fullName || this.currentUser?.email?.split('@')[0] || 'User';
-      const role = this.userRole?.name || (this.userProfile.roleId === 'SUPER_ADMIN' ? 'Super Admin' : (this.userProfile.roleId === 'COMPANY_ADMIN' ? 'Company Admin' : (this.userProfile.roleId === 'HR' ? 'HR Manager' : (this.userProfile.roleId === 'TEAM_LEAD' ? 'Team Lead' : 'Employee (ESS)'))));
+      const role = this.userRole?.name || (this.userProfile.roleId === 'SUPER_ADMIN' ? 'Super Admin' : (this.userProfile.roleId === 'COMPANY_ADMIN' ? 'Company Admin' : (this.userProfile.roleId === 'HR' ? 'HR Manager' : (this.userProfile.roleId === 'TRAINER' ? 'Corporate Trainer' : (this.userProfile.roleId === 'TRAINEE' ? 'Graduate Trainee' : (this.userProfile.roleId === 'TEAM_LEAD' ? 'Team Lead' : 'Employee (ESS)'))))));
       const initials = name.split(' ').map(n => n[0]).join('').substring(0, 2).toUpperCase() || 'US';
 
       nameEls.forEach(el => { el.textContent = name; });

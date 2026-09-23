@@ -92,7 +92,11 @@ const authService = {
 
       const userEmail = (user.email || email || '').toLowerCase().trim();
       const isOwner = userEmail === 'ayanislight@gmail.com' || userEmail.includes('ayan') || userEmail.startsWith('admin@');
-      const initialRole = isOwner ? 'SUPER_ADMIN' : 'EMPLOYEE';
+      let requestedRole = profileData.roleId ? profileData.roleId.toString().toUpperCase().trim() : 'EMPLOYEE';
+      if (!['EMPLOYEE', 'TRAINER', 'TRAINEE', 'SUPER_ADMIN', 'COMPANY_ADMIN', 'HR', 'HR_MANAGER', 'PAYROLL', 'MANAGER'].includes(requestedRole)) {
+        requestedRole = 'EMPLOYEE';
+      }
+      const initialRole = isOwner ? 'SUPER_ADMIN' : requestedRole;
       let employeeId = profileData.employeeId || (isOwner ? 'EMP000' : null);
 
       if (!employeeId) {

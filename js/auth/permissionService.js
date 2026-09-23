@@ -181,7 +181,53 @@ const PermissionService = {
       'assets.view',
       'performance.view',
       'documents.view',
-      'requests.view'
+      'requests.view',
+      'training.view'
+    ],
+
+    TRAINER: [
+      'training.*',
+      'training.view',
+      'training.manage',
+      'training.create',
+      'training.edit',
+      'training.assess',
+      'people.view',
+      'attendance.punch',
+      'attendance.view',
+      'leave.view',
+      'leave.create',
+      'documents.view',
+      'documents.upload',
+      'communication.view',
+      'performance.view',
+      'performance.create',
+      'performance.edit',
+      'own.profile',
+      'own.attendance',
+      'own.leave',
+      'own.payslips',
+      'own.documents',
+      'ess.view'
+    ],
+
+    TRAINEE: [
+      'training.view',
+      'training.submit',
+      'training.participate',
+      'attendance.punch',
+      'attendance.view',
+      'leave.view',
+      'leave.create',
+      'documents.view',
+      'communication.view',
+      'performance.view',
+      'own.profile',
+      'own.attendance',
+      'own.leave',
+      'own.payslips',
+      'own.documents',
+      'ess.view'
     ]
   },
 

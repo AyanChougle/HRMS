@@ -13,11 +13,17 @@ const TrainingView = {
 
   async renderHub() {
     const rawRole = (AuthGuard._previewRoleId || AuthGuard.userProfile?.roleId || 'EMPLOYEE').toString().toUpperCase().trim();
-    const isEmployee = rawRole === 'EMPLOYEE';
+    const isTrainee = rawRole === 'TRAINEE';
+    const isTrainer = rawRole === 'TRAINER';
+    const isEmployee = rawRole === 'EMPLOYEE' || isTrainee;
     const currentEmpEmail = AuthGuard.userProfile?.email || AuthGuard.currentUser?.email;
     const currentEmpName = AuthGuard.userProfile?.displayName || 'Employee';
 
-    if (isEmployee && this.activeTab === 'trainees') {
+    if (isTrainee && (this.activeTab === 'trainees' || this.activeTab === 'trainers')) {
+      this.activeTab = 'my_learning';
+    } else if (isTrainer && this.activeTab === 'my_learning') {
+      this.activeTab = 'trainees';
+    } else if (isEmployee && this.activeTab === 'trainees') {
       this.activeTab = 'my_learning';
     }
 
@@ -50,15 +56,28 @@ const TrainingView = {
         <div class="breadcrumb">
           <a href="#dashboard">Dashboard</a>
           <span class="breadcrumb-separator">/</span>
-          <span class="breadcrumb-current">${isEmployee ? 'My Learning & Mentorship' : 'Trainees & Trainers (L&D)'}</span>
+          <span class="breadcrumb-current">${isTrainee ? 'My Learning & Mentorship' : (isTrainer ? 'Trainer Command Center' : (isEmployee ? 'My Learning & Mentorship' : 'Trainees & Trainers (L&D)'))}</span>
         </div>
         <div class="page-title-row">
           <div>
-            <h1 class="page-title">${isEmployee ? 'My Training, Mentorship & Certifications' : 'Trainee Cohorts & Trainer Directory'}</h1>
-            <p class="page-subtitle">${isEmployee ? 'Track your onboarding curriculum, mentorship milestones, practical modules, and certification readiness' : 'Manage graduate trainee cohorts, mentor directory, curriculum milestones, assessments, and certifications'}</p>
+            <h1 class="page-title">${isTrainee ? 'My Trainee Curriculum & Mentorship' : (isTrainer ? 'Trainer Command Center & Trainee Batches' : (isEmployee ? 'My Training, Mentorship & Certifications' : 'Trainee Cohorts & Trainer Directory'))}</h1>
+            <p class="page-subtitle">${isTrainee ? 'Track your onboarding curriculum, mentorship milestones, practical modules, and certification readiness' : (isTrainer ? 'Manage and assess your assigned trainees, track milestone submissions, and conduct syllabus modules' : (isEmployee ? 'Track your onboarding curriculum, mentorship milestones, practical modules, and certification readiness' : 'Manage graduate trainee cohorts, mentor directory, curriculum milestones, assessments, and certifications'))}</p>
           </div>
           <div class="page-actions">
-            ${!isEmployee ? `
+            ${isTrainer ? `
+              <button class="btn btn-secondary btn-sm" onclick="TrainingView.openAddProgramModal()">
+                <svg width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/>
+                </svg>
+                + Create Program
+              </button>
+              <button class="btn btn-primary btn-sm" onclick="TrainingView.openAddTraineeModal()">
+                <svg width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z"/>
+                </svg>
+                + Add Trainee
+              </button>
+            ` : (!isEmployee ? `
               <button class="btn btn-secondary btn-sm" onclick="TrainingView.openAddTrainerModal()">
                 <svg width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/>
@@ -78,7 +97,7 @@ const TrainingView = {
                 </svg>
                 Connect with Mentor
               </button>
-            `}
+            `)}
           </div>
         </div>
       </div>
@@ -144,7 +163,7 @@ const TrainingView = {
 
       <!-- Navigation Tabs -->
       <div class="tab-nav" style="margin-bottom: 20px;">
-        ${!isEmployee ? `
+        ${!isTrainee && !isEmployee ? `
           <button class="tab-btn ${this.activeTab === 'trainees' ? 'active' : ''}" onclick="TrainingView.switchTab('trainees')">
             Trainees & Interns (${totalTrainees})
           </button>
@@ -154,9 +173,16 @@ const TrainingView = {
           <button class="tab-btn ${this.activeTab === 'programs' ? 'active' : ''}" onclick="TrainingView.switchTab('programs')">
             Training Programs (${totalPrograms})
           </button>
-        ` : ''}
+        ` : (isTrainer ? `
+          <button class="tab-btn ${this.activeTab === 'trainees' ? 'active' : ''}" onclick="TrainingView.switchTab('trainees')">
+            My Trainees & Batches (${totalTrainees})
+          </button>
+          <button class="tab-btn ${this.activeTab === 'programs' ? 'active' : ''}" onclick="TrainingView.switchTab('programs')">
+            Curriculum Programs (${totalPrograms})
+          </button>
+        ` : '')}
         <button class="tab-btn ${this.activeTab === 'my_learning' ? 'active' : ''}" onclick="TrainingView.switchTab('my_learning')">
-          ${isEmployee ? 'My Learning & Mentorship' : 'Employee Mentorship View (Preview)'}
+          ${isTrainee ? 'My Learning Track & Modules' : (isEmployee ? 'My Learning & Mentorship' : 'Trainee Learning Track (Preview)')}
         </button>
       </div>
 

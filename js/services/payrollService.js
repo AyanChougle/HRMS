@@ -7,11 +7,23 @@ const payrollService = {
   // 1. GET ALL PAYROLL PERIODS
   async getPayrollPeriods(companyId = 'comp_diallo_india') {
     try {
-      const snapshot = await db.collection('payrollPeriods')
-        .where('companyId', '==', companyId)
-        .orderBy('createdAt', 'desc')
-        .get();
-      return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+      let snapshot;
+      try {
+        snapshot = await db.collection('payrollPeriods')
+          .where('companyId', '==', companyId)
+          .orderBy('createdAt', 'desc')
+          .get();
+      } catch (idxErr) {
+        snapshot = await db.collection('payrollPeriods')
+          .where('companyId', '==', companyId)
+          .get();
+      }
+      const items = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+      return items.sort((a, b) => {
+        const timeA = a.createdAt?.seconds ? a.createdAt.seconds * 1000 : (new Date(a.createdAt || 0).getTime() || 0);
+        const timeB = b.createdAt?.seconds ? b.createdAt.seconds * 1000 : (new Date(b.createdAt || 0).getTime() || 0);
+        return timeB - timeA;
+      });
     } catch (err) {
       console.warn('Error fetching payroll periods:', err);
       return [];

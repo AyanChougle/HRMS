@@ -84,7 +84,7 @@
 
 .data-table {
   width: 100%;
-  min-width: 650px;
+  min-width: 720px;
   border-collapse: collapse;
   text-align: left;
   font-size: 0.875rem;
@@ -101,6 +101,10 @@
   border-bottom: 1px solid var(--border-main);
   white-space: nowrap;
   user-select: none;
+  position: sticky;
+  top: 0;
+  z-index: 5;
+  box-shadow: 0 1px 0 var(--border-main);
 }
 
 .data-table th.sortable {
@@ -123,6 +127,13 @@
   color: var(--text-primary);
   vertical-align: middle;
   transition: background-color 0.12s ease;
+}
+
+.data-table th:last-child,
+.data-table td:last-child {
+  padding-right: 24px;
+  white-space: nowrap;
+  text-align: right;
 }
 
 .data-table tbody tr:hover {
