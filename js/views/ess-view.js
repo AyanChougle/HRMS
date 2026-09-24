@@ -834,7 +834,7 @@ const ESSView = {
         <div class="form-group">
           <label class="form-label required">Request Type</label>
           <select id="ess-req-type" class="form-control" onchange="ESSView.onReqTypeChange(this.value)">
-            ${employeeRequestService.REQUEST_TYPES.map((t) => `<option value="${t.code}" ${t.code === preType ? "selected" : ""}>${t.icon} ${t.name}</option>`).join("")}
+            ${employeeRequestService.REQUEST_TYPES.map((t) => `<option value="${t.code}" ${t.code === preType ? "selected" : ""}>${t.name}</option>`).join("")}
           </select>
         </div>
 
@@ -915,7 +915,7 @@ const ESSView = {
           <div class="col-6 form-group">
             <label class="form-label required">Category</label>
             <select id="ess-doc-cat" class="form-control">
-              ${documentService.DOCUMENT_CATEGORIES.map((c) => `<option value="${c.code}">${c.icon} ${c.name}</option>`).join("")}
+              ${documentService.DOCUMENT_CATEGORIES.map((c) => `<option value="${c.code}">${c.name}</option>`).join("")}
             </select>
           </div>
         </div>
@@ -1748,7 +1748,75 @@ const ESSView = {
       }
       return false;
     }
-    return this.togglePunch();
+    return this.confirmAndExecutePunchOut();
+  },
+
+  confirmAndExecutePunchOut() {
+    const doPunchOut = async () => {
+      await this.executePunchOut();
+    };
+
+    if (typeof ModalManager !== "undefined" && ModalManager.confirm) {
+      ModalManager.confirm({
+        title: "Confirm Punch Out",
+        message:
+          "Are you sure you want to punch out and complete your shift for today? Once punched out, your shift will be concluded and locked until tomorrow.",
+        confirmText: "Yes, Punch Out",
+        confirmClass: "btn-danger",
+        onConfirm: doPunchOut,
+      });
+      return false;
+    } else if (typeof window !== "undefined" && window.confirm) {
+      if (
+        window.confirm(
+          "Are you sure you want to punch out and complete your shift for today?"
+        )
+      ) {
+        return doPunchOut();
+      }
+      return false;
+    } else {
+      return doPunchOut();
+    }
+  },
+
+  async executePunchOut() {
+    // Auto-end break if on break
+    let endedBreakSec = 0;
+    if (this.isOnBreak) {
+      this.isOnBreak = false;
+      endedBreakSec = this.breakSeconds || 0;
+      this.totalBreakSeconds += endedBreakSec;
+      this.breakSeconds = 0;
+      this.stopBreakTimer();
+    }
+
+    const finalTotalBreakSec = this.totalBreakSeconds;
+    this.isPunchedIn = false;
+    this.isShiftCompletedToday = true;
+    this.punchOutTimestamp = Date.now();
+    this.breakStartTimestamp = null;
+    this.stopTimer();
+    this.savePersistedState();
+    this.updateTimecardUI();
+
+    try {
+      await attendanceService.recordPunch({
+        name: AuthGuard.userProfile?.displayName || "Employee",
+        punchType: "Out",
+        device: "ESS Web GPS Terminal",
+        status: "Shift Completed",
+        totalBreakSeconds: finalTotalBreakSec,
+        breakDuration: endedBreakSec,
+        totalWorkSeconds: this.workSeconds,
+      });
+      Toast.info(
+        "Checked OUT successfully! Today's shift completed. Check-in locked until tomorrow 10:00 AM.",
+      );
+    } catch (e) {
+      console.warn("Punch record warning:", e);
+    }
+    return true;
   },
 
   async togglePunch() {
@@ -1838,42 +1906,7 @@ const ESSView = {
       }
       return true;
     } else {
-      // Auto-end break if on break
-      let endedBreakSec = 0;
-      if (this.isOnBreak) {
-        this.isOnBreak = false;
-        endedBreakSec = this.breakSeconds || 0;
-        this.totalBreakSeconds += endedBreakSec;
-        this.breakSeconds = 0;
-        this.stopBreakTimer();
-      }
-
-      const finalTotalBreakSec = this.totalBreakSeconds;
-      this.isPunchedIn = false;
-      this.isShiftCompletedToday = true;
-      this.punchOutTimestamp = Date.now();
-      this.breakStartTimestamp = null;
-      this.stopTimer();
-      this.savePersistedState();
-      this.updateTimecardUI();
-
-      try {
-        await attendanceService.recordPunch({
-          name: AuthGuard.userProfile?.displayName || "Employee",
-          punchType: "Out",
-          device: "ESS Web GPS Terminal",
-          status: "Shift Completed",
-          totalBreakSeconds: finalTotalBreakSec,
-          breakDuration: endedBreakSec,
-          totalWorkSeconds: this.workSeconds,
-        });
-        Toast.info(
-          "Checked OUT successfully! Today’s shift completed. Check-in locked until tomorrow 10:00 AM.",
-        );
-      } catch (e) {
-        console.warn("Punch record warning:", e);
-      }
-      return true;
+      return this.confirmAndExecutePunchOut();
     }
   },
 

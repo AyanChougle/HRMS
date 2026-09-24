@@ -68,20 +68,20 @@ const leaveService = {
   },
 
   // Calculate Tenure-Based Paid Leave (PL) Quota according to Diallo HR Policy:
-  // - Below 6 months tenure: 0 Paid Leaves
-  // - Between 6 months and 1.5 years (18 months): 4 Paid Leaves
-  // - Above 1.5 years (18 months): 18 Paid Leaves
-  //   * Mid-cycle/mid-year rule: If the employee reaches 1.5 years tenure mid-year
-  //     (i.e. second half of the calendar year, month >= 6), they receive half of 18 (9 Paid Leaves)
-  //     for the remainder of that year until the next calendar year begins.
+  // - Below 6 months tenure: 0 Paid Leaves total (0 PL/month)
+  // - Above 6 months tenure (6–12 months): 12 Total Paid Leaves (1 PL/month max)
+  // - Above 1 year tenure (>12 months): 18 Total Paid Leaves (3 PL/month max)
+  // - Leaves CANNOT be carried forward to next year.
   calculatePaidLeaveQuota(joiningDate, asOfDate = new Date()) {
     if (!joiningDate) {
       return {
         allocated: 18,
+        monthlyQuota: 3,
         tenureMonths: 24,
-        isMidYearProrated: false,
-        ruleBadge: '18 Paid Leaves (Standard)',
-        ruleExplanation: 'Tenure 1.5+ years completed • Full 18 Days Annual Quota'
+        carryForwardAllowed: false,
+        maxCarryForward: 0,
+        ruleBadge: '18 Paid Leaves (3/mo)',
+        ruleExplanation: 'Tenure > 1 year completed • 18 Total PL (3 PL/mo max, no carry-forward)'
       };
     }
 
@@ -89,15 +89,16 @@ const leaveService = {
     if (isNaN(join.getTime())) {
       return {
         allocated: 18,
+        monthlyQuota: 3,
         tenureMonths: 24,
-        isMidYearProrated: false,
-        ruleBadge: '18 Paid Leaves (Standard)',
-        ruleExplanation: 'Tenure 1.5+ years completed • Full 18 Days Annual Quota'
+        carryForwardAllowed: false,
+        maxCarryForward: 0,
+        ruleBadge: '18 Paid Leaves (3/mo)',
+        ruleExplanation: 'Tenure > 1 year completed • 18 Total PL (3 PL/mo max, no carry-forward)'
       };
     }
 
     const now = new Date(asOfDate);
-    const currentYear = now.getFullYear();
 
     // Completed tenure in months
     let tenureMonths = (now.getFullYear() - join.getFullYear()) * 12 + (now.getMonth() - join.getMonth());
@@ -110,49 +111,37 @@ const leaveService = {
     if (tenureMonths < 6) {
       return {
         allocated: 0,
+        monthlyQuota: 0,
         tenureMonths,
-        isMidYearProrated: false,
+        carryForwardAllowed: false,
+        maxCarryForward: 0,
         ruleBadge: '0 Paid Leaves',
-        ruleExplanation: `Tenure under 6 months (${tenureMonths}m completed) • Eligible for 4 paid leaves after 6 months`
+        ruleExplanation: `Tenure under 6 months (${tenureMonths}m completed) • 0 PL total (Eligible after 6 months)`
       };
     }
 
-    // 2. Between 6 months and 18 months (1.5 years): 4 Paid Leaves
-    if (tenureMonths < 18) {
+    // 2. Above 6 months and up to 1 year: 12 Total Paid Leaves, 1 PL per month
+    if (tenureMonths < 12) {
       return {
-        allocated: 4,
+        allocated: 12,
+        monthlyQuota: 1,
         tenureMonths,
-        isMidYearProrated: false,
-        ruleBadge: '4 Paid Leaves',
-        ruleExplanation: `Tenure between 6m and 1.5y (${tenureMonths}m completed) • Eligible for 18 paid leaves after 1.5 years`
+        carryForwardAllowed: false,
+        maxCarryForward: 0,
+        ruleBadge: '12 Paid Leaves (1/mo)',
+        ruleExplanation: `Tenure 6m–1yr (${tenureMonths}m completed) • 12 Total PL (1 PL/month max, no carry-forward)`
       };
     }
 
-    // 3. Above 18 months (1.5 years): 18 Paid Leaves
-    // Check if the 18-month milestone was reached mid-year in the current calendar year (July onwards)
-    const milestone18m = new Date(join);
-    milestone18m.setMonth(milestone18m.getMonth() + 18);
-
-    const milestoneYear = milestone18m.getFullYear();
-    const milestoneMonth = milestone18m.getMonth(); // 0-indexed: 6 = July
-
-    if (milestoneYear === currentYear && milestoneMonth >= 6) {
-      // Reached 1.5 years in the second half of the current year -> gets half (9 Paid Leaves) until next year starts
-      return {
-        allocated: 9,
-        tenureMonths,
-        isMidYearProrated: true,
-        ruleBadge: '9 Paid Leaves (Half Quota)',
-        ruleExplanation: `Reached 1.5y tenure mid-year (${milestone18m.toLocaleDateString('en-US', { month: 'short', year: 'numeric' })}) • Half of 18 leaves granted until next year starts`
-      };
-    }
-
+    // 3. Above 1 year tenure: 18 Total Paid Leaves, 3 PL per month
     return {
       allocated: 18,
+      monthlyQuota: 3,
       tenureMonths,
-      isMidYearProrated: false,
-      ruleBadge: '18 Paid Leaves (Full Quota)',
-      ruleExplanation: `Tenure 1.5+ years completed (${Math.floor(tenureMonths / 12)}y ${tenureMonths % 12}m) • Full 18 Days Annual Quota`
+      carryForwardAllowed: false,
+      maxCarryForward: 0,
+      ruleBadge: '18 Paid Leaves (3/mo)',
+      ruleExplanation: `Tenure > 1 year completed (${Math.floor(tenureMonths / 12)}y ${tenureMonths % 12}m) • 18 Total PL (3 PL/month max, no carry-forward)`
     };
   },
 
@@ -181,10 +170,16 @@ const leaveService = {
 
       const quotaInfo = this.calculatePaidLeaveQuota(joiningDate);
       const plAllocated = quotaInfo.allocated;
+      const monthlyQuota = quotaInfo.monthlyQuota;
 
       let plUsed = 0;
       let plPending = 0;
       let lwpUsed = 0;
+      let plUsedThisMonth = 0;
+      let plPendingThisMonth = 0;
+
+      const currentYear = year || new Date().getFullYear();
+      const currentMonth = new Date().getMonth(); // 0-indexed
 
       // Query leaveApplications to compute dynamic counters
       if (employeeId) {
@@ -194,19 +189,33 @@ const leaveService = {
 
         snap.docs.forEach(doc => {
           const d = doc.data();
+          if (d.status === 'REJECTED' || d.status === 'CANCELLED') return;
+
           const days = Number(d.numberOfDays) || 1;
           const code = this.normalizeLeaveCode(d.leaveTypeCode || d.type || d.leaveTypeName);
+          const lDate = new Date(d.startDate);
+          const isCurrentYear = !isNaN(lDate.getTime()) ? lDate.getFullYear() === currentYear : true;
+          const isCurrentMonth = !isNaN(lDate.getTime()) ? (lDate.getFullYear() === currentYear && lDate.getMonth() === currentMonth) : false;
 
           if (code === 'LWP') {
-            if (d.status === 'APPROVED') {
+            if (d.status === 'APPROVED' && isCurrentYear) {
               lwpUsed += days;
             }
           } else {
             // All paid leave categories map to the single Paid Leave pool
-            if (d.status === 'APPROVED') {
-              plUsed += days;
-            } else if (d.status === 'PENDING') {
-              plPending += days;
+            if (isCurrentYear) {
+              if (d.status === 'APPROVED') {
+                plUsed += days;
+              } else if (d.status === 'PENDING') {
+                plPending += days;
+              }
+            }
+            if (isCurrentMonth) {
+              if (d.status === 'APPROVED') {
+                plUsedThisMonth += days;
+              } else if (d.status === 'PENDING') {
+                plPendingThisMonth += days;
+              }
             }
           }
         });
@@ -220,6 +229,12 @@ const leaveService = {
           used: plUsed,
           pending: plPending,
           available: Math.max(0, plAllocated - plUsed),
+          monthlyQuota: monthlyQuota,
+          usedThisMonth: plUsedThisMonth,
+          pendingThisMonth: plPendingThisMonth,
+          availableThisMonth: Math.max(0, monthlyQuota - (plUsedThisMonth + plPendingThisMonth)),
+          carryForwardAllowed: false,
+          maxCarryForward: 0,
           quotaInfo: quotaInfo
         },
         AL: {
@@ -229,6 +244,12 @@ const leaveService = {
           used: plUsed,
           pending: plPending,
           available: Math.max(0, plAllocated - plUsed),
+          monthlyQuota: monthlyQuota,
+          usedThisMonth: plUsedThisMonth,
+          pendingThisMonth: plPendingThisMonth,
+          availableThisMonth: Math.max(0, monthlyQuota - (plUsedThisMonth + plPendingThisMonth)),
+          carryForwardAllowed: false,
+          maxCarryForward: 0,
           quotaInfo: quotaInfo
         },
         LWP: {
@@ -238,6 +259,8 @@ const leaveService = {
           used: lwpUsed,
           pending: 0,
           available: 999,
+          carryForwardAllowed: false,
+          maxCarryForward: 0,
           quotaInfo: { ruleBadge: 'Unpaid Leave', ruleExplanation: 'Salary deduction applies for unpaid absences' }
         }
       };
@@ -246,9 +269,9 @@ const leaveService = {
     } catch (e) {
       console.warn('Could not fetch leave balances:', e);
       return {
-        PL: { code: 'PL', name: 'Paid Leave (PL)', allocated: 18, used: 0, pending: 0, available: 18, quotaInfo: { ruleBadge: '18 Paid Leaves', ruleExplanation: 'Standard annual quota' } },
-        AL: { code: 'PL', name: 'Paid Leave (PL)', allocated: 18, used: 0, pending: 0, available: 18, quotaInfo: { ruleBadge: '18 Paid Leaves', ruleExplanation: 'Standard annual quota' } },
-        LWP: { code: 'LWP', name: 'Unpaid Leave (Loss of Pay)', allocated: 0, used: 0, pending: 0, available: 999, quotaInfo: { ruleBadge: 'Unpaid Leave' } }
+        PL: { code: 'PL', name: 'Paid Leave (PL)', allocated: 18, monthlyQuota: 3, used: 0, pending: 0, available: 18, carryForwardAllowed: false, maxCarryForward: 0, quotaInfo: { ruleBadge: '18 Paid Leaves', ruleExplanation: 'Standard annual quota (3 PL/mo max)' } },
+        AL: { code: 'PL', name: 'Paid Leave (PL)', allocated: 18, monthlyQuota: 3, used: 0, pending: 0, available: 18, carryForwardAllowed: false, maxCarryForward: 0, quotaInfo: { ruleBadge: '18 Paid Leaves', ruleExplanation: 'Standard annual quota (3 PL/mo max)' } },
+        LWP: { code: 'LWP', name: 'Unpaid Leave (Loss of Pay)', allocated: 0, used: 0, pending: 0, available: 999, carryForwardAllowed: false, maxCarryForward: 0, quotaInfo: { ruleBadge: 'Unpaid Leave' } }
       };
     }
   },
@@ -284,8 +307,39 @@ const leaveService = {
 
       if (leaveCode !== 'LWP') {
         const quota = balances.PL;
-        if (quota && quota.available < numberOfDays) {
+        if (!quota || quota.allocated === 0) {
+          throw new Error('Employees with tenure under 6 months have 0 Paid Leaves allocated. You may submit an Unpaid Leave (Loss of Pay) request.');
+        }
+        if (quota.available < numberOfDays) {
           throw new Error(`Insufficient Paid Leave balance. You have ${quota.available} Paid Leaves available (${quota.quotaInfo?.ruleExplanation || ''}), but requested ${numberOfDays} days. You may submit an Unpaid Leave (LWP) request if required.`);
+        }
+
+        // Monthly Quota Check for the month being requested
+        const reqDate = new Date(leaveData.startDate);
+        const reqYear = reqDate.getFullYear();
+        const reqMonth = reqDate.getMonth();
+        const maxPerMonth = quota.monthlyQuota || (quota.allocated > 12 ? 3 : 1);
+
+        let monthDaysAlreadyUsed = 0;
+        const appsSnap = await db.collection('leaveApplications')
+          .where('employeeId', '==', employeeId)
+          .get();
+
+        appsSnap.docs.forEach(doc => {
+          const d = doc.data();
+          if (d.status === 'REJECTED' || d.status === 'CANCELLED') return;
+          const c = this.normalizeLeaveCode(d.leaveTypeCode || d.type || d.leaveTypeName);
+          if (c === 'PL') {
+            const lDate = new Date(d.startDate);
+            if (!isNaN(lDate.getTime()) && lDate.getFullYear() === reqYear && lDate.getMonth() === reqMonth) {
+              monthDaysAlreadyUsed += (Number(d.numberOfDays) || 1);
+            }
+          }
+        });
+
+        if (monthDaysAlreadyUsed + numberOfDays > maxPerMonth) {
+          const monthName = reqDate.toLocaleString('en-US', { month: 'long' });
+          throw new Error(`Monthly Paid Leave limit exceeded. Per policy, your tenure allows up to ${maxPerMonth} Paid Leave(s) per month. You already have ${monthDaysAlreadyUsed} day(s) taken/pending for ${monthName} ${reqYear}, and requested ${numberOfDays} day(s). (Max: ${maxPerMonth} PL/month).`);
         }
       }
 

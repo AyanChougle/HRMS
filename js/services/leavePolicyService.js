@@ -6,8 +6,8 @@
 const leavePolicyService = {
   // Built-in Single Official Paid Leave Scheme & Unpaid Leave
   DEFAULT_LEAVE_TYPES: [
-    { code: 'PL', name: 'Paid Leave (PL)', annualQuota: 18, paid: true, carryForwardAllowed: true, maxCarryForward: 10, allowHalfDay: true, encashmentAllowed: true, description: 'Single official statutory Paid Leave scheme varying with employee tenure (0 leaves <6mo, 4 leaves 6mo-1.5yr, 18 leaves >1.5yr)' },
-    { code: 'LWP', name: 'Unpaid Leave (Loss of Pay)', annualQuota: 0, paid: false, carryForwardAllowed: false, maxCarryForward: 0, allowHalfDay: true, encashmentAllowed: false, description: 'Unpaid leave / leave without pay' }
+    { code: 'PL', name: 'Paid Leave (PL)', annualQuota: 18, monthlyQuota: 3, paid: true, carryForwardAllowed: false, maxCarryForward: 0, allowHalfDay: true, encashmentAllowed: true, description: 'Single official statutory Paid Leave (PL) scheme varying with employee tenure: <6mo = 0 PL, 6mo–1yr = 12 total PL (1 PL/mo), >1yr = 18 total PL (3 PL/mo). Cannot be carried forward to next year.' },
+    { code: 'LWP', name: 'Unpaid Leave (Loss of Pay)', annualQuota: 0, monthlyQuota: 0, paid: false, carryForwardAllowed: false, maxCarryForward: 0, allowHalfDay: true, encashmentAllowed: false, description: 'Unpaid leave / leave without pay' }
   ],
 
   // Get all active leave types for a company

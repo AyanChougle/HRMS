@@ -216,7 +216,7 @@ const DocumentsView = {
           </div>
           <select id="filter-doc-cat" class="form-control" style="width: 200px;">
             <option value="All">All Categories</option>
-            ${documentService.DOCUMENT_CATEGORIES.map((c) => `<option value="${c.code}" ${this.currentFilters.categoryCode === c.code ? "selected" : ""}>${c.icon} ${c.name}</option>`).join("")}
+            ${documentService.DOCUMENT_CATEGORIES.map((c) => `<option value="${c.code}" ${this.currentFilters.categoryCode === c.code ? "selected" : ""}>${c.name}</option>`).join("")}
           </select>
           <select id="filter-doc-status" class="form-control" style="width: 170px;">
             <option value="All">All Statuses</option>
@@ -680,7 +680,7 @@ const DocumentsView = {
           <div class="col-6 form-group">
             <label class="form-label required">Category</label>
             <select id="udoc-category" class="form-control">
-              ${documentService.DOCUMENT_CATEGORIES.map((c) => `<option value="${c.code}">${c.icon} ${c.name}</option>`).join("")}
+              ${documentService.DOCUMENT_CATEGORIES.map((c) => `<option value="${c.code}">${c.name}</option>`).join("")}
             </select>
           </div>
         </div>

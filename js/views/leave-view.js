@@ -890,7 +890,7 @@ const LeaveView = {
                 .join("")}
             </select>
             <div style="font-size: 0.78rem; color: var(--text-secondary); margin-top: 6px; line-height: 1.4; padding: 6px 10px; background: var(--bg-hover); border-radius: var(--radius-sm); border-left: 3px solid var(--primary);">
-              <div><strong>Paid Leave Tenure Policy:</strong> &lt;6 Months = <strong>0 Days</strong> • 6 Months to 1.5 Years = <strong>4 Days</strong> • &gt;1.5 Years = <strong>18 Days</strong> (half if reached mid-year).</div>
+              <div><strong>Paid Leave (PL) Tenure Policy:</strong> &lt;6 Months = <strong>0 PL</strong> • 6 Months to 1 Year = <strong>12 Total PL (1 PL/month max)</strong> • &gt;1 Year = <strong>18 Total PL (3 PL/month max)</strong>. <em>Leaves cannot be carried forward to next year.</em></div>
               ${balances?.PL?.quotaInfo?.ruleExplanation ? `<div style="color: var(--primary); font-weight: 600; margin-top: 3px;">Your Status: ${balances.PL.quotaInfo.ruleExplanation}</div>` : ''}
             </div>
           </div>

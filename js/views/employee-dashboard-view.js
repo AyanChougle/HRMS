@@ -311,9 +311,9 @@ const EmployeeDashboardView = {
                 </div>
                 <div class="text-secondary" style="font-size: 0.85rem; font-weight: 600;">Tenure Entitlement Rule</div>
                 <div style="font-size: 0.82rem; font-weight: 600; color: var(--text-main); margin-top: 4px; line-height: 1.4;" id="emp-dash-tenure-rule">
-                  &lt;6m: 0d • 6m–1.5y: 4d • &gt;1.5y: 18d
+                  &lt;6m: 0 PL • 6m–1y: 12 PL (1/mo) • &gt;1y: 18 PL (3/mo)
                 </div>
-                <div class="text-muted" style="font-size: 0.75rem; margin-top: 4px;" id="emp-dash-tenure-status">Half quota if reached mid-year</div>
+                <div class="text-muted" style="font-size: 0.75rem; margin-top: 4px;" id="emp-dash-tenure-status">No carry-forward to next year</div>
               </div>
 
             </div>
@@ -499,7 +499,7 @@ const EmployeeDashboardView = {
       if (plBalEl)
         plBalEl.textContent = `${plQuota?.available ?? 0} Days`;
       if (plSubEl)
-        plSubEl.textContent = `${plQuota?.used ?? 0} Used of ${plQuota?.allocated ?? 0} • ${plQuota?.pending ?? 0} Pending`;
+        plSubEl.textContent = `${plQuota?.used ?? 0} Used of ${plQuota?.allocated ?? 0} • Cap: ${plQuota?.monthlyQuota ?? 0} PL/mo • ${plQuota?.pending ?? 0} Pending`;
       if (plBadgeEl && plQuota?.quotaInfo?.ruleBadge) {
         plBadgeEl.textContent = plQuota.quotaInfo.ruleBadge;
       }
