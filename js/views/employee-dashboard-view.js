@@ -72,81 +72,96 @@ const EmployeeDashboardView = {
         <div class="card-body" style="padding: 20px 24px;">
           <div class="grid" style="grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 20px; align-items: center;">
             
-            <!-- Left: Work Time Display (8hr / logged in time) -->
-            <div style="background: var(--bg-card, #ffffff); border: 1px solid var(--border-color, #e2e8f0); border-radius: var(--radius-md); padding: 16px 18px; display: flex; align-items: center; gap: 16px;">
-              <div style="width: 48px; height: 48px; border-radius: 10px; background: rgba(59, 130, 246, 0.1); color: var(--primary); display: flex; align-items: center; justify-content: center; flex-shrink: 0;">
-                <svg width="24" height="24" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <!-- Left: Work Time Display (Minimal Clean Timer) -->
+            <div style="background: var(--bg-card, #ffffff); border: 1px solid var(--border-color, #e2e8f0); border-radius: var(--radius-md); padding: 14px 18px; display: flex; align-items: center; gap: 14px;">
+              <div style="width: 44px; height: 44px; border-radius: 10px; background: rgba(59, 130, 246, 0.08); color: var(--primary); display: flex; align-items: center; justify-content: center; flex-shrink: 0;">
+                <svg width="22" height="22" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/>
                 </svg>
               </div>
               <div style="min-width: 0; flex: 1;">
-                <div style="font-size: 0.75rem; color: var(--text-muted); text-transform: uppercase; font-weight: 700; letter-spacing: 0.04em;">Work Time (8h Target)</div>
-                <div style="font-size: 1.85rem; font-weight: 800; font-family: monospace; color: var(--primary); line-height: 1.15; margin-top: 2px;" id="emp-live-timer">
-                  8h / 00:00:00
+                <div style="display: flex; align-items: center; justify-content: space-between; gap: 8px;">
+                  <span style="font-size: 0.72rem; color: var(--text-muted); text-transform: uppercase; font-weight: 700; letter-spacing: 0.05em;">Work Duration</span>
+                  <span style="font-size: 0.7rem; font-weight: 600; color: var(--text-muted); background: var(--bg-hover, #f1f5f9); padding: 2px 6px; border-radius: 4px; letter-spacing: 0.02em;">8h Target</span>
                 </div>
-                <div style="font-size: 0.78rem; color: var(--text-secondary); margin-top: 4px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
+                <div style="margin-top: 3px; display: flex; align-items: baseline; gap: 6px;">
+                  <span id="emp-live-timer" style="font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Inter', 'Segoe UI', system-ui, sans-serif; font-variant-numeric: tabular-nums; font-feature-settings: 'tnum'; font-size: 1.85rem; font-weight: 700; color: var(--text-main, #0f172a); letter-spacing: 0.03em; line-height: 1.1;">
+                    00:00:00
+                  </span>
+                </div>
+                <div style="font-size: 0.76rem; color: var(--text-secondary); margin-top: 5px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
                   Status: <strong id="emp-timer-substatus">${ESSView.isShiftCompletedToday ? "Shift completed & punched out" : !ESSView.isPunchedIn ? "Ready to Check In (Opens 09:30 AM)" : ESSView.isOnBreak ? "Paused for Break" : "Active On Duty"}</strong>
                 </div>
               </div>
             </div>
 
-            <!-- Center: Break Time Tracker (1hr / break time) -->
-            <div style="background: ${ESSView.isOnBreak ? "rgba(245, 158, 11, 0.1)" : "var(--bg-card, #ffffff)"}; border: 1px solid ${ESSView.isOnBreak ? "#d97706" : "var(--border-color, #e2e8f0)"}; border-radius: var(--radius-md); padding: 16px 18px;" id="emp-break-highlight-box">
-              <div class="flex items-center justify-between" style="margin-bottom: 8px;">
+            <!-- Center: Break Time Tracker (Minimal Clean Timer) -->
+            <div style="background: ${ESSView.isOnBreak ? "rgba(245, 158, 11, 0.08)" : "var(--bg-card, #ffffff)"}; border: 1px solid ${ESSView.isOnBreak ? "#d97706" : "var(--border-color, #e2e8f0)"}; border-radius: var(--radius-md); padding: 14px 18px;" id="emp-break-highlight-box">
+              <div class="flex items-center justify-between" style="margin-bottom: 6px;">
                 <div class="flex items-center gap-2">
-                  <div style="width: 24px; height: 24px; border-radius: 6px; background: rgba(217, 119, 6, 0.15); color: #d97706; display: flex; align-items: center; justify-content: center;">
-                    <svg width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M18 8h1a4 4 0 010 8h-1M2 8h16v9a4 4 0 01-4 4H6a4 4 0 01-4-4V8z M6 1v3M10 1v3M14 1v3"/></svg>
+                  <div style="width: 22px; height: 22px; border-radius: 6px; background: rgba(217, 119, 6, 0.12); color: #d97706; display: flex; align-items: center; justify-content: center;">
+                    <svg width="13" height="13" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M18 8h1a4 4 0 010 8h-1M2 8h16v9a4 4 0 01-4 4H6a4 4 0 01-4-4V8z M6 1v3M10 1v3M14 1v3"/></svg>
                   </div>
-                  <span style="font-size: 0.75rem; font-weight: 700; color: #d97706; text-transform: uppercase; letter-spacing: 0.04em;">Break Tracker (1h Max)</span>
+                  <span style="font-size: 0.72rem; font-weight: 700; color: #d97706; text-transform: uppercase; letter-spacing: 0.05em;">Break Tracker</span>
                 </div>
                 <span class="badge ${ESSView.isOnBreak ? "badge-warning" : "badge-neutral"}" style="font-size: 0.7rem;" id="emp-break-badge-status">
-                  ${ESSView.isShiftCompletedToday ? "Shift Ended" : ESSView.isOnBreak ? "Break in progress" : "1h Daily Quota"}
+                  ${ESSView.isShiftCompletedToday ? "Shift Ended" : ESSView.isOnBreak ? (ESSView.currentBreakLabel ? "Break: " + ESSView.currentBreakLabel : "On Break") : "1h Quota"}
                 </span>
               </div>
               
-              <div class="flex items-baseline justify-between" style="gap: 12px;">
+              <div class="flex items-baseline justify-between" style="gap: 12px; margin-top: 4px;">
                 <div>
-                  <div style="font-size: 0.72rem; color: var(--text-muted); font-weight: 600;">Current Session</div>
-                  <div style="font-size: 1.4rem; font-weight: 800; font-family: monospace; color: ${ESSView.isOnBreak ? "var(--warning)" : "var(--text-secondary)"}; line-height: 1.2;" id="emp-break-timer">
+                  <div style="font-size: 0.7rem; color: var(--text-muted); font-weight: 600; text-transform: uppercase; letter-spacing: 0.03em;">Current</div>
+                  <div style="font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Inter', 'Segoe UI', system-ui, sans-serif; font-variant-numeric: tabular-nums; font-feature-settings: 'tnum'; font-size: 1.45rem; font-weight: 700; color: ${ESSView.isOnBreak ? "var(--warning)" : "var(--text-secondary)"}; letter-spacing: 0.03em; line-height: 1.1; margin-top: 3px;" id="emp-break-timer">
                     00:00
                   </div>
                 </div>
                 <div style="text-align: right;">
-                  <div style="font-size: 0.72rem; color: var(--text-muted); font-weight: 600;">Total Used / Quota</div>
-                  <div style="font-size: 1.4rem; font-weight: 800; font-family: monospace; color: #d97706; line-height: 1.2;" id="emp-total-break">
-                    1h / ${typeof attendanceService !== "undefined" && attendanceService.formatBreakDuration ? attendanceService.formatBreakDuration(ESSView.totalBreakSeconds) : Math.floor(ESSView.totalBreakSeconds / 60) + "m"}
+                  <div style="font-size: 0.7rem; color: var(--text-muted); font-weight: 600; text-transform: uppercase; letter-spacing: 0.03em;">Used / Quota</div>
+                  <div style="font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Inter', 'Segoe UI', system-ui, sans-serif; font-variant-numeric: tabular-nums; font-feature-settings: 'tnum'; font-size: 1.45rem; font-weight: 700; color: #d97706; letter-spacing: 0.03em; line-height: 1.1; margin-top: 3px;" id="emp-total-break">
+                    ${typeof attendanceService !== "undefined" && attendanceService.formatBreakDuration ? attendanceService.formatBreakDuration(ESSView.totalBreakSeconds) : Math.floor(ESSView.totalBreakSeconds / 60) + "m"}
                   </div>
                 </div>
               </div>
             </div>
 
-            <!-- Right: Three Clean Action Buttons Group -->
+            <!-- Right: Action Buttons Group (2 Distinct Punch Buttons + Break + Apply Leave) -->
             <div class="flex items-center gap-2 justify-end" style="flex-wrap: wrap;">
-              <!-- 1. Punch In / Punch Out Button -->
-              <button class="btn ${ESSView.isShiftCompletedToday ? "btn-secondary disabled" : ESSView.isPunchedIn ? "btn-secondary" : "btn-primary"}" id="emp-punch-btn" onclick="ESSView.togglePunch()" style="flex: 1 1 130px; height: 42px; font-weight: 600; display: inline-flex; align-items: center; justify-content: center; gap: 8px; ${ESSView.isShiftCompletedToday ? "opacity: 0.75; cursor: not-allowed;" : ESSView.isPunchedIn ? "color: #dc2626; border-color: #fca5a5;" : ""}" ${ESSView.isShiftCompletedToday ? "disabled" : ""}>
-                <svg width="18" height="18" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <!-- 1. Dedicated Punch In Button -->
+              <button class="btn ${ESSView.isShiftCompletedToday ? "btn-secondary disabled" : ESSView.isPunchedIn ? "btn-secondary disabled" : "btn-primary"}" id="emp-punch-in-btn" onclick="ESSView.punchIn()" style="flex: 1 1 110px; height: 42px; font-weight: 600; display: inline-flex; align-items: center; justify-content: center; gap: 6px; ${ESSView.isShiftCompletedToday ? "opacity: 0.55; cursor: not-allowed;" : ESSView.isPunchedIn ? "opacity: 0.85; cursor: default; background: #f0fdf4; border-color: #86efac; color: #166534;" : "background: #16a34a; border-color: #16a34a; color: #ffffff;"}" ${ESSView.isShiftCompletedToday || ESSView.isPunchedIn ? "disabled" : ""}>
+                <svg width="17" height="17" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  ${
+                    ESSView.isPunchedIn || ESSView.isShiftCompletedToday
+                      ? '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>'
+                      : '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 16l-4-4m0 0l4-4m-4 4h14m-5 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h7a3 3 0 013 3v1"/>'
+                  }
+                </svg>
+                <span>${ESSView.isPunchedIn || ESSView.isShiftCompletedToday ? "Punched In" : "Punch In"}</span>
+              </button>
+
+              <!-- 2. Dedicated Punch Out Button -->
+              <button class="btn ${ESSView.isShiftCompletedToday ? "btn-secondary disabled" : ESSView.isPunchedIn ? "btn-secondary" : "btn-secondary disabled"}" id="emp-punch-out-btn" onclick="ESSView.punchOut()" style="flex: 1 1 110px; height: 42px; font-weight: 600; display: inline-flex; align-items: center; justify-content: center; gap: 6px; ${ESSView.isShiftCompletedToday ? "opacity: 0.7; cursor: not-allowed; background: #fef2f2; border-color: #fecaca; color: #991b1b;" : ESSView.isPunchedIn ? "color: #dc2626; border-color: #fca5a5; background: #fff5f5; cursor: pointer;" : "opacity: 0.5; cursor: not-allowed;"}" ${ESSView.isShiftCompletedToday || !ESSView.isPunchedIn ? "disabled" : ""}>
+                <svg width="17" height="17" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   ${
                     ESSView.isShiftCompletedToday
                       ? '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"/>'
-                      : ESSView.isPunchedIn
-                        ? '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"/>'
-                        : '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 16l-4-4m0 0l4-4m-4 4h14m-5 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h7a3 3 0 013 3v1"/>'
+                      : '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"/>'
                   }
                 </svg>
-                <span>${ESSView.isShiftCompletedToday ? "Shift Completed" : ESSView.isPunchedIn ? "Punch Out" : "Web Punch In"}</span>
+                <span>${ESSView.isShiftCompletedToday ? "Punched Out" : "Punch Out"}</span>
               </button>
               
-              <!-- 2. Break Button (Always Visible) -->
-              <button class="btn ${ESSView.isShiftCompletedToday ? "btn-secondary disabled" : ESSView.isOnBreak ? "btn-warning" : "btn-secondary"}" id="emp-break-btn" onclick="ESSView.toggleBreak()" style="flex: 1 1 120px; height: 42px; font-weight: 600; display: inline-flex; align-items: center; justify-content: center; gap: 8px; ${ESSView.isShiftCompletedToday ? "opacity: 0.6; cursor: not-allowed;" : !ESSView.isOnBreak && ESSView.isPunchedIn ? "color: #d97706; border-color: #fcd34d;" : ""}" ${ESSView.isShiftCompletedToday ? "disabled" : ""}>
-                <svg width="18" height="18" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <!-- 3. Break Button -->
+              <button class="btn ${ESSView.isShiftCompletedToday ? "btn-secondary disabled" : ESSView.isOnBreak ? "btn-warning" : "btn-secondary"}" id="emp-break-btn" onclick="ESSView.toggleBreak()" style="flex: 1 1 100px; height: 42px; font-weight: 600; display: inline-flex; align-items: center; justify-content: center; gap: 6px; ${ESSView.isShiftCompletedToday ? "opacity: 0.55; cursor: not-allowed;" : !ESSView.isOnBreak && ESSView.isPunchedIn ? "color: #d97706; border-color: #fcd34d;" : ""}" ${ESSView.isShiftCompletedToday ? "disabled" : ""}>
+                <svg width="17" height="17" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="${ESSView.isOnBreak ? "M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z M21 12a9 9 0 11-18 0 9 9 0 0118 0z" : "M18 8h1a4 4 0 010 8h-1M2 8h16v9a4 4 0 01-4 4H6a4 4 0 01-4-4V8z M6 1v3M10 1v3M14 1v3"}"/>
                 </svg>
-                <span>${ESSView.isShiftCompletedToday ? "Break (Ended)" : ESSView.isOnBreak ? "Resume Work" : "Take Break"}</span>
+                <span>${ESSView.isShiftCompletedToday ? "Break" : ESSView.isOnBreak ? "Resume" : "Break"}</span>
               </button>
 
-              <!-- 3. Apply Leave Button -->
-              <button class="btn btn-secondary" onclick="Forms.openApplyLeaveModal()" style="flex: 1 1 120px; height: 42px; font-weight: 600; display: inline-flex; align-items: center; justify-content: center; gap: 8px;">
-                <svg width="18" height="18" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <!-- 4. Apply Leave Button -->
+              <button class="btn btn-secondary" onclick="Forms.openApplyLeaveModal()" style="flex: 1 1 100px; height: 42px; font-weight: 600; display: inline-flex; align-items: center; justify-content: center; gap: 6px;">
+                <svg width="17" height="17" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/>
                 </svg>
                 <span>Apply Leave</span>
