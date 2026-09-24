@@ -216,9 +216,9 @@ const attendanceService = {
 
       if (!isNaN(userLat) && !isNaN(userLng)) {
         const dist = this.calculateDistanceMeters(userLat, userLng, officeLat, officeLng);
-        if (dist > 10 && !punchData.forcePunch) {
+        if (dist > 50 && !punchData.forcePunch) {
           const distStr = dist < 1000 ? `${dist.toFixed(1)}m` : `${(dist / 1000).toFixed(2)}km`;
-          throw new Error(`Geofence restriction: You are ${distStr} away from the office. Punch-in is strictly restricted to within 10 meters of EL207, Electronic Zone, Mahape.`);
+          throw new Error(`Geofence restriction: You are ${distStr} away from the office. Punch-in is strictly restricted to within EL207 office premises (50m perimeter).`);
         }
       }
 
@@ -325,9 +325,9 @@ const attendanceService = {
 
       if (!isNaN(userLat) && !isNaN(userLng)) {
         const dist = this.calculateDistanceMeters(userLat, userLng, officeLat, officeLng);
-        if (dist > 10 && !checkoutData.forcePunch) {
+        if (dist > 50 && !checkoutData.forcePunch) {
           const distStr = dist < 1000 ? `${dist.toFixed(1)}m` : `${(dist / 1000).toFixed(2)}km`;
-          throw new Error(`Geofence restriction: You are ${distStr} away from the office. Punch-out is strictly restricted to within 10 meters of EL207, Electronic Zone, Mahape.`);
+          throw new Error(`Geofence restriction: You are ${distStr} away from the office. Punch-out is strictly restricted to within EL207 office premises (50m perimeter).`);
         }
       }
 

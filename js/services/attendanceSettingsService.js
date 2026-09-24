@@ -26,7 +26,7 @@ const attendanceSettingsService = {
       mapsUrl: 'https://maps.app.goo.gl/vrm35ARLi8RgGSFu9',
       latitude: 19.110735301239913,
       longitude: 73.02816428562234,
-      radiusMeters: 10
+      radiusMeters: 50
     },
     status: 'ACTIVE'
   },

@@ -62,7 +62,7 @@ const EmployeeDashboardView = {
               <span>Daily Shift & Timecard Station</span>
               <span id="emp-header-break-badge">${ESSView.isPunchedIn && ESSView.isOnBreak ? '<span class="badge badge-warning" style="font-size: 0.75rem; animation: pulse 2s infinite; display: inline-flex; align-items: center; gap: 4px;"><svg width="12" height="12" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/></svg> Break Active</span>' : ""}</span>
             </div>
-            <div class="card-subtitle">General Shift: 10:00 AM – 07:00 PM IST (8h Work • 1h Break • 10m Office Geofence: EL207 Mahape)</div>
+            <div class="card-subtitle">General Shift: 10:00 AM – 07:00 PM IST (8h Work • 1h Break • Office Premises Geofence: EL207 Mahape)</div>
           </div>
           <span class="badge ${ESSView.isShiftCompletedToday ? "badge-success" : !ESSView.isPunchedIn ? "badge-neutral" : ESSView.isOnBreak ? "badge-warning" : "badge-success"}" id="emp-shift-badge">
             <span class="badge-dot"></span> ${ESSView.isShiftCompletedToday ? "Shift Completed (Today)" : !ESSView.isPunchedIn ? "Checked OUT" : ESSView.isOnBreak ? "On Break (Paused)" : "Checked IN"}
