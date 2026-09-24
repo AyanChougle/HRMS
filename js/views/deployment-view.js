@@ -5,12 +5,13 @@
  */
 
 const DeploymentView = {
-  activeTab: 'status',
+  activeTab: "status",
 
   async render() {
-    const role = AuthGuard.userProfile?.roleId || 'EMPLOYEE';
-    const isSuperAdminOrAdmin = role === 'SUPER_ADMIN' || role === 'COMPANY_ADMIN';
-    const companyId = AuthGuard.userProfile?.companyId || 'comp_diallo_india';
+    const role = AuthGuard.userProfile?.roleId || "EMPLOYEE";
+    const isSuperAdminOrAdmin =
+      role === "SUPER_ADMIN" || role === "COMPANY_ADMIN";
+    const companyId = AuthGuard.userProfile?.companyId || "comp_diallo_india";
 
     if (!isSuperAdminOrAdmin) {
       return `
@@ -108,16 +109,16 @@ const DeploymentView = {
 
       <!-- Navigation Tabs -->
       <div class="tabs-nav" style="margin-bottom: 20px; overflow-x: auto; white-space: nowrap;">
-        <button class="tab-btn ${this.activeTab === 'status' ? 'active' : ''}" onclick="DeploymentView.switchTab('status')">
+        <button class="tab-btn ${this.activeTab === "status" ? "active" : ""}" onclick="DeploymentView.switchTab('status')">
           Infrastructure Health Matrix
         </button>
-        <button class="tab-btn ${this.activeTab === 'storage' ? 'active' : ''}" onclick="DeploymentView.switchTab('storage')">
+        <button class="tab-btn ${this.activeTab === "storage" ? "active" : ""}" onclick="DeploymentView.switchTab('storage')">
           Hostinger Storage Hierarchy
         </button>
-        <button class="tab-btn ${this.activeTab === 'checklist' ? 'active' : ''}" onclick="DeploymentView.switchTab('checklist')">
+        <button class="tab-btn ${this.activeTab === "checklist" ? "active" : ""}" onclick="DeploymentView.switchTab('checklist')">
           Production Deployment Checklist
         </button>
-        <button class="tab-btn ${this.activeTab === 'security' ? 'active' : ''}" onclick="DeploymentView.switchTab('security')">
+        <button class="tab-btn ${this.activeTab === "security" ? "active" : ""}" onclick="DeploymentView.switchTab('security')">
           Storage Security & CORS Policies
         </button>
       </div>
@@ -131,15 +132,19 @@ const DeploymentView = {
 
   switchTab(tab) {
     this.activeTab = tab;
-    Router.mountView('deployment');
+    Router.mountView("deployment");
   },
 
   async renderActiveTab(health, companyId) {
     switch (this.activeTab) {
-      case 'storage': return this.renderStorageHierarchyTab(health);
-      case 'checklist': return this.renderChecklistTab();
-      case 'security': return this.renderStorageSecurityTab();
-      default: return this.renderStatusTab(health);
+      case "storage":
+        return this.renderStorageHierarchyTab(health);
+      case "checklist":
+        return this.renderChecklistTab();
+      case "security":
+        return this.renderStorageSecurityTab();
+      default:
+        return this.renderStatusTab(health);
     }
   },
 
@@ -282,15 +287,42 @@ storage.diallo.com/
   // 3. PRODUCTION DEPLOYMENT CHECKLIST TAB
   renderChecklistTab() {
     const checklist = [
-      { task: 'Firebase Authentication production configuration verified (Email/Password & Google OAuth)', done: true },
-      { task: 'Cloud Firestore Security Rules deployed with companyId multi-tenant isolation', done: true },
-      { task: 'Cloud Functions package deployed with auth hooks and daily scheduled compliance cron', done: true },
-      { task: 'Hostinger dedicated storage subdomain (storage.diallo.com) configured with SSL', done: true },
-      { task: 'Hostinger upload.php and download.php API scripts deployed with token validation', done: true },
-      { task: 'Firebase Storage removed from all client services in favor of Hostinger Storage', done: true },
-      { task: 'Path traversal protection (../ sanitization) and safe UUID filenames enforced', done: true },
-      { task: 'CORS restriction active on Hostinger storage endpoints for https://hrms.diallo.com', done: true },
-      { task: 'Immutable audit logging active for all file actions (Upload, Download, Delete)', done: true }
+      {
+        task: "Firebase Authentication production configuration verified (Email/Password & Google OAuth)",
+        done: true,
+      },
+      {
+        task: "Cloud Firestore Security Rules deployed with companyId multi-tenant isolation",
+        done: true,
+      },
+      {
+        task: "Cloud Functions package deployed with auth hooks and daily scheduled compliance cron",
+        done: true,
+      },
+      {
+        task: "Hostinger dedicated storage subdomain (storage.diallo.com) configured with SSL",
+        done: true,
+      },
+      {
+        task: "Hostinger upload.php and download.php API scripts deployed with token validation",
+        done: true,
+      },
+      {
+        task: "Firebase Storage removed from all client services in favor of Hostinger Storage",
+        done: true,
+      },
+      {
+        task: "Path traversal protection (../ sanitization) and safe UUID filenames enforced",
+        done: true,
+      },
+      {
+        task: "CORS restriction active on Hostinger storage endpoints for https://hrms.diallo.com",
+        done: true,
+      },
+      {
+        task: "Immutable audit logging active for all file actions (Upload, Download, Delete)",
+        done: true,
+      },
     ];
 
     return `
@@ -312,7 +344,9 @@ storage.diallo.com/
               </tr>
             </thead>
             <tbody>
-              ${checklist.map(c => `
+              ${checklist
+                .map(
+                  (c) => `
                 <tr>
                   <td>
                     <svg width="18" height="18" fill="none" viewBox="0 0 24 24" stroke="var(--success)">
@@ -322,7 +356,9 @@ storage.diallo.com/
                   <td><strong>${c.task}</strong></td>
                   <td><span class="badge badge-success">VERIFIED</span></td>
                 </tr>
-              `).join('')}
+              `,
+                )
+                .join("")}
             </tbody>
           </table>
         </div>
@@ -388,12 +424,14 @@ storage.diallo.com/
   },
 
   async triggerStorageReconciliation() {
-    Toast.info('Reconciling Hostinger storage with Firestore metadata...');
+    Toast.info("Reconciling Hostinger storage with Firestore metadata...");
     setTimeout(() => {
-      Toast.success('Storage reconciliation complete: 100% of metadata records are verified.');
-      Router.mountView('deployment');
+      Toast.success(
+        "Storage reconciliation complete: 100% of metadata records are verified.",
+      );
+      Router.mountView("deployment");
     }, 600);
-  }
+  },
 };
 
 window.DeploymentView = DeploymentView;

@@ -11,8 +11,10 @@ const seedService = {
   async bootstrapIfEmpty() {
     try {
       console.log('[Seed] Verifying system datasets across collections...');
+      // 1. Ensure official roles exist in Firestore
+      await this.checkAndSeedModule('roles', () => this.seedRoles());
       await this.checkAndSeedModule('companies', () => this.seedCoreStructure());
-      // Automatically sweep and purge legacy demo records from Firestore
+      // 2. Automatically sweep and purge legacy demo records from Firestore
       await this.purgeAllDemoData();
       console.log('[Seed] System dataset verification and cleanup complete.');
     } catch (err) {
@@ -43,24 +45,39 @@ const seedService = {
     }
   },
 
-  // 1. CORE CORPORATE STRUCTURE (Diallo % Master Configuration)
+  // 1. OFFICIAL CORPORATE ROLES (SUPER_ADMIN, COMPANY_ADMIN, HR, TRAINER, TRAINEE, EMPLOYEE)
+  async seedRoles(force = false) {
+    try {
+      console.log('[Seed] Writing official corporate roles to Firestore (SUPER_ADMIN, COMPANY_ADMIN, HR, TRAINER, TRAINEE, EMPLOYEE)...');
+      const roles = [
+        { id: 'SUPER_ADMIN', name: 'Super Administrator', description: 'Complete cross-company system access and governance', permissions: ['*'], status: 'ACTIVE' },
+        { id: 'COMPANY_ADMIN', name: 'Company Administrator', description: 'Full administrative access for assigned legal entity', permissions: ['people.*', 'attendance.*', 'leave.*', 'payroll.*', 'reports.*', 'admin.view', 'admin.manage', 'communication.*', 'settings.manage', 'users.manage', 'companies.manage'], status: 'ACTIVE' },
+        { id: 'HR', name: 'HR Manager', description: 'Employee onboarding, attendance, leave approvals, and organization management', permissions: ['people.view', 'people.create', 'people.edit', 'attendance.*', 'leave.*', 'reports.view', 'communication.*'], status: 'ACTIVE' },
+        { id: 'TRAINER', name: 'Training Lead / Mentor', description: '7-Day trainee curriculum oversight, batches, evaluations, and certifications', permissions: ['training.*', 'attendance.view', 'people.view', 'ess.view'], status: 'ACTIVE' },
+        { id: 'TRAINEE', name: 'Trainee Apprentice', description: '7-Day learning modules, quizzes, attendance logs, and mentor support', permissions: ['training.view', 'ess.view', 'own.attendance', 'own.leave', 'own.documents'], status: 'ACTIVE' },
+        { id: 'EMPLOYEE', name: 'Employee (ESS)', description: 'Self-service timecard, punch logs, leave applications, and payslip download', permissions: ['ess.view', 'own.profile', 'own.attendance', 'own.leave', 'own.payslips', 'own.documents', 'own.expenses', 'own.requests', 'attendance.punch', 'attendance.view', 'leave.view', 'leave.create', 'payroll.view', 'communication.view', 'reports.view', 'expenses.view', 'assets.view', 'performance.view', 'documents.view', 'requests.view'], status: 'ACTIVE' }
+      ];
+
+      const batch = db.batch();
+      roles.forEach(role => {
+        const ref = db.collection('roles').doc(role.id);
+        batch.set(ref, { ...role, updatedAt: firebase.firestore.FieldValue.serverTimestamp() }, { merge: true });
+      });
+      await batch.commit();
+      console.log('[Seed] Official roles successfully committed to Firestore.');
+      if (typeof Toast !== 'undefined') {
+        Toast.success('Official roles (HR, Employee, Trainer, Super Admin) updated in database.');
+      }
+      return roles;
+    } catch (e) {
+      console.warn('[Seed] Could not seed roles:', e);
+    }
+  },
+
+  // 2. CORE CORPORATE STRUCTURE (Diallo % Master Configuration)
   async seedCoreStructure() {
+    await this.seedRoles();
     const batch = db.batch();
-
-    // Official Roles
-    const roles = [
-      { id: 'SUPER_ADMIN', name: 'Super Administrator', description: 'Complete cross-company system access and governance', permissions: ['*'], status: 'ACTIVE' },
-      { id: 'COMPANY_ADMIN', name: 'Company Administrator', description: 'Full administrative access for assigned legal entity', permissions: ['people.*', 'attendance.*', 'leave.*', 'payroll.*', 'reports.*', 'admin.view', 'admin.manage', 'communication.*', 'settings.manage', 'users.manage', 'companies.manage'], status: 'ACTIVE' },
-      { id: 'HR', name: 'HR Manager', description: 'Employee onboarding, attendance, leave approvals, and organization management', permissions: ['people.view', 'people.create', 'people.edit', 'attendance.*', 'leave.*', 'reports.view', 'communication.*'], status: 'ACTIVE' },
-      { id: 'TRAINER', name: 'Training Lead / Mentor', description: '7-Day trainee curriculum oversight, batches, evaluations, and certifications', permissions: ['training.*', 'attendance.view', 'people.view', 'ess.view'], status: 'ACTIVE' },
-      { id: 'TRAINEE', name: 'Trainee Apprentice', description: '7-Day learning modules, quizzes, attendance logs, and mentor support', permissions: ['training.view', 'ess.view', 'own.attendance', 'own.leave', 'own.documents'], status: 'ACTIVE' },
-      { id: 'EMPLOYEE', name: 'Employee (ESS)', description: 'Self-service timecard, punch logs, leave applications, and payslip download', permissions: ['ess.view', 'own.profile', 'own.attendance', 'own.leave', 'own.payslips', 'own.documents', 'own.expenses', 'own.requests', 'attendance.punch', 'attendance.view', 'leave.view', 'leave.create', 'payroll.view', 'communication.view', 'reports.view', 'expenses.view', 'assets.view', 'performance.view', 'documents.view', 'requests.view'], status: 'ACTIVE' }
-    ];
-
-    roles.forEach(role => {
-      const ref = db.collection('roles').doc(role.id);
-      batch.set(ref, { ...role, updatedAt: firebase.firestore.FieldValue.serverTimestamp() }, { merge: true });
-    });
 
     // Official Company Master
     const compRef = db.collection('companies').doc(this.COMPANY_ID);
@@ -283,3 +300,5 @@ const seedService = {
 };
 
 window.seedService = seedService;
+window.seedRoles = () => seedService.seedRoles(true);
+window.purgeDemoData = () => seedService.purgeAllDemoData();

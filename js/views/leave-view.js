@@ -4,33 +4,48 @@
  */
 
 const LeaveView = {
-  activeTab: 'my',
+  activeTab: "my",
   currentFilters: {},
 
   async renderHub() {
-    const role = AuthGuard.userProfile?.roleId || 'EMPLOYEE';
-    const employeeId = AuthGuard.userProfile?.employeeId || AuthGuard.currentUser?.uid;
-    const isEmployeeOnly = role === 'EMPLOYEE';
-    const canManageSchemes = role === 'SUPER_ADMIN' || role === 'COMPANY_ADMIN' || role === 'HR';
-    const canViewTeam = role === 'MANAGER' || role === 'TEAM_LEAD' || role === 'SUPER_ADMIN' || role === 'COMPANY_ADMIN' || role === 'HR';
+    const role = AuthGuard.userProfile?.roleId || "EMPLOYEE";
+    const employeeId =
+      AuthGuard.userProfile?.employeeId || AuthGuard.currentUser?.uid;
+    const isEmployeeOnly = role === "EMPLOYEE";
+    const canManageSchemes =
+      role === "SUPER_ADMIN" || role === "COMPANY_ADMIN" || role === "HR";
+    const canViewTeam =
+      role === "MANAGER" ||
+      role === "TEAM_LEAD" ||
+      role === "SUPER_ADMIN" ||
+      role === "COMPANY_ADMIN" ||
+      role === "HR";
 
-    if (!canManageSchemes && this.activeTab === 'types') {
-      this.activeTab = 'my';
+    if (!canManageSchemes && this.activeTab === "types") {
+      this.activeTab = "my";
     }
-    if (isEmployeeOnly && (this.activeTab === 'all' || this.activeTab === 'team')) {
-      this.activeTab = 'my';
+    if (
+      isEmployeeOnly &&
+      (this.activeTab === "all" || this.activeTab === "team")
+    ) {
+      this.activeTab = "my";
     }
 
-    let summary = { onLeaveToday: 0, pendingRequests: 0, approvedCount: 0, rejectedCount: 0 };
+    let summary = {
+      onLeaveToday: 0,
+      pendingRequests: 0,
+      approvedCount: 0,
+      rejectedCount: 0,
+    };
     let balances = {};
 
     try {
       [summary, balances] = await Promise.all([
         leaveService.getLeaveDashboardSummary(),
-        leaveService.getEmployeeBalances(employeeId)
+        leaveService.getEmployeeBalances(employeeId),
       ]);
     } catch (e) {
-      console.warn('Leave Hub data load warning:', e);
+      console.warn("Leave Hub data load warning:", e);
     }
 
     return `
@@ -58,7 +73,9 @@ const LeaveView = {
 
       <!-- Leave Metrics KPI Cards -->
       <div class="kpi-grid" style="margin-bottom: 24px;">
-        ${isEmployeeOnly ? `
+        ${
+          isEmployeeOnly
+            ? `
           <div class="kpi-card">
             <div class="kpi-top">
               <div class="kpi-icon-box" style="background: var(--primary-light); color: var(--primary);">
@@ -108,13 +125,14 @@ const LeaveView = {
                   <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/>
                 </svg>
               </div>
-              <span class="kpi-trend ${(balances.PL?.pending || 0) + (balances.CL?.pending || 0) > 0 ? 'warning' : 'neutral'}">${(balances.PL?.pending || 0) + (balances.CL?.pending || 0) > 0 ? 'In Review' : 'None'}</span>
+              <span class="kpi-trend ${(balances.PL?.pending || 0) + (balances.CL?.pending || 0) > 0 ? "warning" : "neutral"}">${(balances.PL?.pending || 0) + (balances.CL?.pending || 0) > 0 ? "In Review" : "None"}</span>
             </div>
             <div class="kpi-value">${(balances.PL?.pending || 0) + (balances.CL?.pending || 0)} Days</div>
             <div class="kpi-label">Pending Requests</div>
             <div class="kpi-subtitle">Awaiting supervisor review</div>
           </div>
-        ` : `
+        `
+            : `
           <div class="kpi-card" onclick="LeaveView.setFilterStatus('All Status')" style="cursor: pointer;">
             <div class="kpi-top">
               <div class="kpi-icon-box" style="background: var(--primary-light); color: var(--primary);">
@@ -136,7 +154,7 @@ const LeaveView = {
                   <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/>
                 </svg>
               </div>
-              <span class="kpi-trend warning">${summary.pendingRequests > 0 ? 'Needs Action' : 'Clear'}</span>
+              <span class="kpi-trend warning">${summary.pendingRequests > 0 ? "Needs Action" : "Clear"}</span>
             </div>
             <div class="kpi-value">${summary.pendingRequests}</div>
             <div class="kpi-label">Pending Requests</div>
@@ -170,22 +188,35 @@ const LeaveView = {
             <div class="kpi-label">Rejected Requests</div>
             <div class="kpi-subtitle">Historical records</div>
           </div>
-        `}
+        `
+        }
       </div>
 
       <!-- Navigation Sub-Tabs -->
       <div class="tabs-nav" style="margin-bottom: 20px;">
-        ${!isEmployeeOnly ? `
-          <button class="tab-btn ${this.activeTab === 'all' ? 'active' : ''}" onclick="LeaveView.switchTab('all')">All Leave Requests</button>
-        ` : ''}
-        <button class="tab-btn ${this.activeTab === 'my' ? 'active' : ''}" onclick="LeaveView.switchTab('my')">My Leave & Balances</button>
-        ${canViewTeam ? `
-          <button class="tab-btn ${this.activeTab === 'team' ? 'active' : ''}" onclick="LeaveView.switchTab('team')">Team Leave Roster</button>
-        ` : ''}
-        <button class="tab-btn ${this.activeTab === 'calendar' ? 'active' : ''}" onclick="LeaveView.switchTab('calendar')">Leave Calendar</button>
-        ${canManageSchemes ? `
-          <button class="tab-btn ${this.activeTab === 'types' ? 'active' : ''}" onclick="LeaveView.switchTab('types')">Leave Schemes & Policy</button>
-        ` : ''}
+        ${
+          !isEmployeeOnly
+            ? `
+          <button class="tab-btn ${this.activeTab === "all" ? "active" : ""}" onclick="LeaveView.switchTab('all')">All Leave Requests</button>
+        `
+            : ""
+        }
+        <button class="tab-btn ${this.activeTab === "my" ? "active" : ""}" onclick="LeaveView.switchTab('my')">My Leave & Balances</button>
+        ${
+          canViewTeam
+            ? `
+          <button class="tab-btn ${this.activeTab === "team" ? "active" : ""}" onclick="LeaveView.switchTab('team')">Team Leave Roster</button>
+        `
+            : ""
+        }
+        <button class="tab-btn ${this.activeTab === "calendar" ? "active" : ""}" onclick="LeaveView.switchTab('calendar')">Leave Calendar</button>
+        ${
+          canManageSchemes
+            ? `
+          <button class="tab-btn ${this.activeTab === "types" ? "active" : ""}" onclick="LeaveView.switchTab('types')">Leave Schemes & Policy</button>
+        `
+            : ""
+        }
       </div>
 
       <!-- TAB CONTENT VIEWPORT -->
@@ -196,13 +227,13 @@ const LeaveView = {
   },
 
   async renderTabContent(balances, role) {
-    if (this.activeTab === 'my') {
+    if (this.activeTab === "my") {
       return await this.renderMyLeaveTab(balances);
-    } else if (this.activeTab === 'team') {
+    } else if (this.activeTab === "team") {
       return await this.renderTeamLeaveTab();
-    } else if (this.activeTab === 'calendar') {
+    } else if (this.activeTab === "calendar") {
       return await this.renderCalendarTab();
-    } else if (this.activeTab === 'types') {
+    } else if (this.activeTab === "types") {
       return await this.renderLeaveTypesTab();
     }
     return await this.renderAllRequestsTab();
@@ -210,13 +241,13 @@ const LeaveView = {
 
   switchTab(tabName) {
     this.activeTab = tabName;
-    Router.mountView('leave');
+    Router.mountView("leave");
   },
 
   setFilterStatus(status) {
     this.currentFilters.status = status;
-    this.activeTab = 'all';
-    Router.navigate('leave');
+    this.activeTab = "all";
+    Router.navigate("leave");
   },
 
   // 1. ALL LEAVE REQUESTS TAB (ADMIN / HR)
@@ -228,23 +259,23 @@ const LeaveView = {
       <div class="card" style="margin-bottom: 20px; padding: 16px;">
         <div class="flex items-center gap-3" style="flex-wrap: wrap;">
           <div style="flex: 1; min-width: 200px;">
-            <input type="text" id="leave-filter-search" class="form-control" placeholder="Search by Employee Code or Name..." value="${this.currentFilters.search || ''}" onkeydown="if(event.key==='Enter') LeaveView.applyFilters()" />
+            <input type="text" id="leave-filter-search" class="form-control" placeholder="Search by Employee Code or Name..." value="${this.currentFilters.search || ""}" onkeydown="if(event.key==='Enter') LeaveView.applyFilters()" />
           </div>
 
           <select id="leave-filter-status" class="form-control" style="width: 160px;">
             <option value="All Status">All Status</option>
-            <option value="PENDING" ${this.currentFilters.status === 'PENDING' ? 'selected' : ''}>Pending Review</option>
-            <option value="APPROVED" ${this.currentFilters.status === 'APPROVED' ? 'selected' : ''}>Approved</option>
-            <option value="REJECTED" ${this.currentFilters.status === 'REJECTED' ? 'selected' : ''}>Rejected</option>
-            <option value="CANCELLED" ${this.currentFilters.status === 'CANCELLED' ? 'selected' : ''}>Cancelled</option>
+            <option value="PENDING" ${this.currentFilters.status === "PENDING" ? "selected" : ""}>Pending Review</option>
+            <option value="APPROVED" ${this.currentFilters.status === "APPROVED" ? "selected" : ""}>Approved</option>
+            <option value="REJECTED" ${this.currentFilters.status === "REJECTED" ? "selected" : ""}>Rejected</option>
+            <option value="CANCELLED" ${this.currentFilters.status === "CANCELLED" ? "selected" : ""}>Cancelled</option>
           </select>
 
           <select id="leave-filter-type" class="form-control" style="width: 180px;">
             <option value="All Types">All Leave Types</option>
-            <option value="AL" ${this.currentFilters.leaveTypeCode === 'AL' ? 'selected' : ''}>Annual Leave (PL)</option>
-            <option value="CL" ${this.currentFilters.leaveTypeCode === 'CL' ? 'selected' : ''}>Casual Leave (CL)</option>
-            <option value="SL" ${this.currentFilters.leaveTypeCode === 'SL' ? 'selected' : ''}>Sick Leave (SL)</option>
-            <option value="ML" ${this.currentFilters.leaveTypeCode === 'ML' ? 'selected' : ''}>Maternity Leave (ML)</option>
+            <option value="AL" ${this.currentFilters.leaveTypeCode === "AL" ? "selected" : ""}>Annual Leave (PL)</option>
+            <option value="CL" ${this.currentFilters.leaveTypeCode === "CL" ? "selected" : ""}>Casual Leave (CL)</option>
+            <option value="SL" ${this.currentFilters.leaveTypeCode === "SL" ? "selected" : ""}>Sick Leave (SL)</option>
+            <option value="ML" ${this.currentFilters.leaveTypeCode === "ML" ? "selected" : ""}>Maternity Leave (ML)</option>
           </select>
 
           <button class="btn btn-primary btn-sm" onclick="LeaveView.applyFilters()">Apply</button>
@@ -262,7 +293,9 @@ const LeaveView = {
           <button class="btn btn-primary btn-sm" onclick="LeaveView.openApplyLeaveModal()">+ Apply Leave</button>
         </div>
         <div class="card-body" style="padding: 0;">
-          ${requests.length === 0 ? `
+          ${
+            requests.length === 0
+              ? `
             <div class="empty-state">
               <div class="empty-state-icon">
                 <svg width="24" height="24" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -272,7 +305,8 @@ const LeaveView = {
               <div class="empty-state-title">No Leave Requests Found</div>
               <div class="empty-state-desc">No leave applications match the selected filter criteria.</div>
             </div>
-          ` : `
+          `
+              : `
             <table class="data-table">
               <thead>
                 <tr>
@@ -287,42 +321,55 @@ const LeaveView = {
                 </tr>
               </thead>
               <tbody>
-                ${requests.map(r => `
+                ${requests
+                  .map(
+                    (r) => `
                   <tr>
                     <td>
                       <div class="user-cell">
-                        <div class="user-cell-avatar">${(r.employeeName || 'EM').substring(0, 2).toUpperCase()}</div>
+                        <div class="user-cell-avatar">${(r.employeeName || "EM").substring(0, 2).toUpperCase()}</div>
                         <div class="user-cell-info">
-                          <span class="user-cell-name font-semibold">${r.employeeName || 'Staff'}</span>
+                          <span class="user-cell-name font-semibold">${r.employeeName || "Staff"}</span>
                           <span class="user-cell-code font-bold" style="color: var(--primary);">${r.employeeCode || r.employeeId}</span>
                         </div>
                       </div>
                     </td>
-                    <td><span class="font-medium text-main">${r.department || 'General'}</span></td>
+                    <td><span class="font-medium text-main">${r.department || "General"}</span></td>
                     <td><span class="badge badge-neutral">${r.leaveTypeName || r.leaveTypeCode}</span></td>
                     <td><strong class="text-main">${r.startDate}</strong> to <strong>${r.endDate}</strong></td>
-                    <td><strong style="color: var(--primary);">${r.numberOfDays} ${r.numberOfDays === 1 ? 'Day' : 'Days'}</strong></td>
+                    <td><strong style="color: var(--primary);">${r.numberOfDays} ${r.numberOfDays === 1 ? "Day" : "Days"}</strong></td>
                     <td style="max-width: 180px; font-size: 0.8rem;">${r.reason}</td>
                     <td>
-                      <span class="badge ${r.status === 'APPROVED' ? 'badge-success' : (r.status === 'PENDING' ? 'badge-warning' : (r.status === 'REJECTED' ? 'badge-danger' : 'badge-neutral'))}">
+                      <span class="badge ${r.status === "APPROVED" ? "badge-success" : r.status === "PENDING" ? "badge-warning" : r.status === "REJECTED" ? "badge-danger" : "badge-neutral"}">
                         <span class="badge-dot"></span> ${r.status}
                       </span>
                     </td>
                     <td>
-                      ${r.status === 'PENDING' ? `
+                      ${
+                        r.status === "PENDING"
+                          ? `
                         <div class="flex items-center gap-1">
                           <button class="btn btn-soft btn-sm" onclick="LeaveView.approveLeave('${r.id}')">Approve</button>
                           <button class="btn btn-secondary btn-sm" onclick="LeaveView.openRejectModal('${r.id}')">Reject</button>
                         </div>
-                      ` : (r.status === 'APPROVED' && r.startDate > new Date().toISOString().slice(0, 10) ? `
+                      `
+                          : r.status === "APPROVED" &&
+                              r.startDate >
+                                new Date().toISOString().slice(0, 10)
+                            ? `
                         <button class="btn btn-ghost btn-sm text-danger" onclick="LeaveView.cancelLeave('${r.id}')">Cancel</button>
-                      ` : '<span class="text-muted" style="font-size: 0.75rem;">Completed</span>')}
+                      `
+                            : '<span class="text-muted" style="font-size: 0.75rem;">Completed</span>'
+                      }
                     </td>
                   </tr>
-                `).join('')}
+                `,
+                  )
+                  .join("")}
               </tbody>
             </table>
-          `}
+          `
+          }
         </div>
       </div>
     `;
@@ -330,27 +377,36 @@ const LeaveView = {
 
   applyFilters() {
     this.currentFilters = {
-      search: document.getElementById('leave-filter-search')?.value.trim() || '',
-      status: document.getElementById('leave-filter-status')?.value || 'All Status',
-      leaveTypeCode: document.getElementById('leave-filter-type')?.value || 'All Types'
+      search:
+        document.getElementById("leave-filter-search")?.value.trim() || "",
+      status:
+        document.getElementById("leave-filter-status")?.value || "All Status",
+      leaveTypeCode:
+        document.getElementById("leave-filter-type")?.value || "All Types",
     };
-    Router.navigate('leave');
+    Router.navigate("leave");
   },
 
   clearFilters() {
     this.currentFilters = {};
-    const s = document.getElementById('leave-filter-search'); if (s) s.value = '';
-    const st = document.getElementById('leave-filter-status'); if (st) st.value = 'All Status';
-    const t = document.getElementById('leave-filter-type'); if (t) t.value = 'All Types';
-    Router.navigate('leave');
+    const s = document.getElementById("leave-filter-search");
+    if (s) s.value = "";
+    const st = document.getElementById("leave-filter-status");
+    if (st) st.value = "All Status";
+    const t = document.getElementById("leave-filter-type");
+    if (t) t.value = "All Types";
+    Router.navigate("leave");
   },
 
   // 2. MY LEAVE TAB (EMPLOYEE SELF-SERVICE)
   async renderMyLeaveTab(balances) {
-    const employeeId = AuthGuard.userProfile?.employeeId || AuthGuard.currentUser?.uid;
+    const employeeId =
+      AuthGuard.userProfile?.employeeId || AuthGuard.currentUser?.uid;
     const requests = await leaveService.getLeaveRequests({ employeeId });
     const todayStr = new Date().toISOString().slice(0, 10);
-    const upcoming = requests.filter(r => r.status === 'APPROVED' && r.startDate >= todayStr);
+    const upcoming = requests.filter(
+      (r) => r.status === "APPROVED" && r.startDate >= todayStr,
+    );
 
     return `
       <!-- 2 Quota Balance Cards (PL & CL) -->
@@ -385,7 +441,9 @@ const LeaveView = {
       </div>
 
       <!-- Upcoming Approved Leaves Alert -->
-      ${upcoming.length > 0 ? `
+      ${
+        upcoming.length > 0
+          ? `
         <div class="card" style="margin-bottom: 20px; background: #f0fdf4; border: 1px solid #86efac;">
           <div class="card-body" style="padding: 16px;">
             <div class="flex items-center justify-between" style="flex-wrap: wrap; gap: 12px;">
@@ -399,7 +457,9 @@ const LeaveView = {
             </div>
           </div>
         </div>
-      ` : ''}
+      `
+          : ""
+      }
 
       <!-- My Leave History Table Card -->
       <div class="card">
@@ -411,7 +471,9 @@ const LeaveView = {
           <button class="btn btn-primary btn-sm" onclick="LeaveView.openApplyLeaveModal()">+ Apply Leave</button>
         </div>
         <div class="card-body" style="padding: 0;">
-          ${requests.length === 0 ? `
+          ${
+            requests.length === 0
+              ? `
             <div class="empty-state">
               <div class="empty-state-icon">
                 <svg width="24" height="24" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -424,7 +486,8 @@ const LeaveView = {
                 <button class="btn btn-primary btn-sm" onclick="LeaveView.openApplyLeaveModal()">+ Apply Leave</button>
               </div>
             </div>
-          ` : `
+          `
+              : `
             <table class="data-table">
               <thead>
                 <tr>
@@ -437,29 +500,40 @@ const LeaveView = {
                 </tr>
               </thead>
               <tbody>
-                ${requests.map(r => `
+                ${requests
+                  .map(
+                    (r) => `
                   <tr>
                     <td><span class="badge badge-neutral font-semibold">${r.leaveTypeName || r.leaveTypeCode}</span></td>
                     <td><strong class="text-main">${r.startDate}</strong> to <strong>${r.endDate}</strong></td>
-                    <td><strong style="color: var(--primary);">${r.numberOfDays} ${r.numberOfDays === 1 ? 'Day' : 'Days'}</strong></td>
+                    <td><strong style="color: var(--primary);">${r.numberOfDays} ${r.numberOfDays === 1 ? "Day" : "Days"}</strong></td>
                     <td style="max-width: 220px; font-size: 0.8rem;">${r.reason}</td>
                     <td>
-                      <span class="badge ${r.status === 'APPROVED' ? 'badge-success' : (r.status === 'PENDING' ? 'badge-warning' : (r.status === 'REJECTED' ? 'badge-danger' : 'badge-neutral'))}">
+                      <span class="badge ${r.status === "APPROVED" ? "badge-success" : r.status === "PENDING" ? "badge-warning" : r.status === "REJECTED" ? "badge-danger" : "badge-neutral"}">
                         <span class="badge-dot"></span> ${r.status}
                       </span>
                     </td>
                     <td>
-                      ${r.status === 'APPROVED' && r.startDate >= todayStr ? `
+                      ${
+                        r.status === "APPROVED" && r.startDate >= todayStr
+                          ? `
                         <button class="btn btn-ghost btn-sm text-danger" onclick="LeaveView.cancelLeave('${r.id}')">Cancel</button>
-                      ` : (r.status === 'PENDING' ? `
+                      `
+                          : r.status === "PENDING"
+                            ? `
                         <button class="btn btn-ghost btn-sm text-danger" onclick="LeaveView.cancelLeave('${r.id}')">Withdraw</button>
-                      ` : '<span class="text-muted" style="font-size: 0.75rem;">—</span>')}
+                      `
+                            : '<span class="text-muted" style="font-size: 0.75rem;">—</span>'
+                      }
                     </td>
                   </tr>
-                `).join('')}
+                `,
+                  )
+                  .join("")}
               </tbody>
             </table>
-          `}
+          `
+          }
         </div>
       </div>
     `;
@@ -467,7 +541,8 @@ const LeaveView = {
 
   // 3. TEAM LEAVE TAB (MANAGER PORTAL)
   async renderTeamLeaveTab() {
-    const managerId = AuthGuard.userProfile?.employeeId || AuthGuard.currentUser?.uid;
+    const managerId =
+      AuthGuard.userProfile?.employeeId || AuthGuard.currentUser?.uid;
     const teamRequests = await leaveService.getLeaveRequests({ managerId });
 
     return `
@@ -479,7 +554,9 @@ const LeaveView = {
           </div>
         </div>
         <div class="card-body" style="padding: 0;">
-          ${teamRequests.length === 0 ? `
+          ${
+            teamRequests.length === 0
+              ? `
             <div class="empty-state">
               <div class="empty-state-icon">
                 <svg width="24" height="24" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -489,7 +566,8 @@ const LeaveView = {
               <div class="empty-state-title">No Team Leave Requests</div>
               <div class="empty-state-desc">All team member leave requests have been reviewed and resolved.</div>
             </div>
-          ` : `
+          `
+              : `
             <table class="data-table">
               <thead>
                 <tr>
@@ -503,13 +581,15 @@ const LeaveView = {
                 </tr>
               </thead>
               <tbody>
-                ${teamRequests.map(r => `
+                ${teamRequests
+                  .map(
+                    (r) => `
                   <tr>
                     <td>
                       <div class="user-cell">
-                        <div class="user-cell-avatar">${(r.employeeName || 'EM').substring(0, 2).toUpperCase()}</div>
+                        <div class="user-cell-avatar">${(r.employeeName || "EM").substring(0, 2).toUpperCase()}</div>
                         <div class="user-cell-info">
-                          <span class="user-cell-name font-semibold">${r.employeeName || 'Staff'}</span>
+                          <span class="user-cell-name font-semibold">${r.employeeName || "Staff"}</span>
                           <span class="user-cell-code font-bold" style="color: var(--primary);">${r.employeeCode || r.employeeId}</span>
                         </div>
                       </div>
@@ -519,23 +599,30 @@ const LeaveView = {
                     <td><strong style="color: var(--primary);">${r.numberOfDays} Days</strong></td>
                     <td style="max-width: 180px; font-size: 0.8rem;">${r.reason}</td>
                     <td>
-                      <span class="badge ${r.status === 'APPROVED' ? 'badge-success' : (r.status === 'PENDING' ? 'badge-warning' : 'badge-danger')}">
+                      <span class="badge ${r.status === "APPROVED" ? "badge-success" : r.status === "PENDING" ? "badge-warning" : "badge-danger"}">
                         ${r.status}
                       </span>
                     </td>
                     <td>
-                      ${r.status === 'PENDING' ? `
+                      ${
+                        r.status === "PENDING"
+                          ? `
                         <div class="flex items-center gap-1">
                           <button class="btn btn-soft btn-sm" onclick="LeaveView.approveLeave('${r.id}')">Approve</button>
                           <button class="btn btn-secondary btn-sm" onclick="LeaveView.openRejectModal('${r.id}')">Reject</button>
                         </div>
-                      ` : '<span class="text-muted" style="font-size: 0.75rem;">Reviewed</span>'}
+                      `
+                          : '<span class="text-muted" style="font-size: 0.75rem;">Reviewed</span>'
+                      }
                     </td>
                   </tr>
-                `).join('')}
+                `,
+                  )
+                  .join("")}
               </tbody>
             </table>
-          `}
+          `
+          }
         </div>
       </div>
     `;
@@ -544,7 +631,9 @@ const LeaveView = {
   // 4. LEAVE CALENDAR TAB
   async renderCalendarTab() {
     const holidays = await attendanceSettingsService.getHolidays();
-    const requests = await leaveService.getLeaveRequests({ status: 'APPROVED' });
+    const requests = await leaveService.getLeaveRequests({
+      status: "APPROVED",
+    });
 
     return `
       <div class="card" style="padding: 24px;">
@@ -554,11 +643,17 @@ const LeaveView = {
           <!-- Approved Leaves -->
           <div class="card" style="padding: 16px;">
             <h4 style="font-size: 0.85rem; text-transform: uppercase; color: var(--primary); margin-bottom: 12px;">Active & Scheduled Leaves</h4>
-            ${requests.length === 0 ? `
+            ${
+              requests.length === 0
+                ? `
               <div style="padding: 20px; text-align: center; color: var(--text-muted); font-size: 0.85rem;">No approved leaves scheduled.</div>
-            ` : `
+            `
+                : `
               <div class="flex flex-col gap-2">
-                ${requests.slice(0, 8).map(r => `
+                ${requests
+                  .slice(0, 8)
+                  .map(
+                    (r) => `
                   <div class="flex items-center justify-between" style="padding: 8px 12px; background: var(--bg-hover); border-radius: 6px;">
                     <div>
                       <div class="font-semibold text-main" style="font-size: 0.85rem;">${r.employeeName}</div>
@@ -566,19 +661,27 @@ const LeaveView = {
                     </div>
                     <span class="badge badge-success">${r.numberOfDays} Days</span>
                   </div>
-                `).join('')}
+                `,
+                  )
+                  .join("")}
               </div>
-            `}
+            `
+            }
           </div>
 
           <!-- Official Holidays -->
           <div class="card" style="padding: 16px;">
             <h4 style="font-size: 0.85rem; text-transform: uppercase; color: var(--accent-leave); margin-bottom: 12px;">Official Paid Holidays</h4>
-            ${holidays.length === 0 ? `
+            ${
+              holidays.length === 0
+                ? `
               <div style="padding: 20px; text-align: center; color: var(--text-muted); font-size: 0.85rem;">No official holidays registered.</div>
-            ` : `
+            `
+                : `
               <div class="flex flex-col gap-2">
-                ${holidays.map(h => `
+                ${holidays
+                  .map(
+                    (h) => `
                   <div class="flex items-center justify-between" style="padding: 8px 12px; background: var(--bg-hover); border-radius: 6px;">
                     <div>
                       <div class="font-semibold text-main" style="font-size: 0.85rem;">${h.name}</div>
@@ -586,9 +689,12 @@ const LeaveView = {
                     </div>
                     <span class="badge badge-primary">Holiday</span>
                   </div>
-                `).join('')}
+                `,
+                  )
+                  .join("")}
               </div>
-            `}
+            `
+            }
           </div>
         </div>
       </div>
@@ -597,8 +703,9 @@ const LeaveView = {
 
   // 5. LEAVE TYPES MASTER TAB
   async renderLeaveTypesTab() {
-    const role = AuthGuard.userProfile?.roleId || 'EMPLOYEE';
-    const canManage = role === 'SUPER_ADMIN' || role === 'COMPANY_ADMIN' || role === 'HR';
+    const role = AuthGuard.userProfile?.roleId || "EMPLOYEE";
+    const canManage =
+      role === "SUPER_ADMIN" || role === "COMPANY_ADMIN" || role === "HR";
     const types = await leavePolicyService.getLeaveTypes();
 
     return `
@@ -608,7 +715,7 @@ const LeaveView = {
             <div class="card-title">Statutory Leave Schemes & Quotas</div>
             <div class="card-subtitle">Indian Labour Law compliant leave types and carry forward policies</div>
           </div>
-          ${canManage ? `<button class="btn btn-primary btn-sm" onclick="LeaveView.openAddLeaveTypeModal()">+ Add Scheme</button>` : ''}
+          ${canManage ? `<button class="btn btn-primary btn-sm" onclick="LeaveView.openAddLeaveTypeModal()">+ Add Scheme</button>` : ""}
         </div>
         <div class="card-body" style="padding: 0;">
           <table class="data-table">
@@ -624,27 +731,45 @@ const LeaveView = {
               </tr>
             </thead>
             <tbody>
-              ${types.map(t => {
-                const code = t.code || t.typeCode || t.leaveTypeCode || 'LS';
-                const name = t.name || t.typeName || t.leaveTypeName || 'Leave Scheme';
-                const quota = t.annualQuota !== undefined ? t.annualQuota : (t.daysPerYear !== undefined ? t.daysPerYear : (t.quota !== undefined ? t.quota : 12));
-                const isPaid = t.paid !== undefined ? t.paid : (t.isPaid !== undefined ? t.isPaid : true);
-                const carryFwd = t.carryForwardAllowed ? `Max ${t.maxCarryForward || 10} Days` : 'No';
-                const halfDay = t.allowHalfDay !== false ? 'Allowed' : 'Full Day Only';
-                const status = t.status || 'ACTIVE';
+              ${types
+                .map((t) => {
+                  const code = t.code || t.typeCode || t.leaveTypeCode || "LS";
+                  const name =
+                    t.name || t.typeName || t.leaveTypeName || "Leave Scheme";
+                  const quota =
+                    t.annualQuota !== undefined
+                      ? t.annualQuota
+                      : t.daysPerYear !== undefined
+                        ? t.daysPerYear
+                        : t.quota !== undefined
+                          ? t.quota
+                          : 12;
+                  const isPaid =
+                    t.paid !== undefined
+                      ? t.paid
+                      : t.isPaid !== undefined
+                        ? t.isPaid
+                        : true;
+                  const carryFwd = t.carryForwardAllowed
+                    ? `Max ${t.maxCarryForward || 10} Days`
+                    : "No";
+                  const halfDay =
+                    t.allowHalfDay !== false ? "Allowed" : "Full Day Only";
+                  const status = t.status || "ACTIVE";
 
-                return `
+                  return `
                   <tr>
                     <td class="font-bold" style="font-family: monospace; color: var(--primary);">${code}</td>
                     <td class="font-semibold text-main">${name}</td>
                     <td><strong>${quota} Days / yr</strong></td>
-                    <td><span class="badge ${isPaid ? 'badge-success' : 'badge-neutral'}">${isPaid ? 'Paid' : 'Unpaid'}</span></td>
+                    <td><span class="badge ${isPaid ? "badge-success" : "badge-neutral"}">${isPaid ? "Paid" : "Unpaid"}</span></td>
                     <td>${carryFwd}</td>
                     <td>${halfDay}</td>
                     <td><span class="badge badge-success">${status}</span></td>
                   </tr>
                 `;
-              }).join('')}
+                })
+                .join("")}
             </tbody>
           </table>
         </div>
@@ -653,17 +778,20 @@ const LeaveView = {
   },
 
   openAddLeaveTypeModal() {
-    const role = AuthGuard.userProfile?.roleId || 'EMPLOYEE';
-    const canManage = role === 'SUPER_ADMIN' || role === 'COMPANY_ADMIN' || role === 'HR';
+    const role = AuthGuard.userProfile?.roleId || "EMPLOYEE";
+    const canManage =
+      role === "SUPER_ADMIN" || role === "COMPANY_ADMIN" || role === "HR";
     if (!canManage) {
-      Toast.error('Access Denied: Only HR and Organization Administrators can create leave schemes.');
+      Toast.error(
+        "Access Denied: Only HR and Organization Administrators can create leave schemes.",
+      );
       return;
     }
 
     ModalManager.openModal({
-      id: 'add-leave-type-modal',
-      title: 'Create Leave Scheme',
-      subtitle: 'Define quota and rules for a new leave type',
+      id: "add-leave-type-modal",
+      title: "Create Leave Scheme",
+      subtitle: "Define quota and rules for a new leave type",
       contentHtml: `
         <div class="form-row">
           <div class="col-6 form-group">
@@ -692,30 +820,38 @@ const LeaveView = {
       footerHtml: `
         <button class="btn btn-secondary btn-sm" data-modal-close>Cancel</button>
         <button class="btn btn-primary btn-sm" onclick="LeaveView.saveLeaveType()">Save Scheme</button>
-      `
+      `,
     });
   },
 
   async saveLeaveType() {
-    const role = AuthGuard.userProfile?.roleId || 'EMPLOYEE';
-    const canManage = role === 'SUPER_ADMIN' || role === 'COMPANY_ADMIN' || role === 'HR';
+    const role = AuthGuard.userProfile?.roleId || "EMPLOYEE";
+    const canManage =
+      role === "SUPER_ADMIN" || role === "COMPANY_ADMIN" || role === "HR";
     if (!canManage) {
-      Toast.error('Access Denied: Only HR and Organization Administrators can create leave schemes.');
+      Toast.error(
+        "Access Denied: Only HR and Organization Administrators can create leave schemes.",
+      );
       return;
     }
 
-    const name = document.getElementById('lt-name')?.value.trim();
-    const code = document.getElementById('lt-code')?.value.trim().toUpperCase();
-    const annualQuota = Number(document.getElementById('lt-quota')?.value) || 5;
-    const paid = document.getElementById('lt-paid')?.value === 'true';
+    const name = document.getElementById("lt-name")?.value.trim();
+    const code = document.getElementById("lt-code")?.value.trim().toUpperCase();
+    const annualQuota = Number(document.getElementById("lt-quota")?.value) || 5;
+    const paid = document.getElementById("lt-paid")?.value === "true";
 
     if (!name || !code) return;
 
     try {
-      await leavePolicyService.createLeaveType({ name, code, annualQuota, paid });
+      await leavePolicyService.createLeaveType({
+        name,
+        code,
+        annualQuota,
+        paid,
+      });
       Toast.success(`Created leave scheme '${name}'`);
       ModalManager.closeModal();
-      this.switchTab('types');
+      this.switchTab("types");
     } catch (e) {
       Toast.error(`Failed: ${e.message}`);
     }
@@ -723,26 +859,35 @@ const LeaveView = {
 
   // 6. APPLY LEAVE MODAL WITH DYNAMIC DAY CALCULATION
   async openApplyLeaveModal() {
-    const employeeId = AuthGuard.userProfile?.employeeId || AuthGuard.currentUser?.uid;
+    const employeeId =
+      AuthGuard.userProfile?.employeeId || AuthGuard.currentUser?.uid;
     const balances = await leaveService.getEmployeeBalances(employeeId);
     const leaveTypes = await leavePolicyService.getLeaveTypes();
 
     const todayStr = new Date().toISOString().slice(0, 10);
 
     ModalManager.openModal({
-      id: 'apply-leave-wizard-modal',
-      title: 'Apply for Leave / Time-Off',
-      subtitle: 'Working days calculated dynamically (excluding weekends and official holidays)',
+      id: "apply-leave-wizard-modal",
+      title: "Apply for Leave / Time-Off",
+      subtitle:
+        "Working days calculated dynamically (excluding weekends and official holidays)",
       contentHtml: `
         <form id="apply-leave-full-form" onsubmit="event.preventDefault(); LeaveView.submitLeaveApplication()">
           <div class="form-group">
             <label class="form-label required">Select Leave Scheme</label>
             <select id="alf-type" class="form-control" onchange="LeaveView.recalculateWorkingDays()">
-              ${leaveTypes.map(lt => {
-                const b = balances ? balances[lt.code] : null;
-                const avail = (b && typeof b.available === 'number') ? b.available : (typeof b === 'number' ? b : (lt.annualQuota || 12));
-                return `<option value="${lt.code}">${lt.name} (${lt.code}) (Available: ${avail} Days)</option>`;
-              }).join('')}
+              ${leaveTypes
+                .map((lt) => {
+                  const b = balances ? balances[lt.code] : null;
+                  const avail =
+                    b && typeof b.available === "number"
+                      ? b.available
+                      : typeof b === "number"
+                        ? b
+                        : lt.annualQuota || 12;
+                  return `<option value="${lt.code}">${lt.name} (${lt.code}) (Available: ${avail} Days)</option>`;
+                })
+                .join("")}
             </select>
           </div>
 
@@ -789,47 +934,56 @@ const LeaveView = {
       footerHtml: `
         <button class="btn btn-secondary btn-sm" data-modal-close>Cancel</button>
         <button class="btn btn-primary btn-sm" id="btn-submit-leave-app" onclick="LeaveView.submitLeaveApplication()">Submit Leave Application</button>
-      `
+      `,
     });
 
     this.recalculateWorkingDays();
   },
 
   toggleHalfDay(isHalf) {
-    const group = document.getElementById('alf-halfday-type-group');
-    if (group) group.style.display = isHalf ? 'block' : 'none';
+    const group = document.getElementById("alf-halfday-type-group");
+    if (group) group.style.display = isHalf ? "block" : "none";
     this.recalculateWorkingDays();
   },
 
   async recalculateWorkingDays() {
-    const startDate = document.getElementById('alf-start-date')?.value;
-    const endDate = document.getElementById('alf-end-date')?.value;
-    const isHalfDay = document.getElementById('alf-halfday')?.checked;
-    const display = document.getElementById('alf-calc-days-display');
+    const startDate = document.getElementById("alf-start-date")?.value;
+    const endDate = document.getElementById("alf-end-date")?.value;
+    const isHalfDay = document.getElementById("alf-halfday")?.checked;
+    const display = document.getElementById("alf-calc-days-display");
 
     if (!startDate || !endDate) return;
 
-    const days = await leaveService.calculateLeaveDays(startDate, endDate, isHalfDay);
+    const days = await leaveService.calculateLeaveDays(
+      startDate,
+      endDate,
+      isHalfDay,
+    );
     if (display) {
-      display.textContent = `${days} ${days === 1 ? 'Working Day' : 'Working Days'}`;
+      display.textContent = `${days} ${days === 1 ? "Working Day" : "Working Days"}`;
     }
   },
 
   async submitLeaveApplication() {
-    const type = document.getElementById('alf-type')?.value;
-    const startDate = document.getElementById('alf-start-date')?.value;
-    const endDate = document.getElementById('alf-end-date')?.value;
-    const isHalfDay = document.getElementById('alf-halfday')?.checked;
-    const halfDayType = isHalfDay ? document.getElementById('alf-halfday-type')?.value : null;
-    const reason = document.getElementById('alf-reason')?.value.trim();
+    const type = document.getElementById("alf-type")?.value;
+    const startDate = document.getElementById("alf-start-date")?.value;
+    const endDate = document.getElementById("alf-end-date")?.value;
+    const isHalfDay = document.getElementById("alf-halfday")?.checked;
+    const halfDayType = isHalfDay
+      ? document.getElementById("alf-halfday-type")?.value
+      : null;
+    const reason = document.getElementById("alf-reason")?.value.trim();
 
     if (!startDate || !endDate || !reason) {
-      Toast.warning('Please complete all required fields.');
+      Toast.warning("Please complete all required fields.");
       return;
     }
 
-    const btn = document.getElementById('btn-submit-leave-app');
-    if (btn) { btn.disabled = true; btn.textContent = 'Submitting...'; }
+    const btn = document.getElementById("btn-submit-leave-app");
+    if (btn) {
+      btn.disabled = true;
+      btn.textContent = "Submitting...";
+    }
 
     try {
       await leaveService.applyLeave({
@@ -838,23 +992,26 @@ const LeaveView = {
         endDate,
         halfDay: isHalfDay,
         halfDayType,
-        reason
+        reason,
       });
 
-      Toast.success('Leave application submitted successfully!');
+      Toast.success("Leave application submitted successfully!");
       ModalManager.closeModal();
-      this.switchTab('my');
+      this.switchTab("my");
     } catch (e) {
       Toast.error(e.message);
-      if (btn) { btn.disabled = false; btn.textContent = 'Submit Leave Application'; }
+      if (btn) {
+        btn.disabled = false;
+        btn.textContent = "Submit Leave Application";
+      }
     }
   },
 
   async approveLeave(leaveId) {
     try {
       await leaveService.approveLeave(leaveId);
-      Toast.success('Leave approved and attendance synchronized!');
-      Router.navigate('leave');
+      Toast.success("Leave approved and attendance synchronized!");
+      Router.navigate("leave");
     } catch (e) {
       Toast.error(e.message);
     }
@@ -862,9 +1019,9 @@ const LeaveView = {
 
   openRejectModal(leaveId) {
     ModalManager.openModal({
-      id: 'reject-leave-modal',
-      title: 'Reject Leave Request',
-      subtitle: 'Provide a reason for rejection',
+      id: "reject-leave-modal",
+      title: "Reject Leave Request",
+      subtitle: "Provide a reason for rejection",
       contentHtml: `
         <div class="form-group">
           <label class="form-label required">Rejection Reason</label>
@@ -874,19 +1031,19 @@ const LeaveView = {
       footerHtml: `
         <button class="btn btn-secondary btn-sm" data-modal-close>Cancel</button>
         <button class="btn btn-danger btn-sm" onclick="LeaveView.confirmRejectLeave('${leaveId}')">Confirm Rejection</button>
-      `
+      `,
     });
   },
 
   async confirmRejectLeave(leaveId) {
-    const reason = document.getElementById('leave-reject-reason')?.value.trim();
+    const reason = document.getElementById("leave-reject-reason")?.value.trim();
     if (!reason) return;
 
     try {
       await leaveService.rejectLeave(leaveId, reason);
-      Toast.warning('Leave request rejected.');
+      Toast.warning("Leave request rejected.");
       ModalManager.closeModal();
-      Router.navigate('leave');
+      Router.navigate("leave");
     } catch (e) {
       Toast.error(`Failed: ${e.message}`);
     }
@@ -894,21 +1051,22 @@ const LeaveView = {
 
   async cancelLeave(leaveId) {
     ModalManager.confirm({
-      title: 'Cancel Leave Request',
-      message: 'Are you sure you want to cancel this leave application? Any deducted leave quota will be restored.',
-      confirmText: 'Cancel Leave',
-      confirmClass: 'btn-danger',
+      title: "Cancel Leave Request",
+      message:
+        "Are you sure you want to cancel this leave application? Any deducted leave quota will be restored.",
+      confirmText: "Cancel Leave",
+      confirmClass: "btn-danger",
       onConfirm: async () => {
         try {
           await leaveService.cancelLeave(leaveId);
-          Toast.success('Leave request cancelled and quota balance restored.');
-          Router.navigate('leave');
+          Toast.success("Leave request cancelled and quota balance restored.");
+          Router.navigate("leave");
         } catch (e) {
           Toast.error(`Cancellation failed: ${e.message}`);
         }
-      }
+      },
     });
-  }
+  },
 };
 
 window.LeaveView = LeaveView;

@@ -5,7 +5,7 @@
  */
 
 const EmailConfigView = {
-  activeTab: 'config',
+  activeTab: "config",
 
   async render() {
     const config = await this.getConfig();
@@ -50,8 +50,8 @@ const EmailConfigView = {
               <div style="font-size: 0.8rem; color: var(--text-secondary); margin-top: 2px;">When off, the app won't send any email from this company (notifications are held).</div>
             </div>
             <label class="switch" style="position: relative; display: inline-flex; align-items: center; gap: 8px; cursor: pointer;">
-              <input type="checkbox" id="email-enabled" ${config.enabled ? 'checked' : ''} style="width: 20px; height: 20px; accent-color: var(--primary);" />
-              <span style="font-size: 0.85rem; font-weight: 600;" id="email-enabled-label">${config.enabled ? 'On' : 'Off'}</span>
+              <input type="checkbox" id="email-enabled" ${config.enabled ? "checked" : ""} style="width: 20px; height: 20px; accent-color: var(--primary);" />
+              <span style="font-size: 0.85rem; font-weight: 600;" id="email-enabled-label">${config.enabled ? "On" : "Off"}</span>
             </label>
           </div>
 
@@ -59,20 +59,20 @@ const EmailConfigView = {
             <div class="col-6 form-group">
               <label class="form-label">Provider preset</label>
               <select id="email-provider" class="form-control" onchange="EmailConfigView.handleProviderChange(this.value)">
-                <option value="custom" ${config.provider === 'custom' ? 'selected' : ''}>Custom SMTP</option>
-                <option value="gmail" ${config.provider === 'gmail' ? 'selected' : ''}>Google Workspace / Gmail</option>
-                <option value="m365" ${config.provider === 'm365' ? 'selected' : ''}>Microsoft 365 / Outlook</option>
-                <option value="sendgrid" ${config.provider === 'sendgrid' ? 'selected' : ''}>SendGrid</option>
-                <option value="ses" ${config.provider === 'ses' ? 'selected' : ''}>Amazon SES</option>
-                <option value="mailgun" ${config.provider === 'mailgun' ? 'selected' : ''}>Mailgun</option>
+                <option value="custom" ${config.provider === "custom" ? "selected" : ""}>Custom SMTP</option>
+                <option value="gmail" ${config.provider === "gmail" ? "selected" : ""}>Google Workspace / Gmail</option>
+                <option value="m365" ${config.provider === "m365" ? "selected" : ""}>Microsoft 365 / Outlook</option>
+                <option value="sendgrid" ${config.provider === "sendgrid" ? "selected" : ""}>SendGrid</option>
+                <option value="ses" ${config.provider === "ses" ? "selected" : ""}>Amazon SES</option>
+                <option value="mailgun" ${config.provider === "mailgun" ? "selected" : ""}>Mailgun</option>
               </select>
             </div>
             <div class="col-6 form-group">
               <label class="form-label">Encryption</label>
               <select id="email-encryption" class="form-control">
-                <option value="587" ${config.encryption === '587' ? 'selected' : ''}>STARTTLS (587)</option>
-                <option value="465" ${config.encryption === '465' ? 'selected' : ''}>SSL / TLS (465)</option>
-                <option value="25" ${config.encryption === '25' ? 'selected' : ''}>None (25)</option>
+                <option value="587" ${config.encryption === "587" ? "selected" : ""}>STARTTLS (587)</option>
+                <option value="465" ${config.encryption === "465" ? "selected" : ""}>SSL / TLS (465)</option>
+                <option value="25" ${config.encryption === "25" ? "selected" : ""}>None (25)</option>
               </select>
             </div>
           </div>
@@ -80,7 +80,7 @@ const EmailConfigView = {
           <div class="form-row">
             <div class="col-6 form-group">
               <label class="form-label required">SMTP host</label>
-              <input type="text" id="email-host" class="form-control" value="${config.host || 'smtp.yourdomain.com'}" placeholder="smtp.yourdomain.com" />
+              <input type="text" id="email-host" class="form-control" value="${config.host || "smtp.yourdomain.com"}" placeholder="smtp.yourdomain.com" />
             </div>
             <div class="col-6 form-group">
               <label class="form-label required">Port</label>
@@ -91,11 +91,11 @@ const EmailConfigView = {
           <div class="form-row">
             <div class="col-6 form-group">
               <label class="form-label required">Username</label>
-              <input type="text" id="email-user" class="form-control" value="${config.username || ''}" placeholder="usually your full email address" />
+              <input type="text" id="email-user" class="form-control" value="${config.username || ""}" placeholder="usually your full email address" />
             </div>
             <div class="col-6 form-group">
               <label class="form-label required">Password</label>
-              <input type="password" id="email-pass" class="form-control" value="${config.password || ''}" placeholder="app password / SMTP password" />
+              <input type="password" id="email-pass" class="form-control" value="${config.password || ""}" placeholder="app password / SMTP password" />
             </div>
           </div>
         </div>
@@ -112,17 +112,17 @@ const EmailConfigView = {
           <div class="form-row">
             <div class="col-6 form-group">
               <label class="form-label required">From name</label>
-              <input type="text" id="email-from-name" class="form-control" value="${config.fromName || 'Diallo HR'}" placeholder="e.g. Acme HR" />
+              <input type="text" id="email-from-name" class="form-control" value="${config.fromName || "Diallo HR"}" placeholder="e.g. Acme HR" />
             </div>
             <div class="col-6 form-group">
               <label class="form-label required">From email</label>
-              <input type="email" id="email-from-email" class="form-control" value="${config.fromEmail || 'hr@diallo.com'}" placeholder="e.g. hr@acme.com" />
+              <input type="email" id="email-from-email" class="form-control" value="${config.fromEmail || "hr@diallo.com"}" placeholder="e.g. hr@acme.com" />
             </div>
           </div>
 
           <div class="form-group">
             <label class="form-label">Reply-To (optional)</label>
-            <input type="email" id="email-reply-to" class="form-control" value="${config.replyTo || ''}" placeholder="where replies should go" />
+            <input type="email" id="email-reply-to" class="form-control" value="${config.replyTo || ""}" placeholder="where replies should go" />
           </div>
         </div>
 
@@ -134,11 +134,11 @@ const EmailConfigView = {
               <div class="card-subtitle">Uses the values above — you can test before saving. If a password is saved, leave it blank to test it; type a new one to test different credentials.</div>
             </div>
           </div>
-
+          
           <div class="form-row items-end">
             <div class="col-7 form-group">
               <label class="form-label">Send a test email to</label>
-              <input type="email" id="test-email-target" class="form-control" placeholder="you@example.com" value="${AuthGuard.currentUser?.email || 'admin@diallo.com'}" />
+              <input type="email" id="test-email-target" class="form-control" placeholder="you@example.com" value="${AuthGuard.currentUser?.email || "admin@diallo.com"}" />
             </div>
             <div class="col-3 form-group">
               <label class="form-label">Send as</label>
@@ -172,66 +172,75 @@ const EmailConfigView = {
 
   async getConfig() {
     try {
-      const doc = await db.collection('companySettings').doc('emailGateway').get();
+      const doc = await db
+        .collection("companySettings")
+        .doc("emailGateway")
+        .get();
       if (doc.exists) return doc.data();
     } catch (e) {}
 
-    const local = localStorage.getItem('diallo_email_config');
+    const local = localStorage.getItem("diallo_email_config");
     if (local) return JSON.parse(local);
 
     return {
       enabled: false,
-      provider: 'custom',
-      encryption: '587',
-      host: 'smtp.diallo-hrms.com',
+      provider: "custom",
+      encryption: "587",
+      host: "smtp.diallo-hrms.com",
       port: 587,
-      username: 'notifications@diallo-hrms.com',
-      password: '••••••••••••',
-      fromName: 'Diallo HRMS Operations',
-      fromEmail: 'hr-notifications@diallo-hrms.com',
-      replyTo: 'support@diallo-hrms.com'
+      username: "notifications@diallo-hrms.com",
+      password: "••••••••••••",
+      fromName: "Diallo HRMS Operations",
+      fromEmail: "hr-notifications@diallo-hrms.com",
+      replyTo: "support@diallo-hrms.com",
     };
   },
 
   handleProviderChange(provider) {
-    const hostInput = document.getElementById('email-host');
-    const portInput = document.getElementById('email-port');
-    const encSelect = document.getElementById('email-encryption');
+    const hostInput = document.getElementById("email-host");
+    const portInput = document.getElementById("email-port");
+    const encSelect = document.getElementById("email-encryption");
 
-    if (provider === 'gmail') {
-      if (hostInput) hostInput.value = 'smtp.gmail.com';
+    if (provider === "gmail") {
+      if (hostInput) hostInput.value = "smtp.gmail.com";
       if (portInput) portInput.value = 587;
-      if (encSelect) encSelect.value = '587';
-    } else if (provider === 'm365') {
-      if (hostInput) hostInput.value = 'smtp.office365.com';
+      if (encSelect) encSelect.value = "587";
+    } else if (provider === "m365") {
+      if (hostInput) hostInput.value = "smtp.office365.com";
       if (portInput) portInput.value = 587;
-      if (encSelect) encSelect.value = '587';
-    } else if (provider === 'sendgrid') {
-      if (hostInput) hostInput.value = 'smtp.sendgrid.net';
+      if (encSelect) encSelect.value = "587";
+    } else if (provider === "sendgrid") {
+      if (hostInput) hostInput.value = "smtp.sendgrid.net";
       if (portInput) portInput.value = 587;
-      if (encSelect) encSelect.value = '587';
-    } else if (provider === 'ses') {
-      if (hostInput) hostInput.value = 'email-smtp.ap-south-1.amazonaws.com';
+      if (encSelect) encSelect.value = "587";
+    } else if (provider === "ses") {
+      if (hostInput) hostInput.value = "email-smtp.ap-south-1.amazonaws.com";
       if (portInput) portInput.value = 587;
-      if (encSelect) encSelect.value = '587';
-    } else if (provider === 'mailgun') {
-      if (hostInput) hostInput.value = 'smtp.mailgun.org';
+      if (encSelect) encSelect.value = "587";
+    } else if (provider === "mailgun") {
+      if (hostInput) hostInput.value = "smtp.mailgun.org";
       if (portInput) portInput.value = 587;
-      if (encSelect) encSelect.value = '587';
+      if (encSelect) encSelect.value = "587";
     }
   },
 
   async saveConfig() {
-    const enabled = document.getElementById('email-enabled')?.checked || false;
-    const provider = document.getElementById('email-provider')?.value || 'custom';
-    const encryption = document.getElementById('email-encryption')?.value || '587';
-    const host = document.getElementById('email-host')?.value.trim() || '';
-    const port = parseInt(document.getElementById('email-port')?.value, 10) || 587;
-    const username = document.getElementById('email-user')?.value.trim() || '';
-    const password = document.getElementById('email-pass')?.value || '';
-    const fromName = document.getElementById('email-from-name')?.value.trim() || '';
-    const fromEmail = document.getElementById('email-from-email')?.value.trim() || '';
-    const replyTo = document.getElementById('email-reply-to')?.value.trim() || '';
+    const enabled = document.getElementById("email-enabled")?.checked || false;
+    const provider =
+      document.getElementById("email-provider")?.value || "custom";
+    const encryption =
+      document.getElementById("email-encryption")?.value || "587";
+    const host = document.getElementById("email-host")?.value.trim() || "";
+    const port =
+      parseInt(document.getElementById("email-port")?.value, 10) || 587;
+    const username = document.getElementById("email-user")?.value.trim() || "";
+    const password = document.getElementById("email-pass")?.value || "";
+    const fromName =
+      document.getElementById("email-from-name")?.value.trim() || "";
+    const fromEmail =
+      document.getElementById("email-from-email")?.value.trim() || "";
+    const replyTo =
+      document.getElementById("email-reply-to")?.value.trim() || "";
 
     const payload = {
       enabled,
@@ -244,37 +253,45 @@ const EmailConfigView = {
       fromName,
       fromEmail,
       replyTo,
-      updatedAt: new Date().toISOString()
+      updatedAt: new Date().toISOString(),
     };
 
     try {
-      await db.collection('companySettings').doc('emailGateway').set(payload, { merge: true });
+      await db
+        .collection("companySettings")
+        .doc("emailGateway")
+        .set(payload, { merge: true });
     } catch (e) {
-      localStorage.setItem('diallo_email_config', JSON.stringify(payload));
+      localStorage.setItem("diallo_email_config", JSON.stringify(payload));
     }
 
-    Toast.success('Email SMTP gateway configuration saved successfully.');
+    Toast.success("Email SMTP gateway configuration saved successfully.");
   },
 
   async sendTestEmail() {
-    const target = document.getElementById('test-email-target')?.value.trim();
+    const target = document.getElementById("test-email-target")?.value.trim();
     if (!target) {
-      Toast.warning('Please enter a recipient email address for testing.');
+      Toast.warning("Please enter a recipient email address for testing.");
       return;
     }
 
-    Toast.info(`Connecting to SMTP gateway and dispatching test email to ${target}...`);
+    Toast.info(
+      `Connecting to SMTP gateway and dispatching test email to ${target}...`,
+    );
     setTimeout(() => {
-      Toast.success(`Test email successfully transmitted to ${target}! SMTP Handshake: 250 OK.`);
+      Toast.success(
+        `Test email successfully transmitted to ${target}! SMTP Handshake: 250 OK.`,
+      );
     }, 1200);
   },
 
   openAddSenderModal() {
     ModalManager.openModal({
-      id: 'add-sender-identity-modal',
-      title: 'Add Purpose-Specific Sender',
-      subtitle: 'Route specific notification categories (e.g. Payroll, Offers) from distinct addresses',
-      size: 'md',
+      id: "add-sender-identity-modal",
+      title: "Add Purpose-Specific Sender",
+      subtitle:
+        "Route specific notification categories (e.g. Payroll, Offers) from distinct addresses",
+      size: "md",
       contentHtml: `
         <div class="form-group">
           <label class="form-label required">Category / Module</label>
@@ -298,9 +315,9 @@ const EmailConfigView = {
       footerHtml: `
         <button class="btn btn-secondary btn-sm" data-modal-close>Cancel</button>
         <button class="btn btn-primary btn-sm" onclick="Toast.success('Sender identity added'); ModalManager.closeModal();">Save Identity</button>
-      `
+      `,
     });
-  }
+  },
 };
 
 window.EmailConfigView = EmailConfigView;

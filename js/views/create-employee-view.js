@@ -67,7 +67,7 @@ const CreateEmployeeView = {
             </div>
           </div>
         </div>
-
+    
         <div class="card-body">
           <form id="create-employee-form" onsubmit="CreateEmployeeView.handleSubmit(event)">
             

@@ -5,13 +5,27 @@
 
 const DashboardView = {
   getRoleView() {
-    const roleId = (AuthGuard._previewRoleId || AuthGuard.userProfile?.roleId || 'EMPLOYEE').toString().toUpperCase().trim();
+    const roleId = (
+      AuthGuard._previewRoleId ||
+      AuthGuard.userProfile?.roleId ||
+      "EMPLOYEE"
+    )
+      .toString()
+      .toUpperCase()
+      .trim();
 
-    if (roleId === 'SUPER_ADMIN' || roleId === 'COMPANY_ADMIN' || roleId === 'ADMIN' || roleId === 'HR' || roleId === 'HR_MANAGER' || roleId === 'PAYROLL') {
+    if (
+      roleId === "SUPER_ADMIN" ||
+      roleId === "COMPANY_ADMIN" ||
+      roleId === "ADMIN" ||
+      roleId === "HR" ||
+      roleId === "HR_MANAGER" ||
+      roleId === "PAYROLL"
+    ) {
       return window.AdminDashboardView;
-    } else if (roleId === 'TRAINER') {
+    } else if (roleId === "TRAINER") {
       return window.TrainerDashboardView || window.ManagerDashboardView;
-    } else if (roleId === 'MANAGER') {
+    } else if (roleId === "MANAGER") {
       return window.ManagerDashboardView;
     } else {
       return window.EmployeeDashboardView;
@@ -20,7 +34,7 @@ const DashboardView = {
 
   async render() {
     const view = this.getRoleView();
-    if (view && typeof view.render === 'function') {
+    if (view && typeof view.render === "function") {
       return await view.render();
     }
     return window.AdminDashboardView.render();
@@ -28,10 +42,10 @@ const DashboardView = {
 
   async postRender() {
     const view = this.getRoleView();
-    if (view && typeof view.postRender === 'function') {
+    if (view && typeof view.postRender === "function") {
       await view.postRender();
     }
-  }
+  },
 };
 
 window.DashboardView = DashboardView;

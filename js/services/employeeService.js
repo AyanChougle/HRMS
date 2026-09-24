@@ -65,6 +65,36 @@ const employeeService = {
         ...doc.data()
       }));
 
+      // Blacklist of legacy demo employee IDs and names to strictly purge & exclude
+      const demoCodes = new Set([
+        'EMP001', 'EMP002', 'EMP003', 'EMP004', 'EMP005', 'EMP006', 'EMP007', 'EMP008',
+        'EMP009', 'EMP010', 'EMP011', 'EMP012', 'EMP013', 'EMP014', 'EMP015', 'EMP016',
+        'EMP017', 'EMP018', 'EMP019', 'EMP020', 'EMP021', 'EMP022', 'EMP023', 'EMP024', 'EMP025'
+      ]);
+      const demoNames = new Set([
+        'Vikram Sharma', 'Priya Nair', 'Rahul Mehta', 'Sneha Kulkarni', 'Amitabh Verma',
+        'Ananya Deshmukh', 'Rohan Gupta', 'Pooja Iyer', 'Karan Malhotra', 'Divya Patel',
+        'Arjun Rao', 'Neha Joshi', 'Siddharth Saxena', 'Kavita Reddy', 'Manish Pandey',
+        'Ritu Chopra', 'Deepak Mishra', 'Shweta Tiwari', 'Gaurav Bhatia', 'Sunita Rao',
+        'Naveen Kumar', 'Meera Nambiar'
+      ]);
+
+      const legitimateRecords = [];
+      records.forEach(e => {
+        const code = (e.employeeCode || '').toUpperCase().trim();
+        const name = (e.fullName || e.name || '').trim();
+        const email = (e.workEmail || e.email || '').toLowerCase().trim();
+        const isDemo = demoCodes.has(code) || demoNames.has(name) || email.endsWith('@example.com') || email.endsWith('@demo.com');
+        if (isDemo) {
+          if (e.id) {
+            db.collection('employees').doc(e.id).delete().catch(() => {});
+          }
+        } else {
+          legitimateRecords.push(e);
+        }
+      });
+      records = legitimateRecords;
+
       // In-memory text search filtering if provided (Code, Name, Email, Phone)
       if (filters.search && filters.search.trim() !== '') {
         const term = filters.search.toLowerCase().trim();

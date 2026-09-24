@@ -18,27 +18,32 @@ const LivePresenceView = {
 
   derive(d) {
     const now = Date.now();
-    const agentFresh = d.agentLastHeartbeatAt?.toDate ?
-      now - d.agentLastHeartbeatAt.toDate().getTime() <= this.staleMs : false;
-    const browserFresh = d.browserLastHeartbeatAt?.toDate ?
-      now - d.browserLastHeartbeatAt.toDate().getTime() <= this.staleMs : false;
+    const agentFresh = d.agentLastHeartbeatAt?.toDate
+      ? now - d.agentLastHeartbeatAt.toDate().getTime() <= this.staleMs
+      : false;
+    const browserFresh = d.browserLastHeartbeatAt?.toDate
+      ? now - d.browserLastHeartbeatAt.toDate().getTime() <= this.staleMs
+      : false;
 
-    let system = agentFresh ? (d.agentStatus || 'ACTIVE') : 'OFFLINE';
-    let browser = browserFresh ? (d.browserStatus || 'ACTIVE') : 'DISCONNECTED';
-    if (agentFresh && browser === 'DISCONNECTED') browser = 'TAB CLOSED / WEB OFFLINE';
+    let system = agentFresh ? d.agentStatus || "ACTIVE" : "OFFLINE";
+    let browser = browserFresh ? d.browserStatus || "ACTIVE" : "DISCONNECTED";
+    if (agentFresh && browser === "DISCONNECTED")
+      browser = "TAB CLOSED / WEB OFFLINE";
 
     return { system, browser, agentFresh, browserFresh };
   },
 
   async getPresenceData() {
     try {
-      const companyId = AuthGuard.userProfile?.companyId || 'comp_diallo_india';
-      let q = db.collection('employeePresence');
-      if (companyId) q = q.where('companyId', '==', companyId);
+      const companyId = AuthGuard.userProfile?.companyId || "comp_diallo_india";
+      let q = db.collection("employeePresence");
+      if (companyId) q = q.where("companyId", "==", companyId);
       const snap = await q.get();
-      return snap.docs.map(x => ({ id: x.id, ...x.data() })).map(d => ({ ...d, ...this.derive(d) }));
+      return snap.docs
+        .map((x) => ({ id: x.id, ...x.data() }))
+        .map((d) => ({ ...d, ...this.derive(d) }));
     } catch (e) {
-      console.warn('Error fetching employee presence:', e);
+      console.warn("Error fetching employee presence:", e);
       return [];
     }
   },
@@ -52,19 +57,25 @@ const LivePresenceView = {
 
     const statusBadgeClass = (s) => {
       switch (s) {
-        case 'ACTIVE': return 'badge-success';
-        case 'IDLE': return 'badge-warning';
-        case 'LOCKED': return 'badge-neutral';
-        case 'SLEEPING': return 'badge-soft';
-        case 'OFFLINE': default: return 'badge-danger';
+        case "ACTIVE":
+          return "badge-success";
+        case "IDLE":
+          return "badge-warning";
+        case "LOCKED":
+          return "badge-neutral";
+        case "SLEEPING":
+          return "badge-soft";
+        case "OFFLINE":
+        default:
+          return "badge-danger";
       }
     };
 
     const browserBadgeClass = (b) => {
-      if (b === 'ACTIVE') return 'badge-success';
-      if (b === 'HIDDEN') return 'badge-warning';
-      if (b && b.includes('TAB CLOSED')) return 'badge-warning';
-      return 'badge-neutral';
+      if (b === "ACTIVE") return "badge-success";
+      if (b === "HIDDEN") return "badge-warning";
+      if (b && b.includes("TAB CLOSED")) return "badge-warning";
+      return "badge-neutral";
     };
 
     return `
@@ -79,7 +90,7 @@ const LivePresenceView = {
             </div>
             <span class="kpi-trend positive">Desktop Active</span>
           </div>
-          <div class="kpi-value">${counts['ACTIVE'] || 0}</div>
+          <div class="kpi-value">${counts["ACTIVE"] || 0}</div>
           <div class="kpi-label">Active at Workstations</div>
           <div class="kpi-subtitle">Input active within 5 minutes</div>
         </div>
@@ -93,7 +104,7 @@ const LivePresenceView = {
             </div>
             <span class="kpi-trend neutral">Idle</span>
           </div>
-          <div class="kpi-value">${counts['IDLE'] || 0}</div>
+          <div class="kpi-value">${counts["IDLE"] || 0}</div>
           <div class="kpi-label">Idle / Away from Desk</div>
           <div class="kpi-subtitle">No input for &gt; 5 minutes</div>
         </div>
@@ -107,9 +118,9 @@ const LivePresenceView = {
             </div>
             <span class="kpi-trend neutral">Locked / Sleep</span>
           </div>
-          <div class="kpi-value">${(counts['LOCKED'] || 0) + (counts['SLEEPING'] || 0)}</div>
+          <div class="kpi-value">${(counts["LOCKED"] || 0) + (counts["SLEEPING"] || 0)}</div>
           <div class="kpi-label">Windows Locked / Sleeping</div>
-          <div class="kpi-subtitle">${counts['LOCKED'] || 0} Locked • ${counts['SLEEPING'] || 0} Suspended</div>
+          <div class="kpi-subtitle">${counts["LOCKED"] || 0} Locked • ${counts["SLEEPING"] || 0} Suspended</div>
         </div>
 
         <div class="kpi-card">
@@ -121,7 +132,7 @@ const LivePresenceView = {
             </div>
             <span class="kpi-trend neutral">Offline</span>
           </div>
-          <div class="kpi-value">${counts['OFFLINE'] || 0}</div>
+          <div class="kpi-value">${counts["OFFLINE"] || 0}</div>
           <div class="kpi-label">Agent Offline</div>
           <div class="kpi-subtitle">Heartbeat expired (&gt; 90s)</div>
         </div>
@@ -145,7 +156,9 @@ const LivePresenceView = {
         </div>
 
         <div class="card-body" style="padding: 0;">
-          ${rows.length === 0 ? `
+          ${
+            rows.length === 0
+              ? `
             <div class="empty-state">
               <div class="empty-state-icon">
                 <svg width="24" height="24" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -155,7 +168,8 @@ const LivePresenceView = {
               <div class="empty-state-title">No Desktop Agent Heartbeats</div>
               <div class="empty-state-desc">Desktop background agent heartbeats or web presence events will appear here as employees punch in.</div>
             </div>
-          ` : `
+          `
+              : `
             <table class="data-table">
               <thead>
                 <tr>
@@ -168,15 +182,17 @@ const LivePresenceView = {
                 </tr>
               </thead>
               <tbody>
-                ${rows.map(r => `
+                ${rows
+                  .map(
+                    (r) => `
                   <tr>
                     <td>
                       <div class="flex items-center gap-2">
                         <div style="width: 32px; height: 32px; border-radius: 50%; background: var(--primary-light); color: var(--primary); display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 0.8rem;">
-                          ${(r.employeeName || 'Staff').substring(0, 2).toUpperCase()}
+                          ${(r.employeeName || "Staff").substring(0, 2).toUpperCase()}
                         </div>
                         <div>
-                          <div class="font-semibold text-main">${r.employeeName || 'Staff'}</div>
+                          <div class="font-semibold text-main">${r.employeeName || "Staff"}</div>
                           <div class="text-muted" style="font-size: 0.75rem;">ID: ${r.employeeId}</div>
                         </div>
                       </div>
@@ -197,40 +213,43 @@ const LivePresenceView = {
                     </td>
                     <td>
                       <span class="text-muted" style="font-size: 0.8rem;">
-                        ${r.agentLastHeartbeatAt?.toDate ? r.agentLastHeartbeatAt.toDate().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' }) : 'Never / None'}
+                        ${r.agentLastHeartbeatAt?.toDate ? r.agentLastHeartbeatAt.toDate().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", second: "2-digit" }) : "Never / None"}
                       </span>
                     </td>
                     <td>
                       <span class="text-muted" style="font-size: 0.8rem;">
-                        ${r.browserLastHeartbeatAt?.toDate ? r.browserLastHeartbeatAt.toDate().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' }) : 'None'}
+                        ${r.browserLastHeartbeatAt?.toDate ? r.browserLastHeartbeatAt.toDate().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", second: "2-digit" }) : "None"}
                       </span>
                     </td>
                   </tr>
-                `).join('')}
+                `,
+                  )
+                  .join("")}
               </tbody>
             </table>
-          `}
+          `
+          }
         </div>
       </div>
     `;
   },
 
-  async mount(containerId = 'live-presence-container') {
+  async mount(containerId = "live-presence-container") {
     const el = document.getElementById(containerId);
     if (!el) return;
     el.innerHTML = await this.render();
   },
 
   async refresh() {
-    if (window.AttendanceView && AttendanceView.activeTab === 'presence') {
-      Router.mountView('attendance');
+    if (window.AttendanceView && AttendanceView.activeTab === "presence") {
+      Router.mountView("attendance");
     } else {
       await this.mount();
     }
-    if (typeof Toast !== 'undefined') {
-      Toast.success('Live presence records refreshed.');
+    if (typeof Toast !== "undefined") {
+      Toast.success("Live presence records refreshed.");
     }
-  }
+  },
 };
 
 window.LivePresenceView = LivePresenceView;

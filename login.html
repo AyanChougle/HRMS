@@ -278,9 +278,12 @@
       <div class="form-group" style="margin-bottom: 14px;">
         <label class="form-label required">Designated Account Role & Workspace</label>
         <select id="signup-role" class="form-control" required>
-          <option value="EMPLOYEE">Employee (Self Service)</option>
-          <option value="TRAINER">Corporate Trainer</option>
-          <option value="TRAINEE">Graduate Trainee / Intern</option>
+          <option value="SUPER_ADMIN">Super Administrator (Full System Control)</option>
+          <option value="COMPANY_ADMIN">Company Administrator (Admin Portal)</option>
+          <option value="HR">HR Manager (HR Operations & People)</option>
+          <option value="TRAINER">Corporate Trainer / Mentor</option>
+          <option value="TRAINEE">Graduate Trainee / Intern (7-Day Modules)</option>
+          <option value="EMPLOYEE" selected>Employee (Self Service ESS)</option>
         </select>
         <p style="font-size: 11px; color: var(--text-muted, #888); margin: 4px 0 0;">
           Select your designated role to provision the appropriate workspace and permissions.

@@ -5,8 +5,14 @@
 
 const ManagerDashboardView = {
   async render() {
-    const userDisplayName = AuthGuard.userProfile?.displayName || 'Team Manager';
-    const todayStr = new Date().toLocaleDateString('en-US', { weekday: 'long', month: 'short', day: 'numeric', year: 'numeric' });
+    const userDisplayName =
+      AuthGuard.userProfile?.displayName || "Team Manager";
+    const todayStr = new Date().toLocaleDateString("en-US", {
+      weekday: "long",
+      month: "short",
+      day: "numeric",
+      year: "numeric",
+    });
 
     return `
       <!-- Welcome Banner -->
@@ -114,7 +120,7 @@ const ManagerDashboardView = {
       const [employees, attendanceSum, approvals] = await Promise.all([
         employeeService.getEmployees(),
         attendanceService.getTodaySummary(),
-        approvalService.getPendingApprovals()
+        approvalService.getPendingApprovals(),
       ]);
 
       const teamSize = employees.length;
@@ -122,16 +128,17 @@ const ManagerDashboardView = {
       const onLeave = attendanceSum.onLeave;
       const pendingCount = approvals.length;
 
-      document.getElementById('mgr-kpi-team-size').textContent = teamSize;
-      document.getElementById('mgr-kpi-team-present').textContent = present;
-      document.getElementById('mgr-kpi-team-leave').textContent = onLeave;
-      document.getElementById('mgr-kpi-approvals-count').textContent = pendingCount;
+      document.getElementById("mgr-kpi-team-size").textContent = teamSize;
+      document.getElementById("mgr-kpi-team-present").textContent = present;
+      document.getElementById("mgr-kpi-team-leave").textContent = onLeave;
+      document.getElementById("mgr-kpi-approvals-count").textContent =
+        pendingCount;
 
       const pct = teamSize > 0 ? Math.round((present / teamSize) * 100) : 0;
-      document.getElementById('mgr-kpi-present-pct').textContent = `${pct}%`;
+      document.getElementById("mgr-kpi-present-pct").textContent = `${pct}%`;
 
       // Render Approvals List
-      const approvalsBody = document.getElementById('manager-approvals-body');
+      const approvalsBody = document.getElementById("manager-approvals-body");
       if (approvals.length === 0) {
         approvalsBody.innerHTML = `
           <div class="empty-state" style="border: none; padding: 24px;">
@@ -147,7 +154,9 @@ const ManagerDashboardView = {
       } else {
         approvalsBody.innerHTML = `
           <div class="action-center-list">
-            ${approvals.map(a => `
+            ${approvals
+              .map(
+                (a) => `
               <div class="action-item" id="mgr-act-${a.id}">
                 <div class="action-item-info">
                   <div>
@@ -160,51 +169,60 @@ const ManagerDashboardView = {
                   <button class="btn btn-secondary btn-sm" onclick="ManagerDashboardView.reject('${a.id}')">Reject</button>
                 </div>
               </div>
-            `).join('')}
+            `,
+              )
+              .join("")}
           </div>
         `;
       }
 
       // Render Team Attendance Table
-      const teamBody = document.getElementById('manager-team-attendance-body');
+      const teamBody = document.getElementById("manager-team-attendance-body");
       if (employees.length === 0) {
         teamBody.innerHTML = `<div style="padding: 24px; text-align: center; color: var(--text-muted); font-size: 0.85rem;">No employees registered in your team.</div>`;
       } else {
         teamBody.innerHTML = `
           <div class="flex flex-col gap-2">
-            ${employees.slice(0, 6).map(e => `
+            ${employees
+              .slice(0, 6)
+              .map(
+                (e) => `
               <div class="flex items-center justify-between" style="padding: 8px 12px; border: 1px solid var(--border-light); border-radius: var(--radius-sm);">
                 <div class="flex items-center gap-3">
                   <div style="width: 32px; height: 32px; border-radius: 50%; background: var(--primary-light); color: var(--primary); display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 0.75rem;">
-                    ${e.avatar || 'EM'}
+                    ${e.avatar || "EM"}
                   </div>
                   <div>
                     <div class="font-semibold text-main" style="font-size: 0.85rem;">${e.fullName || e.name}</div>
-                    <div class="text-muted" style="font-size: 0.75rem;">${e.designation || 'Staff'}</div>
+                    <div class="text-muted" style="font-size: 0.75rem;">${e.designation || "Staff"}</div>
                   </div>
                 </div>
-                <span class="badge ${e.employmentStatus === 'ACTIVE' ? 'badge-success' : 'badge-neutral'}">
-                  ${e.employmentStatus || 'Active'}
+                <span class="badge ${e.employmentStatus === "ACTIVE" ? "badge-success" : "badge-neutral"}">
+                  ${e.employmentStatus || "Active"}
                 </span>
               </div>
-            `).join('')}
+            `,
+              )
+              .join("")}
           </div>
         `;
       }
     } catch (err) {
-      console.error('Error rendering manager dashboard:', err);
+      console.error("Error rendering manager dashboard:", err);
     }
   },
 
   scrollToApprovals() {
-    document.getElementById('manager-approvals-section')?.scrollIntoView({ behavior: 'smooth' });
+    document
+      .getElementById("manager-approvals-section")
+      ?.scrollIntoView({ behavior: "smooth" });
   },
 
   async approve(id) {
     try {
-      await approvalService.resolveApproval(id, 'APPROVED');
+      await approvalService.resolveApproval(id, "APPROVED");
       document.getElementById(`mgr-act-${id}`)?.remove();
-      Toast.success('Request approved successfully!');
+      Toast.success("Request approved successfully!");
     } catch (e) {
       Toast.error(`Approval failed: ${e.message}`);
     }
@@ -212,13 +230,13 @@ const ManagerDashboardView = {
 
   async reject(id) {
     try {
-      await approvalService.resolveApproval(id, 'REJECTED');
+      await approvalService.resolveApproval(id, "REJECTED");
       document.getElementById(`mgr-act-${id}`)?.remove();
-      Toast.warning('Request rejected.');
+      Toast.warning("Request rejected.");
     } catch (e) {
       Toast.error(`Rejection failed: ${e.message}`);
     }
-  }
+  },
 };
 
 window.ManagerDashboardView = ManagerDashboardView;

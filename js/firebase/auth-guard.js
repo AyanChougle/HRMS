@@ -91,7 +91,7 @@ const AuthGuard = {
   // Load Firestore user profile, role, and permissions (with self-healing fallback)
   async loadUserProfile(uid) {
     const userEmail = (this.currentUser?.email || '').toLowerCase().trim();
-    const isOwner = userEmail === 'ayanislight@gmail.com' || userEmail.includes('ayan') || userEmail.startsWith('admin@');
+    const isMasterAdmin = userEmail === 'ayanislight@gmail.com';
     let userDoc = null;
 
     try {
@@ -104,15 +104,13 @@ const AuthGuard = {
       this.userProfile = userDoc.data() || {};
       this.userProfile.id = userDoc.id;
 
-      // Ensure essential tenancy and status defaults
+      // Ensure essential tenancy and status defaults while strictly preserving assigned role
       if (!this.userProfile.companyId) this.userProfile.companyId = 'comp_diallo_india';
       if (!this.userProfile.companyName) this.userProfile.companyName = 'Diallo India Private Limited';
       if (!this.userProfile.branchId) this.userProfile.branchId = 'branch_mumbai';
       if (!this.userProfile.branchName) this.userProfile.branchName = 'HQ - Mumbai';
       if (!this.userProfile.status) this.userProfile.status = 'ACTIVE';
-      if (!this.userProfile.roleId) this.userProfile.roleId = isOwner ? 'SUPER_ADMIN' : 'EMPLOYEE';
-      if (isOwner && this.userProfile.roleId === 'EMPLOYEE') this.userProfile.roleId = 'SUPER_ADMIN';
-      if (isOwner && !this.userProfile.employeeId) this.userProfile.employeeId = 'EMP000';
+      if (!this.userProfile.roleId) this.userProfile.roleId = isMasterAdmin ? 'SUPER_ADMIN' : 'EMPLOYEE';
 
       // Load Role definition if present
       let roleDocData = null;
@@ -160,9 +158,9 @@ const AuthGuard = {
       }
     } else {
       // Self-heal: user exists in Firebase Auth but has no Firestore profile document yet
-      const roleId = isOwner ? 'SUPER_ADMIN' : 'EMPLOYEE';
+      const roleId = isMasterAdmin ? 'SUPER_ADMIN' : 'EMPLOYEE';
       const displayName = this.currentUser?.displayName || (userEmail ? userEmail.split('@')[0] : 'User');
-      let employeeId = isOwner ? 'EMP000' : null;
+      let employeeId = null;
 
       // Link matching employee document by email if available
       try {
@@ -276,6 +274,11 @@ const AuthGuard = {
     const normalizedRole = (roleId || 'EMPLOYEE').toString().toUpperCase().trim();
     this.userProfile.roleId = normalizedRole;
 
+    const headerSwitcher = document.getElementById('header-role-switcher');
+    if (headerSwitcher) headerSwitcher.value = normalizedRole;
+    const popoverSwitcher = document.getElementById('popover-role-switcher');
+    if (popoverSwitcher) popoverSwitcher.value = normalizedRole;
+
     if (normalizedRole === 'SUPER_ADMIN') {
       this.permissions = new Set(['*']);
       this.userRole = { name: 'Super Admin', id: 'SUPER_ADMIN' };
@@ -345,17 +348,34 @@ const AuthGuard = {
 
       // Hide or show admin-only actions in the profile popover
       const rawRole = (this.userProfile.roleId || 'EMPLOYEE').toString().toUpperCase().trim();
-      const isSuperAdmin = rawRole === 'SUPER_ADMIN';
-      const isAdmin = isSuperAdmin || rawRole === 'COMPANY_ADMIN' || rawRole === 'ADMIN';
+      const actualRole = (this._actualRoleId || rawRole).toString().toUpperCase().trim();
+      const isSuperAdmin = actualRole === 'SUPER_ADMIN';
+      const isAdmin = isSuperAdmin || actualRole === 'COMPANY_ADMIN' || actualRole === 'ADMIN';
+      const isProjectOwner = this.currentUser?.email === 'ayanislight@gmail.com' || (this.userProfile.email && this.userProfile.email.includes('ayan'));
+      const canSwitchRoles = isAdmin || isProjectOwner;
 
       const permItem = document.getElementById('dropdown-permissions-item');
       if (permItem) {
-        permItem.style.display = isSuperAdmin ? 'flex' : 'none';
+        permItem.style.display = (rawRole === 'SUPER_ADMIN') ? 'flex' : 'none';
       }
 
       const settingsItem = document.getElementById('dropdown-settings-item');
       if (settingsItem) {
-        settingsItem.style.display = isAdmin ? 'flex' : 'none';
+        settingsItem.style.display = (rawRole === 'SUPER_ADMIN' || rawRole === 'COMPANY_ADMIN') ? 'flex' : 'none';
+      }
+
+      const headerRoleWrapper = document.getElementById('header-role-wrapper');
+      if (headerRoleWrapper) {
+        headerRoleWrapper.style.display = canSwitchRoles ? 'inline-flex' : 'none';
+        const headerSwitcher = document.getElementById('header-role-switcher');
+        if (headerSwitcher) headerSwitcher.value = rawRole;
+      }
+
+      const popoverRoleWrapper = document.getElementById('popover-role-switcher-section');
+      if (popoverRoleWrapper) {
+        popoverRoleWrapper.style.display = canSwitchRoles ? 'block' : 'none';
+        const popoverSwitcher = document.getElementById('popover-role-switcher');
+        if (popoverSwitcher) popoverSwitcher.value = rawRole;
       }
     }
   },

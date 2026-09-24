@@ -4,7 +4,7 @@
  */
 
 const ESSView = {
-  activeTab: 'profile', // Default to clean profile dossier view
+  activeTab: "profile", // Default to clean profile dossier view
   punchTimerInterval: null,
   workSeconds: 0,
   isPunchedIn: false,
@@ -18,31 +18,45 @@ const ESSView = {
   },
 
   async render() {
-    const employeeId = AuthGuard.userProfile?.employeeId || AuthGuard.currentUser?.uid;
-    const userDisplayName = AuthGuard.userProfile?.displayName || AuthGuard.currentUser?.email?.split('@')[0] || 'Employee';
+    const employeeId =
+      AuthGuard.userProfile?.employeeId || AuthGuard.currentUser?.uid;
+    const userDisplayName =
+      AuthGuard.userProfile?.displayName ||
+      AuthGuard.currentUser?.email?.split("@")[0] ||
+      "Employee";
 
     const empDoc = await employeeService.getEmployee(employeeId);
 
     const employee = empDoc || {
       fullName: userDisplayName,
-      employeeCode: AuthGuard.userProfile?.employeeCode || 'EMP-001',
-      department: AuthGuard.userProfile?.department || 'Technology',
-      designation: AuthGuard.userProfile?.designation || 'Software Engineer',
-      phone: AuthGuard.userProfile?.phone || '+91 98765 43210',
-      workEmail: AuthGuard.currentUser?.email || 'employee@diallo.in',
-      personalEmail: AuthGuard.userProfile?.personalEmail || 'personal@diallo.in',
-      dateOfJoining: AuthGuard.userProfile?.dateOfJoining || '2025-01-15',
-      bankName: AuthGuard.userProfile?.bankName || 'HDFC Bank Ltd',
-      accountNumber: AuthGuard.userProfile?.accountNumber || '••••••••4892',
-      ifscCode: AuthGuard.userProfile?.ifscCode || 'HDFC0001234',
-      panNumber: AuthGuard.userProfile?.panNumber || 'ABCDE1234F',
-      uanNumber: AuthGuard.userProfile?.uanNumber || '101234567890',
-      emergencyContact: AuthGuard.userProfile?.emergencyContact || 'Family (+91 99887 76655)',
-      address: AuthGuard.userProfile?.address || 'Bandra Kurla Complex, Mumbai, Maharashtra 400051',
-      branchName: AuthGuard.userProfile?.branchName || 'HQ - Mumbai'
+      employeeCode: AuthGuard.userProfile?.employeeCode || "EMP-001",
+      department: AuthGuard.userProfile?.department || "Technology",
+      designation: AuthGuard.userProfile?.designation || "Software Engineer",
+      phone: AuthGuard.userProfile?.phone || "+91 98765 43210",
+      workEmail: AuthGuard.currentUser?.email || "employee@diallo.in",
+      personalEmail:
+        AuthGuard.userProfile?.personalEmail || "personal@diallo.in",
+      dateOfJoining: AuthGuard.userProfile?.dateOfJoining || "2025-01-15",
+      bankName: AuthGuard.userProfile?.bankName || "HDFC Bank Ltd",
+      accountNumber: AuthGuard.userProfile?.accountNumber || "••••••••4892",
+      ifscCode: AuthGuard.userProfile?.ifscCode || "HDFC0001234",
+      panNumber: AuthGuard.userProfile?.panNumber || "ABCDE1234F",
+      uanNumber: AuthGuard.userProfile?.uanNumber || "101234567890",
+      emergencyContact:
+        AuthGuard.userProfile?.emergencyContact || "Family (+91 99887 76655)",
+      address:
+        AuthGuard.userProfile?.address ||
+        "Bandra Kurla Complex, Mumbai, Maharashtra 400051",
+      branchName: AuthGuard.userProfile?.branchName || "HQ - Mumbai",
     };
 
-    const initials = (employee.fullName || userDisplayName).split(' ').map(n => n[0]).join('').substring(0, 2).toUpperCase() || 'EM';
+    const initials =
+      (employee.fullName || userDisplayName)
+        .split(" ")
+        .map((n) => n[0])
+        .join("")
+        .substring(0, 2)
+        .toUpperCase() || "EM";
 
     return `
       <div class="page-header animate-fade-in">
@@ -86,11 +100,11 @@ const ESSView = {
                 <span class="badge badge-success"><span class="badge-dot"></span> Active</span>
               </div>
               <div class="flex items-center gap-3" style="margin-top: 4px; font-size: 0.88rem; color: var(--text-secondary); flex-wrap: wrap;">
-                <span>${employee.designation || 'Software Engineer'}</span>
+                <span>${employee.designation || "Software Engineer"}</span>
                 <span>•</span>
-                <span>${employee.department || 'Technology'}</span>
+                <span>${employee.department || "Technology"}</span>
                 <span>•</span>
-                <span style="font-family: var(--font-family-mono); font-weight: 600; color: var(--primary);">${employee.employeeCode || 'EMP-001'}</span>
+                <span style="font-family: var(--font-family-mono); font-weight: 600; color: var(--primary);">${employee.employeeCode || "EMP-001"}</span>
               </div>
             </div>
           </div>
@@ -100,13 +114,13 @@ const ESSView = {
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"/>
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"/>
               </svg>
-              ${employee.branchName || 'HQ - Mumbai'}
+              ${employee.branchName || "HQ - Mumbai"}
             </span>
             <span class="badge badge-neutral" style="padding: 6px 12px; font-size: 0.8rem;">
               <svg width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="currentColor" style="margin-right: 4px; display: inline-block; vertical-align: middle;">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/>
               </svg>
-              Joined: ${employee.dateOfJoining || employee.joiningDate || 'Jan 2025'}
+              Joined: ${employee.dateOfJoining || employee.joiningDate || "Jan 2025"}
             </span>
           </div>
         </div>
@@ -131,19 +145,19 @@ const ESSView = {
               </div>
               <div class="flex justify-between items-center py-1" style="border-bottom: 1px solid var(--border-light);">
                 <span class="text-muted">Personal Phone:</span>
-                <strong class="text-main">${employee.phone || '+91 7208533219'}</strong>
+                <strong class="text-main">${employee.phone || "+91 7208533219"}</strong>
               </div>
               <div class="flex justify-between items-center py-1" style="border-bottom: 1px solid var(--border-light);">
                 <span class="text-muted">Personal Email:</span>
-                <strong class="text-main">${employee.personalEmail || employee.email || (AuthGuard.currentUser?.email) || 'ayanislight@gmail.com'}</strong>
+                <strong class="text-main">${employee.personalEmail || employee.email || AuthGuard.currentUser?.email || "ayanislight@gmail.com"}</strong>
               </div>
               <div class="flex justify-between items-center py-1" style="border-bottom: 1px solid var(--border-light);">
                 <span class="text-muted">Emergency Contact:</span>
-                <strong class="text-main">${employee.emergencyContact || '+91 98200 98765 (Family)'}</strong>
+                <strong class="text-main">${employee.emergencyContact || "+91 98200 98765 (Family)"}</strong>
               </div>
               <div class="flex justify-between items-start py-1">
                 <span class="text-muted">Residential Address:</span>
-                <strong class="text-main" style="max-width: 260px; text-align: right; line-height: 1.4;">${employee.address || 'Flat 402, Sea Green Heights, Bandra West, Mumbai - 400050'}</strong>
+                <strong class="text-main" style="max-width: 260px; text-align: right; line-height: 1.4;">${employee.address || "Flat 402, Sea Green Heights, Bandra West, Mumbai - 400050"}</strong>
               </div>
             </div>
           </div>
@@ -162,27 +176,27 @@ const ESSView = {
             <div class="flex flex-col gap-3" style="font-size: 0.85rem;">
               <div class="flex justify-between items-center py-1" style="border-bottom: 1px solid var(--border-light);">
                 <span class="text-muted">Employee Code:</span>
-                <strong style="font-family: var(--font-family-mono); letter-spacing: 0.5px; color: var(--primary);">${employee.employeeCode || 'EMP-001'}</strong>
+                <strong style="font-family: var(--font-family-mono); letter-spacing: 0.5px; color: var(--primary);">${employee.employeeCode || "EMP-001"}</strong>
               </div>
               <div class="flex justify-between items-center py-1" style="border-bottom: 1px solid var(--border-light);">
                 <span class="text-muted">Department:</span>
-                <strong class="text-main">${employee.department || 'Technology'}</strong>
+                <strong class="text-main">${employee.department || "Technology"}</strong>
               </div>
               <div class="flex justify-between items-center py-1" style="border-bottom: 1px solid var(--border-light);">
                 <span class="text-muted">Designation / Role:</span>
-                <strong class="text-main">${employee.designation || 'Software Engineer'}</strong>
+                <strong class="text-main">${employee.designation || "Software Engineer"}</strong>
               </div>
               <div class="flex justify-between items-center py-1" style="border-bottom: 1px solid var(--border-light);">
                 <span class="text-muted">Work Email:</span>
-                <strong class="text-main">${employee.workEmail || AuthGuard.currentUser?.email || '-'}</strong>
+                <strong class="text-main">${employee.workEmail || AuthGuard.currentUser?.email || "-"}</strong>
               </div>
               <div class="flex justify-between items-center py-1" style="border-bottom: 1px solid var(--border-light);">
                 <span class="text-muted">Branch / Location:</span>
-                <strong class="text-main">${employee.branchName || 'HQ - Mumbai'}</strong>
+                <strong class="text-main">${employee.branchName || "HQ - Mumbai"}</strong>
               </div>
               <div class="flex justify-between items-center py-1">
                 <span class="text-muted">Employment Status:</span>
-                <span class="badge badge-success"><span class="badge-dot"></span> ${employee.employmentStatus || 'ACTIVE'}</span>
+                <span class="badge badge-success"><span class="badge-dot"></span> ${employee.employmentStatus || "ACTIVE"}</span>
               </div>
             </div>
           </div>
@@ -201,15 +215,15 @@ const ESSView = {
             <div class="flex flex-col gap-3" style="font-size: 0.85rem;">
               <div class="flex justify-between items-center py-1" style="border-bottom: 1px solid var(--border-light);">
                 <span class="text-muted">Bank Name:</span>
-                <strong class="text-main">${employee.bankName || 'HDFC Bank Ltd'}</strong>
+                <strong class="text-main">${employee.bankName || "HDFC Bank Ltd"}</strong>
               </div>
               <div class="flex justify-between items-center py-1" style="border-bottom: 1px solid var(--border-light);">
                 <span class="text-muted">Account Number:</span>
-                <strong class="text-main" style="font-family: var(--font-family-mono); letter-spacing: 0.5px;">${employee.accountNumber || '••••••••4892'}</strong>
+                <strong class="text-main" style="font-family: var(--font-family-mono); letter-spacing: 0.5px;">${employee.accountNumber || "••••••••4892"}</strong>
               </div>
               <div class="flex justify-between items-center py-1">
                 <span class="text-muted">IFSC Code:</span>
-                <strong class="text-main" style="font-family: var(--font-family-mono); letter-spacing: 0.5px;">${employee.ifscCode || 'HDFC0001234'}</strong>
+                <strong class="text-main" style="font-family: var(--font-family-mono); letter-spacing: 0.5px;">${employee.ifscCode || "HDFC0001234"}</strong>
               </div>
             </div>
           </div>
@@ -228,15 +242,15 @@ const ESSView = {
             <div class="flex flex-col gap-3" style="font-size: 0.85rem;">
               <div class="flex justify-between items-center py-1" style="border-bottom: 1px solid var(--border-light);">
                 <span class="text-muted">Permanent Account Number (PAN):</span>
-                <strong class="text-main" style="font-family: var(--font-family-mono); letter-spacing: 0.5px;">${employee.panNumber || 'ABCDE1234F'}</strong>
+                <strong class="text-main" style="font-family: var(--font-family-mono); letter-spacing: 0.5px;">${employee.panNumber || "ABCDE1234F"}</strong>
               </div>
               <div class="flex justify-between items-center py-1" style="border-bottom: 1px solid var(--border-light);">
                 <span class="text-muted">Universal Account Number (UAN / PF):</span>
-                <strong class="text-main" style="font-family: var(--font-family-mono); letter-spacing: 0.5px;">${employee.uanNumber || '101234567890'}</strong>
+                <strong class="text-main" style="font-family: var(--font-family-mono); letter-spacing: 0.5px;">${employee.uanNumber || "101234567890"}</strong>
               </div>
               <div class="flex justify-between items-center py-1">
                 <span class="text-muted">ESIC Insurance Number:</span>
-                <strong class="text-main" style="font-family: var(--font-family-mono); letter-spacing: 0.5px;">${employee.esicNumber || '31000123450000001'}</strong>
+                <strong class="text-main" style="font-family: var(--font-family-mono); letter-spacing: 0.5px;">${employee.esicNumber || "31000123450000001"}</strong>
               </div>
             </div>
           </div>
@@ -247,22 +261,47 @@ const ESSView = {
 
   switchTab(tab) {
     this.activeTab = tab;
-    Router.mountView('ess');
+    Router.mountView("ess");
   },
 
-  renderTab(employee, leaves, myDocs, myRequests, myAssets, myExpenses, notifications) {
-    if (this.activeTab === 'profile') return this.renderProfileTab(employee);
-    if (this.activeTab === 'documents') return this.renderDocumentsTab(myDocs);
-    if (this.activeTab === 'requests') return this.renderRequestsTab(myRequests);
-    if (this.activeTab === 'payslips') return this.renderPayslipsTab(employee);
-    if (this.activeTab === 'assets') return this.renderAssetsTab(myAssets);
-    if (this.activeTab === 'settings') return this.renderSettingsTab(employee);
-    return this.renderDashboardTab(employee, leaves, myDocs, myRequests, myAssets, myExpenses, notifications);
+  renderTab(
+    employee,
+    leaves,
+    myDocs,
+    myRequests,
+    myAssets,
+    myExpenses,
+    notifications,
+  ) {
+    if (this.activeTab === "profile") return this.renderProfileTab(employee);
+    if (this.activeTab === "documents") return this.renderDocumentsTab(myDocs);
+    if (this.activeTab === "requests")
+      return this.renderRequestsTab(myRequests);
+    if (this.activeTab === "payslips") return this.renderPayslipsTab(employee);
+    if (this.activeTab === "assets") return this.renderAssetsTab(myAssets);
+    if (this.activeTab === "settings") return this.renderSettingsTab(employee);
+    return this.renderDashboardTab(
+      employee,
+      leaves,
+      myDocs,
+      myRequests,
+      myAssets,
+      myExpenses,
+      notifications,
+    );
   },
 
   // 1. ESS DASHBOARD TAB
-  renderDashboardTab(employee, leaves, myDocs, myRequests, myAssets, myExpenses, notifications) {
-    const unreadNotifications = notifications.filter(n => !n.read);
+  renderDashboardTab(
+    employee,
+    leaves,
+    myDocs,
+    myRequests,
+    myAssets,
+    myExpenses,
+    notifications,
+  ) {
+    const unreadNotifications = notifications.filter((n) => !n.read);
 
     return `
       <!-- Top Geolocation Punch & Live Timer Banner -->
@@ -270,10 +309,10 @@ const ESSView = {
         <div class="card-header">
           <div>
             <div class="card-title">Live Geolocation Web Punch Terminal</div>
-            <div class="card-subtitle">Authenticated as <strong>${employee.fullName || employee.name}</strong> • ${employee.branchName || 'HQ - Mumbai'}</div>
+            <div class="card-subtitle">Authenticated as <strong>${employee.fullName || employee.name}</strong> • ${employee.branchName || "HQ - Mumbai"}</div>
           </div>
-          <span class="badge ${this.isPunchedIn ? 'badge-success' : 'badge-neutral'}" id="ess-live-badge">
-            <span class="badge-dot"></span> ${this.isPunchedIn ? 'On Shift (Active)' : 'Checked Out'}
+          <span class="badge ${this.isPunchedIn ? "badge-success" : "badge-neutral"}" id="ess-live-badge">
+            <span class="badge-dot"></span> ${this.isPunchedIn ? "On Shift (Active)" : "Checked Out"}
           </span>
         </div>
         <div class="card-body">
@@ -287,7 +326,7 @@ const ESSView = {
                 Location: HQ - Mumbai (BKC, Mumbai 400051)
               </div>
               <div style="font-size: 0.8rem; margin-top: 6px; display: flex; gap: 16px; align-items: center;">
-                <span style="color: var(--text-muted);">Break: <strong style="font-family: monospace; color: ${this.isOnBreak ? 'var(--warning)' : 'var(--text-secondary)'};" id="ess-break-display">00:00</strong></span>
+                <span style="color: var(--text-muted);">Break: <strong style="font-family: monospace; color: ${this.isOnBreak ? "var(--warning)" : "var(--text-secondary)"};" id="ess-break-display">00:00</strong></span>
                 <span style="color: var(--text-muted);">Total Break: <strong style="font-family: monospace;" id="ess-total-break-display">${Math.floor(this.totalBreakSeconds / 60)}m</strong></span>
               </div>
             </div>
@@ -297,16 +336,20 @@ const ESSView = {
                 <svg width="20" height="20" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/>
                 </svg>
-                <span>${this.isPunchedIn ? 'Punch Out' : 'Web Punch In (GPS)'}</span>
+                <span>${this.isPunchedIn ? "Punch Out" : "Web Punch In (GPS)"}</span>
               </button>
-              ${this.isPunchedIn ? `
-              <button class="btn ${this.isOnBreak ? 'btn-warning' : 'btn-secondary'} btn-lg" id="ess-break-btn" onclick="ESSView.toggleBreak()">
+              ${
+                this.isPunchedIn
+                  ? `
+              <button class="btn ${this.isOnBreak ? "btn-warning" : "btn-secondary"} btn-lg" id="ess-break-btn" onclick="ESSView.toggleBreak()">
                 <svg width="20" height="20" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="${this.isOnBreak ? 'M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z M21 12a9 9 0 11-18 0 9 9 0 0118 0z' : 'M10 9v6m4-6v6m7-3a9 9 0 11-18 0 9 9 0 0118 0z'}"/>
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="${this.isOnBreak ? "M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z M21 12a9 9 0 11-18 0 9 9 0 0118 0z" : "M10 9v6m4-6v6m7-3a9 9 0 11-18 0 9 9 0 0118 0z"}"/>
                 </svg>
-                <span>${this.isOnBreak ? 'End Break' : 'Start Break'}</span>
+                <span>${this.isOnBreak ? "End Break" : "Start Break"}</span>
               </button>
-              ` : ''}
+              `
+                  : ""
+              }
               <button class="btn btn-secondary btn-lg" onclick="Forms.openApplyLeaveModal()">
                 <span>Apply Time-Off</span>
               </button>
@@ -368,7 +411,7 @@ const ESSView = {
             </div>
             <span class="kpi-trend neutral">Queue</span>
           </div>
-          <div class="kpi-value">${myRequests.filter(r => r.status === 'SUBMITTED').length}</div>
+          <div class="kpi-value">${myRequests.filter((r) => r.status === "SUBMITTED").length}</div>
           <div class="kpi-label">Active HR Requests</div>
           <div class="kpi-subtitle">Helpdesk & Certificates</div>
         </div>
@@ -379,24 +422,33 @@ const ESSView = {
         <div class="card">
           <div class="card-header">
             <div class="card-title">My Notifications (${unreadNotifications.length} Unread)</div>
-            ${unreadNotifications.length > 0 ? `<button class="btn btn-soft btn-sm" onclick="ESSView.markAllNotificationsRead()">Mark All Read</button>` : ''}
+            ${unreadNotifications.length > 0 ? `<button class="btn btn-soft btn-sm" onclick="ESSView.markAllNotificationsRead()">Mark All Read</button>` : ""}
           </div>
           <div class="card-body" style="padding: 0;">
-            ${notifications.length === 0 ? `
+            ${
+              notifications.length === 0
+                ? `
               <div style="padding: 24px; text-align: center; color: var(--text-muted); font-size: 0.85rem;">No new notifications.</div>
-            ` : `
+            `
+                : `
               <div class="flex flex-col">
-                ${notifications.slice(0, 5).map(n => `
-                  <div style="padding: 12px 16px; border-bottom: 1px solid var(--border-light); ${n.read ? 'opacity: 0.7;' : 'background: rgba(37, 99, 235, 0.04);'}">
+                ${notifications
+                  .slice(0, 5)
+                  .map(
+                    (n) => `
+                  <div style="padding: 12px 16px; border-bottom: 1px solid var(--border-light); ${n.read ? "opacity: 0.7;" : "background: rgba(37, 99, 235, 0.04);"}">
                     <div class="flex justify-between items-center" style="margin-bottom: 4px;">
                       <strong class="font-semibold text-main" style="font-size: 0.85rem;">${n.title}</strong>
-                      <span class="text-muted" style="font-size: 0.75rem;">${n.createdAt ? new Date(n.createdAt.seconds ? n.createdAt.seconds * 1000 : n.createdAt).toLocaleDateString() : 'Recent'}</span>
+                      <span class="text-muted" style="font-size: 0.75rem;">${n.createdAt ? new Date(n.createdAt.seconds ? n.createdAt.seconds * 1000 : n.createdAt).toLocaleDateString() : "Recent"}</span>
                     </div>
                     <div style="font-size: 0.8rem; color: var(--text-secondary);">${n.message}</div>
                   </div>
-                `).join('')}
+                `,
+                  )
+                  .join("")}
               </div>
-            `}
+            `
+            }
           </div>
         </div>
 
@@ -445,11 +497,11 @@ const ESSView = {
           <div class="card-body">
             <div class="flex flex-col gap-3" style="font-size: 0.85rem;">
               <div class="flex justify-between"><span>Full Legal Name:</span><strong class="text-main">${emp.fullName || emp.name}</strong></div>
-              <div class="flex justify-between"><span>Work / Primary Email:</span><strong class="text-main">${emp.workEmail || AuthGuard.currentUser?.email || '-'}</strong></div>
-              <div class="flex justify-between"><span>Personal Phone:</span><strong>${emp.phone || '-'}</strong></div>
-              <div class="flex justify-between"><span>Personal Email:</span><strong>${emp.personalEmail || '-'}</strong></div>
-              <div class="flex justify-between"><span>Emergency Contact:</span><strong>${emp.emergencyContact || '-'}</strong></div>
-              <div class="flex justify-between"><span>Residential Address:</span><strong style="max-width: 250px; text-align: right;">${emp.address || '-'}</strong></div>
+              <div class="flex justify-between"><span>Work / Primary Email:</span><strong class="text-main">${emp.workEmail || AuthGuard.currentUser?.email || "-"}</strong></div>
+              <div class="flex justify-between"><span>Personal Phone:</span><strong>${emp.phone || "-"}</strong></div>
+              <div class="flex justify-between"><span>Personal Email:</span><strong>${emp.personalEmail || "-"}</strong></div>
+              <div class="flex justify-between"><span>Emergency Contact:</span><strong>${emp.emergencyContact || "-"}</strong></div>
+              <div class="flex justify-between"><span>Residential Address:</span><strong style="max-width: 250px; text-align: right;">${emp.address || "-"}</strong></div>
             </div>
           </div>
         </div>
@@ -465,12 +517,12 @@ const ESSView = {
           </div>
           <div class="card-body">
             <div class="flex flex-col gap-3" style="font-size: 0.85rem;">
-              <div class="flex justify-between"><span>Employee Code:</span><strong style="font-family: monospace; color: var(--primary);">${emp.employeeCode || 'EMP-001'}</strong></div>
-              <div class="flex justify-between"><span>Department:</span><strong>${emp.department || 'General'}</strong></div>
-              <div class="flex justify-between"><span>Designation:</span><strong>${emp.designation || 'Staff'}</strong></div>
-              <div class="flex justify-between"><span>Branch Location:</span><strong>${emp.branchName || 'HQ - Mumbai'}</strong></div>
-              <div class="flex justify-between"><span>Date of Joining:</span><strong>${emp.dateOfJoining || emp.joiningDate || '-'}</strong></div>
-              <div class="flex justify-between"><span>Employment Status:</span><span class="badge badge-success">${emp.employmentStatus || 'ACTIVE'}</span></div>
+              <div class="flex justify-between"><span>Employee Code:</span><strong style="font-family: monospace; color: var(--primary);">${emp.employeeCode || "EMP-001"}</strong></div>
+              <div class="flex justify-between"><span>Department:</span><strong>${emp.department || "General"}</strong></div>
+              <div class="flex justify-between"><span>Designation:</span><strong>${emp.designation || "Staff"}</strong></div>
+              <div class="flex justify-between"><span>Branch Location:</span><strong>${emp.branchName || "HQ - Mumbai"}</strong></div>
+              <div class="flex justify-between"><span>Date of Joining:</span><strong>${emp.dateOfJoining || emp.joiningDate || "-"}</strong></div>
+              <div class="flex justify-between"><span>Employment Status:</span><span class="badge badge-success">${emp.employmentStatus || "ACTIVE"}</span></div>
             </div>
           </div>
         </div>
@@ -486,9 +538,9 @@ const ESSView = {
           </div>
           <div class="card-body">
             <div class="flex flex-col gap-3" style="font-size: 0.85rem;">
-              <div class="flex justify-between"><span>Bank Name:</span><strong>${emp.bankName || 'HDFC Bank Ltd'}</strong></div>
-              <div class="flex justify-between"><span>Account Number:</span><strong>${emp.accountNumber || '••••••••4892'}</strong></div>
-              <div class="flex justify-between"><span>IFSC Code:</span><strong>${emp.ifscCode || 'HDFC0001234'}</strong></div>
+              <div class="flex justify-between"><span>Bank Name:</span><strong>${emp.bankName || "HDFC Bank Ltd"}</strong></div>
+              <div class="flex justify-between"><span>Account Number:</span><strong>${emp.accountNumber || "••••••••4892"}</strong></div>
+              <div class="flex justify-between"><span>IFSC Code:</span><strong>${emp.ifscCode || "HDFC0001234"}</strong></div>
             </div>
           </div>
         </div>
@@ -508,7 +560,9 @@ const ESSView = {
           <button class="btn btn-primary btn-sm" onclick="ESSView.openUploadDocModal()">+ Upload Document</button>
         </div>
         <div class="card-body" style="padding: 0;">
-          ${docs.length === 0 ? `
+          ${
+            docs.length === 0
+              ? `
             <div class="empty-state">
               <div class="empty-state-icon">
                 <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -521,7 +575,8 @@ const ESSView = {
                 <button class="btn btn-primary btn-sm" onclick="ESSView.openUploadDocModal()">+ Upload Document</button>
               </div>
             </div>
-          ` : `
+          `
+              : `
             <table class="data-table">
               <thead>
                 <tr>
@@ -534,24 +589,29 @@ const ESSView = {
                 </tr>
               </thead>
               <tbody>
-                ${docs.map(d => `
+                ${docs
+                  .map(
+                    (d) => `
                   <tr>
                     <td>
                       <div class="font-semibold text-main">${d.name}</div>
-                      <div class="text-muted" style="font-size: 0.75rem;">${d.fileType || 'PDF'} • ${d.fileSize || '1 MB'}</div>
+                      <div class="text-muted" style="font-size: 0.75rem;">${d.fileType || "PDF"} • ${d.fileSize || "1 MB"}</div>
                     </td>
                     <td><span class="badge badge-neutral">${d.categoryCode}</span></td>
-                    <td>${d.uploadedAt ? new Date(d.uploadedAt.seconds ? d.uploadedAt.seconds * 1000 : d.uploadedAt).toLocaleDateString() : 'Recent'}</td>
+                    <td>${d.uploadedAt ? new Date(d.uploadedAt.seconds ? d.uploadedAt.seconds * 1000 : d.uploadedAt).toLocaleDateString() : "Recent"}</td>
                     <td>${d.expiryDate || '<span class="text-muted">None</span>'}</td>
-                    <td><span class="badge badge-success">${d.status || 'ACTIVE'}</span></td>
+                    <td><span class="badge badge-success">${d.status || "ACTIVE"}</span></td>
                     <td>
                       <a href="${d.downloadUrl}" target="_blank" class="btn btn-soft btn-sm">Download</a>
                     </td>
                   </tr>
-                `).join('')}
+                `,
+                  )
+                  .join("")}
               </tbody>
             </table>
-          `}
+          `
+          }
         </div>
       </div>
     `;
@@ -569,7 +629,9 @@ const ESSView = {
           <button class="btn btn-primary btn-sm" onclick="ESSView.openNewRequestModal()">+ Submit New Request</button>
         </div>
         <div class="card-body" style="padding: 0;">
-          ${requests.length === 0 ? `
+          ${
+            requests.length === 0
+              ? `
             <div class="empty-state">
               <div class="empty-state-icon">
                 <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -586,7 +648,8 @@ const ESSView = {
                 <button class="btn btn-primary btn-sm" onclick="ESSView.openNewRequestModal()">+ Submit New Request</button>
               </div>
             </div>
-          ` : `
+          `
+              : `
             <table class="data-table">
               <thead>
                 <tr>
@@ -598,25 +661,30 @@ const ESSView = {
                 </tr>
               </thead>
               <tbody>
-                ${requests.map(r => `
+                ${requests
+                  .map(
+                    (r) => `
                   <tr>
                     <td><span class="badge badge-neutral">${r.requestTypeName}</span></td>
                     <td>
                       <div class="font-semibold text-main">${r.title}</div>
-                      ${r.requestedValue ? `<div style="font-size: 0.75rem; color: var(--primary);">Change: ${r.requestedValue}</div>` : ''}
+                      ${r.requestedValue ? `<div style="font-size: 0.75rem; color: var(--primary);">Change: ${r.requestedValue}</div>` : ""}
                     </td>
-                    <td>${r.createdAt ? new Date(r.createdAt.seconds ? r.createdAt.seconds * 1000 : r.createdAt).toLocaleDateString() : 'Recent'}</td>
+                    <td>${r.createdAt ? new Date(r.createdAt.seconds ? r.createdAt.seconds * 1000 : r.createdAt).toLocaleDateString() : "Recent"}</td>
                     <td>
-                      <span class="badge ${r.status === 'COMPLETED' ? 'badge-success' : (r.status === 'SUBMITTED' ? 'badge-warning' : 'badge-danger')}">
+                      <span class="badge ${r.status === "COMPLETED" ? "badge-success" : r.status === "SUBMITTED" ? "badge-warning" : "badge-danger"}">
                         ${r.status}
                       </span>
                     </td>
-                    <td><span class="text-muted" style="font-size: 0.85rem;">${r.resolutionNotes || r.rejectionReason || 'In review by HR'}</span></td>
+                    <td><span class="text-muted" style="font-size: 0.85rem;">${r.resolutionNotes || r.rejectionReason || "In review by HR"}</span></td>
                   </tr>
-                `).join('')}
+                `,
+                  )
+                  .join("")}
               </tbody>
             </table>
-          `}
+          `
+          }
         </div>
       </div>
     `;
@@ -637,7 +705,7 @@ const ESSView = {
             <div class="flex items-center justify-between" style="flex-wrap: wrap; gap: 16px;">
               <div>
                 <h3 style="font-size: 1.1rem; font-weight: 800; margin: 0 0 4px 0;">Latest Payslip — August 2026</h3>
-                <div class="text-muted" style="font-size: 0.85rem;">Direct Deposit to ${emp.bankName || 'HDFC Bank'} • Paid on 31 Aug 2026</div>
+                <div class="text-muted" style="font-size: 0.85rem;">Direct Deposit to ${emp.bankName || "HDFC Bank"} • Paid on 31 Aug 2026</div>
               </div>
               <button class="btn btn-primary btn-sm" onclick="Router.navigate('payroll')">
                 Download Full PDF Payslip
@@ -660,7 +728,9 @@ const ESSView = {
           </div>
         </div>
         <div class="card-body" style="padding: 0;">
-          ${assets.length === 0 ? `
+          ${
+            assets.length === 0
+              ? `
             <div class="empty-state">
               <div class="empty-state-icon">
                 <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -672,7 +742,8 @@ const ESSView = {
               <div class="empty-state-title">No Devices Assigned</div>
               <div class="empty-state-desc">You do not have any company hardware assigned to your account.</div>
             </div>
-          ` : `
+          `
+              : `
             <table class="data-table">
               <thead>
                 <tr>
@@ -685,15 +756,17 @@ const ESSView = {
                 </tr>
               </thead>
               <tbody>
-                ${assets.map(a => `
+                ${assets
+                  .map(
+                    (a) => `
                   <tr>
                     <td><strong style="font-family: monospace; color: var(--primary);">${a.assetTag}</strong></td>
                     <td>
                       <div class="font-semibold text-main">${a.name}</div>
-                      <div class="text-muted" style="font-size: 0.75rem;">${a.brand || ''} ${a.model || ''}</div>
+                      <div class="text-muted" style="font-size: 0.75rem;">${a.brand || ""} ${a.model || ""}</div>
                     </td>
                     <td><code style="font-size: 0.8rem;">${a.serialNumber}</code></td>
-                    <td><span class="badge badge-success">${a.condition || 'GOOD'}</span></td>
+                    <td><span class="badge badge-success">${a.condition || "GOOD"}</span></td>
                     <td><span class="badge badge-primary">IN_CUSTODY</span></td>
                     <td>
                       <button class="btn btn-secondary btn-sm" onclick="ESSView.openReportDamageModal('${a.id}', '${a.assetTag}')">
@@ -701,10 +774,13 @@ const ESSView = {
                       </button>
                     </td>
                   </tr>
-                `).join('')}
+                `,
+                  )
+                  .join("")}
               </tbody>
             </table>
-          `}
+          `
+          }
         </div>
       </div>
     `;
@@ -737,16 +813,17 @@ const ESSView = {
   },
 
   // MODAL 1: SUBMIT NEW HR REQUEST
-  openNewRequestModal(preType = 'GENERAL_HR_QUERY') {
+  openNewRequestModal(preType = "GENERAL_HR_QUERY") {
     ModalManager.openModal({
-      id: 'ess-new-req-modal',
-      title: 'Submit HR Request',
-      subtitle: 'Request document certificates, address changes, or helpdesk queries',
+      id: "ess-new-req-modal",
+      title: "Submit HR Request",
+      subtitle:
+        "Request document certificates, address changes, or helpdesk queries",
       contentHtml: `
         <div class="form-group">
           <label class="form-label required">Request Type</label>
           <select id="ess-req-type" class="form-control" onchange="ESSView.onReqTypeChange(this.value)">
-            ${employeeRequestService.REQUEST_TYPES.map(t => `<option value="${t.code}" ${t.code === preType ? 'selected' : ''}>${t.icon} ${t.name}</option>`).join('')}
+            ${employeeRequestService.REQUEST_TYPES.map((t) => `<option value="${t.code}" ${t.code === preType ? "selected" : ""}>${t.icon} ${t.name}</option>`).join("")}
           </select>
         </div>
 
@@ -768,35 +845,45 @@ const ESSView = {
       footerHtml: `
         <button class="btn btn-secondary btn-sm" data-modal-close>Cancel</button>
         <button class="btn btn-primary btn-sm" onclick="ESSView.saveNewRequest()">Submit Request</button>
-      `
+      `,
     });
 
     this.onReqTypeChange(preType);
   },
 
   onReqTypeChange(type) {
-    const valGroup = document.getElementById('ess-req-val-group');
+    const valGroup = document.getElementById("ess-req-val-group");
     if (valGroup) {
-      valGroup.style.display = (type === 'PROFILE_CHANGE' || type === 'ADDRESS_CHANGE' || type === 'BANK_DETAILS_CHANGE') ? 'block' : 'none';
+      valGroup.style.display =
+        type === "PROFILE_CHANGE" ||
+        type === "ADDRESS_CHANGE" ||
+        type === "BANK_DETAILS_CHANGE"
+          ? "block"
+          : "none";
     }
   },
 
   async saveNewRequest() {
-    const requestType = document.getElementById('ess-req-type')?.value;
-    const title = document.getElementById('ess-req-title')?.value.trim();
-    const requestedValue = document.getElementById('ess-req-val')?.value.trim();
-    const description = document.getElementById('ess-req-desc')?.value.trim();
+    const requestType = document.getElementById("ess-req-type")?.value;
+    const title = document.getElementById("ess-req-title")?.value.trim();
+    const requestedValue = document.getElementById("ess-req-val")?.value.trim();
+    const description = document.getElementById("ess-req-desc")?.value.trim();
 
     if (!title || !description) {
-      Toast.warning('Please provide a title and detailed reason.');
+      Toast.warning("Please provide a title and detailed reason.");
       return;
     }
 
     try {
-      await employeeRequestService.createRequest({ requestType, title, requestedValue, description });
-      Toast.success('HR Request submitted successfully!');
+      await employeeRequestService.createRequest({
+        requestType,
+        title,
+        requestedValue,
+        description,
+      });
+      Toast.success("HR Request submitted successfully!");
       ModalManager.closeModal();
-      this.switchTab('requests');
+      this.switchTab("requests");
     } catch (e) {
       Toast.error(e.message);
     }
@@ -805,9 +892,9 @@ const ESSView = {
   // MODAL 2: UPLOAD DOCUMENT
   openUploadDocModal() {
     ModalManager.openModal({
-      id: 'ess-upload-doc-modal',
-      title: 'Upload Document to Dossier',
-      subtitle: 'Attach personal certificates, identity proofs, or credentials',
+      id: "ess-upload-doc-modal",
+      title: "Upload Document to Dossier",
+      subtitle: "Attach personal certificates, identity proofs, or credentials",
       contentHtml: `
         <div class="form-row">
           <div class="col-6 form-group">
@@ -817,7 +904,7 @@ const ESSView = {
           <div class="col-6 form-group">
             <label class="form-label required">Category</label>
             <select id="ess-doc-cat" class="form-control">
-              ${documentService.DOCUMENT_CATEGORIES.map(c => `<option value="${c.code}">${c.icon} ${c.name}</option>`).join('')}
+              ${documentService.DOCUMENT_CATEGORIES.map((c) => `<option value="${c.code}">${c.icon} ${c.name}</option>`).join("")}
             </select>
           </div>
         </div>
@@ -830,29 +917,30 @@ const ESSView = {
       footerHtml: `
         <button class="btn btn-secondary btn-sm" data-modal-close>Cancel</button>
         <button class="btn btn-primary btn-sm" onclick="ESSView.saveUploadedDoc()">Upload Document</button>
-      `
+      `,
     });
   },
 
   async saveUploadedDoc() {
-    const name = document.getElementById('ess-doc-name')?.value.trim();
-    const categoryCode = document.getElementById('ess-doc-cat')?.value;
-    const fileInput = document.getElementById('ess-doc-file');
+    const name = document.getElementById("ess-doc-name")?.value.trim();
+    const categoryCode = document.getElementById("ess-doc-cat")?.value;
+    const fileInput = document.getElementById("ess-doc-file");
 
     if (!name || !fileInput?.files?.length) {
-      Toast.warning('Please provide a document title and file.');
+      Toast.warning("Please provide a document title and file.");
       return;
     }
 
     const file = fileInput.files[0];
 
     try {
-      Toast.info('Uploading file securely to Hostinger Storage...');
-      let downloadUrl = '#';
+      Toast.info("Uploading file securely to Hostinger Storage...");
+      let downloadUrl = "#";
       try {
         const uploadRecord = await hostingerStorageService.uploadFile(file, {
           category: categoryCode,
-          employeeId: AuthGuard.userProfile?.employeeId || AuthGuard.currentUser?.uid
+          employeeId:
+            AuthGuard.userProfile?.employeeId || AuthGuard.currentUser?.uid,
         });
         downloadUrl = uploadRecord.fileUrl;
       } catch (err) {
@@ -863,14 +951,14 @@ const ESSView = {
         name,
         categoryCode,
         downloadUrl,
-        fileType: file.name.split('.').pop().toUpperCase(),
+        fileType: file.name.split(".").pop().toUpperCase(),
         fileSize: `${(file.size / 1024 / 1024).toFixed(2)} MB`,
-        status: 'ACTIVE'
+        status: "ACTIVE",
       });
 
-      Toast.success('Document uploaded to your personal dossier!');
+      Toast.success("Document uploaded to your personal dossier!");
       ModalManager.closeModal();
-      this.switchTab('documents');
+      this.switchTab("documents");
     } catch (e) {
       Toast.error(e.message);
     }
@@ -878,15 +966,19 @@ const ESSView = {
 
   // MODAL 3: EDIT PERSONAL INFO
   async openEditPersonalModal() {
-    const employeeId = AuthGuard.userProfile?.employeeId || AuthGuard.currentUser?.uid;
-    const emp = await employeeService.getEmployee(employeeId) || {};
-    const defaultName = emp.fullName || emp.name || AuthGuard.userProfile?.displayName || '';
-    const defaultWorkEmail = emp.workEmail || AuthGuard.currentUser?.email || '';
+    const employeeId =
+      AuthGuard.userProfile?.employeeId || AuthGuard.currentUser?.uid;
+    const emp = (await employeeService.getEmployee(employeeId)) || {};
+    const defaultName =
+      emp.fullName || emp.name || AuthGuard.userProfile?.displayName || "";
+    const defaultWorkEmail =
+      emp.workEmail || AuthGuard.currentUser?.email || "";
 
     ModalManager.openModal({
-      id: 'ess-edit-personal-modal',
-      title: 'Edit Personal & Profile Information',
-      subtitle: 'Update your display name, contact email, phone number, and address',
+      id: "ess-edit-personal-modal",
+      title: "Edit Personal & Profile Information",
+      subtitle:
+        "Update your display name, contact email, phone number, and address",
       contentHtml: `
         <div class="form-row">
           <div class="col-6 form-group">
@@ -901,41 +993,44 @@ const ESSView = {
         <div class="form-row">
           <div class="col-6 form-group">
             <label class="form-label required">Personal Phone Number</label>
-            <input type="text" id="edit-phone" class="form-control" value="${emp.phone || ''}" placeholder="+91 98765 43210" required />
+            <input type="text" id="edit-phone" class="form-control" value="${emp.phone || ""}" placeholder="+91 98765 43210" required />
           </div>
           <div class="col-6 form-group">
             <label class="form-label">Personal Email</label>
-            <input type="email" id="edit-pemail" class="form-control" value="${emp.personalEmail || ''}" placeholder="e.g. personal@gmail.com" />
+            <input type="email" id="edit-pemail" class="form-control" value="${emp.personalEmail || ""}" placeholder="e.g. personal@gmail.com" />
           </div>
         </div>
         <div class="form-group">
           <label class="form-label">Emergency Contact Name & Phone</label>
-          <input type="text" id="edit-econtact" class="form-control" value="${emp.emergencyContact || ''}" placeholder="e.g. Parent / Spouse (+91 98765 00000)" />
+          <input type="text" id="edit-econtact" class="form-control" value="${emp.emergencyContact || ""}" placeholder="e.g. Parent / Spouse (+91 98765 00000)" />
         </div>
         <div class="form-group">
           <label class="form-label">Residential Address</label>
-          <textarea id="edit-addr" class="form-control" rows="2" placeholder="Full postal residential address...">${emp.address || ''}</textarea>
+          <textarea id="edit-addr" class="form-control" rows="2" placeholder="Full postal residential address...">${emp.address || ""}</textarea>
         </div>
       `,
       footerHtml: `
         <button class="btn btn-secondary btn-sm" data-modal-close>Cancel</button>
         <button class="btn btn-primary btn-sm" onclick="ESSView.savePersonalUpdates()">Save Changes</button>
-      `
+      `,
     });
   },
 
   async savePersonalUpdates() {
-    const employeeId = AuthGuard.userProfile?.employeeId || AuthGuard.currentUser?.uid;
+    const employeeId =
+      AuthGuard.userProfile?.employeeId || AuthGuard.currentUser?.uid;
     const userId = AuthGuard.currentUser?.uid;
-    const fullName = document.getElementById('edit-fullname')?.value.trim();
-    const workEmail = document.getElementById('edit-wemail')?.value.trim();
-    const phone = document.getElementById('edit-phone')?.value.trim();
-    const personalEmail = document.getElementById('edit-pemail')?.value.trim();
-    const emergencyContact = document.getElementById('edit-econtact')?.value.trim();
-    const address = document.getElementById('edit-addr')?.value.trim();
+    const fullName = document.getElementById("edit-fullname")?.value.trim();
+    const workEmail = document.getElementById("edit-wemail")?.value.trim();
+    const phone = document.getElementById("edit-phone")?.value.trim();
+    const personalEmail = document.getElementById("edit-pemail")?.value.trim();
+    const emergencyContact = document
+      .getElementById("edit-econtact")
+      ?.value.trim();
+    const address = document.getElementById("edit-addr")?.value.trim();
 
     if (!fullName) {
-      Toast.error('Please enter your Full Legal Name.');
+      Toast.error("Please enter your Full Legal Name.");
       return;
     }
 
@@ -944,35 +1039,41 @@ const ESSView = {
       await employeeService.updateEmployee(employeeId, {
         fullName,
         name: fullName,
-        workEmail: workEmail || AuthGuard.currentUser?.email || '',
+        workEmail: workEmail || AuthGuard.currentUser?.email || "",
         phone,
         personalEmail,
         emergencyContact,
-        address
+        address,
       });
 
       // 2. Update Firebase Auth Profile Display Name
-      if (typeof auth !== 'undefined' && auth.currentUser) {
+      if (typeof auth !== "undefined" && auth.currentUser) {
         try {
           await auth.currentUser.updateProfile({ displayName: fullName });
         } catch (authErr) {
-          console.warn('Auth display name update warning:', authErr);
+          console.warn("Auth display name update warning:", authErr);
         }
       }
 
       // 3. Update Firestore Users document
-      if (userId && typeof db !== 'undefined') {
+      if (userId && typeof db !== "undefined") {
         try {
-          await db.collection('users').doc(userId).set({
-            displayName: fullName,
-            fullName,
-            name: fullName,
-            personalEmail: personalEmail || '',
-            workEmail: workEmail || AuthGuard.currentUser?.email || '',
-            phone: phone || ''
-          }, { merge: true });
+          await db
+            .collection("users")
+            .doc(userId)
+            .set(
+              {
+                displayName: fullName,
+                fullName,
+                name: fullName,
+                personalEmail: personalEmail || "",
+                workEmail: workEmail || AuthGuard.currentUser?.email || "",
+                phone: phone || "",
+              },
+              { merge: true },
+            );
         } catch (dbErr) {
-          console.warn('Users collection update warning:', dbErr);
+          console.warn("Users collection update warning:", dbErr);
         }
       }
 
@@ -986,20 +1087,21 @@ const ESSView = {
       }
       AuthGuard.syncHeaderProfile();
 
-      Toast.success('Profile and personal information updated successfully!');
+      Toast.success("Profile and personal information updated successfully!");
       ModalManager.closeModal();
-      this.switchTab('profile');
+      this.switchTab("profile");
     } catch (e) {
-      console.error('Error saving personal updates:', e);
-      Toast.error(e.message || 'Failed to save changes.');
+      console.error("Error saving personal updates:", e);
+      Toast.error(e.message || "Failed to save changes.");
     }
   },
 
   openReportDamageModal(assetId, assetTag) {
     ModalManager.openModal({
-      id: 'ess-damage-modal',
+      id: "ess-damage-modal",
       title: `Report Hardware Issue: ${assetTag}`,
-      subtitle: 'Notify IT support of defects, broken screens, or hardware failures',
+      subtitle:
+        "Notify IT support of defects, broken screens, or hardware failures",
       contentHtml: `
         <div class="form-group">
           <label class="form-label required">Issue Description</label>
@@ -1009,19 +1111,24 @@ const ESSView = {
       footerHtml: `
         <button class="btn btn-secondary btn-sm" data-modal-close>Cancel</button>
         <button class="btn btn-danger btn-sm" onclick="ESSView.confirmReportDamage('${assetId}', '${assetTag}')">Submit Issue</button>
-      `
+      `,
     });
   },
 
   async confirmReportDamage(assetId, assetTag) {
-    const issue = document.getElementById('ess-dmg-issue')?.value.trim();
+    const issue = document.getElementById("ess-dmg-issue")?.value.trim();
     if (!issue) return;
 
     try {
-      await assetService.createMaintenanceRecord({ assetId, assetTag, assetName: 'Employee Device', issue });
-      Toast.success('Issue reported to IT Support.');
+      await assetService.createMaintenanceRecord({
+        assetId,
+        assetTag,
+        assetName: "Employee Device",
+        issue,
+      });
+      Toast.success("Issue reported to IT Support.");
       ModalManager.closeModal();
-      this.switchTab('assets');
+      this.switchTab("assets");
     } catch (e) {
       Toast.error(e.message);
     }
@@ -1029,16 +1136,16 @@ const ESSView = {
 
   async markAllNotificationsRead() {
     await notificationService.markAllAsRead();
-    Toast.success('All notifications marked as read.');
-    Router.mountView('ess');
+    Toast.success("All notifications marked as read.");
+    Router.mountView("ess");
   },
 
   // LIVE GPS TIMECARD & BREAK SYSTEM
   getTodayDateKey() {
     const d = new Date();
     const year = d.getFullYear();
-    const month = String(d.getMonth() + 1).padStart(2, '0');
-    const day = String(d.getDate()).padStart(2, '0');
+    const month = String(d.getMonth() + 1).padStart(2, "0");
+    const day = String(d.getDate()).padStart(2, "0");
     return `${year}-${month}-${day}`;
   },
 
@@ -1075,23 +1182,30 @@ const ESSView = {
       this.isOnBreak = false;
       this.isShiftCompletedToday = true;
       this.workSeconds = (todayRecord.workedMinutes || 0) * 60;
-      this.totalBreakSeconds = (todayRecord.totalBreakSeconds !== undefined && todayRecord.totalBreakSeconds !== null)
-        ? Number(todayRecord.totalBreakSeconds)
-        : ((todayRecord.totalBreakMinutes || 0) * 60);
+      this.totalBreakSeconds =
+        todayRecord.totalBreakSeconds !== undefined &&
+        todayRecord.totalBreakSeconds !== null
+          ? Number(todayRecord.totalBreakSeconds)
+          : (todayRecord.totalBreakMinutes || 0) * 60;
       this.breakSeconds = 0;
       this.stopTimer();
       this.stopBreakTimer();
     } else {
       // Currently checked in and shift is active
       this.isPunchedIn = true;
-      this.isOnBreak = (todayRecord.status === 'ON_BREAK' || !!todayRecord.isOnBreak);
+      this.isOnBreak =
+        todayRecord.status === "ON_BREAK" || !!todayRecord.isOnBreak;
       this.isShiftCompletedToday = false;
-      this.totalBreakSeconds = (todayRecord.totalBreakSeconds !== undefined && todayRecord.totalBreakSeconds !== null)
-        ? Number(todayRecord.totalBreakSeconds)
-        : ((todayRecord.totalBreakMinutes || 0) * 60);
+      this.totalBreakSeconds =
+        todayRecord.totalBreakSeconds !== undefined &&
+        todayRecord.totalBreakSeconds !== null
+          ? Number(todayRecord.totalBreakSeconds)
+          : (todayRecord.totalBreakMinutes || 0) * 60;
 
       if (todayRecord.currentCheckInDateIso || todayRecord.checkInDateIso) {
-        const inDate = new Date(todayRecord.currentCheckInDateIso || todayRecord.checkInDateIso);
+        const inDate = new Date(
+          todayRecord.currentCheckInDateIso || todayRecord.checkInDateIso,
+        );
         this.punchInTimestamp = inDate.getTime();
         const now = Date.now();
         const totalElapsed = Math.floor((now - this.punchInTimestamp) / 1000);
@@ -1100,8 +1214,13 @@ const ESSView = {
 
       if (this.isOnBreak) {
         if (todayRecord.lastBreakStartIso) {
-          this.breakStartTimestamp = new Date(todayRecord.lastBreakStartIso).getTime();
-          this.breakSeconds = Math.max(0, Math.floor((Date.now() - this.breakStartTimestamp) / 1000));
+          this.breakStartTimestamp = new Date(
+            todayRecord.lastBreakStartIso,
+          ).getTime();
+          this.breakSeconds = Math.max(
+            0,
+            Math.floor((Date.now() - this.breakStartTimestamp) / 1000),
+          );
         }
         this.startBreakTimer();
       } else {
@@ -1116,7 +1235,7 @@ const ESSView = {
   loadPersistedState() {
     try {
       const today = this.getTodayDateKey();
-      const raw = localStorage.getItem('diallo_timecard_state');
+      const raw = localStorage.getItem("diallo_timecard_state");
       if (raw) {
         const state = JSON.parse(raw);
         // If state is from a previous day, auto-reset for the new day's 10:00 AM - 07:00 PM shift
@@ -1137,25 +1256,40 @@ const ESSView = {
 
         this.shiftDate = state.shiftDate || today;
         this.isShiftCompletedToday = !!state.isShiftCompletedToday;
-        this.isPunchedIn = this.isShiftCompletedToday ? false : !!state.isPunchedIn;
+        this.isPunchedIn = this.isShiftCompletedToday
+          ? false
+          : !!state.isPunchedIn;
         this.isOnBreak = this.isPunchedIn ? !!state.isOnBreak : false;
         this.workSeconds = state.workSeconds || 0;
         this.totalBreakSeconds = state.totalBreakSeconds || 0;
-        this.breakSeconds = this.isOnBreak ? (state.breakSeconds || 0) : 0;
+        this.breakSeconds = this.isOnBreak ? state.breakSeconds || 0 : 0;
         this.punchInTimestamp = state.punchInTimestamp || null;
         this.punchOutTimestamp = state.punchOutTimestamp || null;
-        this.breakStartTimestamp = this.isOnBreak ? (state.breakStartTimestamp || null) : null;
+        this.breakStartTimestamp = this.isOnBreak
+          ? state.breakStartTimestamp || null
+          : null;
 
         // If currently punched in, calculate true elapsed time
-        if (this.isPunchedIn && this.punchInTimestamp && !this.isShiftCompletedToday) {
+        if (
+          this.isPunchedIn &&
+          this.punchInTimestamp &&
+          !this.isShiftCompletedToday
+        ) {
           const now = Date.now();
           const totalElapsed = Math.floor((now - this.punchInTimestamp) / 1000);
-          
+
           if (this.isOnBreak && this.breakStartTimestamp) {
-            this.breakSeconds = Math.floor((now - this.breakStartTimestamp) / 1000);
+            this.breakSeconds = Math.floor(
+              (now - this.breakStartTimestamp) / 1000,
+            );
           }
-          
-          this.workSeconds = Math.max(0, totalElapsed - this.totalBreakSeconds - (this.isOnBreak ? this.breakSeconds : 0));
+
+          this.workSeconds = Math.max(
+            0,
+            totalElapsed -
+              this.totalBreakSeconds -
+              (this.isOnBreak ? this.breakSeconds : 0),
+          );
         }
       } else {
         this.shiftDate = today;
@@ -1164,7 +1298,7 @@ const ESSView = {
         this.isOnBreak = false;
       }
     } catch (e) {
-      console.warn('Could not load timecard state:', e);
+      console.warn("Could not load timecard state:", e);
     }
   },
 
@@ -1175,32 +1309,37 @@ const ESSView = {
         shiftDate: this.shiftDate || today,
         isShiftCompletedToday: !!this.isShiftCompletedToday,
         isPunchedIn: !this.isShiftCompletedToday && !!this.isPunchedIn,
-        isOnBreak: !this.isShiftCompletedToday && this.isPunchedIn && !!this.isOnBreak,
+        isOnBreak:
+          !this.isShiftCompletedToday && this.isPunchedIn && !!this.isOnBreak,
         workSeconds: this.workSeconds || 0,
         totalBreakSeconds: this.totalBreakSeconds || 0,
-        breakSeconds: (this.isPunchedIn && this.isOnBreak) ? (this.breakSeconds || 0) : 0,
+        breakSeconds:
+          this.isPunchedIn && this.isOnBreak ? this.breakSeconds || 0 : 0,
         punchInTimestamp: this.punchInTimestamp || null,
         punchOutTimestamp: this.punchOutTimestamp || null,
-        breakStartTimestamp: this.breakStartTimestamp || null
+        breakStartTimestamp: this.breakStartTimestamp || null,
       };
-      localStorage.setItem('diallo_timecard_state', JSON.stringify(state));
+      localStorage.setItem("diallo_timecard_state", JSON.stringify(state));
     } catch (e) {
-      console.warn('Could not save timecard state:', e);
+      console.warn("Could not save timecard state:", e);
     }
   },
 
   updateTimecardUI() {
-    const hrs = String(Math.floor(this.workSeconds / 3600)).padStart(2, '0');
-    const mins = String(Math.floor((this.workSeconds % 3600) / 60)).padStart(2, '0');
-    const secs = String(this.workSeconds % 60).padStart(2, '0');
+    const hrs = String(Math.floor(this.workSeconds / 3600)).padStart(2, "0");
+    const mins = String(Math.floor((this.workSeconds % 3600) / 60)).padStart(
+      2,
+      "0",
+    );
+    const secs = String(this.workSeconds % 60).padStart(2, "0");
     const workTimeStr = `${hrs}:${mins}:${secs}`;
 
-    const bMins = String(Math.floor(this.breakSeconds / 60)).padStart(2, '0');
-    const bSecs = String(this.breakSeconds % 60).padStart(2, '0');
+    const bMins = String(Math.floor(this.breakSeconds / 60)).padStart(2, "0");
+    const bSecs = String(this.breakSeconds % 60).padStart(2, "0");
     const breakTimeStr = `${bMins}:${bSecs}`;
-    
+
     // Accurate break duration format (e.g. 45s, 2m 15s, 15m)
-    let totalBreakStr = '0m';
+    let totalBreakStr = "0m";
     if (this.totalBreakSeconds > 0) {
       if (this.totalBreakSeconds < 60) {
         totalBreakStr = `${this.totalBreakSeconds}s`;
@@ -1221,116 +1360,147 @@ const ESSView = {
     const breakDisplayFormatted = `1h / ${totalBreakStr}`;
 
     // Work timer displays: 8hr / logged in time
-    ['ess-timer-display', 'emp-live-timer'].forEach(id => {
+    ["ess-timer-display", "emp-live-timer"].forEach((id) => {
       const el = document.getElementById(id);
       if (el) el.textContent = workDisplayFormatted;
     });
 
     // Current session break timer displays
-    ['ess-break-display', 'emp-break-timer'].forEach(id => {
+    ["ess-break-display", "emp-break-timer"].forEach((id) => {
       const el = document.getElementById(id);
       if (el) {
         el.textContent = breakTimeStr;
-        el.style.color = isBreakExceeded ? '#dc2626' : ((this.isPunchedIn && this.isOnBreak) ? 'var(--warning)' : 'var(--text-secondary)');
+        el.style.color = isBreakExceeded
+          ? "#dc2626"
+          : this.isPunchedIn && this.isOnBreak
+            ? "var(--warning)"
+            : "var(--text-secondary)";
       }
     });
 
     // Total break displays: 1hr / break time
-    ['ess-total-break-display', 'emp-total-break'].forEach(id => {
+    ["ess-total-break-display", "emp-total-break"].forEach((id) => {
       const el = document.getElementById(id);
       if (el) {
         el.textContent = breakDisplayFormatted;
-        el.style.color = isBreakExceeded ? '#dc2626' : '#d97706';
+        el.style.color = isBreakExceeded ? "#dc2626" : "#d97706";
       }
     });
 
     // Sub-status & Box highlight styling on dashboard
-    const subStatusEl = document.getElementById('emp-timer-substatus');
+    const subStatusEl = document.getElementById("emp-timer-substatus");
     if (subStatusEl) {
       if (this.isShiftCompletedToday) {
-        subStatusEl.textContent = 'Shift completed & punched out. Timecard station is locked until tomorrow at 09:30 AM.';
-        subStatusEl.style.color = 'var(--accent-leave)';
+        subStatusEl.textContent =
+          "Shift completed & punched out. Timecard station is locked until tomorrow at 09:30 AM.";
+        subStatusEl.style.color = "var(--accent-leave)";
       } else if (!this.isPunchedIn) {
-        subStatusEl.textContent = 'Shift Not Started • Shift: 10:00 AM – 07:00 PM (Opens 09:30 AM)';
-        subStatusEl.style.color = 'var(--text-secondary)';
+        subStatusEl.textContent =
+          "Shift Not Started • Shift: 10:00 AM – 07:00 PM (Opens 09:30 AM)";
+        subStatusEl.style.color = "var(--text-secondary)";
       } else if (this.isOnBreak) {
-        subStatusEl.textContent = isBreakExceeded ? 'Break Exceeded (> 1h Quota) • Overbreak Active' : 'Timer Paused for Break (1h Quota)';
-        subStatusEl.style.color = isBreakExceeded ? 'var(--danger)' : 'var(--warning)';
+        subStatusEl.textContent = isBreakExceeded
+          ? "Break Exceeded (> 1h Quota) • Overbreak Active"
+          : "Timer Paused for Break (1h Quota)";
+        subStatusEl.style.color = isBreakExceeded
+          ? "var(--danger)"
+          : "var(--warning)";
       } else {
-        subStatusEl.textContent = 'Active On Duty (8h Work Target)';
-        subStatusEl.style.color = 'var(--primary)';
+        subStatusEl.textContent = "Active On Duty (8h Work Target)";
+        subStatusEl.style.color = "var(--primary)";
       }
     }
 
-    const breakBadgeEl = document.getElementById('emp-break-badge-status');
+    const breakBadgeEl = document.getElementById("emp-break-badge-status");
     if (breakBadgeEl) {
       if (isBreakExceeded) {
-        breakBadgeEl.className = 'badge badge-danger';
-        breakBadgeEl.textContent = 'Break Exceeded (> 1h)';
+        breakBadgeEl.className = "badge badge-danger";
+        breakBadgeEl.textContent = "Break Exceeded (> 1h)";
       } else {
-        breakBadgeEl.className = (this.isPunchedIn && this.isOnBreak) ? 'badge badge-warning' : 'badge badge-neutral';
-        breakBadgeEl.textContent = this.isShiftCompletedToday ? 'Shift Ended' : ((this.isPunchedIn && this.isOnBreak) ? 'Break in progress' : 'Break Idle (1h Max)');
+        breakBadgeEl.className =
+          this.isPunchedIn && this.isOnBreak
+            ? "badge badge-warning"
+            : "badge badge-neutral";
+        breakBadgeEl.textContent = this.isShiftCompletedToday
+          ? "Shift Ended"
+          : this.isPunchedIn && this.isOnBreak
+            ? "Break in progress"
+            : "Break Idle (1h Max)";
       }
     }
 
-    const headerBreakBadge = document.getElementById('emp-header-break-badge');
+    const headerBreakBadge = document.getElementById("emp-header-break-badge");
     if (headerBreakBadge) {
-      headerBreakBadge.innerHTML = (this.isPunchedIn && this.isOnBreak) ? `<span class="badge ${isBreakExceeded ? 'badge-danger' : 'badge-warning'}" style="font-size: 0.75rem; animation: pulse 2s infinite; display: inline-flex; align-items: center; gap: 4px;"><svg width="12" height="12" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/></svg> ${isBreakExceeded ? 'Break Exceeded' : 'Break Active'}</span>` : '';
+      headerBreakBadge.innerHTML =
+        this.isPunchedIn && this.isOnBreak
+          ? `<span class="badge ${isBreakExceeded ? "badge-danger" : "badge-warning"}" style="font-size: 0.75rem; animation: pulse 2s infinite; display: inline-flex; align-items: center; gap: 4px;"><svg width="12" height="12" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/></svg> ${isBreakExceeded ? "Break Exceeded" : "Break Active"}</span>`
+          : "";
     }
 
     // Break highlight box: Brown by default, turns RED if total break exceeds 1 hr (3600s)
-    const breakBox = document.getElementById('emp-break-highlight-box');
+    const breakBox = document.getElementById("emp-break-highlight-box");
     if (breakBox) {
       if (isBreakExceeded) {
-        breakBox.style.background = 'rgba(220, 38, 38, 0.08)';
-        breakBox.style.borderColor = '#dc2626';
-        breakBox.style.borderWidth = '2px';
+        breakBox.style.background = "rgba(220, 38, 38, 0.08)";
+        breakBox.style.borderColor = "#dc2626";
+        breakBox.style.borderWidth = "2px";
       } else if (this.isPunchedIn && this.isOnBreak) {
-        breakBox.style.background = 'rgba(245, 158, 11, 0.12)';
-        breakBox.style.borderColor = '#d97706';
-        breakBox.style.borderWidth = '1.5px';
+        breakBox.style.background = "rgba(245, 158, 11, 0.12)";
+        breakBox.style.borderColor = "#d97706";
+        breakBox.style.borderWidth = "1.5px";
       } else {
-        breakBox.style.background = 'var(--bg-hover)';
-        breakBox.style.borderColor = 'rgba(217, 119, 6, 0.4)';
-        breakBox.style.borderWidth = '1.5px';
+        breakBox.style.background = "var(--bg-hover)";
+        breakBox.style.borderColor = "rgba(217, 119, 6, 0.4)";
+        breakBox.style.borderWidth = "1.5px";
       }
     }
 
-    const heroCard = document.getElementById('emp-timecard-hero-card');
+    const heroCard = document.getElementById("emp-timecard-hero-card");
     if (heroCard) {
-      heroCard.style.borderColor = isBreakExceeded ? 'var(--danger)' : ((this.isPunchedIn && this.isOnBreak) ? 'var(--warning)' : 'var(--primary-light)');
-      heroCard.style.boxShadow = isBreakExceeded ? '0 0 16px rgba(220, 38, 38, 0.18)' : ((this.isPunchedIn && this.isOnBreak) ? '0 0 16px rgba(245, 158, 11, 0.15)' : 'var(--shadow-sm)');
+      heroCard.style.borderColor = isBreakExceeded
+        ? "var(--danger)"
+        : this.isPunchedIn && this.isOnBreak
+          ? "var(--warning)"
+          : "var(--primary-light)";
+      heroCard.style.boxShadow = isBreakExceeded
+        ? "0 0 16px rgba(220, 38, 38, 0.18)"
+        : this.isPunchedIn && this.isOnBreak
+          ? "0 0 16px rgba(245, 158, 11, 0.15)"
+          : "var(--shadow-sm)";
     }
 
     // Shift status badges
-    ['ess-live-badge', 'emp-shift-badge'].forEach(id => {
+    ["ess-live-badge", "emp-shift-badge"].forEach((id) => {
       const el = document.getElementById(id);
       if (el) {
         if (this.isShiftCompletedToday) {
-          el.className = 'badge badge-success';
-          el.innerHTML = '<span class="badge-dot"></span> Shift Completed (Today)';
+          el.className = "badge badge-success";
+          el.innerHTML =
+            '<span class="badge-dot"></span> Shift Completed (Today)';
         } else if (!this.isPunchedIn) {
-          el.className = 'badge badge-neutral';
+          el.className = "badge badge-neutral";
           el.innerHTML = '<span class="badge-dot"></span> Checked OUT';
         } else if (this.isOnBreak) {
-          el.className = isBreakExceeded ? 'badge badge-danger' : 'badge badge-warning';
-          el.innerHTML = `<span class="badge-dot"></span> ${isBreakExceeded ? 'Overbreak (Paused)' : 'On Break (Paused)'}`;
+          el.className = isBreakExceeded
+            ? "badge badge-danger"
+            : "badge badge-warning";
+          el.innerHTML = `<span class="badge-dot"></span> ${isBreakExceeded ? "Overbreak (Paused)" : "On Break (Paused)"}`;
         } else {
-          el.className = 'badge badge-success';
+          el.className = "badge badge-success";
           el.innerHTML = '<span class="badge-dot"></span> On Shift (Active)';
         }
       }
     });
 
     // Punch buttons
-    ['ess-punch-btn', 'emp-punch-btn'].forEach(id => {
+    ["ess-punch-btn", "emp-punch-btn"].forEach((id) => {
       const el = document.getElementById(id);
       if (el) {
         if (this.isShiftCompletedToday) {
-          el.className = 'btn btn-secondary btn-lg disabled';
-          el.setAttribute('disabled', 'true');
-          el.style.opacity = '0.75';
-          el.style.cursor = 'not-allowed';
+          el.className = "btn btn-secondary btn-lg disabled";
+          el.setAttribute("disabled", "true");
+          el.style.opacity = "0.75";
+          el.style.cursor = "not-allowed";
           el.innerHTML = `
             <svg width="20" height="20" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"/>
@@ -1338,10 +1508,10 @@ const ESSView = {
             <span>Shift Completed (Locked)</span>
           `;
         } else if (this.isPunchedIn) {
-          el.className = 'btn btn-primary btn-lg';
-          el.removeAttribute('disabled');
-          el.style.opacity = '1';
-          el.style.cursor = 'pointer';
+          el.className = "btn btn-primary btn-lg";
+          el.removeAttribute("disabled");
+          el.style.opacity = "1";
+          el.style.cursor = "pointer";
           el.innerHTML = `
             <svg width="20" height="20" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/>
@@ -1349,10 +1519,10 @@ const ESSView = {
             <span>Punch Out</span>
           `;
         } else {
-          el.className = 'btn btn-primary btn-lg';
-          el.removeAttribute('disabled');
-          el.style.opacity = '1';
-          el.style.cursor = 'pointer';
+          el.className = "btn btn-primary btn-lg";
+          el.removeAttribute("disabled");
+          el.style.opacity = "1";
+          el.style.cursor = "pointer";
           el.innerHTML = `
             <svg width="20" height="20" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/>
@@ -1364,19 +1534,21 @@ const ESSView = {
     });
 
     // Break buttons
-    ['ess-break-btn', 'emp-break-btn'].forEach(id => {
+    ["ess-break-btn", "emp-break-btn"].forEach((id) => {
       const el = document.getElementById(id);
       if (el) {
         if (!this.isPunchedIn || this.isShiftCompletedToday) {
-          el.style.display = 'none';
+          el.style.display = "none";
         } else {
-          el.style.display = 'inline-flex';
-          el.className = this.isOnBreak ? 'btn btn-warning btn-lg' : 'btn btn-secondary btn-lg';
+          el.style.display = "inline-flex";
+          el.className = this.isOnBreak
+            ? "btn btn-warning btn-lg"
+            : "btn btn-secondary btn-lg";
           el.innerHTML = `
             <svg width="20" height="20" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="${this.isOnBreak ? 'M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z M21 12a9 9 0 11-18 0 9 9 0 0118 0z' : 'M10 9v6m4-6v6m7-3a9 9 0 11-18 0 9 9 0 0118 0z'}"/>
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="${this.isOnBreak ? "M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z M21 12a9 9 0 11-18 0 9 9 0 0118 0z" : "M10 9v6m4-6v6m7-3a9 9 0 11-18 0 9 9 0 0118 0z"}"/>
             </svg>
-            <span>${this.isOnBreak ? 'End Break' : 'Start Break'}</span>
+            <span>${this.isOnBreak ? "End Break" : "Start Break"}</span>
           `;
         }
       }
@@ -1388,9 +1560,13 @@ const ESSView = {
     this.shiftDate = today;
 
     // Verify against fresh Firestore record
-    const employeeId = AuthGuard.userProfile?.employeeId || AuthGuard.currentUser?.uid;
+    const employeeId =
+      AuthGuard.userProfile?.employeeId || AuthGuard.currentUser?.uid;
     try {
-      const todayRec = await attendanceService.getTodayRecord(employeeId, today);
+      const todayRec = await attendanceService.getTodayRecord(
+        employeeId,
+        today,
+      );
       if (!todayRec || !todayRec.checkIn) {
         this.isShiftCompletedToday = false;
         this.isPunchedIn = false;
@@ -1402,11 +1578,13 @@ const ESSView = {
         this.isPunchedIn = true;
       }
     } catch (e) {
-      console.warn('Could not check Firestore today record:', e);
+      console.warn("Could not check Firestore today record:", e);
     }
 
     if (this.isShiftCompletedToday) {
-      Toast.warning('Shift completed for today! Your check-out has already been recorded. The timecard station is locked until tomorrow at 09:30 AM.');
+      Toast.warning(
+        "Shift completed for today! Your check-out has already been recorded. The timecard station is locked until tomorrow at 09:30 AM.",
+      );
       return false;
     }
 
@@ -1415,19 +1593,21 @@ const ESSView = {
       const currentMinutes = now.getHours() * 60 + now.getMinutes();
       const openMinutes = 9 * 60 + 30; // 09:30 AM
       if (currentMinutes < openMinutes) {
-        Toast.warning('Shift check-in window opens at 09:30 AM (General Shift: 10:00 AM – 07:00 PM).');
+        Toast.warning(
+          "Shift check-in window opens at 09:30 AM (General Shift: 10:00 AM – 07:00 PM).",
+        );
         return false;
       }
 
-      let locationText = 'HQ - Mumbai (BKC, Mumbai 400051)';
+      let locationText = "HQ - Mumbai (BKC, Mumbai 400051)";
       if (navigator.geolocation) {
         navigator.geolocation.getCurrentPosition(
           (pos) => {
             locationText = `GPS: ${pos.coords.latitude.toFixed(4)}, ${pos.coords.longitude.toFixed(4)}`;
-            const geoStatus = document.getElementById('ess-geo-status');
+            const geoStatus = document.getElementById("ess-geo-status");
             if (geoStatus) geoStatus.textContent = `Location: ${locationText}`;
           },
-          () => {}
+          () => {},
         );
       }
 
@@ -1448,15 +1628,17 @@ const ESSView = {
 
       try {
         await attendanceService.recordPunch({
-          name: AuthGuard.userProfile?.displayName || 'Employee',
-          punchType: 'In',
-          device: 'ESS Web GPS Terminal',
-          status: 'On Time',
-          location: locationText
+          name: AuthGuard.userProfile?.displayName || "Employee",
+          punchType: "In",
+          device: "ESS Web GPS Terminal",
+          status: "On Time",
+          location: locationText,
         });
-        Toast.success('Checked IN successfully! Daily shift started (10:00 AM – 07:00 PM).');
+        Toast.success(
+          "Checked IN successfully! Daily shift started (10:00 AM – 07:00 PM).",
+        );
       } catch (e) {
-        console.warn('Punch record warning:', e);
+        console.warn("Punch record warning:", e);
       }
       return true;
     } else {
@@ -1481,17 +1663,19 @@ const ESSView = {
 
       try {
         await attendanceService.recordPunch({
-          name: AuthGuard.userProfile?.displayName || 'Employee',
-          punchType: 'Out',
-          device: 'ESS Web GPS Terminal',
-          status: 'Shift Completed',
+          name: AuthGuard.userProfile?.displayName || "Employee",
+          punchType: "Out",
+          device: "ESS Web GPS Terminal",
+          status: "Shift Completed",
           totalBreakSeconds: finalTotalBreakSec,
           breakDuration: endedBreakSec,
-          totalWorkSeconds: this.workSeconds
+          totalWorkSeconds: this.workSeconds,
         });
-        Toast.info('Checked OUT successfully! Today’s shift completed. Check-in locked until tomorrow 10:00 AM.');
+        Toast.info(
+          "Checked OUT successfully! Today’s shift completed. Check-in locked until tomorrow 10:00 AM.",
+        );
       } catch (e) {
-        console.warn('Punch record warning:', e);
+        console.warn("Punch record warning:", e);
       }
       return true;
     }
@@ -1527,14 +1711,14 @@ const ESSView = {
 
       try {
         await attendanceService.recordPunch({
-          name: AuthGuard.userProfile?.displayName || 'Employee',
-          punchType: 'Break In',
-          device: 'ESS Web GPS Terminal',
-          status: 'On Break'
+          name: AuthGuard.userProfile?.displayName || "Employee",
+          punchType: "Break In",
+          device: "ESS Web GPS Terminal",
+          status: "On Break",
         });
-        Toast.info('Break started — work timer paused.');
+        Toast.info("Break started — work timer paused.");
       } catch (e) {
-        console.warn('Break punch warning:', e);
+        console.warn("Break punch warning:", e);
       }
     } else {
       // End break
@@ -1550,16 +1734,16 @@ const ESSView = {
 
       try {
         await attendanceService.recordPunch({
-          name: AuthGuard.userProfile?.displayName || 'Employee',
-          punchType: 'Break Out',
-          device: 'ESS Web GPS Terminal',
-          status: 'Back from Break',
+          name: AuthGuard.userProfile?.displayName || "Employee",
+          punchType: "Break Out",
+          device: "ESS Web GPS Terminal",
+          status: "Back from Break",
           breakDuration: endedBreakSec,
-          totalBreakSeconds: this.totalBreakSeconds
+          totalBreakSeconds: this.totalBreakSeconds,
         });
-        Toast.success('Break ended — work timer resumed!');
+        Toast.success("Break ended — work timer resumed!");
       } catch (e) {
-        console.warn('Break punch warning:', e);
+        console.warn("Break punch warning:", e);
       }
     }
   },
@@ -1578,11 +1762,11 @@ const ESSView = {
     clearInterval(this.breakTimerInterval);
     this.breakSeconds = 0;
     this.updateTimecardUI();
-  }
+  },
 };
 
 // Initialize timecard state on load
-if (typeof ESSView !== 'undefined' && ESSView.initTimecard) {
+if (typeof ESSView !== "undefined" && ESSView.initTimecard) {
   ESSView.initTimecard();
 }
 

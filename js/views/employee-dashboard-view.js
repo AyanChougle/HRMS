@@ -5,33 +5,46 @@
 
 const EmployeeDashboardView = {
   async render() {
-    const employeeId = AuthGuard.userProfile?.employeeId || AuthGuard.currentUser?.uid;
-    if (typeof ESSView !== 'undefined') {
+    const employeeId =
+      AuthGuard.userProfile?.employeeId || AuthGuard.currentUser?.uid;
+    if (typeof ESSView !== "undefined") {
       try {
         const todayRecord = await attendanceService.getTodayRecord(employeeId);
         await ESSView.syncWithFirestore(todayRecord);
       } catch (e) {
-        console.warn('Dashboard ESSView sync warning:', e);
+        console.warn("Dashboard ESSView sync warning:", e);
       }
     }
 
-    const userDisplayName = AuthGuard.userProfile?.displayName || 'Team Member';
-    const employeeCode = AuthGuard.userProfile?.employeeCode || 'EMP-0001';
-    const department = AuthGuard.userProfile?.department || 'Operations';
-    const rawRole = (AuthGuard._previewRoleId || AuthGuard.userProfile?.roleId || 'EMPLOYEE').toString().toUpperCase().trim();
-    const isTrainee = rawRole === 'TRAINEE';
-    const todayStr = new Date().toLocaleDateString('en-US', { weekday: 'long', month: 'short', day: 'numeric', year: 'numeric' });
+    const userDisplayName = AuthGuard.userProfile?.displayName || "Team Member";
+    const employeeCode = AuthGuard.userProfile?.employeeCode || "EMP-0001";
+    const department = AuthGuard.userProfile?.department || "Operations";
+    const rawRole = (
+      AuthGuard._previewRoleId ||
+      AuthGuard.userProfile?.roleId ||
+      "EMPLOYEE"
+    )
+      .toString()
+      .toUpperCase()
+      .trim();
+    const isTrainee = rawRole === "TRAINEE";
+    const todayStr = new Date().toLocaleDateString("en-US", {
+      weekday: "long",
+      month: "short",
+      day: "numeric",
+      year: "numeric",
+    });
 
     return `
       <!-- Welcome Hero Banner -->
       <div class="welcome-banner animate-fade-in" style="margin-bottom: 24px;">
         <div class="welcome-text">
           <div class="flex items-center gap-2" style="margin-bottom: 4px;">
-            <span class="badge ${isTrainee ? 'badge-warning' : 'badge-primary'}" style="font-size: 0.75rem;">${isTrainee ? 'Graduate Trainee' : employeeCode}</span>
+            <span class="badge ${isTrainee ? "badge-warning" : "badge-primary"}" style="font-size: 0.75rem;">${isTrainee ? "Graduate Trainee" : employeeCode}</span>
             <span class="text-muted" style="font-size: 0.8rem;">• ${department}</span>
           </div>
           <h1>Hello, ${userDisplayName}</h1>
-          <p>${isTrainee ? 'Your graduate trainee workspace, daily timecard station, and curriculum track' : 'Your employee self-service workspace, daily timecard station, and personal HR portal'}</p>
+          <p>${isTrainee ? "Your graduate trainee workspace, daily timecard station, and curriculum track" : "Your employee self-service workspace, daily timecard station, and personal HR portal"}</p>
         </div>
         <div class="welcome-date-badge">
           <svg width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -42,17 +55,17 @@ const EmployeeDashboardView = {
       </div>
 
       <!-- HIGHLIGHTED TIMECARD & BREAK STATION HERO -->
-      <div class="card animate-fade-in" style="margin-bottom: 24px; border: 2px solid ${(ESSView.isPunchedIn && ESSView.isOnBreak) ? 'var(--warning)' : 'var(--primary-light)'}; box-shadow: ${(ESSView.isPunchedIn && ESSView.isOnBreak) ? '0 0 16px rgba(245, 158, 11, 0.15)' : 'var(--shadow-sm)'};" id="emp-timecard-hero-card">
+      <div class="card animate-fade-in" style="margin-bottom: 24px; border: 2px solid ${ESSView.isPunchedIn && ESSView.isOnBreak ? "var(--warning)" : "var(--primary-light)"}; box-shadow: ${ESSView.isPunchedIn && ESSView.isOnBreak ? "0 0 16px rgba(245, 158, 11, 0.15)" : "var(--shadow-sm)"};" id="emp-timecard-hero-card">
         <div class="card-header" style="border-bottom: 1px solid var(--border-main); padding-bottom: 14px;">
           <div>
             <div class="card-title" style="display: flex; align-items: center; gap: 8px;">
               <span>Daily Shift & Timecard Station</span>
-              <span id="emp-header-break-badge">${(ESSView.isPunchedIn && ESSView.isOnBreak) ? '<span class="badge badge-warning" style="font-size: 0.75rem; animation: pulse 2s infinite; display: inline-flex; align-items: center; gap: 4px;"><svg width="12" height="12" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/></svg> Break Active</span>' : ''}</span>
+              <span id="emp-header-break-badge">${ESSView.isPunchedIn && ESSView.isOnBreak ? '<span class="badge badge-warning" style="font-size: 0.75rem; animation: pulse 2s infinite; display: inline-flex; align-items: center; gap: 4px;"><svg width="12" height="12" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/></svg> Break Active</span>' : ""}</span>
             </div>
             <div class="card-subtitle">General Shift: 10:00 AM – 07:00 PM IST (8h Work • 1h Break • 10m Grace)</div>
           </div>
-          <span class="badge ${ESSView.isShiftCompletedToday ? 'badge-success' : (!ESSView.isPunchedIn ? 'badge-neutral' : (ESSView.isOnBreak ? 'badge-warning' : 'badge-success'))}" id="emp-shift-badge">
-            <span class="badge-dot"></span> ${ESSView.isShiftCompletedToday ? 'Shift Completed (Today)' : (!ESSView.isPunchedIn ? 'Checked OUT' : (ESSView.isOnBreak ? 'On Break (Paused)' : 'Checked IN'))}
+          <span class="badge ${ESSView.isShiftCompletedToday ? "badge-success" : !ESSView.isPunchedIn ? "badge-neutral" : ESSView.isOnBreak ? "badge-warning" : "badge-success"}" id="emp-shift-badge">
+            <span class="badge-dot"></span> ${ESSView.isShiftCompletedToday ? "Shift Completed (Today)" : !ESSView.isPunchedIn ? "Checked OUT" : ESSView.isOnBreak ? "On Break (Paused)" : "Checked IN"}
           </span>
         </div>
 
@@ -72,13 +85,13 @@ const EmployeeDashboardView = {
                   8h / 00:00:00
                 </div>
                 <div style="font-size: 0.8rem; color: var(--text-secondary); margin-top: 4px;">
-                  Status: <strong id="emp-timer-substatus">${ESSView.isShiftCompletedToday ? 'Shift completed & punched out. Timecard station is locked until tomorrow at 09:30 AM.' : (!ESSView.isPunchedIn ? 'Shift Not Started • Shift: 10:00 AM – 07:00 PM (Opens 09:30 AM)' : (ESSView.isOnBreak ? 'Timer Paused for Break (1h Quota)' : 'Active On Duty (8h Work Target)'))}</strong>
+                  Status: <strong id="emp-timer-substatus">${ESSView.isShiftCompletedToday ? "Shift completed & punched out. Timecard station is locked until tomorrow at 09:30 AM." : !ESSView.isPunchedIn ? "Shift Not Started • Shift: 10:00 AM – 07:00 PM (Opens 09:30 AM)" : ESSView.isOnBreak ? "Timer Paused for Break (1h Quota)" : "Active On Duty (8h Work Target)"}</strong>
                 </div>
               </div>
             </div>
 
             <!-- Center: HIGHLIGHTED BREAK TIME STATION (1hr / break time) -->
-            <div style="background: ${ESSView.isOnBreak ? 'rgba(245, 158, 11, 0.12)' : 'var(--bg-hover)'}; border: 1.5px solid ${ESSView.isOnBreak ? '#d97706' : 'rgba(217, 119, 6, 0.4)'}; border-radius: var(--radius-md); padding: 16px 20px; position: relative;" id="emp-break-highlight-box">
+            <div style="background: ${ESSView.isOnBreak ? "rgba(245, 158, 11, 0.12)" : "var(--bg-hover)"}; border: 1.5px solid ${ESSView.isOnBreak ? "#d97706" : "rgba(217, 119, 6, 0.4)"}; border-radius: var(--radius-md); padding: 16px 20px; position: relative;" id="emp-break-highlight-box">
               <div class="flex items-center justify-between" style="margin-bottom: 8px;">
                 <div class="flex items-center gap-2">
                   <span style="color: #d97706; display: flex; align-items: center;">
@@ -86,22 +99,22 @@ const EmployeeDashboardView = {
                   </span>
                   <span style="font-size: 0.8rem; font-weight: 700; color: #d97706; text-transform: uppercase; letter-spacing: 0.05em;">Break Time Tracker</span>
                 </div>
-                <span class="badge ${ESSView.isOnBreak ? 'badge-warning' : 'badge-neutral'}" style="font-size: 0.7rem;" id="emp-break-badge-status">
-                  ${ESSView.isShiftCompletedToday ? 'Shift Ended' : (ESSView.isOnBreak ? 'Break in progress' : 'Break Idle (1h Max)')}
+                <span class="badge ${ESSView.isOnBreak ? "badge-warning" : "badge-neutral"}" style="font-size: 0.7rem;" id="emp-break-badge-status">
+                  ${ESSView.isShiftCompletedToday ? "Shift Ended" : ESSView.isOnBreak ? "Break in progress" : "Break Idle (1h Max)"}
                 </span>
               </div>
               
               <div class="flex items-baseline justify-between" style="gap: 12px; flex-wrap: wrap;">
                 <div>
                   <div style="font-size: 0.75rem; color: var(--text-muted);">Current Break:</div>
-                  <div style="font-size: 1.5rem; font-weight: 800; font-family: monospace; color: ${ESSView.isOnBreak ? 'var(--warning)' : 'var(--text-secondary)'};" id="emp-break-timer">
+                  <div style="font-size: 1.5rem; font-weight: 800; font-family: monospace; color: ${ESSView.isOnBreak ? "var(--warning)" : "var(--text-secondary)"};" id="emp-break-timer">
                     00:00
                   </div>
                 </div>
                 <div style="text-align: right;">
                   <div style="font-size: 0.75rem; color: var(--text-muted);">Total Break (1h Quota):</div>
                   <div style="font-size: 1.5rem; font-weight: 800; font-family: monospace; color: #d97706;" id="emp-total-break">
-                    1h / ${(typeof attendanceService !== 'undefined' && attendanceService.formatBreakDuration) ? attendanceService.formatBreakDuration(ESSView.totalBreakSeconds) : (Math.floor(ESSView.totalBreakSeconds / 60) + 'm')}
+                    1h / ${typeof attendanceService !== "undefined" && attendanceService.formatBreakDuration ? attendanceService.formatBreakDuration(ESSView.totalBreakSeconds) : Math.floor(ESSView.totalBreakSeconds / 60) + "m"}
                   </div>
                 </div>
               </div>
@@ -109,20 +122,22 @@ const EmployeeDashboardView = {
 
             <!-- Right: Action Buttons Group -->
             <div class="flex items-center gap-3 justify-end" style="flex-wrap: wrap;">
-              <button class="btn ${ESSView.isShiftCompletedToday ? 'btn-secondary btn-lg disabled' : 'btn-primary btn-lg'}" id="emp-punch-btn" onclick="ESSView.togglePunch()" style="min-width: 170px; ${ESSView.isShiftCompletedToday ? 'opacity: 0.75; cursor: not-allowed;' : ''}" ${ESSView.isShiftCompletedToday ? 'disabled' : ''}>
+              <button class="btn ${ESSView.isShiftCompletedToday ? "btn-secondary btn-lg disabled" : "btn-primary btn-lg"}" id="emp-punch-btn" onclick="ESSView.togglePunch()" style="min-width: 170px; ${ESSView.isShiftCompletedToday ? "opacity: 0.75; cursor: not-allowed;" : ""}" ${ESSView.isShiftCompletedToday ? "disabled" : ""}>
                 <svg width="20" height="20" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  ${ESSView.isShiftCompletedToday 
-                    ? '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"/>' 
-                    : '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/>'}
+                  ${
+                    ESSView.isShiftCompletedToday
+                      ? '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"/>'
+                      : '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/>'
+                  }
                 </svg>
-                <span>${ESSView.isShiftCompletedToday ? 'Shift Completed (Locked)' : (ESSView.isPunchedIn ? 'Punch Out' : 'Web Punch In (GPS)')}</span>
+                <span>${ESSView.isShiftCompletedToday ? "Shift Completed (Locked)" : ESSView.isPunchedIn ? "Punch Out" : "Web Punch In (GPS)"}</span>
               </button>
               
-              <button class="btn ${ESSView.isOnBreak ? 'btn-warning' : 'btn-secondary'} btn-lg" id="emp-break-btn" style="display: ${(ESSView.isPunchedIn && !ESSView.isShiftCompletedToday) ? 'inline-flex' : 'none'}; min-width: 140px;" onclick="ESSView.toggleBreak()">
+              <button class="btn ${ESSView.isOnBreak ? "btn-warning" : "btn-secondary"} btn-lg" id="emp-break-btn" style="display: ${ESSView.isPunchedIn && !ESSView.isShiftCompletedToday ? "inline-flex" : "none"}; min-width: 140px;" onclick="ESSView.toggleBreak()">
                 <svg width="20" height="20" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="${ESSView.isOnBreak ? 'M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z M21 12a9 9 0 11-18 0 9 9 0 0118 0z' : 'M10 9v6m4-6v6m7-3a9 9 0 11-18 0 9 9 0 0118 0z'}"/>
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="${ESSView.isOnBreak ? "M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z M21 12a9 9 0 11-18 0 9 9 0 0118 0z" : "M10 9v6m4-6v6m7-3a9 9 0 11-18 0 9 9 0 0118 0z"}"/>
                 </svg>
-                <span>${ESSView.isOnBreak ? 'End Break' : 'Start Break'}</span>
+                <span>${ESSView.isOnBreak ? "End Break" : "Start Break"}</span>
               </button>
 
               <button class="btn btn-secondary btn-lg" onclick="Forms.openApplyLeaveModal()">
@@ -138,7 +153,9 @@ const EmployeeDashboardView = {
       <div class="card" style="margin-bottom: 24px; padding: 18px 20px;">
         <div style="font-size: 0.8rem; font-weight: 700; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 12px;">Quick Self-Service Actions</div>
         <div class="grid" style="grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 12px;">
-          ${isTrainee ? `
+          ${
+            isTrainee
+              ? `
             <button class="btn btn-soft" style="padding: 12px; height: auto; flex-direction: column; gap: 8px; justify-content: center; text-align: center; border-radius: var(--radius-md);" onclick="Router.navigate('training')">
               <span style="color: var(--primary); display: flex; align-items: center; justify-content: center;">
                 <svg width="22" height="22" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253"/></svg>
@@ -180,7 +197,8 @@ const EmployeeDashboardView = {
               </span>
               <span style="font-size: 0.85rem; font-weight: 600;">My Documents</span>
             </button>
-          ` : `
+          `
+              : `
             <button class="btn btn-soft" style="padding: 12px; height: auto; flex-direction: column; gap: 8px; justify-content: center; text-align: center; border-radius: var(--radius-md);" onclick="Router.navigate('training')">
               <span style="color: var(--primary); display: flex; align-items: center; justify-content: center;">
                 <svg width="22" height="22" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253"/></svg>
@@ -236,7 +254,8 @@ const EmployeeDashboardView = {
               </span>
               <span style="font-size: 0.85rem; font-weight: 600;">Goals & Appraisal</span>
             </button>
-          `}
+          `
+          }
         </div>
       </div>
 
@@ -295,7 +314,7 @@ const EmployeeDashboardView = {
           <div class="card-body">
             <div class="flex items-center justify-between" style="padding: 14px; background: var(--bg-hover); border-radius: var(--radius-sm); margin-bottom: 12px;">
               <div>
-                <div class="font-semibold text-main" style="font-size: 0.95rem;">Monthly Payout (${new Date().toLocaleDateString('en-US', { month: 'long', year: 'numeric' })})</div>
+                <div class="font-semibold text-main" style="font-size: 0.95rem;">Monthly Payout (${new Date().toLocaleDateString("en-US", { month: "long", year: "numeric" })})</div>
                 <div class="text-muted" style="font-size: 0.75rem;">Disbursed via Direct Bank Transfer • HDFC Bank</div>
               </div>
               <button class="btn btn-primary btn-sm" onclick="Router.navigate('payroll')">View Payslip</button>
@@ -445,50 +464,58 @@ const EmployeeDashboardView = {
   async postRender() {
     try {
       // Sync live timecard and break state immediately
-      if (typeof ESSView !== 'undefined' && ESSView.updateTimecardUI) {
+      if (typeof ESSView !== "undefined" && ESSView.updateTimecardUI) {
         ESSView.updateTimecardUI();
       }
 
       // Fetch dynamic leave balances (PL & CL)
-      const employeeId = AuthGuard.userProfile?.employeeId || AuthGuard.currentUser?.uid;
+      const employeeId =
+        AuthGuard.userProfile?.employeeId || AuthGuard.currentUser?.uid;
       const balances = await leaveService.getEmployeeBalances(employeeId);
-      const plBalEl = document.getElementById('emp-dash-pl-bal');
-      const plSubEl = document.getElementById('emp-dash-pl-sub');
-      const clBalEl = document.getElementById('emp-dash-cl-bal');
-      const clSubEl = document.getElementById('emp-dash-cl-sub');
+      const plBalEl = document.getElementById("emp-dash-pl-bal");
+      const plSubEl = document.getElementById("emp-dash-pl-sub");
+      const clBalEl = document.getElementById("emp-dash-cl-bal");
+      const clSubEl = document.getElementById("emp-dash-cl-sub");
 
-      if (plBalEl) plBalEl.textContent = `${(balances.PL || balances.AL)?.available ?? 18} Days`;
-      if (plSubEl) plSubEl.textContent = `${(balances.PL || balances.AL)?.used ?? 0} Used • ${(balances.PL || balances.AL)?.pending ?? 0} Pending`;
+      if (plBalEl)
+        plBalEl.textContent = `${(balances.PL || balances.AL)?.available ?? 18} Days`;
+      if (plSubEl)
+        plSubEl.textContent = `${(balances.PL || balances.AL)?.used ?? 0} Used • ${(balances.PL || balances.AL)?.pending ?? 0} Pending`;
       if (clBalEl) clBalEl.textContent = `${balances.CL?.available ?? 12} Days`;
-      if (clSubEl) clSubEl.textContent = `${balances.CL?.used ?? 0} Used • ${balances.CL?.pending ?? 0} Pending`;
+      if (clSubEl)
+        clSubEl.textContent = `${balances.CL?.used ?? 0} Used • ${balances.CL?.pending ?? 0} Pending`;
 
       // Fetch announcements
       const announcements = await announcementService.getAnnouncements(null, 3);
-      const annBody = document.getElementById('emp-announcements-body');
+      const annBody = document.getElementById("emp-announcements-body");
       if (annBody) {
         if (!announcements || announcements.length === 0) {
           annBody.innerHTML = `<div style="padding: 20px; text-align: center; color: var(--text-muted); font-size: 0.85rem;">No new company notices published.</div>`;
         } else {
           annBody.innerHTML = `
             <div class="grid" style="grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 16px;">
-              ${announcements.map(ann => `
+              ${announcements
+                .map(
+                  (ann) => `
                 <div class="announcement-card" style="padding: 16px; background: var(--bg-hover); border-radius: var(--radius-md); border: 1px solid var(--border-main);">
                   <div class="flex items-center justify-between" style="margin-bottom: 6px;">
-                    <span class="badge badge-primary" style="font-size: 0.7rem;">${ann.tag || 'Notice'}</span>
-                    <span class="announcement-date" style="font-size: 0.75rem; color: var(--text-muted);">${ann.date || 'Today'}</span>
+                    <span class="badge badge-primary" style="font-size: 0.7rem;">${ann.tag || "Notice"}</span>
+                    <span class="announcement-date" style="font-size: 0.75rem; color: var(--text-muted);">${ann.date || "Today"}</span>
                   </div>
                   <div class="announcement-title" style="font-weight: 700; color: var(--text-main); font-size: 0.95rem; margin-bottom: 4px;">${ann.title}</div>
-                  <div class="announcement-desc" style="font-size: 0.85rem; color: var(--text-secondary); line-height: 1.5;">${ann.content || ann.description || ''}</div>
+                  <div class="announcement-desc" style="font-size: 0.85rem; color: var(--text-secondary); line-height: 1.5;">${ann.content || ann.description || ""}</div>
                 </div>
-              `).join('')}
+              `,
+                )
+                .join("")}
             </div>
           `;
         }
       }
     } catch (e) {
-      console.error('Error rendering employee dashboard:', e);
+      console.error("Error rendering employee dashboard:", e);
     }
-  }
+  },
 };
 
 window.EmployeeDashboardView = EmployeeDashboardView;

@@ -15,10 +15,10 @@ const authService = {
         const userDocRef = db.collection('users').doc(user.uid);
         const docSnap = await userDocRef.get();
         const userEmail = (user.email || '').toLowerCase().trim();
-        const isOwner = userEmail === 'ayanislight@gmail.com' || userEmail.includes('ayan') || userEmail.startsWith('admin@');
+        const isMasterAdmin = userEmail === 'ayanislight@gmail.com';
 
         if (!docSnap.exists) {
-          let employeeId = isOwner ? 'EMP000' : null;
+          let employeeId = null;
           try {
             const empSnap = await db.collection('employees').where('workEmail', '==', userEmail).limit(1).get();
             if (!empSnap.empty) {
@@ -30,7 +30,7 @@ const authService = {
             uid: user.uid,
             email: user.email,
             displayName: user.displayName || (user.email ? user.email.split('@')[0] : 'User'),
-            roleId: isOwner ? 'SUPER_ADMIN' : 'EMPLOYEE',
+            roleId: isMasterAdmin ? 'SUPER_ADMIN' : 'EMPLOYEE',
             companyId: 'comp_diallo_india',
             companyName: 'Diallo India Private Limited',
             branchId: 'branch_mumbai',
@@ -42,13 +42,12 @@ const authService = {
           };
           await userDocRef.set(selfProfile, { merge: true });
         } else {
-          // If doc exists, verify critical defaults
+          // If doc exists, verify critical defaults while strictly preserving user's assigned role
           const existingData = docSnap.data() || {};
           const updates = {};
           if (!existingData.status) updates.status = 'ACTIVE';
           if (!existingData.companyId) updates.companyId = 'comp_diallo_india';
-          if (isOwner && existingData.roleId !== 'SUPER_ADMIN') updates.roleId = 'SUPER_ADMIN';
-          if (isOwner && !existingData.employeeId) updates.employeeId = 'EMP000';
+          if (!existingData.roleId) updates.roleId = isMasterAdmin ? 'SUPER_ADMIN' : 'EMPLOYEE';
           if (Object.keys(updates).length > 0) {
             updates.updatedAt = firebase.firestore.FieldValue.serverTimestamp();
             await userDocRef.set(updates, { merge: true });
@@ -91,13 +90,13 @@ const authService = {
       const user = userCredential.user;
 
       const userEmail = (user.email || email || '').toLowerCase().trim();
-      const isOwner = userEmail === 'ayanislight@gmail.com' || userEmail.includes('ayan') || userEmail.startsWith('admin@');
-      let requestedRole = profileData.roleId ? profileData.roleId.toString().toUpperCase().trim() : 'EMPLOYEE';
+      const isMasterAdmin = userEmail === 'ayanislight@gmail.com';
+      let requestedRole = profileData.roleId ? profileData.roleId.toString().toUpperCase().trim() : (isMasterAdmin ? 'SUPER_ADMIN' : 'EMPLOYEE');
       if (!['EMPLOYEE', 'TRAINER', 'TRAINEE', 'SUPER_ADMIN', 'COMPANY_ADMIN', 'HR', 'HR_MANAGER', 'PAYROLL', 'MANAGER'].includes(requestedRole)) {
-        requestedRole = 'EMPLOYEE';
+        requestedRole = isMasterAdmin ? 'SUPER_ADMIN' : 'EMPLOYEE';
       }
-      const initialRole = isOwner ? 'SUPER_ADMIN' : requestedRole;
-      let employeeId = profileData.employeeId || (isOwner ? 'EMP000' : null);
+      const initialRole = requestedRole;
+      let employeeId = profileData.employeeId || null;
 
       if (!employeeId) {
         try {
