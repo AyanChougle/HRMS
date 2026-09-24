@@ -259,13 +259,22 @@
     align-self: flex-start;
   }
 
-  /* KPI Cards Grid: single column or 2 compact columns */
+  /* KPI Cards Grid: 2 compact columns on mobile */
   .kpi-grid {
-    grid-template-columns: 1fr !important;
-    gap: 12px;
+    grid-template-columns: repeat(2, 1fr) !important;
+    gap: 10px !important;
+  }
+  .kpi-card {
+    padding: 12px 10px !important;
   }
   .kpi-value {
-    font-size: 1.55rem;
+    font-size: 1.35rem !important;
+  }
+  .kpi-label {
+    font-size: 0.72rem !important;
+  }
+  .kpi-subtitle {
+    display: none;
   }
 
   /* Dashboard & General Grids: Single column on mobile */
@@ -566,3 +575,304 @@ body, input, button, select, textarea, table, th, td {
     font-size: 0.775rem !important;
   }
 }
+
+/* ==========================================================================
+   8. TIMECARD STATION, ACTION BUTTONS & DASHBOARD RESPONSIVE ARCHITECTURE
+   Laptop, Tablet, and Mobile Optimization
+   ========================================================================== */
+
+/* Daily Shift & Timecard Station Base (Desktop / Laptop >= 1025px) */
+.timecard-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  border-bottom: 1px solid var(--border-main);
+  padding: 16px 20px 14px 20px;
+}
+.timecard-header-main {
+  min-width: 0;
+  flex: 1 1 auto;
+}
+.timecard-header-subtitle {
+  font-size: 0.8rem;
+  color: var(--text-muted);
+  line-height: 1.4;
+  margin-top: 2px;
+}
+.timecard-header-status {
+  flex-shrink: 0;
+}
+
+.timecard-station-grid {
+  display: grid;
+  grid-template-columns: minmax(260px, 1fr) minmax(230px, 1fr) minmax(260px, 1.15fr);
+  gap: 16px;
+  align-items: stretch;
+}
+
+.timecard-timer-card {
+  background: var(--bg-card, #ffffff);
+  border: 1px solid var(--border-color, #e2e8f0);
+  border-radius: var(--radius-md);
+  padding: 14px 18px;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  min-width: 0;
+  transition: all 0.2s ease;
+}
+
+.timecard-actions-panel {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  min-width: 0;
+  width: 100%;
+}
+
+.timecard-action-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 10px;
+  width: 100%;
+}
+
+.timecard-action-grid .btn {
+  height: 42px;
+  min-height: 42px;
+  font-weight: 600;
+  font-size: 0.85rem;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 0 10px;
+  border-radius: var(--radius-md);
+  white-space: nowrap;
+  transition: all 0.15s ease-in-out;
+  cursor: pointer;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.timecard-action-grid .btn svg {
+  flex-shrink: 0;
+  width: 17px;
+  height: 17px;
+}
+
+/* ESS Terminal Layout (ESS View) */
+.ess-terminal-layout {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 20px;
+  flex-wrap: wrap;
+}
+
+.ess-terminal-timer-info {
+  flex: 1 1 320px;
+  min-width: 0;
+}
+
+.ess-terminal-actions {
+  flex: 0 0 320px;
+  max-width: 100%;
+}
+
+/* Quick Self-Service Actions Launchpad */
+.emp-quick-launchpad {
+  display: grid;
+  grid-template-columns: repeat(6, 1fr);
+  gap: 12px;
+}
+
+.emp-quick-launchpad .btn {
+  padding: 14px 8px;
+  height: auto;
+  flex-direction: column;
+  gap: 8px;
+  justify-content: center;
+  text-align: center;
+  border-radius: var(--radius-md);
+  min-height: 84px;
+}
+
+/* Leave Balances Grid */
+.emp-leave-balances-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 14px;
+}
+
+/* Week Attendance Rhythm */
+.week-rhythm-grid {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: 8px;
+  text-align: center;
+}
+
+/* 3 Metrics Row */
+.metrics-row-3 {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 8px;
+  text-align: center;
+}
+
+/* --------------------------------------------------------------------------
+   TABLETS (768px - 1024px)
+   -------------------------------------------------------------------------- */
+@media (min-width: 768px) and (max-width: 1024px) {
+  .timecard-station-grid {
+    grid-template-columns: 1fr 1fr;
+    gap: 14px;
+  }
+  .timecard-actions-panel {
+    grid-column: span 2;
+  }
+  .timecard-action-grid {
+    grid-template-columns: repeat(4, 1fr);
+    gap: 10px;
+  }
+  .emp-quick-launchpad {
+    grid-template-columns: repeat(3, 1fr);
+    gap: 10px;
+  }
+  .ess-terminal-actions {
+    flex: 1 1 100%;
+  }
+  .ess-terminal-actions .timecard-action-grid {
+    grid-template-columns: repeat(4, 1fr);
+  }
+}
+
+/* --------------------------------------------------------------------------
+   MOBILE DEVICES (< 768px)
+   -------------------------------------------------------------------------- */
+@media (max-width: 767px) {
+  .timecard-header {
+    flex-direction: column;
+    align-items: flex-start;
+    padding: 14px 14px 12px 14px;
+    gap: 8px;
+  }
+  .timecard-header-subtitle {
+    font-size: 0.75rem;
+  }
+
+  /* Timecard Station on Mobile */
+  .timecard-station-grid {
+    grid-template-columns: 1fr !important;
+    gap: 12px !important;
+  }
+  .timecard-timer-card {
+    padding: 12px 14px;
+  }
+  .timecard-actions-panel {
+    width: 100%;
+  }
+  .timecard-action-grid {
+    grid-template-columns: 1fr 1fr !important;
+    gap: 8px !important;
+    width: 100%;
+  }
+  .timecard-action-grid .btn {
+    height: 44px;
+    min-height: 44px;
+    font-size: 0.82rem;
+    padding: 0 8px;
+  }
+
+  /* ESS Terminal Layout on Mobile */
+  .ess-terminal-layout {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 16px;
+  }
+  .ess-terminal-timer-info {
+    width: 100%;
+  }
+  .ess-terminal-actions {
+    width: 100%;
+    flex: none;
+  }
+  .ess-terminal-actions .timecard-action-grid {
+    grid-template-columns: 1fr 1fr !important;
+    gap: 8px !important;
+    width: 100%;
+  }
+
+  /* Quick Actions Launchpad on Mobile */
+  .emp-quick-launchpad {
+    grid-template-columns: repeat(3, 1fr) !important;
+    gap: 8px !important;
+  }
+  .emp-quick-launchpad .btn {
+    padding: 10px 4px !important;
+    min-height: 72px;
+  }
+  .emp-quick-launchpad .btn span:last-child {
+    font-size: 0.72rem !important;
+    line-height: 1.2;
+  }
+
+  /* Leave Balances Grid on Mobile */
+  .emp-leave-balances-grid {
+    grid-template-columns: 1fr !important;
+    gap: 10px !important;
+  }
+
+  /* Week Rhythm on Mobile: keep 5 days side by side with compact padding */
+  .week-rhythm-grid {
+    grid-template-columns: repeat(5, 1fr) !important;
+    gap: 4px !important;
+  }
+  .week-rhythm-grid > div {
+    padding: 8px 2px !important;
+  }
+  .week-rhythm-grid .badge {
+    font-size: 0.58rem !important;
+    padding: 1px 3px !important;
+  }
+
+  /* Modal Footer on Mobile: equal 50% split for 2 buttons */
+  .modal-footer {
+    display: flex;
+    flex-direction: row;
+    gap: 8px;
+    width: 100%;
+  }
+  .modal-footer .btn {
+    flex: 1 1 0;
+    min-width: 0;
+  }
+}
+
+/* --------------------------------------------------------------------------
+   EXTRA SMALL MOBILE (< 440px)
+   -------------------------------------------------------------------------- */
+@media (max-width: 440px) {
+  #emp-live-timer {
+    font-size: 1.55rem !important;
+  }
+  #ess-timer-display {
+    font-size: 1.65rem !important;
+  }
+  .emp-quick-launchpad {
+    grid-template-columns: repeat(2, 1fr) !important;
+    gap: 8px !important;
+  }
+  .timecard-action-grid .btn {
+    font-size: 0.76rem;
+    gap: 4px;
+    padding: 0 4px;
+  }
+  .timecard-action-grid .btn svg {
+    width: 15px;
+    height: 15px;
+  }
+}
+
