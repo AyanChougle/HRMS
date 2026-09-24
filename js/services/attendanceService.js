@@ -208,9 +208,9 @@ const attendanceService = {
         throw new Error('Shift check-in window opens at 09:30 AM (General Shift: 10:00 AM – 07:00 PM).');
       }
 
-      // 3. Geofence Validation: EL207, Electronic Zone, Mahape (19.1107242, 73.0281664) - 10m radius limit
-      const officeLat = 19.1107242;
-      const officeLng = 73.0281664;
+      // 3. Geofence Validation: EL207, Electronic Zone, Mahape (19.110735301239913, 73.02816428562234) - 10m radius limit
+      const officeLat = 19.110735301239913;
+      const officeLng = 73.02816428562234;
       const userLat = Number(punchData.latitude);
       const userLng = Number(punchData.longitude);
 
@@ -315,6 +315,20 @@ const attendanceService = {
       const rec = doc.data();
       if (rec.checkOut && !rec.currentCheckInDateIso) {
         throw new Error(`You have already checked out for today at ${rec.checkOut}.`);
+      }
+
+      // Geofence Validation for Check-Out: Must be within 10m of office (19.110735301239913, 73.02816428562234)
+      const officeLat = 19.110735301239913;
+      const officeLng = 73.02816428562234;
+      const userLat = Number(checkoutData.latitude);
+      const userLng = Number(checkoutData.longitude);
+
+      if (!isNaN(userLat) && !isNaN(userLng)) {
+        const dist = this.calculateDistanceMeters(userLat, userLng, officeLat, officeLng);
+        if (dist > 10 && !checkoutData.forcePunch) {
+          const distStr = dist < 1000 ? `${dist.toFixed(1)}m` : `${(dist / 1000).toFixed(2)}km`;
+          throw new Error(`Geofence restriction: You are ${distStr} away from the office. Punch-out is strictly restricted to within 10 meters of EL207, Electronic Zone, Mahape.`);
+        }
       }
 
       const now = new Date();
@@ -490,6 +504,9 @@ const attendanceService = {
           await this.checkOut(employeeId, {
             companyId,
             time: timeStr,
+            latitude: punchData.latitude,
+            longitude: punchData.longitude,
+            distanceMeters: punchData.distanceMeters,
             totalBreakSeconds: punchData.totalBreakSeconds,
             totalWorkSeconds: punchData.totalWorkSeconds
           });

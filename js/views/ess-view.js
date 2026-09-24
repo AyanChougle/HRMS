@@ -1781,6 +1781,102 @@ const ESSView = {
   },
 
   async executePunchOut() {
+    // Geofence Verification: Must be within 10 meters of EL207 Mahape to punch out
+    let pos;
+    try {
+      if (typeof Toast !== "undefined") {
+        Toast.info("Verifying GPS location within 10m office radius for check-out...");
+      }
+      pos = await this.getDeviceLocation();
+    } catch (geoErr) {
+      if (typeof Toast !== "undefined") {
+        Toast.error(geoErr.message);
+      }
+      if (typeof ModalManager !== "undefined") {
+        ModalManager.openModal({
+          id: "geofence-error-modal",
+          title: "GPS Location Required",
+          subtitle: "Mandatory 10-meter office perimeter check",
+          size: "sm",
+          contentHtml: `
+            <div style="padding: 10px 0; text-align: center;">
+              <div style="font-size: 0.88rem; color: var(--text-main); margin-bottom: 10px; font-weight: 600;">
+                Location Access Needed to Punch Out
+              </div>
+              <div style="font-size: 0.82rem; color: var(--text-secondary); line-height: 1.5; margin-bottom: 12px;">
+                All employees and roles must be physically present within <strong>10 meters</strong> of the office building to punch out:
+                <br/><strong>EL207, Electronic Zone, TTC Industrial Area, Mahape, Navi Mumbai 400710</strong>
+              </div>
+              <div style="font-size: 0.78rem; color: #dc2626; background: #fef2f2; padding: 10px; border-radius: 6px; border: 1px solid #fecaca; text-align: left;">
+                ${geoErr.message}
+              </div>
+            </div>
+          `,
+          footerHtml: `
+            <button class="btn btn-secondary btn-sm" data-modal-close>Close</button>
+            <button class="btn btn-primary btn-sm" onclick="ModalManager.closeModal(); ESSView.punchOut();">Retry GPS Check</button>
+          `,
+        });
+      }
+      return false;
+    }
+
+    const userLat = pos.coords.latitude;
+    const userLng = pos.coords.longitude;
+    const distanceMeters = this.calculateDistanceMeters(
+      userLat,
+      userLng,
+      this.OFFICE_GEOFENCE.latitude,
+      this.OFFICE_GEOFENCE.longitude,
+    );
+
+    const distanceDisplay =
+      distanceMeters < 1000
+        ? `${distanceMeters.toFixed(1)} meters`
+        : `${(distanceMeters / 1000).toFixed(2)} km`;
+
+    if (distanceMeters > this.OFFICE_GEOFENCE.radiusMeters) {
+      const errorMsg = `Outside Office Perimeter: You are currently ${distanceDisplay} away from the office. Punch-out is strictly restricted to within 10 meters of EL207, Electronic Zone, Mahape.`;
+      if (typeof Toast !== "undefined") {
+        Toast.error(errorMsg);
+      }
+      if (typeof ModalManager !== "undefined") {
+        ModalManager.openModal({
+          id: "geofence-alert-modal",
+          title: "Out of Geofence Boundary",
+          subtitle: `Distance: ${distanceDisplay} (Limit: 10m)`,
+          size: "md",
+          contentHtml: `
+            <div style="padding: 10px 0;">
+              <div style="background: #fef2f2; border: 1px solid #fecaca; border-radius: 8px; padding: 14px; margin-bottom: 14px;">
+                <div style="font-weight: 700; color: #991b1b; font-size: 0.95rem; margin-bottom: 4px;">Punch-Out Denied: Outside 10m Geofence</div>
+                <div style="font-size: 0.84rem; color: #7f1d1d; line-height: 1.5;">
+                  Company policy strictly requires each and every employee across all roles to be physically located within <strong>10 meters</strong> of the office building to punch out.
+                </div>
+              </div>
+              <div style="background: var(--bg-hover); border-radius: 8px; padding: 14px; font-size: 0.84rem; line-height: 1.6;">
+                <div><strong>Your Current Distance:</strong> <span style="color: #dc2626; font-weight: 700;">${distanceDisplay}</span></div>
+                <div><strong>Permitted Radius:</strong> 10 meters</div>
+                <div><strong>Your Current GPS:</strong> ${userLat.toFixed(6)}, ${userLng.toFixed(6)}</div>
+                <div style="margin-top: 10px; border-top: 1px solid var(--border-main); padding-top: 8px;">
+                  <strong>Designated Office Location:</strong><br/>
+                  EL207, Electronic Zone, TTC Industrial Area, Mahape, Navi Mumbai, Maharashtra 400710
+                  <div style="margin-top: 6px;">
+                    <a href="https://maps.app.goo.gl/vrm35ARLi8RgGSFu9" target="_blank" rel="noopener noreferrer" style="color: var(--primary); font-weight: 600; text-decoration: underline;">View Office Location on Google Maps &rarr;</a>
+                  </div>
+                </div>
+              </div>
+            </div>
+          `,
+          footerHtml: `
+            <button class="btn btn-secondary btn-sm" data-modal-close>Dismiss</button>
+            <button class="btn btn-primary btn-sm" onclick="ModalManager.closeModal(); ESSView.punchOut();">Retry Punch Out</button>
+          `,
+        });
+      }
+      return false;
+    }
+
     // Auto-end break if on break
     let endedBreakSec = 0;
     if (this.isOnBreak) {
@@ -1800,12 +1896,18 @@ const ESSView = {
     this.savePersistedState();
     this.updateTimecardUI();
 
+    const locationText = `EL207 Mahape (GPS: ${userLat.toFixed(5)}, ${userLng.toFixed(5)} • ${distanceMeters.toFixed(1)}m from center)`;
+
     try {
       await attendanceService.recordPunch({
         name: AuthGuard.userProfile?.displayName || "Employee",
         punchType: "Out",
-        device: "ESS Web GPS Terminal",
+        device: "ESS Web GPS Terminal (10m Geofence Verified)",
         status: "Shift Completed",
+        location: locationText,
+        latitude: userLat,
+        longitude: userLng,
+        distanceMeters: distanceMeters,
         totalBreakSeconds: finalTotalBreakSec,
         breakDuration: endedBreakSec,
         totalWorkSeconds: this.workSeconds,
@@ -1824,8 +1926,8 @@ const ESSView = {
     address:
       "EL207, Electronic Zone, TTC Industrial Area, Mahape, Navi Mumbai, Maharashtra 400710",
     mapsUrl: "https://maps.app.goo.gl/vrm35ARLi8RgGSFu9",
-    latitude: 19.1107242,
-    longitude: 73.0281664,
+    latitude: 19.110735301239913,
+    longitude: 73.02816428562234,
     radiusMeters: 10,
   },
 

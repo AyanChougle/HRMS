@@ -24,8 +24,8 @@ const attendanceSettingsService = {
       enabled: true,
       address: 'EL207, Electronic Zone, TTC Industrial Area, Mahape, Navi Mumbai, Maharashtra 400710',
       mapsUrl: 'https://maps.app.goo.gl/vrm35ARLi8RgGSFu9',
-      latitude: 19.1107242,
-      longitude: 73.0281664,
+      latitude: 19.110735301239913,
+      longitude: 73.02816428562234,
       radiusMeters: 10
     },
     status: 'ACTIVE'
