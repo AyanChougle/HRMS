@@ -374,18 +374,18 @@ const ESSView = {
           <div class="kpi-subtitle">Casual Leave: ${leaves.CL?.available ?? 12} Days Available</div>
         </div>
 
-        <div class="kpi-card" onclick="ESSView.switchTab('payslips')" style="cursor: pointer;">
+        <div class="kpi-card" onclick="Router.navigate('requests'); setTimeout(() => { if (window.RequestsView) RequestsView.openNewRequestModal('SALARY_SLIP_REQUEST'); }, 150);" style="cursor: pointer;">
           <div class="kpi-top">
             <div class="kpi-icon-box" style="background: var(--primary-light); color: var(--primary);">
               <svg width="20" height="20" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
               </svg>
             </div>
-            <span class="kpi-trend positive">Ready</span>
+            <span class="kpi-trend positive">HR Helpdesk</span>
           </div>
-          <div class="kpi-value">Available</div>
-          <div class="kpi-label">Latest Payslip</div>
-          <div class="kpi-subtitle">Direct Deposit Verified</div>
+          <div class="kpi-value">Request Slip</div>
+          <div class="kpi-label">Salary Slip &amp; Payslips</div>
+          <div class="kpi-subtitle">Submit Request via HR Helpdesk</div>
         </div>
 
         <div class="kpi-card" onclick="ESSView.switchTab('assets')" style="cursor: pointer;">
@@ -696,19 +696,24 @@ const ESSView = {
       <div class="card">
         <div class="card-header">
           <div>
-            <div class="card-title">My Official Payslips & Tax Statements</div>
-            <div class="card-subtitle">Monthly earnings, deductions, and statutory compliance</div>
+            <div class="card-title">Salary Slips &amp; Payslip Requisition</div>
+            <div class="card-subtitle">Official policy on salary documentation and HR issuance</div>
           </div>
         </div>
         <div class="card-body">
-          <div class="card" style="padding: 20px; background: var(--bg-hover); margin-bottom: 20px;">
+          <div class="card" style="padding: 24px; background: var(--bg-hover); margin-bottom: 20px; border-left: 4px solid var(--primary);">
             <div class="flex items-center justify-between" style="flex-wrap: wrap; gap: 16px;">
-              <div>
-                <h3 style="font-size: 1.1rem; font-weight: 800; margin: 0 0 4px 0;">Latest Payslip — August 2026</h3>
-                <div class="text-muted" style="font-size: 0.85rem;">Direct Deposit to ${emp.bankName || "HDFC Bank"} • Paid on 31 Aug 2026</div>
+              <div style="max-width: 580px;">
+                <h3 style="font-size: 1.15rem; font-weight: 800; margin: 0 0 6px 0; color: var(--text-main);">Official Salary Slip Request via HR Helpdesk</h3>
+                <p style="font-size: 0.88rem; color: var(--text-secondary); line-height: 1.5; margin: 0;">
+                  As per company confidentiality and security policy, detailed payroll and salary records are managed exclusively by <strong>HR Managers and Super Administrators</strong>. To obtain your official salary slip for any specific month, please submit a formal request through the HR Helpdesk. HR will verify and issue your document directly.
+                </p>
               </div>
-              <button class="btn btn-primary btn-sm" onclick="Router.navigate('payroll')">
-                Download Full PDF Payslip
+              <button class="btn btn-primary btn-sm" onclick="Router.navigate('requests'); setTimeout(() => { if (window.RequestsView) RequestsView.openNewRequestModal('SALARY_SLIP_REQUEST'); }, 150);">
+                <svg width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/>
+                </svg>
+                <span>Request Salary Slip from HR</span>
               </button>
             </div>
           </div>

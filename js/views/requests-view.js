@@ -90,7 +90,16 @@ const RequestsView = {
       </div>
 
       <!-- Quick Action Cards / Common Requests -->
-      <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 14px; margin-bottom: 24px;">
+      <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 14px; margin-bottom: 24px;">
+        <div class="card" style="padding: 16px; border-top: 3px solid #059669; cursor: pointer; transition: all 0.2s;" onclick="RequestsView.openNewRequestModal('SALARY_SLIP_REQUEST')">
+          <div style="color: var(--success); margin-bottom: 8px;">
+            <svg width="24" height="24" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+          </div>
+          <h4 style="font-size: 0.95rem; font-weight: 700; margin-bottom: 4px; color: var(--text-main);">Salary Slip Request</h4>
+          <p style="font-size: 0.78rem; color: var(--text-secondary); margin-bottom: 10px;">Request official monthly salary slip. Reviewed & issued by HR & Super Admin.</p>
+          <span class="btn btn-soft btn-xs" style="width: 100%; text-align: center;">Request Salary Slip &rarr;</span>
+        </div>
+
         <div class="card" style="padding: 16px; border-top: 3px solid #2563eb; cursor: pointer; transition: all 0.2s;" onclick="RequestsView.openNewRequestModal('EMPLOYMENT_CERTIFICATE')">
           <div style="color: var(--primary); margin-bottom: 8px;">
             <svg width="24" height="24" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
@@ -526,11 +535,28 @@ const RequestsView = {
 
   handleTypeChange(typeCode) {
     const titleInput = document.getElementById('nr-title');
+    const descInput = document.getElementById('nr-desc');
     const changeFields = document.getElementById('nr-change-fields');
 
     const typeObj = employeeRequestService.REQUEST_TYPES.find(t => t.code === typeCode);
     if (titleInput && typeObj) {
-      titleInput.value = `Request: ${typeObj.name}`;
+      if (typeCode === 'SALARY_SLIP_REQUEST') {
+        const d = new Date();
+        const monthNames = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
+        const prevMonth = monthNames[(d.getMonth() + 11) % 12];
+        const yr = d.getFullYear();
+        titleInput.value = `Request: Salary Slip for ${prevMonth} ${yr}`;
+      } else {
+        titleInput.value = `Request: ${typeObj.name}`;
+      }
+    }
+
+    if (descInput) {
+      if (typeCode === 'SALARY_SLIP_REQUEST') {
+        descInput.placeholder = 'Please specify the exact Month & Year needed (e.g. August 2026) and the purpose (e.g. Bank Loan, Income Tax return, Visa, Personal Record)...';
+      } else {
+        descInput.placeholder = 'Please specify details (e.g. Required for Bank Home Loan application, urgent processing requested)...';
+      }
     }
 
     if (changeFields) {

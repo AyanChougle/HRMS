@@ -48,14 +48,17 @@ const seedService = {
   // 1. OFFICIAL CORPORATE ROLES (SUPER_ADMIN, COMPANY_ADMIN, HR, TRAINER, TRAINEE, EMPLOYEE)
   async seedRoles(force = false) {
     try {
-      console.log('[Seed] Writing official corporate roles to Firestore (SUPER_ADMIN, COMPANY_ADMIN, HR, TRAINER, TRAINEE, EMPLOYEE)...');
+      console.log('[Seed] Writing official corporate roles to Firestore (SUPER_ADMIN, COMPANY_ADMIN, HR, MANAGER, TEAM_LEAD, MENTOR, TRAINEE, EMPLOYEE)...');
       const roles = [
         { id: 'SUPER_ADMIN', name: 'Super Administrator', description: 'Complete cross-company system access and governance', permissions: ['*'], status: 'ACTIVE' },
         { id: 'COMPANY_ADMIN', name: 'Company Administrator', description: 'Full administrative access for assigned legal entity', permissions: ['people.*', 'attendance.*', 'leave.*', 'payroll.*', 'reports.*', 'admin.view', 'admin.manage', 'communication.*', 'settings.manage', 'users.manage', 'companies.manage'], status: 'ACTIVE' },
-        { id: 'HR', name: 'HR Manager', description: 'Employee onboarding, attendance, leave approvals, and organization management', permissions: ['people.view', 'people.create', 'people.edit', 'attendance.*', 'leave.*', 'reports.view', 'communication.*'], status: 'ACTIVE' },
-        { id: 'TRAINER', name: 'Training Lead / Mentor', description: '7-Day trainee curriculum oversight, batches, evaluations, and certifications', permissions: ['training.*', 'attendance.view', 'people.view', 'ess.view'], status: 'ACTIVE' },
-        { id: 'TRAINEE', name: 'Trainee Apprentice', description: '7-Day learning modules, quizzes, attendance logs, and mentor support', permissions: ['training.view', 'ess.view', 'own.attendance', 'own.leave', 'own.documents'], status: 'ACTIVE' },
-        { id: 'EMPLOYEE', name: 'Employee (ESS)', description: 'Self-service timecard, punch logs, leave applications, and payslip download', permissions: ['ess.view', 'own.profile', 'own.attendance', 'own.leave', 'own.payslips', 'own.documents', 'own.expenses', 'own.requests', 'attendance.punch', 'attendance.view', 'leave.view', 'leave.create', 'payroll.view', 'communication.view', 'reports.view', 'expenses.view', 'assets.view', 'performance.view', 'documents.view', 'requests.view'], status: 'ACTIVE' }
+        { id: 'HR', name: 'HR Manager', description: 'Employee onboarding, attendance, leave approvals, payroll, and organization management', permissions: ['people.view', 'people.create', 'people.edit', 'attendance.*', 'leave.*', 'payroll.*', 'reports.view', 'communication.*'], status: 'ACTIVE' },
+        { id: 'MANAGER', name: 'Manager', description: 'Department and team performance, attendance, approvals, and reporting', permissions: ['team.*', 'team.view', 'attendance.view', 'leave.view', 'leave.approve', 'approvals.*', 'performance.view', 'communication.view', 'reports.view', 'ess.view'], status: 'ACTIVE' },
+        { id: 'TEAM_LEAD', name: 'Team Leader', description: 'Team attendance, daily task workflows, approvals, and guidance', permissions: ['team.view', 'attendance.view', 'leave.view', 'performance.view', 'workflows.view', 'communication.view', 'reports.view', 'ess.view'], status: 'ACTIVE' },
+        { id: 'MENTOR', name: 'Mentor', description: 'Trainee curriculum guidance, evaluations, feedback, and training oversight', permissions: ['training.*', 'training.view', 'training.manage', 'training.assess', 'attendance.view', 'leave.view', 'ess.view'], status: 'ACTIVE' },
+        { id: 'TRAINER', name: 'Trainer', description: '7-Day trainee curriculum oversight, batches, evaluations, and certifications', permissions: ['training.*', 'attendance.view', 'people.view', 'ess.view'], status: 'ACTIVE' },
+        { id: 'TRAINEE', name: 'Trainee', description: '7-Day learning modules, quizzes, attendance logs, and mentor support', permissions: ['training.view', 'ess.view', 'own.attendance', 'own.leave', 'own.documents'], status: 'ACTIVE' },
+        { id: 'EMPLOYEE', name: 'Employee', description: 'Self-service timecard, punch logs, leave applications, and company compliance', permissions: ['ess.view', 'own.profile', 'own.attendance', 'own.leave', 'own.documents', 'own.requests', 'attendance.punch', 'attendance.view', 'leave.view', 'leave.create', 'communication.view', 'reports.view', 'assets.view', 'performance.view', 'documents.view', 'requests.view'], status: 'ACTIVE' }
       ];
 
       const batch = db.batch();

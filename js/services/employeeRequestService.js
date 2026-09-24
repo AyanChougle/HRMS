@@ -5,6 +5,7 @@
 
 const employeeRequestService = {
   REQUEST_TYPES: [
+    { code: 'SALARY_SLIP_REQUEST', name: 'Salary Slip / Payslip Document Request', approverRole: 'HR' },
     { code: 'PROFILE_CHANGE', name: 'Profile Information Update', approverRole: 'HR' },
     { code: 'ADDRESS_CHANGE', name: 'Residential Address Update', approverRole: 'HR' },
     { code: 'BANK_DETAILS_CHANGE', name: 'Salary Bank Account Update', approverRole: 'HR' },

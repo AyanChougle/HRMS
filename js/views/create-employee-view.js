@@ -112,10 +112,13 @@ const CreateEmployeeView = {
               <div class="form-group">
                 <label class="form-label required">Designated System Role</label>
                 <select id="new-emp-role" class="form-control" required onchange="CreateEmployeeView.handleRoleChange(this.value)">
-                  <option value="TRAINEE" selected>Graduate Trainee (7-Day Modules)</option>
-                  <option value="EMPLOYEE">Employee (General Staff ESS)</option>
-                  <option value="TRAINER">Corporate Trainer (Mentor)</option>
+                  <option value="TRAINEE" selected>Trainee (7-Day Modules)</option>
+                  <option value="EMPLOYEE">Employee (General Staff)</option>
+                  <option value="MENTOR">Mentor (Trainer)</option>
+                  <option value="TEAM_LEAD">Team Leader</option>
+                  <option value="MANAGER">Manager</option>
                   <option value="HR">HR Manager</option>
+                  <option value="SUPER_ADMIN">Super Admin</option>
                 </select>
               </div>
             </div>

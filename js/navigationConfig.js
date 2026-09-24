@@ -50,7 +50,6 @@ export const navigation = {
     { label: "My Profile", icon: "user", route: "#myProfile" },
     { label: "My Attendance", icon: "clock", route: "#myAttendance" },
     { label: "My Leave", icon: "calendar", route: "#myLeave" },
-    { label: "My Payroll", icon: "money", route: "#myPayroll" },
     { label: "My Expenses", icon: "receipt", route: "#myExpenses" },
     { label: "My Assets", icon: "laptop", route: "#myAssets" },
     { label: "My Performance", icon: "chart", route: "#myPerformance" },

@@ -81,15 +81,82 @@ const complianceService = {
       'Noise-Canceling Headset',
       'Access Credentials & Tools'
     ],
-    departments: [
-      { name: 'Digital Team', roles: 'Digital Executive', responsibilities: 'Digital activities and online support' },
-      { name: 'Operations', roles: 'Operations Executive', responsibilities: 'Daily operational activities' },
-      { name: 'Sales', roles: 'TL, Assistant TL, Sales Agent', responsibilities: 'Sales, Client handling and target achievement' },
-      { name: 'Real Estate', roles: 'Real Estate Executive', responsibilities: 'Real estate sales and client handling' },
-      { name: 'Car Rental', roles: 'Car Rental Executive', responsibilities: 'Car rental sales and customer handling' },
-      { name: 'Compliance', roles: 'Compliance Executive', responsibilities: 'Compliance and documentation' },
-      { name: 'Training', roles: 'Trainer', responsibilities: 'Employee training and development' },
-      { name: 'Human Resources', roles: 'Recruiter, HR Lead', responsibilities: 'Recruiter, Onboarding, Attendance, Employee Coordination & HR Operation' }
+    tradingComplianceGuidelines: [
+      { id: 1, category: 'Trading Tips & Levels', guideline: 'Never provide trading tips or trade levels without a proper Stop Loss and Target.' },
+      { id: 2, category: 'WhatsApp Trade Levels', guideline: 'Always share trade levels on WhatsApp along with Stop Loss, Target, and relevant risk warnings.' },
+      { id: 3, category: 'Risk Disclosure', guideline: 'Clearly explain the risks involved in the share market to customers.' },
+      { id: 4, category: 'GST Communication', guideline: 'Do not use the GST amount as a misleading reason to upsell or pressure customers into purchasing a package.' },
+      { id: 5, category: 'Profit Assurance', guideline: 'Do not give customers any assurance, surety, guarantee, or commitment regarding profits or returns.' },
+      { id: 6, category: 'Certainty-Based Statements', guideline: 'Avoid statements such as “confirmed profit,” “confirmed call,” “guaranteed profit,” or similar expressions that create an expectation of certainty.' },
+      { id: 7, category: 'Guaranteed Returns', guideline: 'Do not assure customers that they will receive a specific percentage or guaranteed return.' },
+      { id: 8, category: 'Potential Returns', guideline: 'When discussing potential returns, use percentage-based examples only, such as 20–25%, where permitted by the applicable process.' },
+      { id: 9, category: 'Package Explanation', guideline: 'Before selling a package, clearly explain the services, features, terms, and applicable process to the customer.' },
+      { id: 10, category: 'KYC Before Payment', guideline: 'Do not process payments without completing the required KYC process.' },
+      { id: 11, category: 'Call Summary', guideline: 'Provide the customer with a clear call summary after every payment (Summarization Call).' },
+      { id: 12, category: 'Official Customer Care', guideline: 'Inform customers about the official Customer Care number and/or official email ID as required.' },
+      { id: 13, category: 'Professional Communication', guideline: 'Maintain a professional and positive approach when communicating with customers.' },
+      { id: 14, category: 'Loss-Making Customers', guideline: 'Do not ignore customers who are facing losses.' },
+      { id: 15, category: 'Support During Losses', guideline: 'Provide appropriate support and communication as per the company process.' },
+      { id: 16, category: 'Customer Trade Decisions', guideline: 'Do not pressure or instruct customers to override their own trades solely to follow your advice.' },
+      { id: 17, category: 'One-Time Seen Images', guideline: 'Do not use “one-time seen” image tactics or similar methods to communicate with customers.' },
+      { id: 18, category: 'Deleted WhatsApp Messages', guideline: 'If a WhatsApp message is deleted, take a screenshot and share it with the Team Leader (TL) as required.' },
+      { id: 19, category: 'Language & Conduct', guideline: 'Do not use abusive, rude, commanding, or inappropriate language.' },
+      { id: 20, category: 'Approved Communication Channels', guideline: 'All customer communication must be conducted through approved and recorded channels.' },
+      { id: 21, category: 'Financial Information', guideline: 'Do not ask customers about their personal savings, available funds, or fund availability.' },
+      { id: 22, category: 'Personal Trading', guideline: 'Personal trading is strictly not allowed where prohibited by company policy.' },
+      { id: 23, category: 'Use of Customer/Company Information', guideline: 'Employees must not use customer-related information, company resources, or customer recommendations for personal trading activities.' },
+      { id: 24, category: 'Respectful Communication', guideline: 'Always communicate with customers respectfully and professionally.' },
+      { id: 25, category: 'Profit-Sharing Terminology', guideline: 'Avoid using “profit-sharing” terminology during customer calls unless specifically approved under the applicable process.' }
+    ],
+    deductionsList: [
+      {
+        id: 'UL',
+        title: 'Unauthorized Leave (UL)',
+        penalty: '2 Days Salary Deduction per occurrence',
+        condition: 'Absence without prior written notification or approval from HR / Reporting Manager.',
+        explanation: 'Failing to report to work without prior approval is recorded as Unauthorized Leave (UL). Each unauthorized day results in exactly 2 days of salary deduction. Repeated occurrences will result in disciplinary action up to immediate termination.',
+        severity: 'HIGH'
+      },
+      {
+        id: 'SANDWICH',
+        title: 'Sandwich Leave Policy',
+        penalty: '3 Days Salary Deduction',
+        condition: 'Taking leave on both Saturday and Monday, or bridging Sunday / official holidays with unsanctioned leave.',
+        explanation: 'When leave is taken on both the day preceding and following a weekly off (Saturday and Monday), the intervening Sunday is legally counted as leave, resulting in a total of 3 days of salary deduction.',
+        severity: 'HIGH'
+      },
+      {
+        id: 'LATE_MARK',
+        title: 'Late Marks (Punctuality Penalty)',
+        penalty: '4th Late Mark = Half-Day Salary Deduction',
+        condition: 'Reporting to work between 10:10:01 AM and 11:10:00 AM (past the 10-minute grace period).',
+        explanation: 'Up to 3 late marks in a single calendar month are permitted as grace with zero penalty. From the 4th late mark onwards in the same month, each late mark incurs a Half-Day (0.5 day) salary deduction.',
+        severity: 'MEDIUM'
+      },
+      {
+        id: 'CUTOFF_LATE',
+        title: 'Reporting After 11:10 AM',
+        penalty: 'Automatic Half-Day Salary Deduction',
+        condition: 'Punching in past 11:10:00 AM (more than 70 minutes after official shift start).',
+        explanation: 'Arrival after 11:10 AM is automatically categorized as Half-Day work. The afternoon shift must still be completed until 07:00 PM.',
+        severity: 'MEDIUM'
+      },
+      {
+        id: 'EXCESS_BREAK',
+        title: 'Excessive Breaks (>60 Minutes)',
+        penalty: 'Non-Work Hour Deduction & Timecard Correction',
+        condition: 'Taking more than 1 hour (60 minutes) total break time during the 10:00 AM to 07:00 PM shift.',
+        explanation: 'The daily shift consists of 8 hours of productive work and 1 hour of break. Any break time exceeding 60 minutes reduces productive work below 8 hours and is subject to proportional pay deduction or attendance warnings.',
+        severity: 'LOW'
+      },
+      {
+        id: 'EARLY_EXIT',
+        title: 'Early Departure Without Permission',
+        penalty: 'Half-Day Salary Deduction',
+        condition: 'Punching out before 07:00 PM without prior manager authorization or half-day approval.',
+        explanation: 'Employees must complete their full shift until 07:00 PM. Leaving early without authorization triggers an early departure violation.',
+        severity: 'MEDIUM'
+      }
     ]
   },
 

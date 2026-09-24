@@ -59,16 +59,28 @@ const roleAccessService = {
       'dashboard', 'people', 'create-employee', 'training', 'attendance', 'leave', 'payroll',
       'recruitment', 'compliance', 'documents', 'requests', 'communication', 'reports', 'ess'
     ],
+    MANAGER: [
+      'dashboard', 'people', 'attendance', 'leave', 'performance', 'compliance',
+      'workflows', 'requests', 'communication', 'reports', 'ess'
+    ],
+    TEAM_LEAD: [
+      'dashboard', 'people', 'attendance', 'leave', 'performance', 'compliance',
+      'workflows', 'requests', 'communication', 'reports', 'ess'
+    ],
+    MENTOR: [
+      'dashboard', 'training', 'attendance', 'leave', 'compliance',
+      'documents', 'communication', 'ess'
+    ],
     TRAINER: [
       'dashboard', 'training', 'create-employee', 'attendance', 'leave',
-      'documents', 'communication', 'ess'
+      'compliance', 'documents', 'communication', 'ess'
     ],
     TRAINEE: [
       'dashboard', 'training', 'compliance', 'attendance', 'leave',
       'documents', 'communication', 'ess'
     ],
     EMPLOYEE: [
-      'dashboard', 'ess', 'attendance', 'leave', 'payroll', 'compliance',
+      'dashboard', 'ess', 'attendance', 'leave', 'compliance',
       'assets', 'documents', 'requests', 'communication'
     ]
   },
@@ -112,14 +124,29 @@ const roleAccessService = {
       return this.DEFAULT_ROLE_PAGES[r];
     }
 
+    if (r.includes('SUPER_ADMIN')) {
+      return this.DEFAULT_ROLE_PAGES.SUPER_ADMIN;
+    }
+    if (r.includes('COMPANY') || r.includes('ADMIN')) {
+      return this.DEFAULT_ROLE_PAGES.COMPANY_ADMIN;
+    }
     if (r.includes('HR')) {
       return this.DEFAULT_ROLE_PAGES.HR;
     }
-    if (r.includes('TRAIN')) {
+    if (r.includes('MANAGER')) {
+      return this.DEFAULT_ROLE_PAGES.MANAGER;
+    }
+    if (r.includes('LEAD') || r.includes('TL')) {
+      return this.DEFAULT_ROLE_PAGES.TEAM_LEAD;
+    }
+    if (r.includes('MENTOR')) {
+      return this.DEFAULT_ROLE_PAGES.MENTOR;
+    }
+    if (r.includes('TRAIN') && !r.includes('TRAINEE')) {
       return this.DEFAULT_ROLE_PAGES.TRAINER;
     }
-    if (r.includes('ADMIN')) {
-      return this.DEFAULT_ROLE_PAGES.SUPER_ADMIN;
+    if (r.includes('TRAINEE') || r.includes('INTERN')) {
+      return this.DEFAULT_ROLE_PAGES.TRAINEE;
     }
 
     return this.DEFAULT_ROLE_PAGES.EMPLOYEE;
