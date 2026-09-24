@@ -595,11 +595,7 @@ const organizationService = {
       let list = snap.docs.map(d => ({ id: d.id, ...d.data() }));
       if (list.length === 0) {
         const defaults = [
-          { name: 'Annual / Privilege Leave', code: 'AL', paid: true, annualAllocation: 18, carryForwardAllowed: true, maximumCarryForward: 10, requiresDocument: false, requiresApproval: true, status: 'ACTIVE', companyId },
-          { name: 'Casual Leave', code: 'CL', paid: true, annualAllocation: 12, carryForwardAllowed: false, maximumCarryForward: 0, requiresDocument: false, requiresApproval: true, status: 'ACTIVE', companyId },
-          { name: 'Sick / Medical Leave', code: 'SL', paid: true, annualAllocation: 10, carryForwardAllowed: true, maximumCarryForward: 5, requiresDocument: true, requiresApproval: true, status: 'ACTIVE', companyId },
-          { name: 'Maternity Leave', code: 'ML', paid: true, annualAllocation: 180, carryForwardAllowed: false, maximumCarryForward: 0, requiresDocument: true, requiresApproval: true, status: 'ACTIVE', companyId },
-          { name: 'Paternity Leave', code: 'PL', paid: true, annualAllocation: 15, carryForwardAllowed: false, maximumCarryForward: 0, requiresDocument: false, requiresApproval: true, status: 'ACTIVE', companyId },
+          { name: 'Paid Leave', code: 'PL', paid: true, annualAllocation: 18, carryForwardAllowed: true, maximumCarryForward: 10, requiresDocument: false, requiresApproval: true, status: 'ACTIVE', companyId },
           { name: 'Leave Without Pay', code: 'LWP', paid: false, annualAllocation: 0, carryForwardAllowed: false, maximumCarryForward: 0, requiresDocument: false, requiresApproval: true, status: 'ACTIVE', companyId }
         ];
         for (const lt of defaults) {

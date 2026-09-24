@@ -487,7 +487,7 @@ const leaveService = {
       return snapshot.docs.map(doc => {
         const d = doc.data();
         const code = this.normalizeLeaveCode(d.leaveTypeCode || d.type || d.leaveTypeName);
-        const name = code === 'CL' ? 'Casual Leave (CL)' : 'Privilege Leave (PL)';
+        const name = code === 'LWP' ? 'Unpaid Leave (LWP)' : 'Paid Leave (PL)';
         return {
           id: doc.id,
           ...d,

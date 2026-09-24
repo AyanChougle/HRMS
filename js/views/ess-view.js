@@ -367,11 +367,11 @@ const ESSView = {
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/>
               </svg>
             </div>
-            <span class="kpi-trend neutral">Balance</span>
+            <span class="badge badge-primary font-bold" style="font-size: 0.72rem;">${(leaves.PL || leaves.AL)?.quotaInfo?.ruleBadge || 'Statutory'}</span>
           </div>
-          <div class="kpi-value">${(leaves.PL || leaves.AL)?.available ?? 18}</div>
-          <div class="kpi-label">Privilege Leave (PL)</div>
-          <div class="kpi-subtitle">Casual Leave: ${leaves.CL?.available ?? 12} Days Available</div>
+          <div class="kpi-value">${(leaves.PL || leaves.AL)?.available ?? 0} Days</div>
+          <div class="kpi-label">Paid Leave (PL) Balance</div>
+          <div class="kpi-subtitle">${(leaves.PL || leaves.AL)?.quotaInfo?.ruleExplanation || 'Tenure entitlement policy'}</div>
         </div>
 
         <div class="kpi-card" onclick="Router.navigate('requests'); setTimeout(() => { if (window.RequestsView) RequestsView.openNewRequestModal('SALARY_SLIP_REQUEST'); }, 150);" style="cursor: pointer;">

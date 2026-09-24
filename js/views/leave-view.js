@@ -274,10 +274,8 @@ const LeaveView = {
 
           <select id="leave-filter-type" class="form-control" style="width: 180px;">
             <option value="All Types">All Leave Types</option>
-            <option value="AL" ${this.currentFilters.leaveTypeCode === "AL" ? "selected" : ""}>Annual Leave (PL)</option>
-            <option value="CL" ${this.currentFilters.leaveTypeCode === "CL" ? "selected" : ""}>Casual Leave (CL)</option>
-            <option value="SL" ${this.currentFilters.leaveTypeCode === "SL" ? "selected" : ""}>Sick Leave (SL)</option>
-            <option value="ML" ${this.currentFilters.leaveTypeCode === "ML" ? "selected" : ""}>Maternity Leave (ML)</option>
+            <option value="PL" ${this.currentFilters.leaveTypeCode === "PL" ? "selected" : ""}>Paid Leave (PL)</option>
+            <option value="LWP" ${this.currentFilters.leaveTypeCode === "LWP" ? "selected" : ""}>Unpaid Leave (LWP)</option>
           </select>
 
           <button class="btn btn-primary btn-sm" onclick="LeaveView.applyFilters()">Apply</button>
@@ -411,7 +409,7 @@ const LeaveView = {
     );
 
     return `
-      <!-- 2 Quota Balance Cards (PL & CL) -->
+      <!-- Single Official Statutory Paid Leave Scheme + Tenure Entitlement Cards -->
       <div class="kpi-grid" style="margin-bottom: 24px; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));">
         <div class="kpi-card">
           <div class="kpi-top">
@@ -420,25 +418,25 @@ const LeaveView = {
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/>
               </svg>
             </div>
-            <span class="kpi-trend positive">Paid Earned Leave</span>
+            <span class="badge badge-primary font-bold" style="font-size: 0.72rem;">${(balances.PL || balances.AL)?.quotaInfo?.ruleBadge || 'Statutory Scheme'}</span>
           </div>
-          <div class="kpi-value">${(balances.PL || balances.AL)?.available ?? 18} Days</div>
-          <div class="kpi-label">Privilege Leave (PL)</div>
-          <div class="kpi-subtitle">${(balances.PL || balances.AL)?.used || 0} Days Used of ${(balances.PL || balances.AL)?.allocated || 18} • ${(balances.PL || balances.AL)?.pending || 0} Pending</div>
+          <div class="kpi-value">${(balances.PL || balances.AL)?.available ?? 0} Days</div>
+          <div class="kpi-label">Paid Leave (PL) Balance</div>
+          <div class="kpi-subtitle">${(balances.PL || balances.AL)?.used || 0} Days Used of ${(balances.PL || balances.AL)?.allocated || 0} • ${(balances.PL || balances.AL)?.pending || 0} Pending</div>
         </div>
 
         <div class="kpi-card">
           <div class="kpi-top">
             <div class="kpi-icon-box" style="background: var(--info-light); color: var(--info);">
               <svg width="20" height="20" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"/>
               </svg>
             </div>
-            <span class="kpi-trend neutral">Short Absences</span>
+            <span class="kpi-trend neutral">Tenure Policy</span>
           </div>
-          <div class="kpi-value">${balances.CL?.available ?? 12} Days</div>
-          <div class="kpi-label">Casual Leave (CL)</div>
-          <div class="kpi-subtitle">${balances.CL?.used || 0} Days Used of ${balances.CL?.allocated || 12} • ${balances.CL?.pending || 0} Pending</div>
+          <div class="kpi-value">${(balances.PL || balances.AL)?.allocated ?? 0} Days / Year</div>
+          <div class="kpi-label">Tenure Policy Bracket</div>
+          <div class="kpi-subtitle">${(balances.PL || balances.AL)?.quotaInfo?.ruleExplanation || 'Tenure-based entitlement policy'}</div>
         </div>
       </div>
 
