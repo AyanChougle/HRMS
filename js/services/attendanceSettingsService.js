@@ -20,6 +20,14 @@ const attendanceSettingsService = {
     workingDaysPerWeek: 6,
     sandwichLeaveDeductionDays: 3, // 3 Days Salary Deduct for sandwich leave
     unauthorizedLeaveDeductionDays: 2, // 2 days deduction for UL
+    geofence: {
+      enabled: true,
+      address: 'EL207, Electronic Zone, TTC Industrial Area, Mahape, Navi Mumbai, Maharashtra 400710',
+      mapsUrl: 'https://maps.app.goo.gl/vrm35ARLi8RgGSFu9',
+      latitude: 19.1107242,
+      longitude: 73.0281664,
+      radiusMeters: 10
+    },
     status: 'ACTIVE'
   },
 
