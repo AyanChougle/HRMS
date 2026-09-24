@@ -256,13 +256,11 @@ const AuthGuard = {
     if (!this._actualRoleId) {
       this._actualRoleId = (this.userProfile.roleId || 'EMPLOYEE').toString().toUpperCase().trim();
     }
-    const actualRole = this._actualRoleId;
-    const isLocalhost = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1' || window.location.protocol === 'file:';
-    const isProjectOwner = this.currentUser?.email === 'ayanislight@gmail.com' || (this.userProfile.email && this.userProfile.email.includes('ayan'));
-    const canPreview = isLocalhost || isProjectOwner || actualRole === 'SUPER_ADMIN' || actualRole === 'COMPANY_ADMIN' || actualRole === 'ADMIN';
+    const isMasterAdmin = this.currentUser?.email === 'ayanislight@gmail.com';
+    const canPreview = isMasterAdmin || actualRole === 'SUPER_ADMIN';
     if (!canPreview) {
       if (typeof Toast !== 'undefined') {
-        Toast.error('Only administrators can preview other role views.');
+        Toast.error('Only the Super Administrator can preview different role views.');
       }
       return;
     }
@@ -350,9 +348,8 @@ const AuthGuard = {
       const rawRole = (this.userProfile.roleId || 'EMPLOYEE').toString().toUpperCase().trim();
       const actualRole = (this._actualRoleId || rawRole).toString().toUpperCase().trim();
       const isSuperAdmin = actualRole === 'SUPER_ADMIN';
-      const isAdmin = isSuperAdmin || actualRole === 'COMPANY_ADMIN' || actualRole === 'ADMIN';
-      const isProjectOwner = this.currentUser?.email === 'ayanislight@gmail.com' || (this.userProfile.email && this.userProfile.email.includes('ayan'));
-      const canSwitchRoles = isAdmin || isProjectOwner;
+      const isMasterAdmin = this.currentUser?.email === 'ayanislight@gmail.com';
+      const canSwitchRoles = isSuperAdmin || isMasterAdmin;
 
       const permItem = document.getElementById('dropdown-permissions-item');
       if (permItem) {

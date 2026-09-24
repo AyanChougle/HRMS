@@ -72,26 +72,31 @@ const attendanceService = {
     r.totalBreakMinutes = Math.round(r.totalBreakSeconds / 60);
     r.breakFormatted = this.formatBreakDuration(r.totalBreakSeconds);
 
-    if (r.checkIn && r.checkOut) {
-      const inMins = this.time12ToMinutes(r.currentCheckInTime || r.checkIn);
+    if (r.checkIn && r.checkOut && r.checkOut !== '-') {
+      const inMins = this.time12ToMinutes(r.checkIn);
       const outMins = this.time12ToMinutes(r.checkOut);
       let sessionMinutes = 0;
       if (outMins >= inMins) {
         sessionMinutes = outMins - inMins;
-      } else if (r.grossMinutes !== undefined && r.grossMinutes > 0 && r.grossMinutes <= 1440) {
-        sessionMinutes = r.grossMinutes;
+      } else {
+        sessionMinutes = Math.max(0, (1440 - inMins) + outMins);
       }
 
-      // Sum gross minutes from prior sessions if any
-      let priorGrossMinutes = 0;
-      if (r.sessions && Array.isArray(r.sessions)) {
-        r.sessions.forEach(s => {
-          priorGrossMinutes += (s.grossMinutes || 0);
-        });
+      // Single daily shift gross minutes cannot exceed 720m (12 hours).
+      // Standard shift (10:00 AM to 07:00 PM) = 540 minutes gross.
+      const totalGrossMinutes = Math.min(720, Math.max(0, sessionMinutes));
+
+      // Diallo % Master Policy: 9hr shift = 8hr work (480m) + 1hr break (60m).
+      // If a regularized record or full-shift has 0m recorded break, apply the standard 60m break.
+      let effectiveBreakMinutes = r.totalBreakMinutes || 0;
+      if (effectiveBreakMinutes === 0 && (r.status === 'REGULARIZED' || totalGrossMinutes >= 540)) {
+        effectiveBreakMinutes = 60;
+        r.totalBreakMinutes = 60;
+        r.totalBreakSeconds = 3600;
+        r.breakFormatted = '60m';
       }
 
-      const totalGrossMinutes = Math.min(1440, Math.max(0, priorGrossMinutes + sessionMinutes));
-      const workedMinutes = Math.max(0, Math.min(totalGrossMinutes - r.totalBreakMinutes, totalGrossMinutes));
+      const workedMinutes = Math.max(0, totalGrossMinutes - effectiveBreakMinutes);
 
       const hours = Math.floor(workedMinutes / 60);
       const mins = workedMinutes % 60;
@@ -103,15 +108,18 @@ const attendanceService = {
       r.grossMinutes = totalGrossMinutes;
       r.grossHoursFormatted = `${grossHours}h ${String(grossMins).padStart(2, '0')}m`;
 
-      // Standard shift standard = 540m (9h)
-      r.overtimeMinutes = workedMinutes > 540 ? workedMinutes - 540 : 0;
+      // Standard work target is 8 hours (480 minutes). Overtime is only beyond 8 hours of net work.
+      r.overtimeMinutes = workedMinutes > 480 ? (workedMinutes - 480) : 0;
 
       // Ensure status is valid after checkOut
       if (!r.status || r.status === 'ON_BREAK') {
-        r.status = workedMinutes < 270 ? 'HALF_DAY' : (r.lateMinutes > 0 ? 'LATE' : 'PRESENT');
+        r.status = workedMinutes < 240 ? 'HALF_DAY' : (r.lateMinutes > 0 ? 'LATE' : 'PRESENT');
       }
-    } else if (r.checkIn && !r.checkOut) {
+    } else if (r.checkIn && (!r.checkOut || r.checkOut === '-')) {
       if (!r.status) r.status = (r.lateMinutes > 0 ? 'LATE' : 'PRESENT');
+      r.grossHoursFormatted = '0h 00m';
+      r.workedHoursFormatted = '0h 00m';
+      r.overtimeMinutes = 0;
     }
 
     return r;
@@ -475,15 +483,24 @@ const attendanceService = {
       let records = snapshot.docs.map(doc => {
         const raw = doc.data();
         const sanitized = this.sanitizeRecord({ id: doc.id, ...raw });
-        if (raw.grossMinutes > 1440 || (raw.checkOut && raw.status === 'ON_BREAK')) {
+        const isCorrupt = (raw.grossMinutes && raw.grossMinutes >= 1440) ||
+                          (raw.workedMinutes && raw.workedMinutes >= 1440) ||
+                          (raw.overtimeMinutes && raw.overtimeMinutes >= 480) ||
+                          (raw.grossHoursFormatted && raw.grossHoursFormatted.startsWith('24h')) ||
+                          (raw.checkOut && raw.status === 'ON_BREAK');
+        if (isCorrupt) {
           db.collection('attendanceRecords').doc(doc.id).update({
             grossMinutes: sanitized.grossMinutes,
             grossHoursFormatted: sanitized.grossHoursFormatted,
+            totalBreakMinutes: sanitized.totalBreakMinutes,
+            totalBreakSeconds: sanitized.totalBreakSeconds,
+            breakFormatted: sanitized.breakFormatted,
             workedMinutes: sanitized.workedMinutes,
             workedHoursFormatted: sanitized.workedHoursFormatted,
             overtimeMinutes: sanitized.overtimeMinutes,
             status: sanitized.status,
-            isOnBreak: false
+            isOnBreak: false,
+            updatedAt: firebase.firestore.FieldValue.serverTimestamp()
           }).catch(err => console.warn('Self-heal warning:', err));
         }
         return sanitized;
@@ -592,19 +609,37 @@ const attendanceService = {
         throw new Error('Security Violation: You cannot approve your own attendance regularization request.');
       }
 
+      const checkInStr = requestedCheckIn || reg.requestedCheckIn || '10:00 AM';
+      const checkOutStr = requestedCheckOut || reg.requestedCheckOut || '07:00 PM';
+      const inMins = this.time12ToMinutes(checkInStr);
+      const outMins = this.time12ToMinutes(checkOutStr);
+      const grossMins = Math.max(0, outMins - inMins);
+      // Standard 1 hour break for a 9hr shift (10:00 to 19:00 = 8h work + 1h break)
+      const breakMins = grossMins >= 540 ? 60 : 0;
+      const netWorkedMins = Math.max(0, grossMins - breakMins);
+      const otMins = netWorkedMins > 480 ? netWorkedMins - 480 : 0;
+
+      const grossHoursFormatted = `${Math.floor(grossMins / 60)}h ${String(grossMins % 60).padStart(2, '0')}m`;
+      const workedHoursFormatted = `${Math.floor(netWorkedMins / 60)}h ${String(netWorkedMins % 60).padStart(2, '0')}m`;
+
       // Update attendance record
       await db.collection('attendanceRecords').doc(attendanceId).set({
         employeeId: reg.employeeId,
         employeeName: reg.employeeName,
         companyId: reg.companyId,
         date: reg.requestedDate,
-        checkIn: requestedCheckIn || reg.requestedCheckIn,
-        checkOut: requestedCheckOut || reg.requestedCheckOut,
-        workedHoursFormatted: '9h 00m',
-        workedMinutes: 540,
+        checkIn: checkInStr,
+        checkOut: checkOutStr,
+        grossMinutes: grossMins,
+        grossHoursFormatted: grossHoursFormatted,
+        totalBreakMinutes: breakMins,
+        totalBreakSeconds: breakMins * 60,
+        breakFormatted: `${breakMins}m`,
+        workedMinutes: netWorkedMins,
+        workedHoursFormatted: workedHoursFormatted,
         status: 'REGULARIZED',
         lateMinutes: 0,
-        overtimeMinutes: 60,
+        overtimeMinutes: otMins,
         updatedAt: firebase.firestore.FieldValue.serverTimestamp()
       }, { merge: true });
 

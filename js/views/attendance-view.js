@@ -23,8 +23,16 @@ const AttendanceView = {
     } catch (e) {
       console.warn('Attendance Hub data load warning:', e);
     }
-    const role = AuthGuard.userProfile?.roleId || 'EMPLOYEE';
-    const isEmployeeOnly = role === 'EMPLOYEE';
+    const rawRole = (AuthGuard._previewRoleId || AuthGuard.userProfile?.roleId || 'EMPLOYEE').toString().toUpperCase().trim();
+    const isSuperAdmin = rawRole === 'SUPER_ADMIN';
+    const isCompanyAdmin = rawRole === 'COMPANY_ADMIN' || rawRole === 'ADMIN';
+    const isHR = rawRole === 'HR' || rawRole === 'HR_MANAGER';
+    const isManager = rawRole === 'MANAGER';
+    const canManageAttendance = isSuperAdmin || isCompanyAdmin || isHR;
+    const canApproveRegularization = canManageAttendance || isManager;
+    const isStaffOnly = !canManageAttendance && !isManager;
+    const isEmployeeOnly = isStaffOnly;
+    const role = rawRole;
 
     if (typeof ESSView !== 'undefined') {
       try {
@@ -34,7 +42,7 @@ const AttendanceView = {
       }
     }
 
-    if (isEmployeeOnly && (this.activeTab === 'daily' || this.activeTab === 'team' || this.activeTab === 'settings')) {
+    if (isStaffOnly && (this.activeTab === 'daily' || this.activeTab === 'team' || this.activeTab === 'presence' || this.activeTab === 'settings')) {
       this.activeTab = 'my';
     }
 
@@ -188,19 +196,19 @@ const AttendanceView = {
 
       <!-- Navigation Tabs -->
       <div class="tabs-nav" style="margin-bottom: 20px;">
-        ${!isEmployeeOnly ? `
+        ${canManageAttendance ? `
           <button class="tab-btn ${this.activeTab === 'daily' ? 'active' : ''}" onclick="AttendanceView.switchTab('daily')">Daily Attendance Roster</button>
         ` : ''}
         <button class="tab-btn ${this.activeTab === 'my' ? 'active' : ''}" onclick="AttendanceView.switchTab('my')">My Attendance & History</button>
-        ${role === 'MANAGER' || role === 'SUPER_ADMIN' || role === 'COMPANY_ADMIN' || role === 'HR' ? `
+        ${isManager || canManageAttendance ? `
           <button class="tab-btn ${this.activeTab === 'team' ? 'active' : ''}" onclick="AttendanceView.switchTab('team')">Team Attendance</button>
         ` : ''}
-        <button class="tab-btn ${this.activeTab === 'regularizations' ? 'active' : ''}" onclick="AttendanceView.switchTab('regularizations')">Regularization Queue</button>
+        <button class="tab-btn ${this.activeTab === 'regularizations' ? 'active' : ''}" onclick="AttendanceView.switchTab('regularizations')">
+          ${canApproveRegularization ? 'Regularization Queue' : 'My Regularizations'}
+        </button>
         <button class="tab-btn ${this.activeTab === 'holidays' ? 'active' : ''}" onclick="AttendanceView.switchTab('holidays')">Holidays & Shifts</button>
-        ${role === 'SUPER_ADMIN' || role === 'COMPANY_ADMIN' || role === 'HR' || role === 'MANAGER' ? `
+        ${canManageAttendance ? `
           <button class="tab-btn ${this.activeTab === 'presence' ? 'active' : ''}" onclick="AttendanceView.switchTab('presence')">Live Presence (Desktop & Web)</button>
-        ` : ''}
-        ${role === 'SUPER_ADMIN' || role === 'COMPANY_ADMIN' || role === 'HR' ? `
           <button class="tab-btn ${this.activeTab === 'settings' ? 'active' : ''}" onclick="AttendanceView.switchTab('settings')">Attendance Settings</button>
         ` : ''}
       </div>
@@ -242,6 +250,8 @@ const AttendanceView = {
 
   // 1. DAILY ATTENDANCE ROSTER TAB (ADMIN / HR)
   async renderDailyRosterTab(departments) {
+    const rawRole = (AuthGuard._previewRoleId || AuthGuard.userProfile?.roleId || 'EMPLOYEE').toString().toUpperCase().trim();
+    const canManageAttendance = ['SUPER_ADMIN', 'COMPANY_ADMIN', 'HR', 'HR_MANAGER'].includes(rawRole);
     const filters = {
       date: this.currentDate,
       ...this.currentFilters
@@ -312,7 +322,7 @@ const AttendanceView = {
                   <th>Net Worked</th>
                   <th>Late / OT</th>
                   <th>Status</th>
-                  <th>Actions</th>
+                  ${canManageAttendance ? '<th>Actions</th>' : ''}
                 </tr>
               </thead>
               <tbody>
@@ -344,9 +354,11 @@ const AttendanceView = {
                         <span class="badge-dot"></span> ${r.status}
                       </span>
                     </td>
-                    <td>
-                      <button class="btn btn-soft btn-sm" onclick="AttendanceView.openEditAttendanceModal('${r.id}', '${r.employeeName}', '${r.date}', '${r.checkIn || ''}', '${r.checkOut || ''}', '${r.status}')">Edit</button>
-                    </td>
+                    ${canManageAttendance ? `
+                      <td>
+                        <button class="btn btn-soft btn-sm" onclick="AttendanceView.openEditAttendanceModal('${r.id}', '${r.employeeName}', '${r.date}', '${r.checkIn || ''}', '${r.checkOut || ''}', '${r.status}')">Edit</button>
+                      </td>
+                    ` : ''}
                   </tr>
                 `).join('')}
               </tbody>
@@ -636,22 +648,35 @@ const AttendanceView = {
 
   // 4. REGULARIZATION QUEUE TAB
   async renderRegularizationsTab() {
+    const rawRole = (AuthGuard._previewRoleId || AuthGuard.userProfile?.roleId || 'EMPLOYEE').toString().toUpperCase().trim();
+    const isSuperAdmin = rawRole === 'SUPER_ADMIN';
+    const isCompanyAdmin = rawRole === 'COMPANY_ADMIN' || rawRole === 'ADMIN';
+    const isHR = rawRole === 'HR' || rawRole === 'HR_MANAGER';
+    const isManager = rawRole === 'MANAGER';
+    const canApprove = isSuperAdmin || isCompanyAdmin || isHR || isManager;
+    const currentUserId = AuthGuard.currentUser?.uid;
+    const currentEmployeeId = AuthGuard.userProfile?.employeeId;
+
     let requests = [];
     try {
       const snap = await db.collection('attendanceRegularizations').orderBy('createdAt', 'desc').get();
-      requests = snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+      const all = snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+      if (canApprove) {
+        requests = all;
+      } else {
+        // Staff/Trainers/Employees strictly only see their own regularization requests
+        requests = all.filter(r => r.requestedById === currentUserId || (currentEmployeeId && r.employeeId === currentEmployeeId));
+      }
     } catch (e) {
       console.warn('Regularizations fetch error:', e);
     }
-
-    const currentUserId = AuthGuard.currentUser?.uid;
 
     return `
       <div class="card">
         <div class="card-header">
           <div>
-            <div class="card-title">Attendance Regularization Requests</div>
-            <div class="card-subtitle">Review missed punches and time adjustment requests</div>
+            <div class="card-title">${canApprove ? 'Attendance Regularization Requests' : 'My Regularization Requests'}</div>
+            <div class="card-subtitle">${canApprove ? 'Review missed punches and time adjustment requests (HR / Manager approval required)' : 'Track status of your submitted punch correction and on-duty adjustment requests'}</div>
           </div>
           <button class="btn btn-primary btn-sm" onclick="AttendanceView.openRegularizationModal()">+ Submit Request</button>
         </div>
@@ -663,8 +688,8 @@ const AttendanceView = {
                   <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
                 </svg>
               </div>
-              <div class="empty-state-title">No Pending Regularizations</div>
-              <div class="empty-state-desc">All historical attendance punch corrections have been reviewed and approved.</div>
+              <div class="empty-state-title">No ${canApprove ? 'Pending' : ''} Regularizations</div>
+              <div class="empty-state-desc">${canApprove ? 'All attendance punch corrections have been reviewed and approved.' : 'You have not submitted any attendance regularization requests.'}</div>
               <div class="empty-state-actions">
                 <button class="btn btn-primary btn-sm" onclick="AttendanceView.openRegularizationModal()">+ Submit Request</button>
               </div>
@@ -683,28 +708,43 @@ const AttendanceView = {
                 </tr>
               </thead>
               <tbody>
-                ${requests.map(r => `
+                ${requests.map(r => {
+                  const isSelfRequest = r.requestedById === currentUserId || (currentEmployeeId && r.employeeId === currentEmployeeId);
+                  return `
                   <tr>
-                    <td class="font-semibold text-main">${r.employeeName || 'Staff'}</td>
+                    <td class="font-semibold text-main">
+                      ${r.employeeName || 'Staff'}
+                      ${isSelfRequest ? '<span class="badge badge-neutral" style="font-size: 0.65rem; margin-left: 4px;">You</span>' : ''}
+                    </td>
                     <td>${r.requestedDate}</td>
                     <td><span class="text-secondary" style="font-size: 0.8rem;">${r.originalCheckIn} → ${r.originalCheckOut}</span></td>
                     <td><strong style="color: var(--primary);">${r.requestedCheckIn} → ${r.requestedCheckOut}</strong></td>
                     <td style="max-width: 200px; font-size: 0.8rem;">${r.reason}</td>
                     <td>
-                      <span class="badge ${r.status === 'APPROVED' ? 'badge-success' : (r.status === 'REJECTED' ? 'badge-danger' : 'badge-warning')}">
+                      <span class="badge ${r.status === 'APPROVED' ? 'badge-success' : (r.status === 'REJECTED' ? 'badge-danger' : (r.status === 'CANCELLED' ? 'badge-neutral' : 'badge-warning'))}">
                         ${r.status}
                       </span>
                     </td>
                     <td>
-                      ${r.status === 'PENDING' ? `
-                        <div class="flex items-center gap-1">
-                          <button class="btn btn-soft btn-sm" onclick="AttendanceView.approveRegularization('${r.id}', '${r.attendanceId}', '${r.requestedCheckIn}', '${r.requestedCheckOut}', '${r.requestedById}')">Approve</button>
-                          <button class="btn btn-secondary btn-sm" onclick="AttendanceView.rejectRegularization('${r.id}')">Reject</button>
-                        </div>
-                      ` : '<span class="text-muted" style="font-size: 0.75rem;">Reviewed</span>'}
+                      ${canApprove ? `
+                        ${r.status === 'PENDING' ? `
+                          ${isSelfRequest && !isSuperAdmin ? `
+                            <span class="text-muted" style="font-size: 0.75rem;">Self Request (HR Approval Needed)</span>
+                          ` : `
+                            <div class="flex items-center gap-1">
+                              <button class="btn btn-soft btn-sm" onclick="AttendanceView.approveRegularization('${r.id}', '${r.attendanceId}', '${r.requestedCheckIn}', '${r.requestedCheckOut}', '${r.requestedById}')">Approve</button>
+                              <button class="btn btn-secondary btn-sm" onclick="AttendanceView.rejectRegularization('${r.id}')">Reject</button>
+                            </div>
+                          `}
+                        ` : `<span class="text-muted" style="font-size: 0.75rem;">Reviewed</span>`}
+                      ` : `
+                        ${r.status === 'PENDING' ? `
+                          <button class="btn btn-secondary btn-sm" onclick="AttendanceView.cancelRegularization('${r.id}')">Cancel Request</button>
+                        ` : `<span class="text-muted" style="font-size: 0.75rem;">${r.status}</span>`}
+                      `}
                     </td>
                   </tr>
-                `).join('')}
+                `}).join('')}
               </tbody>
             </table>
           `}
@@ -1085,6 +1125,12 @@ const AttendanceView = {
 
   // 7. EDIT ATTENDANCE MODAL (ADMIN / HR)
   openEditAttendanceModal(recordId, name, date, checkIn, checkOut, status) {
+    const rawRole = (AuthGuard._previewRoleId || AuthGuard.userProfile?.roleId || 'EMPLOYEE').toString().toUpperCase().trim();
+    if (!['SUPER_ADMIN', 'COMPANY_ADMIN', 'HR', 'HR_MANAGER'].includes(rawRole)) {
+      Toast.error('Security Alert: Only HR and Super Admin can edit attendance records.');
+      return;
+    }
+
     ModalManager.openModal({
       id: 'edit-att-modal',
       title: `Edit Attendance: ${name}`,
@@ -1119,22 +1165,63 @@ const AttendanceView = {
   },
 
   async saveAttendanceEdit(recordId) {
+    const rawRole = (AuthGuard._previewRoleId || AuthGuard.userProfile?.roleId || 'EMPLOYEE').toString().toUpperCase().trim();
+    if (!['SUPER_ADMIN', 'COMPANY_ADMIN', 'HR', 'HR_MANAGER'].includes(rawRole)) {
+      Toast.error('Security Alert: Only HR and Super Admin can edit attendance records.');
+      return;
+    }
+
     const checkIn = document.getElementById('edit-att-in')?.value.trim();
     const checkOut = document.getElementById('edit-att-out')?.value.trim();
     const status = document.getElementById('edit-att-status')?.value;
 
     try {
+      const inMins = attendanceService.time12ToMinutes(checkIn);
+      const outMins = attendanceService.time12ToMinutes(checkOut);
+      let grossMins = 0;
+      if (checkIn && checkOut && checkOut !== '-') {
+        grossMins = Math.max(0, outMins - inMins);
+      }
+      const breakMins = grossMins >= 540 ? 60 : 0;
+      const netWorkedMins = Math.max(0, grossMins - breakMins);
+      const otMins = netWorkedMins > 480 ? netWorkedMins - 480 : 0;
+
+      const grossHoursFormatted = `${Math.floor(grossMins / 60)}h ${String(grossMins % 60).padStart(2, '0')}m`;
+      const workedHoursFormatted = `${Math.floor(netWorkedMins / 60)}h ${String(netWorkedMins % 60).padStart(2, '0')}m`;
+
       await db.collection('attendanceRecords').doc(recordId).update({
         checkIn,
         checkOut,
+        grossMinutes: grossMins,
+        grossHoursFormatted,
+        totalBreakMinutes: breakMins,
+        totalBreakSeconds: breakMins * 60,
+        breakFormatted: `${breakMins}m`,
+        workedMinutes: netWorkedMins,
+        workedHoursFormatted,
+        overtimeMinutes: otMins,
         status,
         updatedAt: firebase.firestore.FieldValue.serverTimestamp()
       });
-      Toast.success('Attendance record updated.');
+      Toast.success('Attendance record updated accurately.');
       ModalManager.closeModal();
       this.switchTab('daily');
     } catch (e) {
       Toast.error(`Failed to update: ${e.message}`);
+    }
+  },
+
+  async cancelRegularization(reqId) {
+    if (!confirm('Are you sure you want to cancel this regularization request?')) return;
+    try {
+      await db.collection('attendanceRegularizations').doc(reqId).update({
+        status: 'CANCELLED',
+        updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+      });
+      Toast.info('Regularization request cancelled.');
+      this.switchTab('regularizations');
+    } catch (e) {
+      Toast.error(`Could not cancel request: ${e.message}`);
     }
   }
 };

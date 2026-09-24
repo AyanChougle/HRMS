@@ -95,6 +95,10 @@ const authService = {
       if (!['EMPLOYEE', 'TRAINER', 'TRAINEE', 'SUPER_ADMIN', 'COMPANY_ADMIN', 'HR', 'HR_MANAGER', 'PAYROLL', 'MANAGER'].includes(requestedRole)) {
         requestedRole = isMasterAdmin ? 'SUPER_ADMIN' : 'EMPLOYEE';
       }
+      // Administrative roles can only be provisioned by Super Admin/HR inside the app
+      if (['SUPER_ADMIN', 'COMPANY_ADMIN', 'HR', 'HR_MANAGER'].includes(requestedRole) && !isMasterAdmin && !profileData.createdInsideApp) {
+        requestedRole = 'EMPLOYEE';
+      }
       const initialRole = requestedRole;
       let employeeId = profileData.employeeId || null;
 
