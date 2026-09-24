@@ -337,21 +337,18 @@ const ESSView = {
                   <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/>
                 </svg>
                 <span>${this.isPunchedIn ? "Punch Out" : "Web Punch In (GPS)"}</span>
-              </button>
-              ${
-                this.isPunchedIn
-                  ? `
-              <button class="btn ${this.isOnBreak ? "btn-warning" : "btn-secondary"} btn-lg" id="ess-break-btn" onclick="ESSView.toggleBreak()">
-                <svg width="20" height="20" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="${this.isOnBreak ? "M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z M21 12a9 9 0 11-18 0 9 9 0 0118 0z" : "M10 9v6m4-6v6m7-3a9 9 0 11-18 0 9 9 0 0118 0z"}"/>
+              <button class="btn ${this.isShiftCompletedToday ? "btn-secondary disabled" : this.isOnBreak ? "btn-warning" : "btn-secondary"}" id="ess-break-btn" onclick="ESSView.toggleBreak()" style="${this.isShiftCompletedToday ? "opacity: 0.6; cursor: not-allowed;" : !this.isOnBreak && this.isPunchedIn ? "color: #d97706; border-color: #fcd34d;" : ""}" ${this.isShiftCompletedToday ? "disabled" : ""}>
+                <svg width="18" height="18" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="${this.isOnBreak ? "M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z M21 12a9 9 0 11-18 0 9 9 0 0118 0z" : "M18 8h1a4 4 0 010 8h-1M2 8h16v9a4 4 0 01-4 4H6a4 4 0 01-4-4V8z M6 1v3M10 1v3M14 1v3"}"/>
                 </svg>
-                <span>${this.isOnBreak ? "End Break" : "Start Break"}</span>
+                <span>${this.isShiftCompletedToday ? "Break (Ended)" : this.isOnBreak ? "Resume Work" : "Take Break"}</span>
               </button>
-              `
-                  : ""
-              }
-              <button class="btn btn-secondary btn-lg" onclick="Forms.openApplyLeaveModal()">
-                <span>Apply Time-Off</span>
+
+              <button class="btn btn-secondary" onclick="Forms.openApplyLeaveModal()" style="display: inline-flex; align-items: center; gap: 8px;">
+                <svg width="18" height="18" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/>
+                </svg>
+                <span>Apply Leave</span>
               </button>
             </div>
           </div>
@@ -1265,6 +1262,8 @@ const ESSView = {
           ? false
           : !!state.isPunchedIn;
         this.isOnBreak = this.isPunchedIn ? !!state.isOnBreak : false;
+        this.currentBreakType = this.isOnBreak ? state.currentBreakType || null : null;
+        this.currentBreakLabel = this.isOnBreak ? state.currentBreakLabel || null : null;
         this.workSeconds = state.workSeconds || 0;
         this.totalBreakSeconds = state.totalBreakSeconds || 0;
         this.breakSeconds = this.isOnBreak ? state.breakSeconds || 0 : 0;
@@ -1316,6 +1315,8 @@ const ESSView = {
         isPunchedIn: !this.isShiftCompletedToday && !!this.isPunchedIn,
         isOnBreak:
           !this.isShiftCompletedToday && this.isPunchedIn && !!this.isOnBreak,
+        currentBreakType: this.isOnBreak ? this.currentBreakType || null : null,
+        currentBreakLabel: this.isOnBreak ? this.currentBreakLabel || null : null,
         workSeconds: this.workSeconds || 0,
         totalBreakSeconds: this.totalBreakSeconds || 0,
         breakSeconds:
@@ -1404,9 +1405,10 @@ const ESSView = {
           "Shift Not Started • Shift: 10:00 AM – 07:00 PM (Opens 09:30 AM)";
         subStatusEl.style.color = "var(--text-secondary)";
       } else if (this.isOnBreak) {
+        const breakReasonStr = this.currentBreakLabel ? ` (${this.currentBreakLabel})` : "";
         subStatusEl.textContent = isBreakExceeded
-          ? "Break Exceeded (> 1h Quota) • Overbreak Active"
-          : "Timer Paused for Break (1h Quota)";
+          ? `Break Exceeded (> 1h Quota) • Overbreak Active${breakReasonStr}`
+          : `Timer Paused for Break${breakReasonStr} • 1h Quota`;
         subStatusEl.style.color = isBreakExceeded
           ? "var(--danger)"
           : "var(--warning)";
@@ -1429,8 +1431,8 @@ const ESSView = {
         breakBadgeEl.textContent = this.isShiftCompletedToday
           ? "Shift Ended"
           : this.isPunchedIn && this.isOnBreak
-            ? "Break in progress"
-            : "Break Idle (1h Max)";
+            ? (this.currentBreakLabel ? `Break: ${this.currentBreakLabel}` : "Break in progress")
+            : "1h Daily Quota";
       }
     }
 
@@ -1502,58 +1504,104 @@ const ESSView = {
       const el = document.getElementById(id);
       if (el) {
         if (this.isShiftCompletedToday) {
-          el.className = "btn btn-secondary btn-lg disabled";
+          el.className = "btn btn-secondary disabled";
           el.setAttribute("disabled", "true");
           el.style.opacity = "0.75";
           el.style.cursor = "not-allowed";
+          el.style.color = "";
+          el.style.borderColor = "";
           el.innerHTML = `
-            <svg width="20" height="20" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <svg width="18" height="18" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"/>
             </svg>
-            <span>Shift Completed (Locked)</span>
+            <span>Shift Completed</span>
           `;
         } else if (this.isPunchedIn) {
-          el.className = "btn btn-primary btn-lg";
+          el.className = "btn btn-secondary";
           el.removeAttribute("disabled");
           el.style.opacity = "1";
           el.style.cursor = "pointer";
+          el.style.color = "#dc2626";
+          el.style.borderColor = "#fca5a5";
           el.innerHTML = `
-            <svg width="20" height="20" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/>
+            <svg width="18" height="18" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"/>
             </svg>
             <span>Punch Out</span>
           `;
         } else {
-          el.className = "btn btn-primary btn-lg";
+          el.className = "btn btn-primary";
           el.removeAttribute("disabled");
           el.style.opacity = "1";
           el.style.cursor = "pointer";
+          el.style.color = "";
+          el.style.borderColor = "";
           el.innerHTML = `
-            <svg width="20" height="20" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/>
+            <svg width="18" height="18" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 16l-4-4m0 0l4-4m-4 4h14m-5 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h7a3 3 0 013 3v1"/>
             </svg>
-            <span>Web Punch In (GPS)</span>
+            <span>Web Punch In</span>
           `;
         }
       }
     });
 
-    // Break buttons
+    // Break buttons (Always visible across all states)
     ["ess-break-btn", "emp-break-btn"].forEach((id) => {
       const el = document.getElementById(id);
       if (el) {
-        if (!this.isPunchedIn || this.isShiftCompletedToday) {
-          el.style.display = "none";
-        } else {
-          el.style.display = "inline-flex";
-          el.className = this.isOnBreak
-            ? "btn btn-warning btn-lg"
-            : "btn btn-secondary btn-lg";
+        el.style.display = "inline-flex";
+        if (this.isShiftCompletedToday) {
+          el.className = "btn btn-secondary disabled";
+          el.setAttribute("disabled", "true");
+          el.style.opacity = "0.6";
+          el.style.cursor = "not-allowed";
+          el.style.color = "";
+          el.style.borderColor = "";
           el.innerHTML = `
-            <svg width="20" height="20" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="${this.isOnBreak ? "M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z M21 12a9 9 0 11-18 0 9 9 0 0118 0z" : "M10 9v6m4-6v6m7-3a9 9 0 11-18 0 9 9 0 0118 0z"}"/>
+            <svg width="18" height="18" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M18 8h1a4 4 0 010 8h-1M2 8h16v9a4 4 0 01-4 4H6a4 4 0 01-4-4V8z M6 1v3M10 1v3M14 1v3"/>
             </svg>
-            <span>${this.isOnBreak ? "End Break" : "Start Break"}</span>
+            <span>Break (Ended)</span>
+          `;
+        } else if (!this.isPunchedIn) {
+          el.className = "btn btn-secondary";
+          el.removeAttribute("disabled");
+          el.style.opacity = "0.9";
+          el.style.cursor = "pointer";
+          el.style.color = "";
+          el.style.borderColor = "";
+          el.innerHTML = `
+            <svg width="18" height="18" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M18 8h1a4 4 0 010 8h-1M2 8h16v9a4 4 0 01-4 4H6a4 4 0 01-4-4V8z M6 1v3M10 1v3M14 1v3"/>
+            </svg>
+            <span>Take Break</span>
+          `;
+        } else if (this.isOnBreak) {
+          el.className = "btn btn-warning";
+          el.removeAttribute("disabled");
+          el.style.opacity = "1";
+          el.style.cursor = "pointer";
+          el.style.color = "";
+          el.style.borderColor = "";
+          el.innerHTML = `
+            <svg width="18" height="18" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+            </svg>
+            <span>Resume Work</span>
+          `;
+        } else {
+          el.className = "btn btn-secondary";
+          el.removeAttribute("disabled");
+          el.style.opacity = "1";
+          el.style.cursor = "pointer";
+          el.style.color = "#d97706";
+          el.style.borderColor = "#fcd34d";
+          el.innerHTML = `
+            <svg width="18" height="18" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M18 8h1a4 4 0 010 8h-1M2 8h16v9a4 4 0 01-4 4H6a4 4 0 01-4-4V8z M6 1v3M10 1v3M14 1v3"/>
+            </svg>
+            <span>Take Break</span>
           `;
         }
       }
