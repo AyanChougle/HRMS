@@ -4,40 +4,16 @@
  */
 
 const leavePolicyService = {
-  // Built-in Default Indian Leave Schemes (PL and CL)
+  // Built-in Single Official Paid Leave Scheme & Unpaid Leave
   DEFAULT_LEAVE_TYPES: [
-    { code: 'PL', name: 'Privilege Leave (PL)', annualQuota: 18, paid: true, carryForwardAllowed: true, maxCarryForward: 10, allowHalfDay: true, encashmentAllowed: true, description: 'Statutory Privilege / Annual Earned Leave' },
-    { code: 'CL', name: 'Casual Leave (CL)', annualQuota: 12, paid: true, carryForwardAllowed: false, maxCarryForward: 0, allowHalfDay: true, encashmentAllowed: false, description: 'Casual Leave for personal matters and short absences' }
+    { code: 'PL', name: 'Paid Leave (PL)', annualQuota: 18, paid: true, carryForwardAllowed: true, maxCarryForward: 10, allowHalfDay: true, encashmentAllowed: true, description: 'Single official statutory Paid Leave scheme varying with employee tenure (0 leaves <6mo, 4 leaves 6mo-1.5yr, 18 leaves >1.5yr)' },
+    { code: 'LWP', name: 'Unpaid Leave (Loss of Pay)', annualQuota: 0, paid: false, carryForwardAllowed: false, maxCarryForward: 0, allowHalfDay: true, encashmentAllowed: false, description: 'Unpaid leave / leave without pay' }
   ],
 
   // Get all active leave types for a company
   async getLeaveTypes(companyId = 'comp_diallo_india') {
-    try {
-      const snapshot = await db.collection('leaveTypes')
-        .where('companyId', '==', companyId)
-        .get();
-
-      if (!snapshot.empty) {
-        return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-      }
-
-      // Initialize default leave types in Firestore if empty
-      for (const t of this.DEFAULT_LEAVE_TYPES) {
-        await db.collection('leaveTypes').add({
-          ...t,
-          companyId,
-          status: 'ACTIVE',
-          createdAt: firebase.firestore.FieldValue.serverTimestamp(),
-          updatedAt: firebase.firestore.FieldValue.serverTimestamp()
-        });
-      }
-
-      const freshSnap = await db.collection('leaveTypes').where('companyId', '==', companyId).get();
-      return freshSnap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-    } catch (e) {
-      console.warn('Could not fetch leave types, using defaults:', e);
-      return this.DEFAULT_LEAVE_TYPES.map((t, idx) => ({ id: `type_${idx}`, ...t }));
-    }
+    // Return only the single official Paid Leave scheme and Unpaid Leave as per policy
+    return this.DEFAULT_LEAVE_TYPES.map((t, idx) => ({ id: `type_${t.code}`, ...t }));
   },
 
   // Create custom leave type

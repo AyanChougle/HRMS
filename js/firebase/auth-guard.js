@@ -259,7 +259,7 @@ const AuthGuard = {
       this._actualRoleId = (this.userProfile.roleId || 'EMPLOYEE').toString().toUpperCase().trim();
     }
     const isMasterAdmin = this.currentUser?.email === 'ayanislight@gmail.com';
-    const canPreview = isMasterAdmin || actualRole === 'SUPER_ADMIN';
+    const canPreview = isMasterAdmin || this._actualRoleId === 'SUPER_ADMIN' || (this.userProfile?.roleId || '').toString().toUpperCase() === 'SUPER_ADMIN';
     if (!canPreview) {
       if (typeof Toast !== 'undefined') {
         Toast.error('Only the Super Administrator can preview different role views.');
@@ -288,23 +288,26 @@ const AuthGuard = {
     } else if (normalizedRole === 'HR' || normalizedRole === 'HR_MANAGER') {
       this.permissions = window.PermissionService ? PermissionService.getUserPermissions({ roleId: 'HR' }) : new Set(['*']);
       this.userRole = { name: 'HR Manager', id: 'HR' };
-    } else if (normalizedRole === 'PAYROLL') {
-      this.permissions = window.PermissionService ? PermissionService.getUserPermissions({ roleId: 'PAYROLL' }) : new Set(['*']);
-      this.userRole = { name: 'Payroll Officer', id: 'PAYROLL' };
     } else if (normalizedRole === 'MANAGER') {
-      this.permissions = window.PermissionService ? PermissionService.getUserPermissions({ roleId: 'MANAGER' }) : new Set(['*']);
-      this.userRole = { name: 'Line Manager', id: 'MANAGER' };
+      this.permissions = window.PermissionService ? PermissionService.getUserPermissions({ roleId: 'MANAGER' }) : new Set(['team.*', 'performance.view', 'attendance.view', 'leave.view', 'ess.view']);
+      this.userRole = { name: 'Manager', id: 'MANAGER' };
+    } else if (normalizedRole === 'TEAM_LEAD' || normalizedRole === 'TL') {
+      this.permissions = window.PermissionService ? PermissionService.getUserPermissions({ roleId: 'TEAM_LEAD' }) : new Set(['team.view', 'performance.view', 'attendance.view', 'leave.view', 'ess.view']);
+      this.userRole = { name: 'Team Leader', id: 'TEAM_LEAD' };
+    } else if (normalizedRole === 'MENTOR') {
+      this.permissions = window.PermissionService ? PermissionService.getUserPermissions({ roleId: 'MENTOR' }) : new Set(['training.*', 'performance.view', 'attendance.view', 'leave.view', 'ess.view']);
+      this.userRole = { name: 'Mentor', id: 'MENTOR' };
     } else if (normalizedRole === 'TRAINER') {
-      this.permissions = window.PermissionService ? PermissionService.getUserPermissions({ roleId: 'TRAINER' }) : new Set(['training.*', 'attendance.punch', 'attendance.view', 'leave.view', 'leave.create', 'own.profile']);
-      this.userRole = { name: 'Corporate Trainer', id: 'TRAINER' };
+      this.permissions = window.PermissionService ? PermissionService.getUserPermissions({ roleId: 'TRAINER' }) : new Set(['training.*', 'performance.view', 'attendance.punch', 'attendance.view', 'leave.view', 'leave.create', 'own.profile']);
+      this.userRole = { name: 'Trainer', id: 'TRAINER' };
     } else if (normalizedRole === 'TRAINEE') {
-      this.permissions = window.PermissionService ? PermissionService.getUserPermissions({ roleId: 'TRAINEE' }) : new Set(['training.view', 'training.submit', 'attendance.punch', 'attendance.view', 'leave.view', 'leave.create', 'own.profile']);
-      this.userRole = { name: 'Graduate Trainee', id: 'TRAINEE' };
+      this.permissions = window.PermissionService ? PermissionService.getUserPermissions({ roleId: 'TRAINEE' }) : new Set(['training.view', 'training.submit', 'performance.view', 'attendance.punch', 'attendance.view', 'leave.view', 'leave.create', 'own.profile']);
+      this.userRole = { name: 'Trainee', id: 'TRAINEE' };
     } else {
-      this.userRole = { name: 'Employee (ESS)', id: 'EMPLOYEE' };
-      this.permissions = new Set([
+      this.userRole = { name: 'Employee', id: 'EMPLOYEE' };
+      this.permissions = window.PermissionService ? PermissionService.getUserPermissions({ roleId: 'EMPLOYEE' }) : new Set([
         'own.profile', 'attendance.view', 'attendance.punch', 'leave.view', 'leave.create',
-        'payroll.view', 'expenses.view', 'expenses.create', 'assets.view', 'performance.view',
+        'performance.view', 'expenses.view', 'expenses.create', 'assets.view',
         'documents.view', 'requests.view', 'requests.create', 'communication.view', 'reports.view', 'training.view'
       ]);
     }

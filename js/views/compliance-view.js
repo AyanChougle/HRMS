@@ -68,7 +68,7 @@ const ComplianceView = {
             </div>
             <span class="kpi-trend positive">Active</span>
           </div>
-          <div class="kpi-value">100% Enforced</div>
+          <div class="kpi-value">Enforced</div>
           <div class="kpi-label">Master HR Policies</div>
           <div class="kpi-subtitle">Diallo India (Ghansoli Mahape)</div>
         </div>
@@ -388,23 +388,23 @@ const ComplianceView = {
             <input type="text" id="compliance-search-input" class="form-control form-control-sm" placeholder="Search guidelines..." style="width: 220px;" oninput="ComplianceView.filterGuidelines(this.value)" />
           </div>
         </div>
-        <div class="table-container">
-          <table class="data-table" id="compliance-guidelines-table">
+        <div class="table-container" style="width: 100%; overflow-x: auto; -webkit-overflow-scrolling: touch;">
+          <table class="data-table compliance-guidelines-table" id="compliance-guidelines-table" style="width: 100%; min-width: 600px;">
             <thead>
               <tr>
-                <th style="width: 70px; text-align: center;">Sr. No.</th>
-                <th style="width: 240px;">Compliance Category</th>
-                <th>Guideline / Requirement</th>
+                <th style="width: 60px; text-align: center;">Sr. No.</th>
+                <th style="width: 210px; text-align: left;">Compliance Category</th>
+                <th class="text-left content-cell" style="text-align: left;">Guideline / Requirement</th>
               </tr>
             </thead>
             <tbody>
               ${guidelines.map(g => `
                 <tr class="guideline-row" data-category="${g.category.toLowerCase()}" data-text="${g.guideline.toLowerCase()}">
-                  <td style="font-weight: 700; color: var(--text-muted); text-align: center;">${g.id}</td>
-                  <td>
-                    <span class="badge badge-primary" style="font-size: 0.82rem; font-weight: 600;">${g.category}</span>
+                  <td style="font-weight: 700; color: var(--text-muted); text-align: center; vertical-align: top; padding-top: 14px;">${g.id}</td>
+                  <td style="vertical-align: top; padding-top: 12px;">
+                    <span class="badge badge-primary" style="font-size: 0.78rem; font-weight: 600; display: inline-block;">${g.category}</span>
                   </td>
-                  <td style="color: var(--text-main); font-size: 0.88rem; line-height: 1.5; font-weight: 500;">
+                  <td class="text-left content-cell" style="color: var(--text-main); font-size: 0.88rem; line-height: 1.55; font-weight: 500; text-align: left !important; white-space: normal !important; word-break: break-word; vertical-align: top; padding-top: 14px;">
                     ${g.guideline}
                   </td>
                 </tr>

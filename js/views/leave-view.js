@@ -83,11 +83,11 @@ const LeaveView = {
                   <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/>
                 </svg>
               </div>
-              <span class="kpi-trend positive">Available</span>
+              <span class="badge badge-primary font-bold" style="font-size: 0.72rem;">${balances.PL?.quotaInfo?.ruleBadge || 'Statutory'}</span>
             </div>
-            <div class="kpi-value">${balances.PL?.available ?? 18} Days</div>
-            <div class="kpi-label">Privilege Leave (PL)</div>
-            <div class="kpi-subtitle">${balances.PL?.used || 0} Used of ${balances.PL?.allocated || 18} Allocated</div>
+            <div class="kpi-value">${balances.PL?.available ?? 0} Days</div>
+            <div class="kpi-label">Available Paid Leave (PL)</div>
+            <div class="kpi-subtitle">${balances.PL?.used || 0} Used of ${balances.PL?.allocated || 0} Allocated</div>
           </div>
 
           <div class="kpi-card">
@@ -97,11 +97,13 @@ const LeaveView = {
                   <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/>
                 </svg>
               </div>
-              <span class="kpi-trend neutral">Available</span>
+              <span class="kpi-trend neutral">Tenure Rule</span>
             </div>
-            <div class="kpi-value">${balances.CL?.available ?? 12} Days</div>
-            <div class="kpi-label">Casual Leave (CL)</div>
-            <div class="kpi-subtitle">${balances.CL?.used || 0} Used of ${balances.CL?.allocated || 12} Allocated</div>
+            <div class="kpi-value" style="font-size: 1.15rem; font-weight: 700; margin-top: 4px;">
+              ${balances.PL?.allocated ?? 0} Days Quota
+            </div>
+            <div class="kpi-label">Tenure Policy Bracket</div>
+            <div class="kpi-subtitle">${balances.PL?.quotaInfo?.ruleExplanation || 'Tenure entitlement'}</div>
           </div>
 
           <div class="kpi-card">
@@ -113,9 +115,9 @@ const LeaveView = {
               </div>
               <span class="kpi-trend positive">Approved</span>
             </div>
-            <div class="kpi-value">${(balances.PL?.used || 0) + (balances.CL?.used || 0)} Days</div>
-            <div class="kpi-label">Total Leaves Taken</div>
-            <div class="kpi-subtitle">Current financial year</div>
+            <div class="kpi-value">${balances.PL?.used || 0} Days</div>
+            <div class="kpi-label">Approved Leaves Taken</div>
+            <div class="kpi-subtitle">Current calendar year</div>
           </div>
 
           <div class="kpi-card">
@@ -125,9 +127,9 @@ const LeaveView = {
                   <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/>
                 </svg>
               </div>
-              <span class="kpi-trend ${(balances.PL?.pending || 0) + (balances.CL?.pending || 0) > 0 ? "warning" : "neutral"}">${(balances.PL?.pending || 0) + (balances.CL?.pending || 0) > 0 ? "In Review" : "None"}</span>
+              <span class="kpi-trend ${(balances.PL?.pending || 0) > 0 ? "warning" : "neutral"}">${(balances.PL?.pending || 0) > 0 ? "In Review" : "None"}</span>
             </div>
-            <div class="kpi-value">${(balances.PL?.pending || 0) + (balances.CL?.pending || 0)} Days</div>
+            <div class="kpi-value">${balances.PL?.pending || 0} Days</div>
             <div class="kpi-label">Pending Requests</div>
             <div class="kpi-subtitle">Awaiting supervisor review</div>
           </div>
@@ -889,6 +891,10 @@ const LeaveView = {
                 })
                 .join("")}
             </select>
+            <div style="font-size: 0.78rem; color: var(--text-secondary); margin-top: 6px; line-height: 1.4; padding: 6px 10px; background: var(--bg-hover); border-radius: var(--radius-sm); border-left: 3px solid var(--primary);">
+              <div><strong>Paid Leave Tenure Policy:</strong> &lt;6 Months = <strong>0 Days</strong> • 6 Months to 1.5 Years = <strong>4 Days</strong> • &gt;1.5 Years = <strong>18 Days</strong> (half if reached mid-year).</div>
+              ${balances?.PL?.quotaInfo?.ruleExplanation ? `<div style="color: var(--primary); font-weight: 600; margin-top: 3px;">Your Status: ${balances.PL.quotaInfo.ruleExplanation}</div>` : ''}
+            </div>
           </div>
 
           <div class="form-row">

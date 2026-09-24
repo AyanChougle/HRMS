@@ -7,7 +7,7 @@
 const roleAccessService = {
   COLLECTION: 'systemConfig',
   DOC_ID: 'role_page_permissions',
-  STORAGE_KEY: 'diallo_role_page_permissions_v1',
+  STORAGE_KEY: 'diallo_role_page_permissions_v4',
 
   // Master Registry of all system views and navigation pages
   PAGES: [
@@ -33,7 +33,7 @@ const roleAccessService = {
     { key: 'settings', label: 'System Settings', category: 'Administration', icon: 'M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z' }
   ],
 
-  // Official Policy Defaults Per Role
+  // Official Policy Defaults Per Role (Strict 8 Roles Hierarchy)
   DEFAULT_ROLE_PAGES: {
     SUPER_ADMIN: [
       'dashboard', 'people', 'create-employee', 'training', 'attendance', 'leave',
@@ -41,21 +41,21 @@ const roleAccessService = {
       'documents', 'requests', 'workflows', 'communication', 'reports', 'role-permissions',
       'settings', 'ess'
     ],
-    ADMIN: [
-      'dashboard', 'people', 'create-employee', 'training', 'attendance', 'leave',
-      'compliance', 'payroll', 'recruitment', 'expenses', 'assets', 'performance',
-      'documents', 'requests', 'workflows', 'communication', 'reports', 'settings', 'ess'
-    ],
     COMPANY_ADMIN: [
       'dashboard', 'people', 'create-employee', 'training', 'attendance', 'leave',
       'compliance', 'payroll', 'recruitment', 'expenses', 'assets', 'performance',
       'documents', 'requests', 'workflows', 'communication', 'reports', 'settings', 'ess'
     ],
-    HR: [
+    ADMIN: [
+      'dashboard', 'people', 'create-employee', 'training', 'attendance', 'leave',
+      'compliance', 'payroll', 'recruitment', 'expenses', 'assets', 'performance',
+      'documents', 'requests', 'workflows', 'communication', 'reports', 'settings', 'ess'
+    ],
+    HR_MANAGER: [
       'dashboard', 'people', 'create-employee', 'training', 'attendance', 'leave', 'payroll',
       'recruitment', 'compliance', 'documents', 'requests', 'communication', 'reports', 'ess'
     ],
-    HR_MANAGER: [
+    HR: [
       'dashboard', 'people', 'create-employee', 'training', 'attendance', 'leave', 'payroll',
       'recruitment', 'compliance', 'documents', 'requests', 'communication', 'reports', 'ess'
     ],
@@ -68,19 +68,19 @@ const roleAccessService = {
       'workflows', 'requests', 'communication', 'reports', 'ess'
     ],
     MENTOR: [
-      'dashboard', 'training', 'attendance', 'leave', 'compliance',
+      'dashboard', 'training', 'attendance', 'leave', 'performance', 'compliance',
       'documents', 'communication', 'ess'
     ],
     TRAINER: [
-      'dashboard', 'training', 'create-employee', 'attendance', 'leave',
+      'dashboard', 'training', 'create-employee', 'attendance', 'leave', 'performance',
       'compliance', 'documents', 'communication', 'ess'
     ],
     TRAINEE: [
-      'dashboard', 'training', 'compliance', 'attendance', 'leave',
+      'dashboard', 'training', 'attendance', 'leave', 'performance', 'compliance',
       'documents', 'communication', 'ess'
     ],
     EMPLOYEE: [
-      'dashboard', 'ess', 'attendance', 'leave', 'compliance',
+      'dashboard', 'ess', 'attendance', 'leave', 'performance', 'compliance',
       'assets', 'documents', 'requests', 'communication'
     ]
   },
@@ -89,6 +89,10 @@ const roleAccessService = {
 
   async init() {
     try {
+      // Invalidate legacy cached permissions from old versions
+      localStorage.removeItem('diallo_role_page_permissions_v1');
+      localStorage.removeItem('diallo_role_page_permissions_v2');
+      localStorage.removeItem('diallo_role_page_permissions_v3');
       const local = localStorage.getItem(this.STORAGE_KEY);
       if (local) {
         this.cachedConfig = JSON.parse(local);
@@ -103,7 +107,18 @@ const roleAccessService = {
       if (typeof db === 'undefined') return;
       const snap = await db.collection(this.COLLECTION).doc(this.DOC_ID).get();
       if (snap.exists) {
-        this.cachedConfig = snap.data();
+        const data = snap.data() || {};
+        const sanitized = { ...data };
+        // Strictly sanitize: Remove payroll from non-admin/HR roles and ensure performance is present
+        ['EMPLOYEE', 'TRAINEE', 'MENTOR', 'TRAINER', 'TEAM_LEAD', 'MANAGER'].forEach(role => {
+          if (Array.isArray(sanitized[role])) {
+            sanitized[role] = sanitized[role].filter(p => p !== 'payroll' && p !== 'payslip-templates');
+            if (!sanitized[role].includes('performance')) {
+              sanitized[role].push('performance');
+            }
+          }
+        });
+        this.cachedConfig = sanitized;
         localStorage.setItem(this.STORAGE_KEY, JSON.stringify(this.cachedConfig));
       }
     } catch (e) {
@@ -114,47 +129,62 @@ const roleAccessService = {
   getVisiblePagesForRole(roleId) {
     const r = (roleId || 'EMPLOYEE').toUpperCase().trim();
     
+    let pages = null;
     // Check custom configuration first
     if (this.cachedConfig && this.cachedConfig[r] && Array.isArray(this.cachedConfig[r])) {
-      return this.cachedConfig[r];
+      pages = [...this.cachedConfig[r]];
+    } else if (this.DEFAULT_ROLE_PAGES[r]) {
+      pages = [...this.DEFAULT_ROLE_PAGES[r]];
+    } else if (r.includes('SUPER_ADMIN')) {
+      pages = [...this.DEFAULT_ROLE_PAGES.SUPER_ADMIN];
+    } else if (r.includes('COMPANY') || r.includes('ADMIN')) {
+      pages = [...this.DEFAULT_ROLE_PAGES.COMPANY_ADMIN];
+    } else if (r.includes('HR')) {
+      pages = [...this.DEFAULT_ROLE_PAGES.HR];
+    } else if (r.includes('MANAGER')) {
+      pages = [...this.DEFAULT_ROLE_PAGES.MANAGER];
+    } else if (r.includes('LEAD') || r.includes('TL')) {
+      pages = [...this.DEFAULT_ROLE_PAGES.TEAM_LEAD];
+    } else if (r.includes('MENTOR')) {
+      pages = [...this.DEFAULT_ROLE_PAGES.MENTOR];
+    } else if (r.includes('TRAIN') && !r.includes('TRAINEE')) {
+      pages = [...this.DEFAULT_ROLE_PAGES.TRAINER];
+    } else if (r.includes('TRAINEE') || r.includes('INTERN')) {
+      pages = [...this.DEFAULT_ROLE_PAGES.TRAINEE];
+    } else {
+      pages = [...this.DEFAULT_ROLE_PAGES.EMPLOYEE];
     }
 
-    // Fall back to policy defaults
-    if (this.DEFAULT_ROLE_PAGES[r]) {
-      return this.DEFAULT_ROLE_PAGES[r];
+    const isHrOrAdmin = ['SUPER_ADMIN', 'COMPANY_ADMIN', 'ADMIN', 'HR', 'HR_MANAGER'].includes(r);
+    // Unconditional security: Non-admin/HR roles NEVER see payroll or payslip-templates
+    if (!isHrOrAdmin) {
+      pages = pages.filter(p => p !== 'payroll' && p !== 'payslip-templates');
     }
 
-    if (r.includes('SUPER_ADMIN')) {
-      return this.DEFAULT_ROLE_PAGES.SUPER_ADMIN;
-    }
-    if (r.includes('COMPANY') || r.includes('ADMIN')) {
-      return this.DEFAULT_ROLE_PAGES.COMPANY_ADMIN;
-    }
-    if (r.includes('HR')) {
-      return this.DEFAULT_ROLE_PAGES.HR;
-    }
-    if (r.includes('MANAGER')) {
-      return this.DEFAULT_ROLE_PAGES.MANAGER;
-    }
-    if (r.includes('LEAD') || r.includes('TL')) {
-      return this.DEFAULT_ROLE_PAGES.TEAM_LEAD;
-    }
-    if (r.includes('MENTOR')) {
-      return this.DEFAULT_ROLE_PAGES.MENTOR;
-    }
-    if (r.includes('TRAIN') && !r.includes('TRAINEE')) {
-      return this.DEFAULT_ROLE_PAGES.TRAINER;
-    }
-    if (r.includes('TRAINEE') || r.includes('INTERN')) {
-      return this.DEFAULT_ROLE_PAGES.TRAINEE;
+    // Operational roles (Employee, Trainee, Mentor, TL, Manager) ALWAYS see performance to view goals by Team Leader
+    if (['EMPLOYEE', 'TRAINEE', 'MENTOR', 'TRAINER', 'TEAM_LEAD', 'MANAGER'].includes(r)) {
+      if (!pages.includes('performance')) {
+        pages.push('performance');
+      }
     }
 
-    return this.DEFAULT_ROLE_PAGES.EMPLOYEE;
+    return pages;
   },
 
   isRouteAllowed(roleId, routeKey) {
     const r = (roleId || 'EMPLOYEE').toUpperCase().trim();
     if (r === 'SUPER_ADMIN') return true;
+
+    // Hard security check for payroll: Only HR and Super/Company Admin allowed
+    const isHrOrAdmin = ['SUPER_ADMIN', 'COMPANY_ADMIN', 'ADMIN', 'HR', 'HR_MANAGER'].includes(r);
+    if (!isHrOrAdmin && (routeKey === 'payroll' || routeKey === 'payslip-templates')) {
+      return false;
+    }
+
+    // Performance is allowed for all operational roles (employees, trainees, mentors, team leads, managers)
+    if (routeKey === 'performance' && ['EMPLOYEE', 'TRAINEE', 'MENTOR', 'TRAINER', 'TEAM_LEAD', 'MANAGER', 'HR', 'HR_MANAGER', 'COMPANY_ADMIN'].includes(r)) {
+      return true;
+    }
 
     // Normalize sub-route aliases to their primary permission key
     let primaryKey = routeKey;

@@ -7,8 +7,8 @@ const PerformanceView = {
   activeTab: 'goals',
 
   async renderHub() {
-    const role = AuthGuard.userProfile?.roleId || 'EMPLOYEE';
-    const isEmployeeOnly = role === 'EMPLOYEE';
+    const role = (AuthGuard._previewRoleId || AuthGuard.userProfile?.roleId || 'EMPLOYEE').toString().toUpperCase().trim();
+    const isEmployeeOnly = ['EMPLOYEE', 'TRAINEE'].includes(role);
     const employeeId = AuthGuard.userProfile?.employeeId || AuthGuard.currentUser?.uid;
 
     let activeCycle = null;
@@ -196,8 +196,8 @@ const PerformanceView = {
 
   // 1. MY GOALS & OKRs TAB
   async renderGoalsTab(goals) {
-    const role = AuthGuard.userProfile?.roleId || 'EMPLOYEE';
-    const isEmployeeOnly = role === 'EMPLOYEE';
+    const role = (AuthGuard._previewRoleId || AuthGuard.userProfile?.roleId || 'EMPLOYEE').toString().toUpperCase().trim();
+    const isEmployeeOnly = ['EMPLOYEE', 'TRAINEE'].includes(role);
 
     return `
       <div class="card">

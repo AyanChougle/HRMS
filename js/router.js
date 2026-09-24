@@ -169,8 +169,9 @@ const Router = {
     }
 
     // Check Role / Page Visibility Guard
-    const userRole = (AuthGuard.userProfile?.roleId || 'EMPLOYEE').toString().toUpperCase().trim();
+    const userRole = (AuthGuard._previewRoleId || AuthGuard.userProfile?.roleId || 'EMPLOYEE').toString().toUpperCase().trim();
     if (typeof roleAccessService !== 'undefined' && !roleAccessService.isRouteAllowed(userRole, routeKey)) {
+      const isPayroll = routeKey === 'payroll' || routeKey === 'payslip-templates';
       mainContent.innerHTML = `
         <div class="card p-6 text-center" style="max-width: 600px; margin: 40px auto;">
           <div style="width: 48px; height: 48px; border-radius: 50%; background: var(--danger-light); color: var(--danger); display: flex; align-items: center; justify-content: center; margin: 0 auto 16px;">
@@ -179,8 +180,15 @@ const Router = {
             </svg>
           </div>
           <h2 style="font-size: 1.3rem; font-weight: 700; color: var(--text-main); margin-bottom: 8px;">Access Restricted</h2>
-          <p style="color: var(--text-secondary); margin-bottom: 20px;">This page is not enabled for your assigned role (${userRole}) as per organization policy.</p>
-          <button class="btn btn-primary btn-sm" onclick="Router.navigate('dashboard')">Return to Dashboard</button>
+          <p style="color: var(--text-secondary); margin-bottom: 20px;">
+            ${isPayroll 
+              ? 'Payroll and compensation ledgers are strictly restricted to Super Admin and HR. To receive your official salary slip, please submit a request via HR Requests.' 
+              : `This page is not enabled for your assigned role (${userRole}) as per organization policy.`}
+          </p>
+          <div class="flex justify-center gap-2">
+            ${isPayroll ? `<button class="btn btn-primary btn-sm" onclick="Router.navigate('requests')">Go to HR Requests</button>` : ''}
+            <button class="btn btn-secondary btn-sm" onclick="Router.navigate('dashboard')">Return to Dashboard</button>
+          </div>
         </div>
       `;
       return;

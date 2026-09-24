@@ -109,15 +109,6 @@ const RequestsView = {
           <span class="btn btn-soft btn-xs" style="width: 100%; text-align: center;">Request Letter &rarr;</span>
         </div>
 
-        <div class="card" style="padding: 16px; border-top: 3px solid #10b981; cursor: pointer; transition: all 0.2s;" onclick="RequestsView.openNewRequestModal('SALARY_CERTIFICATE')">
-          <div style="color: var(--success); margin-bottom: 8px;">
-            <svg width="24" height="24" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
-          </div>
-          <h4 style="font-size: 0.95rem; font-weight: 700; margin-bottom: 4px; color: var(--text-main);">Salary Certificate</h4>
-          <p style="font-size: 0.78rem; color: var(--text-secondary); margin-bottom: 10px;">Official earnings & CTC certification for credit/tax.</p>
-          <span class="btn btn-soft btn-xs" style="width: 100%; text-align: center;">Request Certificate &rarr;</span>
-        </div>
-
         <div class="card" style="padding: 16px; border-top: 3px solid #8b5cf6; cursor: pointer; transition: all 0.2s;" onclick="RequestsView.openNewRequestModal('BANK_DETAILS_CHANGE')">
           <div style="color: var(--accent-performance); margin-bottom: 8px;">
             <svg width="24" height="24" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 14v3m4-3v3m4-3v3M3 21h18M3 10h18M3 7l9-4 9 4M4 10h16v11H4V10z"/></svg>

@@ -227,11 +227,11 @@ const EmployeeDashboardView = {
               <span style="font-size: 0.85rem; font-weight: 600;">Raise HR Request</span>
             </button>
 
-            <button class="btn btn-soft" style="padding: 12px; height: auto; flex-direction: column; gap: 8px; justify-content: center; text-align: center; border-radius: var(--radius-md);" onclick="Router.navigate('payroll')">
+            <button class="btn btn-soft" style="padding: 12px; height: auto; flex-direction: column; gap: 8px; justify-content: center; text-align: center; border-radius: var(--radius-md);" onclick="RequestsView.openNewRequestModal('SALARY_SLIP_REQUEST')">
               <span style="color: var(--success); display: flex; align-items: center; justify-content: center;">
                 <svg width="22" height="22" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
               </span>
-              <span style="font-size: 0.85rem; font-weight: 600;">View Salary Slip</span>
+              <span style="font-size: 0.85rem; font-weight: 600;">Request Salary Slip</span>
             </button>
 
             <button class="btn btn-soft" style="padding: 12px; height: auto; flex-direction: column; gap: 8px; justify-content: center; text-align: center; border-radius: var(--radius-md);" onclick="Router.navigate('documents')">
@@ -262,12 +262,12 @@ const EmployeeDashboardView = {
       <!-- Employee 2 Core Grid -->
       <div class="dashboard-grid">
         
-        <!-- Leave Balances (PL & CL only) -->
+        <!-- Leave Balances (Single Paid Leave Scheme) -->
         <div class="col-span-6 card">
           <div class="card-header">
             <div>
-              <div class="card-title">My Leave Balances</div>
-              <div class="card-subtitle">Statutory annual leave ledgers</div>
+              <div class="card-title">My Paid Leave Balance</div>
+              <div class="card-subtitle">Tenure-based statutory leave entitlement</div>
             </div>
             <button class="btn btn-soft btn-sm" onclick="Forms.openApplyLeaveModal()">+ Apply Leave</button>
           </div>
@@ -276,61 +276,63 @@ const EmployeeDashboardView = {
               
               <div class="kpi-card" style="padding: 16px; background: var(--bg-hover);">
                 <div class="flex items-center justify-between" style="margin-bottom: 6px;">
-                  <span class="badge badge-primary" style="font-size: 0.7rem;">Paid Earned</span>
+                  <span class="badge badge-primary font-bold" style="font-size: 0.7rem;" id="emp-dash-pl-badge">Statutory</span>
                   <span style="color: var(--primary); display: flex; align-items: center;">
                     <svg width="18" height="18" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg>
                   </span>
                 </div>
-                <div class="text-secondary" style="font-size: 0.85rem; font-weight: 600;">Privilege Leave (PL)</div>
-                <div style="font-size: 1.7rem; font-weight: 800; color: var(--primary); line-height: 1.2;" id="emp-dash-pl-bal">18 Days</div>
-                <div class="text-muted" style="font-size: 0.75rem; margin-top: 4px;" id="emp-dash-pl-sub">0 Days Used of 18</div>
+                <div class="text-secondary" style="font-size: 0.85rem; font-weight: 600;">Paid Leave (PL) Available</div>
+                <div style="font-size: 1.7rem; font-weight: 800; color: var(--primary); line-height: 1.2;" id="emp-dash-pl-bal">-- Days</div>
+                <div class="text-muted" style="font-size: 0.75rem; margin-top: 4px;" id="emp-dash-pl-sub">Loading...</div>
               </div>
 
               <div class="kpi-card" style="padding: 16px; background: var(--bg-hover);">
                 <div class="flex items-center justify-between" style="margin-bottom: 6px;">
-                  <span class="badge badge-neutral" style="font-size: 0.7rem;">Short Absence</span>
+                  <span class="badge badge-neutral" style="font-size: 0.7rem;">Official Policy</span>
                   <span style="color: var(--accent-attendance); display: flex; align-items: center;">
                     <svg width="18" height="18" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/></svg>
                   </span>
                 </div>
-                <div class="text-secondary" style="font-size: 0.85rem; font-weight: 600;">Casual Leave (CL)</div>
-                <div style="font-size: 1.7rem; font-weight: 800; color: var(--accent-attendance); line-height: 1.2;" id="emp-dash-cl-bal">12 Days</div>
-                <div class="text-muted" style="font-size: 0.75rem; margin-top: 4px;" id="emp-dash-cl-sub">0 Days Used of 12</div>
+                <div class="text-secondary" style="font-size: 0.85rem; font-weight: 600;">Tenure Entitlement Rule</div>
+                <div style="font-size: 0.82rem; font-weight: 600; color: var(--text-main); margin-top: 4px; line-height: 1.4;" id="emp-dash-tenure-rule">
+                  &lt;6m: 0d • 6m–1.5y: 4d • &gt;1.5y: 18d
+                </div>
+                <div class="text-muted" style="font-size: 0.75rem; margin-top: 4px;" id="emp-dash-tenure-status">Half quota if reached mid-year</div>
               </div>
 
             </div>
           </div>
         </div>
 
-        <!-- Latest Salary Statement Card -->
+        <!-- My Performance Goals Card (Assigned by Team Leader) -->
         <div class="col-span-6 card">
           <div class="card-header">
             <div>
-              <div class="card-title">Latest Salary Statement</div>
-              <div class="card-subtitle">Monthly Compensation & Statutory Slip</div>
+              <div class="card-title">Performance &amp; Goals</div>
+              <div class="card-subtitle">Assigned and evaluated by your Team Leader</div>
             </div>
-            <span class="badge badge-success">Processed</span>
+            <button class="btn btn-soft btn-sm" onclick="Router.navigate('performance')">View Goals &rarr;</button>
           </div>
           <div class="card-body">
             <div class="flex items-center justify-between" style="padding: 14px; background: var(--bg-hover); border-radius: var(--radius-sm); margin-bottom: 12px;">
               <div>
-                <div class="font-semibold text-main" style="font-size: 0.95rem;">Monthly Payout (${new Date().toLocaleDateString("en-US", { month: "long", year: "numeric" })})</div>
-                <div class="text-muted" style="font-size: 0.75rem;">Disbursed via Direct Bank Transfer • HDFC Bank</div>
+                <div class="font-semibold text-main" style="font-size: 0.95rem;">2026 Annual Appraisal Cycle</div>
+                <div class="text-muted" style="font-size: 0.75rem;">Scorecards, OKRs &amp; Competencies monitored by Team Leader</div>
               </div>
-              <button class="btn btn-primary btn-sm" onclick="Router.navigate('payroll')">View Payslip</button>
+              <button class="btn btn-primary btn-sm" onclick="Router.navigate('performance')">Open Scorecard</button>
             </div>
             <div class="grid" style="grid-template-columns: repeat(3, 1fr); gap: 8px; text-align: center; margin-top: 10px;">
               <div style="padding: 8px; background: var(--bg-surface); border: 1px solid var(--border-main); border-radius: 6px;">
-                <div style="font-size: 0.7rem; color: var(--text-muted);">EPF (12%)</div>
-                <strong style="font-size: 0.85rem; color: var(--text-main);">Deducted</strong>
+                <div style="font-size: 0.7rem; color: var(--text-muted);">Cycle</div>
+                <strong style="font-size: 0.85rem; color: var(--text-main);">Active</strong>
               </div>
               <div style="padding: 8px; background: var(--bg-surface); border: 1px solid var(--border-main); border-radius: 6px;">
-                <div style="font-size: 0.7rem; color: var(--text-muted);">Prof. Tax (PT)</div>
-                <strong style="font-size: 0.85rem; color: var(--text-main);">Compliant</strong>
+                <div style="font-size: 0.7rem; color: var(--text-muted);">Evaluator</div>
+                <strong style="font-size: 0.85rem; color: var(--primary);">Team Leader</strong>
               </div>
               <div style="padding: 8px; background: var(--bg-surface); border: 1px solid var(--border-main); border-radius: 6px;">
-                <div style="font-size: 0.7rem; color: var(--text-muted);">TDS (Sec 192)</div>
-                <strong style="font-size: 0.85rem; color: var(--text-main);">Filed</strong>
+                <div style="font-size: 0.7rem; color: var(--text-muted);">Weighting</div>
+                <strong style="font-size: 0.85rem; color: var(--text-main);">60% / 40%</strong>
               </div>
             </div>
           </div>
@@ -468,22 +470,26 @@ const EmployeeDashboardView = {
         ESSView.updateTimecardUI();
       }
 
-      // Fetch dynamic leave balances (PL & CL)
+      // Fetch dynamic leave balances (Tenure-Based Paid Leave)
       const employeeId =
         AuthGuard.userProfile?.employeeId || AuthGuard.currentUser?.uid;
       const balances = await leaveService.getEmployeeBalances(employeeId);
       const plBalEl = document.getElementById("emp-dash-pl-bal");
       const plSubEl = document.getElementById("emp-dash-pl-sub");
-      const clBalEl = document.getElementById("emp-dash-cl-bal");
-      const clSubEl = document.getElementById("emp-dash-cl-sub");
+      const plBadgeEl = document.getElementById("emp-dash-pl-badge");
+      const tenureStatusEl = document.getElementById("emp-dash-tenure-status");
 
+      const plQuota = balances.PL;
       if (plBalEl)
-        plBalEl.textContent = `${(balances.PL || balances.AL)?.available ?? 18} Days`;
+        plBalEl.textContent = `${plQuota?.available ?? 0} Days`;
       if (plSubEl)
-        plSubEl.textContent = `${(balances.PL || balances.AL)?.used ?? 0} Used • ${(balances.PL || balances.AL)?.pending ?? 0} Pending`;
-      if (clBalEl) clBalEl.textContent = `${balances.CL?.available ?? 12} Days`;
-      if (clSubEl)
-        clSubEl.textContent = `${balances.CL?.used ?? 0} Used • ${balances.CL?.pending ?? 0} Pending`;
+        plSubEl.textContent = `${plQuota?.used ?? 0} Used of ${plQuota?.allocated ?? 0} • ${plQuota?.pending ?? 0} Pending`;
+      if (plBadgeEl && plQuota?.quotaInfo?.ruleBadge) {
+        plBadgeEl.textContent = plQuota.quotaInfo.ruleBadge;
+      }
+      if (tenureStatusEl && plQuota?.quotaInfo?.ruleExplanation) {
+        tenureStatusEl.textContent = plQuota.quotaInfo.ruleExplanation;
+      }
 
       // Fetch announcements
       const announcements = await announcementService.getAnnouncements(null, 3);

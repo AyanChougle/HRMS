@@ -340,14 +340,14 @@ const Forms = {
     ModalManager.openModal({
       id: 'apply-leave-modal',
       title: 'Apply for Leave',
-      subtitle: 'Statutory Indian Leave Entitlements (PL, CL)',
+      subtitle: 'Tenure-Based Paid Leave (PL) & Unpaid Leave (LWP)',
       contentHtml: `
         <form id="apply-leave-form" onsubmit="event.preventDefault(); Forms.submitLeaveForm()">
           <div class="form-group">
             <label class="form-label required">Leave Type</label>
             <select id="lf-type" class="form-control">
-              <option value="PL">Privilege Leave (PL) — 18 Days Annual Balance</option>
-              <option value="CL">Casual Leave (CL) — 12 Days Annual Balance</option>
+              <option value="PL">Paid Leave (PL) — Tenure-Based Statutory Quota</option>
+              <option value="LWP">Unpaid Leave (Loss of Pay / LWP)</option>
             </select>
           </div>
           <div class="form-row">

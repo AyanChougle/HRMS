@@ -67,26 +67,124 @@ const leaveService = {
     }
   },
 
-  // Normalize leave code to standard statutory bucket (PL or CL)
+  // Calculate Tenure-Based Paid Leave (PL) Quota according to Diallo HR Policy:
+  // - Below 6 months tenure: 0 Paid Leaves
+  // - Between 6 months and 1.5 years (18 months): 4 Paid Leaves
+  // - Above 1.5 years (18 months): 18 Paid Leaves
+  //   * Mid-cycle/mid-year rule: If the employee reaches 1.5 years tenure mid-year
+  //     (i.e. second half of the calendar year, month >= 6), they receive half of 18 (9 Paid Leaves)
+  //     for the remainder of that year until the next calendar year begins.
+  calculatePaidLeaveQuota(joiningDate, asOfDate = new Date()) {
+    if (!joiningDate) {
+      return {
+        allocated: 18,
+        tenureMonths: 24,
+        isMidYearProrated: false,
+        ruleBadge: '18 Paid Leaves (Standard)',
+        ruleExplanation: 'Tenure 1.5+ years completed • Full 18 Days Annual Quota'
+      };
+    }
+
+    const join = new Date(joiningDate);
+    if (isNaN(join.getTime())) {
+      return {
+        allocated: 18,
+        tenureMonths: 24,
+        isMidYearProrated: false,
+        ruleBadge: '18 Paid Leaves (Standard)',
+        ruleExplanation: 'Tenure 1.5+ years completed • Full 18 Days Annual Quota'
+      };
+    }
+
+    const now = new Date(asOfDate);
+    const currentYear = now.getFullYear();
+
+    // Completed tenure in months
+    let tenureMonths = (now.getFullYear() - join.getFullYear()) * 12 + (now.getMonth() - join.getMonth());
+    if (now.getDate() < join.getDate()) {
+      tenureMonths -= 1;
+    }
+    tenureMonths = Math.max(0, tenureMonths);
+
+    // 1. Below 6 months tenure: 0 Paid Leaves
+    if (tenureMonths < 6) {
+      return {
+        allocated: 0,
+        tenureMonths,
+        isMidYearProrated: false,
+        ruleBadge: '0 Paid Leaves',
+        ruleExplanation: `Tenure under 6 months (${tenureMonths}m completed) • Eligible for 4 paid leaves after 6 months`
+      };
+    }
+
+    // 2. Between 6 months and 18 months (1.5 years): 4 Paid Leaves
+    if (tenureMonths < 18) {
+      return {
+        allocated: 4,
+        tenureMonths,
+        isMidYearProrated: false,
+        ruleBadge: '4 Paid Leaves',
+        ruleExplanation: `Tenure between 6m and 1.5y (${tenureMonths}m completed) • Eligible for 18 paid leaves after 1.5 years`
+      };
+    }
+
+    // 3. Above 18 months (1.5 years): 18 Paid Leaves
+    // Check if the 18-month milestone was reached mid-year in the current calendar year (July onwards)
+    const milestone18m = new Date(join);
+    milestone18m.setMonth(milestone18m.getMonth() + 18);
+
+    const milestoneYear = milestone18m.getFullYear();
+    const milestoneMonth = milestone18m.getMonth(); // 0-indexed: 6 = July
+
+    if (milestoneYear === currentYear && milestoneMonth >= 6) {
+      // Reached 1.5 years in the second half of the current year -> gets half (9 Paid Leaves) until next year starts
+      return {
+        allocated: 9,
+        tenureMonths,
+        isMidYearProrated: true,
+        ruleBadge: '9 Paid Leaves (Half Quota)',
+        ruleExplanation: `Reached 1.5y tenure mid-year (${milestone18m.toLocaleDateString('en-US', { month: 'short', year: 'numeric' })}) • Half of 18 leaves granted until next year starts`
+      };
+    }
+
+    return {
+      allocated: 18,
+      tenureMonths,
+      isMidYearProrated: false,
+      ruleBadge: '18 Paid Leaves (Full Quota)',
+      ruleExplanation: `Tenure 1.5+ years completed (${Math.floor(tenureMonths / 12)}y ${tenureMonths % 12}m) • Full 18 Days Annual Quota`
+    };
+  },
+
+  // Normalize leave code to standard statutory bucket (PL or LWP)
   normalizeLeaveCode(typeStr) {
     if (!typeStr) return 'PL';
     const s = String(typeStr).toUpperCase().trim();
-    if (s === 'CL' || s === 'CS' || s === 'SL' || s.includes('CASUAL') || s.includes('SICK')) {
-      return 'CL';
+    if (s === 'LWP' || s === 'UNPAID' || s.includes('WITHOUT') || s.includes('LOSS')) {
+      return 'LWP';
     }
     return 'PL';
   },
 
-  // 3. GET DYNAMIC EMPLOYEE LEAVE BALANCES FOR A GIVEN YEAR (PL & CL ONLY)
+  // 3. GET DYNAMIC EMPLOYEE LEAVE BALANCES FOR A GIVEN YEAR (SINGLE PAID LEAVE SCHEME)
   async getEmployeeBalances(employeeId, year = 2026, companyId = 'comp_diallo_india') {
     try {
-      const plAllocated = 18;
-      const clAllocated = 12;
+      let joiningDate = AuthGuard.userProfile?.dateOfJoining || AuthGuard.userProfile?.joiningDate || '2025-01-15';
+      if (employeeId) {
+        try {
+          const emp = await employeeService.getEmployee(employeeId);
+          if (emp && (emp.dateOfJoining || emp.joiningDate || emp.createdAt)) {
+            joiningDate = emp.dateOfJoining || emp.joiningDate || emp.createdAt;
+          }
+        } catch (_) {}
+      }
+
+      const quotaInfo = this.calculatePaidLeaveQuota(joiningDate);
+      const plAllocated = quotaInfo.allocated;
 
       let plUsed = 0;
       let plPending = 0;
-      let clUsed = 0;
-      let clPending = 0;
+      let lwpUsed = 0;
 
       // Query leaveApplications to compute dynamic counters
       if (employeeId) {
@@ -99,13 +197,12 @@ const leaveService = {
           const days = Number(d.numberOfDays) || 1;
           const code = this.normalizeLeaveCode(d.leaveTypeCode || d.type || d.leaveTypeName);
 
-          if (code === 'CL') {
+          if (code === 'LWP') {
             if (d.status === 'APPROVED') {
-              clUsed += days;
-            } else if (d.status === 'PENDING') {
-              clPending += days;
+              lwpUsed += days;
             }
           } else {
+            // All paid leave categories map to the single Paid Leave pool
             if (d.status === 'APPROVED') {
               plUsed += days;
             } else if (d.status === 'PENDING') {
@@ -118,27 +215,30 @@ const leaveService = {
       const balances = {
         PL: {
           code: 'PL',
-          name: 'Privilege Leave (PL)',
+          name: 'Paid Leave (PL)',
           allocated: plAllocated,
           used: plUsed,
           pending: plPending,
-          available: Math.max(0, plAllocated - plUsed)
+          available: Math.max(0, plAllocated - plUsed),
+          quotaInfo: quotaInfo
         },
         AL: {
           code: 'PL',
-          name: 'Privilege Leave (PL)',
+          name: 'Paid Leave (PL)',
           allocated: plAllocated,
           used: plUsed,
           pending: plPending,
-          available: Math.max(0, plAllocated - plUsed)
+          available: Math.max(0, plAllocated - plUsed),
+          quotaInfo: quotaInfo
         },
-        CL: {
-          code: 'CL',
-          name: 'Casual Leave (CL)',
-          allocated: clAllocated,
-          used: clUsed,
-          pending: clPending,
-          available: Math.max(0, clAllocated - clUsed)
+        LWP: {
+          code: 'LWP',
+          name: 'Unpaid Leave (Loss of Pay)',
+          allocated: 0,
+          used: lwpUsed,
+          pending: 0,
+          available: 999,
+          quotaInfo: { ruleBadge: 'Unpaid Leave', ruleExplanation: 'Salary deduction applies for unpaid absences' }
         }
       };
 
@@ -146,9 +246,9 @@ const leaveService = {
     } catch (e) {
       console.warn('Could not fetch leave balances:', e);
       return {
-        PL: { code: 'PL', name: 'Privilege Leave (PL)', allocated: 18, used: 0, pending: 0, available: 18 },
-        AL: { code: 'PL', name: 'Privilege Leave (PL)', allocated: 18, used: 0, pending: 0, available: 18 },
-        CL: { code: 'CL', name: 'Casual Leave (CL)', allocated: 12, used: 0, pending: 0, available: 12 }
+        PL: { code: 'PL', name: 'Paid Leave (PL)', allocated: 18, used: 0, pending: 0, available: 18, quotaInfo: { ruleBadge: '18 Paid Leaves', ruleExplanation: 'Standard annual quota' } },
+        AL: { code: 'PL', name: 'Paid Leave (PL)', allocated: 18, used: 0, pending: 0, available: 18, quotaInfo: { ruleBadge: '18 Paid Leaves', ruleExplanation: 'Standard annual quota' } },
+        LWP: { code: 'LWP', name: 'Unpaid Leave (Loss of Pay)', allocated: 0, used: 0, pending: 0, available: 999, quotaInfo: { ruleBadge: 'Unpaid Leave' } }
       };
     }
   },
@@ -180,11 +280,13 @@ const leaveService = {
 
       // Check balance availability
       const balances = await this.getEmployeeBalances(employeeId, year, companyId);
-      const leaveCode = leaveData.type || leaveData.leaveTypeCode || 'AL';
-      const quota = balances[leaveCode];
+      const leaveCode = this.normalizeLeaveCode(leaveData.type || leaveData.leaveTypeCode || 'PL');
 
-      if (quota && quota.available < numberOfDays && leaveCode !== 'LWP') {
-        throw new Error(`Insufficient leave balance. You have ${quota.available} days available for ${quota.name}, but requested ${numberOfDays} days.`);
+      if (leaveCode !== 'LWP') {
+        const quota = balances.PL;
+        if (quota && quota.available < numberOfDays) {
+          throw new Error(`Insufficient Paid Leave balance. You have ${quota.available} Paid Leaves available (${quota.quotaInfo?.ruleExplanation || ''}), but requested ${numberOfDays} days. You may submit an Unpaid Leave (LWP) request if required.`);
+        }
       }
 
       const payload = {

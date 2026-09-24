@@ -916,29 +916,20 @@ const AttendanceView = {
         <div class="card">
           <div class="card-header">
             <div>
-              <div class="card-title">Work Shifts & Timings</div>
-              <div class="card-subtitle">Assigned work shifts, active roster timings, and grace window</div>
+              <div class="card-title">Official Company Work Shift</div>
+              <div class="card-subtitle">Mandatory single operational shift schedule as per Diallo HR Policy</div>
             </div>
-            ${canManageHolidays ? `<button class="btn btn-primary btn-sm" onclick="AttendanceView.openAddShiftModal()">+ Add Shift</button>` : ''}
+            <span class="badge badge-success" style="font-weight: 600;">Active Standard Shift</span>
           </div>
           <div class="card-body" style="padding: 0;">
             <table class="data-table">
-              <thead><tr><th>Shift Name</th><th>Timings</th><th>Grace</th></tr></thead>
+              <thead><tr><th>Shift Name</th><th>Timings</th><th>Break Quota</th><th>Grace Period</th></tr></thead>
               <tbody>
                 <tr>
                   <td class="font-semibold text-main">General Shift</td>
-                  <td>09:00 AM – 06:00 PM</td>
-                  <td>15 mins</td>
-                </tr>
-                <tr>
-                  <td class="font-semibold text-main">Morning Shift</td>
-                  <td>07:00 AM – 04:00 PM</td>
-                  <td>10 mins</td>
-                </tr>
-                <tr>
-                  <td class="font-semibold text-main">Night Shift</td>
-                  <td>08:00 PM – 05:00 AM</td>
-                  <td>15 mins</td>
+                  <td><strong style="color: var(--primary);">10:00 AM – 07:00 PM</strong> (8h Work)</td>
+                  <td>1 Hour (Tracked)</td>
+                  <td><span class="badge badge-neutral">10 mins (past 10:10 AM = Late)</span></td>
                 </tr>
               </tbody>
             </table>

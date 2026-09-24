@@ -518,20 +518,6 @@ const DocumentsView = {
           version: "v1.5 (2026)",
           date: "Updated Jan 2026",
         },
-        {
-          title: "Group Health & Medical Insurance Guide",
-          category: "Benefits",
-          desc: "Mediclaim benefits, sum insured breakdown, network hospital list, cashless TPA cards, and claim procedures.",
-          version: "v4.0 (2026)",
-          date: "Updated Jan 2026",
-        },
-        {
-          title: "Travel & Business Expense Reimbursement Policy",
-          category: "Finance",
-          desc: "Eligible travel expenses, per-diem allowances, hotel tier bookings, and claim settlement timelines.",
-          version: "v2.2 (2025)",
-          date: "Updated Nov 2025",
-        },
       ];
 
       return `
@@ -547,7 +533,7 @@ const DocumentsView = {
                   Need an Official Letter or Certificate from HR?
                 </div>
                 <div style="font-size: 0.83rem; color: var(--text-secondary); max-width: 650px; line-height: 1.4;">
-                  Employment Verification Letters, Salary Certificates, and Experience Letters are officially generated and signed by HR Operations upon request.
+                  Employment Verification Letters and Experience Letters are officially generated and signed by HR Operations upon request.
                 </div>
               </div>
             </div>
