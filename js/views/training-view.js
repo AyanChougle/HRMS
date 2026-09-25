@@ -103,7 +103,21 @@ const TrainingView = {
       </div>
 
       <!-- KPI Overview Grid (Hidden for Trainee) -->
-      ${!isTrainee ? `>
+      ${!isTrainee ? `
+      <div class="kpi-grid" style="margin-bottom: 24px;">
+        <div class="kpi-card">
+          <div class="kpi-top">
+            <div class="kpi-icon-box" style="background: var(--primary-light); color: var(--primary);">
+              <svg width="20" height="20" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z"/>
+              </svg>
+            </div>
+            <span class="kpi-trend positive">${inTrainingCount} Active</span>
+          </div>
+          <div class="kpi-value">${totalTrainees}</div>
+          <div class="kpi-label">Total Trainees &amp; Interns</div>
+          <div class="kpi-subtitle">Across engineering, HR &amp; finance</div>
+        </div>
 
         <div class="kpi-card">
           <div class="kpi-top">
@@ -116,7 +130,7 @@ const TrainingView = {
           </div>
           <div class="kpi-value">${totalTrainers}</div>
           <div class="kpi-label">Certified Trainers</div>
-          <div class="kpi-subtitle">Internal leads & external experts</div>
+          <div class="kpi-subtitle">Internal leads &amp; external experts</div>
         </div>
 
         <div class="kpi-card">
@@ -130,7 +144,7 @@ const TrainingView = {
           </div>
           <div class="kpi-value">${totalPrograms}</div>
           <div class="kpi-label">Curriculum Tracks</div>
-          <div class="kpi-subtitle">Structured syllabus & batches</div>
+          <div class="kpi-subtitle">Structured syllabus &amp; batches</div>
         </div>
 
         <div class="kpi-card">
@@ -144,7 +158,7 @@ const TrainingView = {
           </div>
           <div class="kpi-value">${avgProgress}%</div>
           <div class="kpi-label">Average Cohort Progress</div>
-          <div class="kpi-subtitle">Completion & readiness score</div>
+          <div class="kpi-subtitle">Completion &amp; readiness score</div>
         </div>
       </div>
       ` : ''}

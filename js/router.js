@@ -45,7 +45,7 @@ const Router = {
       render: () => EmailConfigView.render()
     },
     performance: {
-      requiredPerm: null,
+      requiredPerm: 'performance.view',
       render: () => PerformanceView.renderHub()
     },
     training: {
@@ -231,9 +231,14 @@ const Router = {
     const role = rawRole;
 
     // Fetch allowed pages configured by Super Admin (falls back to official policy defaults)
-    const allowedKeys = (typeof roleAccessService !== 'undefined')
+    let allowedKeys = (typeof roleAccessService !== 'undefined')
       ? roleAccessService.getVisiblePagesForRole(role)
       : ['dashboard', 'attendance', 'leave', 'compliance', 'ess'];
+
+    // Performance & Appraisals tab is strictly excluded for Trainee
+    if (role === 'TRAINEE' || role.includes('TRAINEE')) {
+      allowedKeys = allowedKeys.filter(k => k !== 'performance');
+    }
 
     const allPages = (typeof roleAccessService !== 'undefined') ? roleAccessService.PAGES : [];
 

@@ -44,14 +44,15 @@ const EmployeeDashboardView = {
     monday.setDate(now.getDate() + distToMon);
 
     const weekDays = [];
-    const dayNames = ["MON", "TUE", "WED", "THU", "FRI"];
-    for (let i = 0; i < 5; i++) {
+    const dayNames = ["MON", "TUE", "WED", "THU", "FRI", "SAT"];
+    for (let i = 0; i < 6; i++) {
       const d = new Date(monday);
       d.setDate(monday.getDate() + i);
       const iso = d.toISOString().slice(0, 10);
       weekDays.push({
         name: dayNames[i],
         iso,
+        isSaturday: i === 5,
         isToday: iso === todayIso,
         isPast: iso < todayIso,
         isFuture: iso > todayIso,
@@ -115,7 +116,7 @@ const EmployeeDashboardView = {
               <span>Daily Shift & Timecard Station</span>
               <span id="emp-header-break-badge">${ESSView.isPunchedIn && ESSView.isOnBreak ? '<span class="badge badge-warning" style="font-size: 0.75rem; animation: pulse 2s infinite; display: inline-flex; align-items: center; gap: 4px;"><svg width="12" height="12" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/></svg> Break Active</span>' : ""}</span>
             </div>
-            <div class="card-subtitle timecard-header-subtitle">General Shift: 10:00 AM – 07:00 PM IST (8h Work • 1h Break • Office Premises Geofence: 60m)</div>
+            <div class="card-subtitle timecard-header-subtitle">General Shift: Mon–Fri 10:00 AM – 07:00 PM • Sat 10:00 AM – 04:00 PM (Half Day) • Premises Geofence: 60m</div>
           </div>
           <div class="timecard-header-status">
             <span class="badge ${ESSView.isShiftCompletedToday ? "badge-success" : !ESSView.isPunchedIn ? "badge-neutral" : ESSView.isOnBreak ? "badge-warning" : "badge-success"}" id="emp-shift-badge">
@@ -216,7 +217,7 @@ const EmployeeDashboardView = {
                 <!-- 4. Apply Leave Button / Sign Agreement for Trainee -->
                 ${isTrainee
         ? `
-                  <button class="btn btn-secondary timecard-action-btn" onclick="Router.navigate('documents')">
+                  <button class="btn btn-secondary timecard-action-btn" onclick="EmployeeDashboardView.openTraineeAgreementModal()">
                     <svg width="17" height="17" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                       <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
                     </svg>
@@ -266,7 +267,7 @@ const EmployeeDashboardView = {
               <span style="font-size: 0.85rem; font-weight: 600;">Timecard & Logs</span>
             </button>
 
-            <button class="btn btn-soft" style="padding: 12px; height: auto; flex-direction: column; gap: 8px; justify-content: center; text-align: center; border-radius: var(--radius-md);" onclick="Router.navigate('documents')">
+            <button class="btn btn-soft" style="padding: 12px; height: auto; flex-direction: column; gap: 8px; justify-content: center; text-align: center; border-radius: var(--radius-md);" onclick="EmployeeDashboardView.openTraineeAgreementModal()">
               <span style="color: var(--primary); display: flex; align-items: center; justify-content: center;">
                 <svg width="22" height="22" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
               </span>
@@ -337,17 +338,49 @@ const EmployeeDashboardView = {
       <!-- Employee 2 Core Grid -->
       <div class="dashboard-grid">
         
-        <!-- Leave Balances (Single Paid Leave Scheme) -->
+        <!-- Leave Balances (Single Paid Leave Scheme) or Trainee Terms Agreement -->
+        ${isTrainee ? `
+        <div class="col-span-6 card" style="border: 2px solid rgba(37, 99, 235, 0.2); background: var(--bg-surface);">
+          <div class="card-header">
+            <div>
+              <div class="card-title" style="display: flex; align-items: center; gap: 8px;">
+                <span>Training &amp; Certification Agreement</span>
+                <span class="badge badge-warning" id="emp-dash-trainee-aggr-badge">Pending Review</span>
+              </div>
+              <div class="card-subtitle">Mandatory attendance, certification milestone &amp; salary activation policy</div>
+            </div>
+            <button class="btn btn-primary btn-sm" onclick="EmployeeDashboardView.openTraineeAgreementModal()">Review &amp; Sign Agreement</button>
+          </div>
+          <div class="card-body">
+            <div style="padding: 14px 16px; background: var(--bg-hover); border-radius: var(--radius-sm); border-left: 4px solid var(--primary); margin-bottom: 14px;">
+              <div style="font-weight: 700; font-size: 0.88rem; color: var(--text-main); margin-bottom: 6px;">Official Commitment Terms</div>
+              <p style="font-size: 0.82rem; color: var(--text-secondary); line-height: 1.5; margin: 0;">
+                The trainee solemnly agrees to attend mandatory training daily (Mon–Fri 10:00 AM – 07:00 PM • Sat 10:00 AM – 04:00 PM). Trainees will <strong>not</strong> receive salary disbursement if they fail to certify. Upon passing and certification, the candidate officially converts to full-time confirmed Employee, and salary disbursements commence.
+              </p>
+            </div>
+
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+              <div style="padding: 10px 12px; background: var(--bg-hover); border-radius: 6px; font-size: 0.8rem;">
+                <div style="color: var(--text-muted); font-size: 0.72rem; text-transform: uppercase; font-weight: 700;">Leave Policy</div>
+                <strong style="color: var(--danger);">No Leaves Allowed</strong>
+                <div style="color: var(--text-muted); font-size: 0.72rem; margin-top: 2px;">Zero leave entitlement during 7-day cohort</div>
+              </div>
+              <div style="padding: 10px 12px; background: var(--bg-hover); border-radius: 6px; font-size: 0.8rem;">
+                <div style="color: var(--text-muted); font-size: 0.72rem; text-transform: uppercase; font-weight: 700;">Passing Outcome</div>
+                <strong style="color: var(--success);">Full-Time Employee</strong>
+                <div style="color: var(--text-muted); font-size: 0.72rem; margin-top: 2px;">Full salary disbursement begins upon certification</div>
+              </div>
+            </div>
+          </div>
+        </div>
+        ` : `
         <div class="col-span-6 card">
           <div class="card-header">
             <div>
-              <div class="card-title">${isTrainee ? "Trainee Terms & Status" : "My Paid Leave Balance"}</div>
-              <div class="card-subtitle">${isTrainee ? "Agreement and compliance status" : "Tenure-based statutory leave entitlement"}</div>
+              <div class="card-title">My Paid Leave Balance</div>
+              <div class="card-subtitle">Tenure-based statutory leave entitlement</div>
             </div>
-            ${isTrainee
-        ? `<button class="btn btn-soft btn-sm" onclick="Router.navigate('documents')">Sign Agreement</button>`
-        : `<button class="btn btn-soft btn-sm" onclick="Forms.openApplyLeaveModal()">+ Apply Leave</button>`
-      }
+            <button class="btn btn-soft btn-sm" onclick="Forms.openApplyLeaveModal()">+ Apply Leave</button>
           </div>
           <div class="card-body">
             <div class="emp-leave-balances-grid" id="emp-leave-balances-grid">
@@ -381,6 +414,7 @@ const EmployeeDashboardView = {
             </div>
           </div>
         </div>
+        `}
 
         <!-- Performance Goals Card (Non-Trainee) / Curriculum Track (Trainee) -->
         ${
@@ -513,7 +547,7 @@ const EmployeeDashboardView = {
           <div class="card-header">
             <div>
               <div class="card-title">This Week's Attendance Rhythm</div>
-              <div class="card-subtitle">Monday – Friday punctuality summary</div>
+              <div class="card-subtitle">Monday – Saturday punctuality summary (Saturday Half Day: 10:00 AM – 04:00 PM)</div>
             </div>
             <button class="btn btn-ghost btn-sm" onclick="Router.navigate('attendance')">My Attendance</button>
           </div>
@@ -576,7 +610,7 @@ const EmployeeDashboardView = {
 
         return `
                   <div style="padding: 12px 6px; background: ${cardBg}; border-radius: 8px; border: ${borderStyle};">
-                    <div style="font-size: 0.75rem; color: ${wd.isToday ? 'var(--primary)' : 'var(--text-muted)'}; font-weight: 700;">${wd.name}${wd.isToday ? ' (TODAY)' : ''}</div>
+                    <div style="font-size: 0.75rem; color: ${wd.isToday ? 'var(--primary)' : 'var(--text-muted)'}; font-weight: 700;">${wd.name}${wd.isSaturday ? ' (HALF DAY)' : ''}${wd.isToday ? ' (TODAY)' : ''}</div>
                     <div style="display: flex; justify-content: center; margin: 4px 0;">
                       <svg width="18" height="18" fill="none" viewBox="0 0 24 24" stroke="${iconColor}"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="${iconPath}"/></svg>
                     </div>
@@ -586,11 +620,9 @@ const EmployeeDashboardView = {
       }).join('')}
             </div>
             <div class="flex items-center justify-between" style="margin-top: 14px; font-size: 0.8rem; color: var(--text-secondary);">
-              <span>Target Work Hours: <strong>45h / week</strong></span>
+              <span>Target Work Hours: <strong>46h / week (Sat Half Day: 10 AM – 4 PM)</strong></span>
               <span>Avg Punctuality: <strong style="color: var(--success);">${punctualityRate}%</strong></span>
             </div>
-          </div>
-        </div>
           </div>
         </div>
 
@@ -619,9 +651,23 @@ const EmployeeDashboardView = {
         ESSView.updateTimecardUI();
       }
 
-      // Fetch dynamic leave balances (Tenure-Based Paid Leave)
+      // Check trainee agreement status if trainee
       const employeeId =
-        AuthGuard.userProfile?.employeeId || AuthGuard.currentUser?.uid;
+        AuthGuard.userProfile?.employeeId || AuthGuard.currentUser?.uid || "trainee";
+      const traineeKey = "diallo_trainee_agreement_" + employeeId;
+      const signedDataStr = localStorage.getItem(traineeKey);
+      const aggrBadge = document.getElementById("emp-dash-trainee-aggr-badge");
+      if (aggrBadge) {
+        if (signedDataStr) {
+          aggrBadge.className = "badge badge-success";
+          aggrBadge.textContent = "Signed & Active";
+        } else {
+          aggrBadge.className = "badge badge-warning";
+          aggrBadge.textContent = "Pending Review & Sign";
+        }
+      }
+
+      // Fetch dynamic leave balances (Tenure-Based Paid Leave)
       const balances = await leaveService.getEmployeeBalances(employeeId);
       const plBalEl = document.getElementById("emp-dash-pl-bal");
       const plSubEl = document.getElementById("emp-dash-pl-sub");
@@ -669,6 +715,149 @@ const EmployeeDashboardView = {
     } catch (e) {
       console.error("Error rendering employee dashboard:", e);
     }
+  },
+
+  openTraineeAgreementModal() {
+    const employeeId = AuthGuard.userProfile?.employeeId || AuthGuard.currentUser?.uid || 'trainee';
+    const userName = AuthGuard.userProfile?.displayName || AuthGuard.userProfile?.name || AuthGuard.currentUser?.email?.split('@')[0] || 'Graduate Trainee';
+    const traineeKey = 'diallo_trainee_agreement_' + employeeId;
+    const signedDataStr = localStorage.getItem(traineeKey);
+    let signedData = null;
+    if (signedDataStr) {
+      try {
+        signedData = JSON.parse(signedDataStr);
+      } catch (e) {
+        signedData = { signedAt: new Date().toISOString(), signedBy: userName };
+      }
+    }
+
+    const isSigned = !!signedData;
+    const signedDateDisplay = isSigned
+      ? new Date(signedData.signedAt).toLocaleString('en-IN', { dateStyle: 'long', timeStyle: 'short' })
+      : '';
+
+    const bodyHtml = `
+      <div style="font-size: 0.9rem; line-height: 1.6; color: var(--text-main);">
+        ${isSigned ? `
+          <div style="background: rgba(16, 185, 129, 0.1); border: 1px solid var(--success); border-radius: 8px; padding: 14px 18px; margin-bottom: 20px; display: flex; align-items: center; gap: 12px;">
+            <div style="width: 36px; height: 36px; border-radius: 50%; background: var(--success); color: #fff; display: flex; align-items: center; justify-content: center; flex-shrink: 0;">
+              <svg width="20" height="20" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7"/></svg>
+            </div>
+            <div>
+              <div style="font-weight: 700; color: var(--success);">Agreement Signed & Legally Verified</div>
+              <div style="font-size: 0.8rem; color: var(--text-secondary);">Signed by <strong>${signedData.signedBy || userName}</strong> on <strong>${signedDateDisplay}</strong> (Doc ID: TR-2026-T1)</div>
+            </div>
+          </div>
+        ` : `
+          <div style="background: rgba(245, 158, 11, 0.1); border: 1px solid var(--warning); border-radius: 8px; padding: 14px 18px; margin-bottom: 20px;">
+            <div style="font-weight: 700; color: var(--warning); margin-bottom: 4px;">Mandatory Cohort Compliance Action Required</div>
+            <div style="font-size: 0.82rem; color: var(--text-secondary);">All graduate trainees must review and execute this agreement prior to cohort completion. Failure to certify forfeits all compensation.</div>
+          </div>
+        `}
+
+        <div style="max-height: 380px; overflow-y: auto; padding: 16px; background: var(--bg-hover); border-radius: 8px; border: 1px solid var(--border-main); margin-bottom: 20px; font-size: 0.85rem;">
+          <h4 style="margin: 0 0 10px 0; font-size: 1rem; color: var(--text-main);">DIALLO TRAINEE COHORT & CERTIFICATION TERMS</h4>
+          
+          <div style="margin-bottom: 14px;">
+            <div style="font-weight: 700; color: var(--primary); margin-bottom: 4px;">1. Mandatory Daily Attendance & Work Schedule</div>
+            <p style="margin: 0; color: var(--text-secondary);">
+              The Trainee agrees to attend mandatory training on all scheduled working days:
+              <br/>- <strong>Monday to Friday:</strong> 10:00 AM to 07:00 PM IST (Full Day)
+              <br/>- <strong>Saturday:</strong> 10:00 AM to 04:00 PM IST (Half Day)
+              <br/>- <strong>Weekly Commitment:</strong> 46 hours total.
+              <br/>All punches (Check-In / Check-Out) must be performed on-site within the designated 60-meter office geofence.
+            </p>
+          </div>
+
+          <div style="margin-bottom: 14px;">
+            <div style="font-weight: 700; color: var(--danger); margin-bottom: 4px;">2. Zero Leave Entitlement Policy</div>
+            <p style="margin: 0; color: var(--text-secondary);">
+              Trainees have <strong>zero (0) leave balance</strong> throughout the 7-day cohort. No planned or casual leaves are permitted. Any unexcused absence results in immediate cohort dismissal.
+            </p>
+          </div>
+
+          <div style="margin-bottom: 14px;">
+            <div style="font-weight: 700; color: var(--danger); margin-bottom: 4px;">3. No Compensation on Certification Failure</div>
+            <p style="margin: 0; color: var(--text-secondary);">
+              The Trainee explicitly acknowledges and agrees that <strong>no stipend, salary, or financial compensation will be paid</strong> if the Trainee fails to achieve passing scores, fails module assessments, or fails to be certified by the Lead Trainer.
+            </p>
+          </div>
+
+          <div style="margin-bottom: 10px;">
+            <div style="font-weight: 700; color: var(--success); margin-bottom: 4px;">4. Full-Time Employee Conversion & Salary Activation</div>
+            <p style="margin: 0; color: var(--text-secondary);">
+              Upon successfully completing all 7 modules, achieving passing scores on daily assessments, and receiving official certification, the Trainee is automatically converted to a confirmed full-time <strong>Employee</strong>. Regular monthly salary disbursement, compensation benefits, and statutory tenure-based leave accruals commence immediately upon conversion.
+            </p>
+          </div>
+        </div>
+
+        ${!isSigned ? `
+          <form id="trainee-aggr-form" onsubmit="event.preventDefault(); EmployeeDashboardView.submitAgreementSignature('${employeeId}');">
+            <div style="margin-bottom: 14px;">
+              <label style="display: flex; align-items: flex-start; gap: 10px; cursor: pointer;">
+                <input type="checkbox" id="trainee-aggr-confirm" required style="margin-top: 3px; width: 18px; height: 18px;" />
+                <span style="font-size: 0.85rem; color: var(--text-main); line-height: 1.4;">
+                  I solemnly declare that I have read, understood, and accept all the terms of this Training Cohort & Certification Agreement. I accept that failure to certify will forfeit compensation, and that employment status and salary disbursement will only be granted upon successful certification.
+                </span>
+              </label>
+            </div>
+            <div class="form-group" style="margin-bottom: 0;">
+              <label class="form-label required" style="font-size: 0.8rem; font-weight: 600;">Signatory Full Legal Name</label>
+              <input type="text" id="trainee-aggr-name" class="form-control" value="${userName}" placeholder="Type your full legal name as digital signature" required style="font-size: 0.9rem;" />
+            </div>
+          </form>
+        ` : ''}
+      </div>
+    `;
+
+    const footerHtml = isSigned ? `
+      <button class="btn btn-secondary btn-sm" data-modal-close>Close</button>
+    ` : `
+      <button class="btn btn-secondary btn-sm" data-modal-close>Cancel</button>
+      <button class="btn btn-primary btn-sm" onclick="EmployeeDashboardView.submitAgreementSignature('${employeeId}')">Accept & Sign Agreement</button>
+    `;
+
+    ModalManager.openModal({
+      title: 'Trainee Cohort & Certification Agreement',
+      bodyHtml,
+      footerHtml,
+      size: 'large'
+    });
+  },
+
+  submitAgreementSignature(employeeId) {
+    const confirmEl = document.getElementById('trainee-aggr-confirm');
+    const nameEl = document.getElementById('trainee-aggr-name');
+
+    if (!confirmEl || !confirmEl.checked) {
+      Toast.warning('Please check the confirmation box to accept the agreement terms.');
+      return;
+    }
+
+    const signerName = (nameEl?.value || '').trim();
+    if (!signerName) {
+      Toast.warning('Please enter your full legal name as your digital signature.');
+      return;
+    }
+
+    const signaturePayload = {
+      signedAt: new Date().toISOString(),
+      signedBy: signerName,
+      employeeId,
+      version: '2026-v1.0'
+    };
+
+    localStorage.setItem('diallo_trainee_agreement_' + employeeId, JSON.stringify(signaturePayload));
+
+    // Update UI badge if present on dashboard
+    const aggrBadge = document.getElementById('emp-dash-trainee-aggr-badge');
+    if (aggrBadge) {
+      aggrBadge.className = 'badge badge-success';
+      aggrBadge.textContent = 'Signed & Active';
+    }
+
+    Toast.success('Agreement successfully signed and recorded.');
+    ModalManager.closeModal();
   },
 };
 
