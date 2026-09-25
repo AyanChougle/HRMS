@@ -19,12 +19,16 @@ const TrainingView = {
     const currentEmpEmail = AuthGuard.userProfile?.email || AuthGuard.currentUser?.email;
     const currentEmpName = AuthGuard.userProfile?.displayName || 'Employee';
 
-    if (isTrainee && (this.activeTab === 'trainees' || this.activeTab === 'trainers')) {
+    const isAdmin = !isTrainee && !isEmployee && !isTrainer;
+    
+    // Prevent trainees / standard employees from accessing restricted tabs
+    if (!isAdmin && !isTrainer && this.activeTab !== 'my_learning') {
       this.activeTab = 'my_learning';
-    } else if (isTrainer && this.activeTab === 'my_learning') {
+    }
+    
+    // Default tab for trainer if they just landed
+    if (isTrainer && !this.activeTab) {
       this.activeTab = 'trainees';
-    } else if (isEmployee && this.activeTab === 'trainees') {
-      this.activeTab = 'my_learning';
     }
 
     let trainees = [];
@@ -187,7 +191,7 @@ const TrainingView = {
           </button>
         ` : '')}
         <button class="tab-btn ${this.activeTab === 'my_learning' ? 'active' : ''}" onclick="TrainingView.switchTab('my_learning')">
-          ${isTrainee ? 'My Learning Track & Modules' : (isEmployee ? 'My Learning & Mentorship' : 'Trainee Learning Track (Preview)')}
+          ${isTrainee ? 'My Learning Track & Modules' : (isEmployee ? 'My Learning & Mentorship' : 'Trainee Curriculum & Mentorship')}
         </button>
       </div>
 
@@ -1394,7 +1398,7 @@ Module 4: Practical Capstone Evaluation</textarea>
       const trainerName = AuthGuard.userProfile?.displayName || 'Trainer';
       const docId = traineeId + '_' + dateStr;
       const db = firebase.firestore();
-      await db.collection('attendance').doc(docId).set({
+      await db.collection('attendanceRecords').doc(docId).set({
         employeeId: traineeId,
         employeeName: traineeName,
         employeeCode: traineeCode,
@@ -1431,7 +1435,7 @@ Module 4: Practical Capstone Evaluation</textarea>
     });
     try {
       const db = firebase.firestore();
-      const snap = await db.collection('attendance')
+      const snap = await db.collection('attendanceRecords')
         .where('employeeId', '==', traineeId)
         .orderBy('date', 'desc')
         .limit(60)
