@@ -14,7 +14,7 @@ const TrainingView = {
   async renderHub() {
     const rawRole = (AuthGuard._previewRoleId || AuthGuard.userProfile?.roleId || 'EMPLOYEE').toString().toUpperCase().trim();
     const isTrainee = rawRole === 'TRAINEE';
-    const isTrainer = rawRole === 'TRAINER';
+    const isTrainer = rawRole === 'TRAINER' || rawRole === 'MENTOR';
     const isEmployee = rawRole === 'EMPLOYEE' || isTrainee;
     const currentEmpEmail = AuthGuard.userProfile?.email || AuthGuard.currentUser?.email;
     const currentEmpName = AuthGuard.userProfile?.displayName || 'Employee';
@@ -602,6 +602,14 @@ const TrainingView = {
                       ${m.topics.map(t => `<li>${t}</li>`).join('')}
                     </ul>
                   </div>
+                  ${(isTrainer && isCurrent && curDay < 7) ? `
+                    <div style="margin-top: 16px; border-top: 1px dashed var(--border-main); padding-top: 14px; display: flex; justify-content: flex-end;">
+                      <button class="btn btn-primary" onclick="TrainingView.advanceTraineeDay('${myTraineeRecord.id}', ${curDay})">
+                        <svg width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
+                        Mark Day ${curDay} Complete
+                      </button>
+                    </div>
+                  ` : ''}
                 </div>
               </div>
             `;
@@ -1255,7 +1263,10 @@ Module 4: Practical Capstone Evaluation</textarea>
       const prog = t.progress || Math.round((curDay / 7) * 100);
       const safeName = (t.fullName || 'Trainee').replace(/"/g, '&quot;');
       const safeCode = (t.traineeCode || 'TRN').replace(/"/g, '&quot;');
-      return '<tr>' +
+      let bStatus = 'CURRENT';
+      if (t.status === 'CERTIFIED' || t.status === 'HANDED_OVER') bStatus = 'PAST';
+      else if (t.status === 'NOT_STARTED' || (t.startDate && new Date(t.startDate) > new Date())) bStatus = 'UPCOMING';
+      return '<tr class="att-row-item" data-batch-status="' + bStatus + '">' +
         '<td>' +
           '<div class="user-cell">' +
             '<div class="user-cell-avatar" style="background:var(--primary-light);color:var(--primary);font-weight:700;">' +
@@ -1308,7 +1319,13 @@ Module 4: Practical Capstone Evaluation</textarea>
             <div style="font-size: 0.8rem; color: var(--text-muted);">Select date and mark each trainee as present, absent, or half day</div>
           </div>
           <div style="display: flex; align-items: center; gap: 10px; flex-wrap: wrap;">
-            <input type="date" id="att-date-picker" class="form-control" style="width: 175px;" value="${today}" />
+            <select id="att-batch-filter" class="form-control" style="width: 160px;" onchange="TrainingView.filterAttendanceBatch(this.value)">
+              <option value="ALL">All Batches</option>
+              <option value="CURRENT" selected>Current Active Batches</option>
+              <option value="UPCOMING">Upcoming Batches</option>
+              <option value="PAST">Past / Completed</option>
+            </select>
+            <input type="date" id="att-date-picker" class="form-control" style="width: 140px;" value="${today}" />
             <button class="btn btn-primary btn-sm" onclick="TrainingView.switchTab('attendance')">
               <svg width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/>
@@ -1609,6 +1626,21 @@ Module 4: Practical Capstone Evaluation</textarea>
     } catch (e) {
       Toast.error('Could not end batch: ' + (e.message || e));
     }
+  },
+
+
+  filterAttendanceBatch(status) {
+    const rows = document.querySelectorAll('.att-row-item');
+    let visibleCount = 0;
+    rows.forEach(row => {
+      if (status === 'ALL' || row.getAttribute('data-batch-status') === status) {
+        row.style.display = '';
+        visibleCount++;
+      } else {
+        row.style.display = 'none';
+      }
+    });
+    // Call it once after render if needed
   },
 
   async exportTraineesCSV() {

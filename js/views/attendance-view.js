@@ -1044,7 +1044,12 @@ const AttendanceView = {
             ${canManageHolidays ? `<button class="btn btn-primary btn-sm" onclick="AttendanceView.openAddHolidayModal()">+ Add Holiday</button>` : ''}
           </div>
           <div class="card-body" style="padding: 0;">
-            ${holidays.length === 0 ? `
+            ${role.toUpperCase().trim() === 'TRAINEE' ? `
+              <div style="padding: 30px; text-align: center; color: var(--text-muted);">
+                <strong>Zero Leave & Holiday Entitlement</strong><br><br>
+                As per the trainee agreement, there are no holidays or paid time off during the 7-day training track. Mandatory attendance is required.
+              </div>
+            ` : holidays.length === 0 ? `
               <div style="padding: 30px; text-align: center; color: var(--text-muted);">No holidays configured.</div>
             ` : `
               <table class="data-table">
