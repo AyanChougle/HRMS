@@ -53,6 +53,12 @@ const authService = {
             await userDocRef.set(updates, { merge: true });
           }
         }
+
+        // Ensure user is provisioned as an official employee
+        if (window.AuthGuard && typeof AuthGuard.ensureEmployeeProfile === 'function') {
+          const profileData = (await userDocRef.get()).data() || {};
+          await AuthGuard.ensureEmployeeProfile(user.uid, user.email, profileData);
+        }
       } catch (dbErr) {
         console.warn('User profile check in signIn:', dbErr);
       }
@@ -129,6 +135,9 @@ const authService = {
 
       try {
         await db.collection('users').doc(user.uid).set(profile, { merge: true });
+        if (window.AuthGuard && typeof AuthGuard.ensureEmployeeProfile === 'function') {
+          await AuthGuard.ensureEmployeeProfile(user.uid, user.email, profile);
+        }
       } catch (dbErr) {
         console.warn('Could not save user profile doc directly:', dbErr);
       }

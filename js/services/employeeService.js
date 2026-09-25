@@ -46,9 +46,172 @@ const employeeService = {
     }
   },
 
+  _lastUserSyncTime: 0,
+
+  // Synchronize registered Firestore users from users collection into official employee roster
+  async syncUsersToEmployees(force = false) {
+    const now = Date.now();
+    // Cache for 30 seconds unless explicitly forced
+    if (!force && this._lastUserSyncTime && (now - this._lastUserSyncTime < 30000)) {
+      return { created: 0, synced: 0, cached: true };
+    }
+    this._lastUserSyncTime = now;
+
+    try {
+      if (typeof db === 'undefined') return { created: 0, synced: 0 };
+
+      const usersSnap = await db.collection('users').get();
+      if (usersSnap.empty) return { created: 0, synced: 0 };
+
+      const empSnap = await db.collection('employees').get();
+      const existingEmployees = empSnap.docs.map(d => ({ id: d.id, ...d.data() }));
+
+      const empByUid = new Map();
+      const empByEmail = new Map();
+      const empCodes = new Set();
+
+      existingEmployees.forEach(emp => {
+        if (emp.id) empByUid.set(emp.id, emp);
+        if (emp.userId) empByUid.set(emp.userId, emp);
+        const wEmail = (emp.workEmail || emp.email || '').toLowerCase().trim();
+        if (wEmail) empByEmail.set(wEmail, emp);
+        const pEmail = (emp.personalEmail || '').toLowerCase().trim();
+        if (pEmail) empByEmail.set(pEmail, emp);
+        if (emp.employeeCode) empCodes.add(emp.employeeCode.trim().toUpperCase());
+      });
+
+      let nextCodeNum = existingEmployees.length + 1;
+      const getNextCode = () => {
+        while (empCodes.has(`EMP-${String(nextCodeNum).padStart(4, '0')}`)) {
+          nextCodeNum++;
+        }
+        const code = `EMP-${String(nextCodeNum).padStart(4, '0')}`;
+        empCodes.add(code);
+        return code;
+      };
+
+      let createdCount = 0;
+      let syncedCount = 0;
+
+      for (const uDoc of usersSnap.docs) {
+        const u = uDoc.data() || {};
+        const uid = uDoc.id;
+        const email = (u.email || '').toLowerCase().trim();
+
+        // Skip demo/test email domains
+        if (email.endsWith('@example.com') || email.endsWith('@demo.com')) continue;
+
+        let matchedEmp = empByUid.get(uid) || (email ? empByEmail.get(email) : null);
+        if (u.employeeId && !matchedEmp) {
+          matchedEmp = existingEmployees.find(e => e.id === u.employeeId);
+        }
+
+        if (matchedEmp) {
+          // Keep UID and email linked on employee record
+          const empUpdates = {};
+          if (!matchedEmp.userId || matchedEmp.userId !== uid) {
+            empUpdates.userId = uid;
+          }
+          if (!matchedEmp.workEmail && email) {
+            empUpdates.workEmail = email;
+            empUpdates.email = email;
+          }
+          if (Object.keys(empUpdates).length > 0) {
+            await db.collection('employees').doc(matchedEmp.id).set(empUpdates, { merge: true });
+          }
+
+          // Keep employeeId & employeeCode linked on users doc
+          if (u.employeeId !== matchedEmp.id || !u.employeeCode) {
+            await db.collection('users').doc(uid).set({
+              employeeId: matchedEmp.id,
+              employeeCode: matchedEmp.employeeCode || u.employeeCode || ''
+            }, { merge: true });
+          }
+          syncedCount++;
+        } else {
+          // Provision new employee record for this database user
+          const employeeCode = u.employeeCode || getNextCode();
+          const fullName = (u.displayName || (email ? email.split('@')[0] : 'Employee')).trim();
+          const nameParts = fullName.split(' ');
+          const firstName = nameParts[0] || fullName;
+          const lastName = nameParts.slice(1).join(' ') || '';
+
+          const roleId = (u.roleId || 'EMPLOYEE').toUpperCase().trim();
+          let dept = u.department || 'Engineering';
+          let desig = u.designation || 'Software Engineer';
+          if (roleId === 'SUPER_ADMIN') {
+            dept = 'Executive Office';
+            desig = 'Super Administrator';
+          } else if (roleId === 'COMPANY_ADMIN' || roleId === 'ADMIN') {
+            dept = 'Executive Office';
+            desig = 'Company Administrator';
+          } else if (roleId === 'HR' || roleId === 'HR_MANAGER') {
+            dept = 'Human Resources';
+            desig = 'HR Manager';
+          } else if (roleId === 'MANAGER') {
+            dept = 'Operations';
+            desig = 'Operations Manager';
+          }
+
+          const newEmp = {
+            employeeCode,
+            firstName,
+            lastName,
+            fullName,
+            name: fullName,
+            userId: uid,
+            workEmail: email,
+            email: email,
+            personalEmail: email,
+            phone: u.phone || '',
+            roleId,
+            department: dept,
+            designation: desig,
+            companyId: u.companyId || 'comp_diallo_india',
+            companyName: u.companyName || 'Diallo India Private Limited',
+            branchId: u.branchId || 'branch_mumbai',
+            branchName: u.branchName || 'HQ - Mumbai',
+            location: u.branchName || 'HQ - Mumbai',
+            employmentStatus: u.status || 'ACTIVE',
+            status: u.status || 'ACTIVE',
+            employmentType: 'Full Time',
+            dateOfJoining: new Date().toISOString().slice(0, 10),
+            joiningDate: new Date().toISOString().slice(0, 10),
+            probationStatus: 'Completed',
+            salary: '₹65,000/mo',
+            createdAt: firebase.firestore.FieldValue.serverTimestamp(),
+            updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+          };
+
+          await db.collection('employees').doc(uid).set(newEmp, { merge: true });
+          await db.collection('users').doc(uid).set({
+            employeeId: uid,
+            employeeCode
+          }, { merge: true });
+
+          empByUid.set(uid, { id: uid, ...newEmp });
+          if (email) empByEmail.set(email, { id: uid, ...newEmp });
+          createdCount++;
+        }
+      }
+
+      return { created: createdCount, synced: syncedCount };
+    } catch (err) {
+      console.warn('Error syncing users to employees:', err);
+      return { created: 0, synced: 0, error: err.message };
+    }
+  },
+
   // Get employee list with multi-attribute filtering and pagination
   async getEmployees(filters = {}, pagination = null) {
     try {
+      // Auto-synchronize registered database users to official employee collection
+      try {
+        await this.syncUsersToEmployees();
+      } catch (syncErr) {
+        console.warn('Background user-employee sync warning:', syncErr);
+      }
+
       let query = db.collection('employees');
 
       if (filters.companyId) query = query.where('companyId', '==', filters.companyId);

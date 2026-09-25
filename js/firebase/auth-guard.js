@@ -226,6 +226,151 @@ const AuthGuard = {
         this.userRole = { name: 'Employee (ESS)', id: 'EMPLOYEE' };
       }
     }
+
+    // Ensure every user who logs in has a matching official employee record in employees collection
+    try {
+      await this.ensureEmployeeProfile(uid, userEmail, this.userProfile);
+    } catch (e) {
+      console.warn('Could not auto-provision employee profile for logged in user:', e);
+    }
+  },
+
+  // Ensure logged-in user has an official employee record in employees collection
+  async ensureEmployeeProfile(uid, userEmail, profile) {
+    if (!uid) return;
+    const email = (userEmail || '').toLowerCase().trim();
+
+    try {
+      let empDoc = null;
+      // 1. Direct doc lookup by employeeId if present
+      if (profile?.employeeId) {
+        try {
+          const doc = await db.collection('employees').doc(profile.employeeId).get();
+          if (doc.exists) empDoc = { id: doc.id, ...doc.data() };
+        } catch (e) {}
+      }
+
+      // 2. Direct doc lookup by UID
+      if (!empDoc) {
+        try {
+          const doc = await db.collection('employees').doc(uid).get();
+          if (doc.exists) empDoc = { id: doc.id, ...doc.data() };
+        } catch (e) {}
+      }
+
+      // 3. Query by userId
+      if (!empDoc) {
+        try {
+          const snap = await db.collection('employees').where('userId', '==', uid).limit(1).get();
+          if (!snap.empty) empDoc = { id: snap.docs[0].id, ...snap.docs[0].data() };
+        } catch (e) {}
+      }
+
+      // 4. Query by workEmail / email
+      if (!empDoc && email) {
+        try {
+          const snap = await db.collection('employees').where('workEmail', '==', email).limit(1).get();
+          if (!snap.empty) {
+            empDoc = { id: snap.docs[0].id, ...snap.docs[0].data() };
+          } else {
+            const snap2 = await db.collection('employees').where('email', '==', email).limit(1).get();
+            if (!snap2.empty) empDoc = { id: snap2.docs[0].id, ...snap2.docs[0].data() };
+          }
+        } catch (e) {}
+      }
+
+      if (empDoc) {
+        // Sync userId and email on employee doc if missing
+        const empUpdates = {};
+        if (empDoc.userId !== uid) empUpdates.userId = uid;
+        if (!empDoc.workEmail && email) {
+          empUpdates.workEmail = email;
+          empUpdates.email = email;
+        }
+        if (Object.keys(empUpdates).length > 0) {
+          await db.collection('employees').doc(empDoc.id).set(empUpdates, { merge: true });
+        }
+
+        // Sync employeeId and employeeCode back to user profile & users collection doc
+        const userUpdates = {};
+        if (profile.employeeId !== empDoc.id) userUpdates.employeeId = empDoc.id;
+        if (profile.employeeCode !== empDoc.employeeCode && empDoc.employeeCode) userUpdates.employeeCode = empDoc.employeeCode;
+        if (Object.keys(userUpdates).length > 0) {
+          await db.collection('users').doc(uid).set(userUpdates, { merge: true });
+          if (this.userProfile) Object.assign(this.userProfile, userUpdates);
+        }
+      } else {
+        // Automatically make them employee too!
+        let nextCode = 'EMP-0001';
+        try {
+          if (window.employeeService && employeeService.getNextEmployeeCode) {
+            nextCode = await employeeService.getNextEmployeeCode(profile?.companyId || 'comp_diallo_india');
+          }
+        } catch (e) {}
+
+        const fullName = (profile?.displayName || (email ? email.split('@')[0] : 'Employee')).trim();
+        const nameParts = fullName.split(' ');
+        const roleId = (profile?.roleId || 'EMPLOYEE').toUpperCase().trim();
+        let dept = profile?.department || 'Engineering';
+        let desig = profile?.designation || 'Software Engineer';
+        if (roleId === 'SUPER_ADMIN') {
+          dept = 'Executive Office';
+          desig = 'Super Administrator';
+        } else if (roleId === 'COMPANY_ADMIN' || roleId === 'ADMIN') {
+          dept = 'Executive Office';
+          desig = 'Company Administrator';
+        } else if (roleId === 'HR' || roleId === 'HR_MANAGER') {
+          dept = 'Human Resources';
+          desig = 'HR Manager';
+        } else if (roleId === 'MANAGER') {
+          dept = 'Operations';
+          desig = 'Operations Manager';
+        }
+
+        const newEmp = {
+          employeeCode: nextCode,
+          firstName: nameParts[0] || fullName,
+          lastName: nameParts.slice(1).join(' ') || '',
+          fullName,
+          name: fullName,
+          userId: uid,
+          workEmail: email,
+          email: email,
+          personalEmail: email,
+          phone: profile?.phone || '',
+          roleId,
+          department: dept,
+          designation: desig,
+          companyId: profile?.companyId || 'comp_diallo_india',
+          companyName: profile?.companyName || 'Diallo India Private Limited',
+          branchId: profile?.branchId || 'branch_mumbai',
+          branchName: profile?.branchName || 'HQ - Mumbai',
+          location: profile?.branchName || 'HQ - Mumbai',
+          employmentStatus: profile?.status || 'ACTIVE',
+          status: profile?.status || 'ACTIVE',
+          employmentType: 'Full Time',
+          dateOfJoining: new Date().toISOString().slice(0, 10),
+          joiningDate: new Date().toISOString().slice(0, 10),
+          probationStatus: 'Completed',
+          salary: '₹65,000/mo',
+          createdAt: firebase.firestore.FieldValue.serverTimestamp(),
+          updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+        };
+
+        await db.collection('employees').doc(uid).set(newEmp, { merge: true });
+        await db.collection('users').doc(uid).set({
+          employeeId: uid,
+          employeeCode: nextCode
+        }, { merge: true });
+
+        if (this.userProfile) {
+          this.userProfile.employeeId = uid;
+          this.userProfile.employeeCode = nextCode;
+        }
+      }
+    } catch (err) {
+      console.warn('ensureEmployeeProfile error:', err);
+    }
   },
 
   // Granular Permission Verification

@@ -7,6 +7,8 @@ const AttendanceView = {
   activeTab: 'daily',
   currentDate: new Date().toISOString().slice(0, 10),
   currentFilters: {},
+  myAttendanceMonth: '',
+  myAttendanceDate: '',
 
   async renderHub() {
     let summary = { totalEmployees: 0, present: 0, onTime: 0, late: 0, onLeave: 0, absent: 0, avgWorkHours: '0h 00m' };
@@ -266,7 +268,16 @@ const AttendanceView = {
             <input type="text" id="att-filter-search" class="form-control" placeholder="Search by Employee Code or Name..." value="${this.currentFilters.search || ''}" onkeydown="if(event.key==='Enter') AttendanceView.applyFilters()" />
           </div>
 
-          <input type="date" id="att-filter-date" class="form-control" style="width: 160px;" value="${this.currentDate}" onchange="AttendanceView.changeDate(this.value)" />
+          <div class="flex items-center gap-1">
+            <button class="btn btn-secondary btn-sm" onclick="AttendanceView.shiftDailyDate(-1)" title="Previous Day" style="padding: 6px 9px;">
+              <svg width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/></svg>
+            </button>
+            <input type="date" id="att-filter-date" class="form-control" style="width: 150px;" value="${this.currentDate}" onchange="AttendanceView.changeDate(this.value)" />
+            <button class="btn btn-secondary btn-sm" onclick="AttendanceView.shiftDailyDate(1)" title="Next Day" style="padding: 6px 9px;">
+              <svg width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg>
+            </button>
+            <button class="btn btn-secondary btn-sm" onclick="AttendanceView.changeDate(new Date().toISOString().slice(0, 10))" title="Jump to Today">Today</button>
+          </div>
 
           <select id="att-filter-dept" class="form-control" style="width: 180px;">
             <option value="All Departments">All Departments</option>
@@ -374,6 +385,54 @@ const AttendanceView = {
     Router.navigate('attendance');
   },
 
+  shiftDailyDate(offset) {
+    const cur = new Date(this.currentDate || new Date());
+    cur.setDate(cur.getDate() + offset);
+    this.currentDate = cur.toISOString().slice(0, 10);
+    Router.navigate('attendance');
+  },
+
+  shiftMyAttendanceMonth(offset) {
+    const cur = this.myAttendanceMonth || new Date().toISOString().slice(0, 7);
+    const parts = cur.split('-').map(Number);
+    const d = new Date(parts[0], parts[1] - 1 + offset, 1);
+    const yStr = d.getFullYear();
+    const mStr = String(d.getMonth() + 1).padStart(2, '0');
+    this.myAttendanceMonth = `${yStr}-${mStr}`;
+    this.myAttendanceDate = '';
+    Router.mountView('attendance');
+  },
+
+  setMyAttendanceMonth(monthStr) {
+    this.myAttendanceMonth = monthStr || '';
+    this.myAttendanceDate = '';
+    Router.mountView('attendance');
+  },
+
+  setMyAttendanceLastMonth() {
+    const today = new Date();
+    const lastMonth = new Date(today.getFullYear(), today.getMonth() - 1, 1);
+    const yStr = lastMonth.getFullYear();
+    const mStr = String(lastMonth.getMonth() + 1).padStart(2, '0');
+    this.myAttendanceMonth = `${yStr}-${mStr}`;
+    this.myAttendanceDate = '';
+    Router.mountView('attendance');
+  },
+
+  setMyAttendanceDate(dateStr) {
+    this.myAttendanceDate = dateStr || '';
+    if (dateStr) {
+      this.myAttendanceMonth = dateStr.slice(0, 7);
+    }
+    Router.mountView('attendance');
+  },
+
+  clearMyAttendanceFilters() {
+    this.myAttendanceMonth = '';
+    this.myAttendanceDate = '';
+    Router.mountView('attendance');
+  },
+
   applyFilters() {
     this.currentFilters = {
       search: document.getElementById('att-filter-search')?.value.trim() || '',
@@ -395,6 +454,47 @@ const AttendanceView = {
   async renderMyAttendanceTab(todayRecord) {
     const employeeId = AuthGuard.userProfile?.employeeId || AuthGuard.currentUser?.uid;
     const history = await attendanceService.getAttendanceRecords({ employeeId });
+
+    // Recent records strictly on top (descending date sort)
+    history.sort((a, b) => {
+      const dateDiff = (b.date || '').localeCompare(a.date || '');
+      if (dateDiff !== 0) return dateDiff;
+      return (b.checkIn || '').localeCompare(a.checkIn || '');
+    });
+
+    const todayIso = new Date().toISOString().slice(0, 10);
+    const currentMonthStr = todayIso.slice(0, 7);
+    const activeMonthVal = this.myAttendanceMonth || '';
+    const activeDateVal = this.myAttendanceDate || '';
+
+    // Filter by date or month
+    let filteredHistory = history;
+    if (activeDateVal) {
+      filteredHistory = history.filter(h => h.date === activeDateVal);
+    } else if (activeMonthVal) {
+      filteredHistory = history.filter(h => (h.date || '').startsWith(activeMonthVal));
+    }
+
+    let filterPeriodLabel = 'All Recorded Months';
+    if (activeDateVal) {
+      filterPeriodLabel = `Date: ${activeDateVal}`;
+    } else if (activeMonthVal) {
+      const [y, m] = activeMonthVal.split('-');
+      const dObj = new Date(Number(y), Number(m) - 1, 1);
+      filterPeriodLabel = dObj.toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
+    }
+
+    // Calculate period statistics
+    const presentCount = filteredHistory.filter(h => h.status === 'PRESENT' || h.status === 'REGULARIZED').length;
+    const lateCount = filteredHistory.filter(h => h.status === 'LATE' || (h.lateMinutes && h.lateMinutes > 0)).length;
+    const halfDayCount = filteredHistory.filter(h => h.status === 'HALF_DAY').length;
+    let totalWorkedMinutes = 0;
+    filteredHistory.forEach(h => {
+      totalWorkedMinutes += (h.workedMinutes || 0);
+    });
+    const totalWorkedHours = Math.floor(totalWorkedMinutes / 60);
+    const totalWorkedRemMins = totalWorkedMinutes % 60;
+    const totalWorkedStr = `${totalWorkedHours}h ${String(totalWorkedRemMins).padStart(2, '0')}m`;
 
     return `
       <!-- Live Web Check-In Card -->
@@ -457,24 +557,74 @@ const AttendanceView = {
 
       <!-- My Attendance History Table -->
       <div class="card">
-        <div class="card-header">
+        <div class="card-header" style="flex-wrap: wrap; gap: 12px;">
           <div>
             <div class="card-title">My Attendance History</div>
-            <div class="card-subtitle">Verified monthly punch logs, break durations, and regularizations</div>
+            <div class="card-subtitle">Verified monthly punch logs, break durations, and regularizations (Recent on top)</div>
           </div>
           <button class="btn btn-soft btn-sm" onclick="AttendanceView.openRegularizationModal()">+ Request Correction</button>
         </div>
+
+        <!-- Month Toggles & Date Filter Toolbar -->
+        <div style="background: var(--bg-surface-secondary, rgba(0,0,0,0.02)); border-bottom: 1px solid var(--border-color, #e2e8f0); padding: 12px 20px;">
+          <div class="flex items-center justify-between" style="flex-wrap: wrap; gap: 12px;">
+            <!-- Month selector & month toggles -->
+            <div class="flex items-center gap-2" style="flex-wrap: wrap;">
+              <span style="font-size: 0.82rem; font-weight: 700; color: var(--text-muted); text-transform: uppercase;">Month:</span>
+              <div class="flex items-center gap-1">
+                <button class="btn btn-secondary btn-sm" onclick="AttendanceView.shiftMyAttendanceMonth(-1)" title="Previous Month" style="padding: 5px 9px;">
+                  <svg width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/></svg>
+                </button>
+                <input type="month" id="my-att-month-picker" class="form-control" style="width: 160px; padding: 5px 10px; font-weight: 600;" value="${activeMonthVal || currentMonthStr}" onchange="AttendanceView.setMyAttendanceMonth(this.value)" />
+                <button class="btn btn-secondary btn-sm" onclick="AttendanceView.shiftMyAttendanceMonth(1)" title="Next Month" style="padding: 5px 9px;">
+                  <svg width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg>
+                </button>
+              </div>
+
+              <!-- Quick Month Toggles -->
+              <button class="btn ${!activeMonthVal && !activeDateVal ? 'btn-primary' : 'btn-secondary'} btn-sm" onclick="AttendanceView.clearMyAttendanceFilters()">All Months</button>
+              <button class="btn ${activeMonthVal === currentMonthStr && !activeDateVal ? 'btn-primary' : 'btn-secondary'} btn-sm" onclick="AttendanceView.setMyAttendanceMonth('${currentMonthStr}')">This Month</button>
+              <button class="btn btn-secondary btn-sm" onclick="AttendanceView.setMyAttendanceLastMonth()">Last Month</button>
+            </div>
+
+            <!-- Specific Date Filter -->
+            <div class="flex items-center gap-2" style="flex-wrap: wrap;">
+              <span style="font-size: 0.82rem; font-weight: 700; color: var(--text-muted); text-transform: uppercase;">Date:</span>
+              <input type="date" id="my-att-date-picker" class="form-control" style="width: 150px; padding: 5px 10px;" value="${activeDateVal}" onchange="AttendanceView.setMyAttendanceDate(this.value)" />
+              ${(activeMonthVal || activeDateVal) ? `
+                <button class="btn btn-soft btn-sm" onclick="AttendanceView.clearMyAttendanceFilters()" style="color: var(--danger);">Reset Filter</button>
+              ` : ''}
+            </div>
+          </div>
+
+          <!-- Active Period Summary Bar -->
+          <div class="flex items-center justify-between" style="margin-top: 10px; padding-top: 8px; border-top: 1px dashed var(--border-color, #e2e8f0); font-size: 0.82rem; color: var(--text-muted); flex-wrap: wrap; gap: 8px;">
+            <div>
+              Period: <strong style="color: var(--primary);">${filterPeriodLabel}</strong>
+              • Showing <strong style="color: var(--text-main);">${filteredHistory.length}</strong> records (Recent above)
+            </div>
+            <div class="flex items-center gap-3">
+              <span>Present: <strong style="color: var(--success);">${presentCount}</strong></span>
+              <span>Late: <strong style="color: var(--warning);">${lateCount}</strong></span>
+              <span>Half Day: <strong style="color: var(--warning);">${halfDayCount}</strong></span>
+              <span>Total Worked: <strong style="color: var(--primary); font-family: monospace;">${totalWorkedStr}</strong></span>
+            </div>
+          </div>
+        </div>
+
         <div class="card-body" style="padding: 0;">
-          ${history.length === 0 ? `
+          <div class="table-responsive" style="overflow-x: auto;">
+          ${filteredHistory.length === 0 ? `
             <div class="empty-state">
               <div class="empty-state-icon">
                 <svg width="24" height="24" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/>
                 </svg>
               </div>
-              <div class="empty-state-title">No Attendance Records Logged Yet</div>
-              <div class="empty-state-desc">Record your daily work shift presence or submit missed punch adjustments.</div>
+              <div class="empty-state-title">No Attendance Records Found</div>
+              <div class="empty-state-desc">No logs found for ${filterPeriodLabel}. Try selecting a different month or date.</div>
               <div class="empty-state-actions">
+                <button class="btn btn-secondary btn-sm" onclick="AttendanceView.clearMyAttendanceFilters()">View All Records</button>
                 <button class="btn btn-primary btn-sm" onclick="AttendanceView.recordCheckIn()">Web Check In</button>
               </div>
             </div>
@@ -495,14 +645,14 @@ const AttendanceView = {
                 </tr>
               </thead>
               <tbody>
-                ${history.map(h => `
+                ${filteredHistory.map(h => `
                   <tr>
                     <td class="font-semibold text-main">${h.date}</td>
                     <td><span class="font-medium text-main">${h.checkIn || '-'}</span></td>
                     <td><span class="badge ${h.totalBreakMinutes > 0 ? 'badge-warning' : 'badge-neutral'}">${h.breakFormatted || (h.totalBreakMinutes ? h.totalBreakMinutes + 'm' : '0m')}</span></td>
                     <td><span class="font-medium text-main">${h.checkOut || '-'}</span></td>
                     <td><span class="text-secondary" style="font-size: 0.85rem;">${h.grossHoursFormatted || h.workedHoursFormatted || '0h 00m'}</span></td>
-                    <td><strong style="color: var(--primary);">${h.workedHoursFormatted || '0h 00m'}</strong></td>
+                    <td><strong style="color: var(--primary); font-family: monospace;">${h.workedHoursFormatted || '0h 00m'}</strong></td>
                     <td>${h.lateMinutes > 0 ? `<span class="text-warning font-semibold">+${h.lateMinutes}m</span>` : '—'}</td>
                     <td>${h.overtimeMinutes > 0 ? `<span class="text-success font-semibold">+${h.overtimeMinutes}m</span>` : '—'}</td>
                     <td>
@@ -518,6 +668,7 @@ const AttendanceView = {
               </tbody>
             </table>
           `}
+          </div>
         </div>
       </div>
     `;

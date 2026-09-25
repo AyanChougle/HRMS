@@ -567,6 +567,13 @@ const attendanceService = {
         );
       }
 
+      // Sort attendance records by date descending (most recent dates on top)
+      records.sort((a, b) => {
+        const dateDiff = (b.date || '').localeCompare(a.date || '');
+        if (dateDiff !== 0) return dateDiff;
+        return (b.checkIn || '').localeCompare(a.checkIn || '');
+      });
+
       return records;
     } catch (err) {
       console.error('Error getting attendance records:', err);
