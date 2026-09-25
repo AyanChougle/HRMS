@@ -70,7 +70,7 @@ const ComplianceView = {
           </div>
           <div class="kpi-value">Enforced</div>
           <div class="kpi-label">Master HR Policies</div>
-          <div class="kpi-subtitle">Diallo India (Ghansoli Mahape)</div>
+          <div class="kpi-subtitle">Diallo India (HQ - Mumbai)</div>
         </div>
 
         <div class="kpi-card" onclick="ComplianceView.switchTab('policies')" style="cursor: pointer;">
@@ -161,7 +161,7 @@ const ComplianceView = {
 
     const overview = policies.companyOverview || {
       name: 'Diallo % (Diallo India Private Limited)',
-      location: 'Ghansoli Mahape, Navi Mumbai',
+      location: 'HQ - Mumbai, Maharashtra',
       workingDays: '6 Days (Monday to Saturday)',
       workingHours: '9 Hours (10:00 AM – 07:00 PM)',
       weeklyOff: 'Sunday and Declared Government Holidays',

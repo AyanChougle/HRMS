@@ -1,6 +1,6 @@
 /**
  * DIALLO HRMS — PRODUCTION SYSTEM INITIALIZATION & CORE STRUCTURE SERVICE
- * Strictly maintains official corporate structure for Diallo % (Ghansoli Mahape).
+ * Strictly maintains official corporate structure for Diallo % (HQ - Mumbai).
  * Zero mock/demo datasets. Includes automated and on-demand legacy demo purge.
  */
 
@@ -90,8 +90,8 @@ const seedService = {
       brandName: 'Diallo %',
       code: 'DIPL',
       country: 'India',
-      location: 'Ghansoli Mahape',
-      headquarters: 'Ghansoli Mahape, Navi Mumbai',
+      location: 'HQ - Mumbai',
+      headquarters: 'HQ - Mumbai, Maharashtra',
       workingDays: 6,
       workingHours: '9 Hours (10:00 AM - 07:00 PM)',
       weeklyOff: 'Sunday and Government Holiday',
@@ -105,8 +105,8 @@ const seedService = {
     batch.set(branchRef, {
       id: 'branch_mumbai',
       companyId: this.COMPANY_ID,
-      name: 'Diallo - Ghansoli Mahape',
-      city: 'Navi Mumbai (Ghansoli Mahape)',
+      name: 'Diallo - HQ Mumbai',
+      city: 'Mumbai',
       state: 'Maharashtra',
       timezone: 'Asia/Kolkata',
       status: 'ACTIVE',
@@ -285,6 +285,41 @@ const seedService = {
       });
       if (astCount > 0) {
         await astBatch.commit();
+      }
+
+      // 7. Purge Demo Announcements (Town Hall, Diwali, Insurance)
+      const annSnap = await db.collection('announcements').get();
+      const annBatch = db.batch();
+      let annCount = 0;
+      const DEMO_TITLES = ['q3 town hall', 'diwali festive', 'annual group medical insurance'];
+      annSnap.docs.forEach(doc => {
+        const d = doc.data() || {};
+        const titleLower = (d.title || '').toLowerCase();
+        if (doc.id.startsWith('ANN_DEMO') || doc.id.startsWith('ANN00') || DEMO_TITLES.some(dt => titleLower.includes(dt))) {
+          annBatch.delete(doc.ref);
+          annCount++;
+          totalDeleted++;
+        }
+      });
+      if (annCount > 0) {
+        await annBatch.commit();
+        console.log(`[Purge] Purged ${annCount} demo announcements.`);
+      }
+
+      // 8. Sanitize systemConfig role_page_permissions to ensure TRAINEE does not have performance
+      try {
+        const permDocRef = db.collection('systemConfig').doc('role_page_permissions');
+        const permSnap = await permDocRef.get();
+        if (permSnap.exists) {
+          const permData = permSnap.data() || {};
+          if (Array.isArray(permData.TRAINEE) && permData.TRAINEE.includes('performance')) {
+            permData.TRAINEE = permData.TRAINEE.filter(p => p !== 'performance');
+            await permDocRef.set(permData, { merge: true });
+            console.log('[Purge] Cleaned performance page permission from TRAINEE in Firestore.');
+          }
+        }
+      } catch (permErr) {
+        console.warn('[Purge] Could not update systemConfig permissions:', permErr);
       }
 
       console.log(`[Purge] Cleanup completed. Total demo records purged: ${totalDeleted}`);

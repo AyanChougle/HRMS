@@ -7,7 +7,7 @@
 const roleAccessService = {
   COLLECTION: 'systemConfig',
   DOC_ID: 'role_page_permissions',
-  STORAGE_KEY: 'diallo_role_page_permissions_v4',
+  STORAGE_KEY: 'diallo_role_page_permissions_v5',
 
   // Master Registry of all system views and navigation pages
   PAGES: [
@@ -76,7 +76,7 @@ const roleAccessService = {
       'compliance', 'documents', 'communication', 'ess'
     ],
     TRAINEE: [
-      'dashboard', 'training', 'attendance', 'leave', 'performance', 'compliance',
+      'dashboard', 'training', 'attendance', 'leave', 'compliance',
       'documents', 'communication', 'ess'
     ],
     EMPLOYEE: [
@@ -93,6 +93,7 @@ const roleAccessService = {
       localStorage.removeItem('diallo_role_page_permissions_v1');
       localStorage.removeItem('diallo_role_page_permissions_v2');
       localStorage.removeItem('diallo_role_page_permissions_v3');
+      localStorage.removeItem('diallo_role_page_permissions_v4');
       const local = localStorage.getItem(this.STORAGE_KEY);
       if (local) {
         this.cachedConfig = JSON.parse(local);
@@ -109,8 +110,8 @@ const roleAccessService = {
       if (snap.exists) {
         const data = snap.data() || {};
         const sanitized = { ...data };
-        // Strictly sanitize: Remove payroll from non-admin/HR roles and ensure performance is present
-        ['EMPLOYEE', 'TRAINEE', 'MENTOR', 'TRAINER', 'TEAM_LEAD', 'MANAGER'].forEach(role => {
+        // Strictly sanitize: Remove payroll from non-admin/HR roles and ensure performance is present for full-time staff
+        ['EMPLOYEE', 'MENTOR', 'TRAINER', 'TEAM_LEAD', 'MANAGER'].forEach(role => {
           if (Array.isArray(sanitized[role])) {
             sanitized[role] = sanitized[role].filter(p => p !== 'payroll' && p !== 'payslip-templates');
             if (!sanitized[role].includes('performance')) {
@@ -118,6 +119,10 @@ const roleAccessService = {
             }
           }
         });
+        // Performance is strictly not for Trainee
+        if (Array.isArray(sanitized.TRAINEE)) {
+          sanitized.TRAINEE = sanitized.TRAINEE.filter(p => p !== 'payroll' && p !== 'payslip-templates' && p !== 'performance');
+        }
         this.cachedConfig = sanitized;
         localStorage.setItem(this.STORAGE_KEY, JSON.stringify(this.cachedConfig));
       }
@@ -161,8 +166,10 @@ const roleAccessService = {
       pages = pages.filter(p => p !== 'payroll' && p !== 'payslip-templates');
     }
 
-    // Operational roles (Employee, Trainee, Mentor, TL, Manager) ALWAYS see performance to view goals by Team Leader
-    if (['EMPLOYEE', 'TRAINEE', 'MENTOR', 'TRAINER', 'TEAM_LEAD', 'MANAGER'].includes(r)) {
+    // Trainees never have access to performance & appraisals
+    if (r === 'TRAINEE' || r.includes('TRAINEE')) {
+      pages = pages.filter(p => p !== 'performance');
+    } else if (['EMPLOYEE', 'MENTOR', 'TRAINER', 'TEAM_LEAD', 'MANAGER'].includes(r)) {
       if (!pages.includes('performance')) {
         pages.push('performance');
       }
@@ -181,8 +188,13 @@ const roleAccessService = {
       return false;
     }
 
-    // Performance is allowed for all operational roles (employees, trainees, mentors, team leads, managers)
-    if (routeKey === 'performance' && ['EMPLOYEE', 'TRAINEE', 'MENTOR', 'TRAINER', 'TEAM_LEAD', 'MANAGER', 'HR', 'HR_MANAGER', 'COMPANY_ADMIN'].includes(r)) {
+    // Performance is strictly NOT allowed for Trainees
+    if (routeKey === 'performance' && (r === 'TRAINEE' || r.includes('TRAINEE'))) {
+      return false;
+    }
+
+    // Performance is allowed for full-time staff and managers
+    if (routeKey === 'performance' && ['EMPLOYEE', 'MENTOR', 'TRAINER', 'TEAM_LEAD', 'MANAGER', 'HR', 'HR_MANAGER', 'COMPANY_ADMIN'].includes(r)) {
       return true;
     }
 

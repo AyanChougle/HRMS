@@ -256,7 +256,6 @@ const PermissionService = {
       'leave.create',
       'documents.view',
       'communication.view',
-      'performance.view',
       'own.profile',
       'own.attendance',
       'own.leave',

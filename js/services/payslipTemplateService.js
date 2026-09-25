@@ -181,7 +181,7 @@ const payslipTemplateService = {
         cin: 'U72900MH2026PTC123456',
         pan: 'AAACD1234E',
         gstin: '27AAACD1234E1Z5',
-        address: 'Ghansoli Mahape, Navi Mumbai, Maharashtra'
+        address: 'HQ - Mumbai, Maharashtra'
       },
       employeeSnapshot: {
         fullName: 'Employee Staff',
@@ -196,7 +196,7 @@ const payslipTemplateService = {
         bankName: 'HDFC Bank Ltd',
         bankAccount: '••••••••4892',
         ifsc: 'HDFC0001234',
-        location: 'Ghansoli Mahape'
+        location: 'HQ - Mumbai'
       },
       attendanceSnapshot: {
         totalDays: 31,

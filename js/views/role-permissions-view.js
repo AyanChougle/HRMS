@@ -117,18 +117,21 @@ const RolePermissionsView = {
                   </div>
                   <div class="flex flex-col gap-2">
                     ${pages.map(p => {
-                      const isChecked = currentAllowed.includes(p.key);
+                      const isTraineePerf = this.selectedRole === 'TRAINEE' && p.key === 'performance';
+                      const isChecked = !isTraineePerf && currentAllowed.includes(p.key);
                       return `
-                        <label style="display: flex; align-items: center; justify-content: space-between; padding: 8px 10px; background: var(--bg-card); border: 1px solid var(--border-light); border-radius: 6px; cursor: pointer; transition: all 0.15s ease;">
+                        <label style="display: flex; align-items: center; justify-content: space-between; padding: 8px 10px; background: var(--bg-card); border: 1px solid var(--border-light); border-radius: 6px; ${isTraineePerf ? 'opacity: 0.5; cursor: not-allowed;' : 'cursor: pointer;'} transition: all 0.15s ease;">
                           <div class="flex items-center gap-3">
                             <span style="color: var(--primary); display: flex;">
                               <svg width="18" height="18" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="${p.icon}" />
                               </svg>
                             </span>
-                            <span style="font-size: 0.9rem; font-weight: 600; color: var(--text-main);">${p.label}</span>
+                            <span style="font-size: 0.9rem; font-weight: 600; color: var(--text-main);">
+                              ${p.label} ${isTraineePerf ? '<small style="color: var(--text-muted); font-weight: 400; margin-left: 4px;">(Not for Trainees)</small>' : ''}
+                            </span>
                           </div>
-                          <input type="checkbox" name="page-permission" value="${p.key}" ${isChecked ? 'checked' : ''} style="width: 18px; height: 18px; cursor: pointer; accent-color: var(--primary);" />
+                          <input type="checkbox" name="page-permission" value="${p.key}" ${isChecked ? 'checked' : ''} ${isTraineePerf ? 'disabled' : ''} style="width: 18px; height: 18px; cursor: ${isTraineePerf ? 'not-allowed' : 'pointer'}; accent-color: var(--primary);" />
                         </label>
                       `;
                     }).join('')}
@@ -167,7 +170,12 @@ const RolePermissionsView = {
         selectedPages.unshift('dashboard');
       }
 
-      await roleAccessService.saveRolePermissions(this.selectedRole, selectedPages);
+      // Trainees cannot have performance & appraisals
+      const finalPages = this.selectedRole === 'TRAINEE'
+        ? selectedPages.filter(p => p !== 'performance')
+        : selectedPages;
+
+      await roleAccessService.saveRolePermissions(this.selectedRole, finalPages);
       Toast.success(`Visible pages updated successfully for role: ${this.selectedRole}`);
     } catch (e) {
       Toast.error('Failed to save role permissions: ' + e.message);

@@ -8,7 +8,21 @@ const PerformanceView = {
 
   async renderHub() {
     const role = (AuthGuard._previewRoleId || AuthGuard.userProfile?.roleId || 'EMPLOYEE').toString().toUpperCase().trim();
-    const isEmployeeOnly = ['EMPLOYEE', 'TRAINEE'].includes(role);
+    if (role === 'TRAINEE') {
+      return `
+        <div class="card animate-fade-in" style="max-width: 600px; margin: 40px auto; padding: 36px 24px; text-align: center;">
+          <div style="width: 56px; height: 56px; border-radius: 50%; background: var(--primary-light); color: var(--primary); display: flex; align-items: center; justify-content: center; margin: 0 auto 16px;">
+            <svg width="28" height="28" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253"/>
+            </svg>
+          </div>
+          <h2 style="font-size: 1.25rem; font-weight: 700; color: var(--text-main); margin-bottom: 8px;">Trainee Learning Curriculum</h2>
+          <p style="font-size: 0.9rem; color: var(--text-muted); line-height: 1.5; margin-bottom: 24px;">Annual performance scorecards, OKRs, and appraisal cycles are for confirmed full-time staff only. Graduate Trainees and Interns are evaluated directly through their 7-Day Training curriculum modules and mentor assessments.</p>
+          <button class="btn btn-primary" onclick="Router.navigate('training')">Go to 7-Day Training Modules</button>
+        </div>
+      `;
+    }
+    const isEmployeeOnly = ['EMPLOYEE'].includes(role);
     const employeeId = AuthGuard.userProfile?.employeeId || AuthGuard.currentUser?.uid;
 
     let activeCycle = null;

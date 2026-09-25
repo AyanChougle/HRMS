@@ -63,7 +63,7 @@ const CreateEmployeeView = {
             </div>
             <div>
               <div class="card-title">New User Onboarding Form</div>
-              <div class="card-subtitle">Official shift: 10:00 AM – 07:00 PM (8h Work • 1h Break • 10m Grace) • Ghansoli Mahape</div>
+              <div class="card-subtitle">Official shift: 10:00 AM – 07:00 PM (8h Work • 1h Break • 10m Grace) • HQ - Mumbai</div>
             </div>
           </div>
         </div>
@@ -148,7 +148,7 @@ const CreateEmployeeView = {
               </div>
               <div class="form-group">
                 <label class="form-label">Office Location</label>
-                <input type="text" class="form-control" value="Ghansoli Mahape, Navi Mumbai" readonly disabled style="background: var(--bg-hover);" />
+                <input type="text" class="form-control" value="HQ - Mumbai, Maharashtra" readonly disabled style="background: var(--bg-hover);" />
               </div>
               <div class="form-group">
                 <label class="form-label">Shift Timing Policy</label>
@@ -324,7 +324,7 @@ const CreateEmployeeView = {
         employmentStatus: 'ACTIVE',
         status: 'ACTIVE',
         companyId: 'comp_diallo_india',
-        branchName: 'Diallo - Ghansoli Mahape',
+        branchName: 'Diallo - HQ Mumbai',
         shift: '10:00 AM – 07:00 PM',
         createdAt: firebase.firestore.FieldValue.serverTimestamp()
       };

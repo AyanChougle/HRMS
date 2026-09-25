@@ -40,6 +40,17 @@ const announcementService = {
         return timeB - timeA;
       });
 
+      // Exclude demo announcements
+      const DEMO_TITLES = ['q3 town hall', 'diwali festive', 'annual group medical insurance'];
+      list = list.filter(a => {
+        const titleLower = (a.title || '').toLowerCase();
+        return !docIdIsDemo(a.id) && !DEMO_TITLES.some(dt => titleLower.includes(dt));
+      });
+
+      function docIdIsDemo(id) {
+        return id && (id.startsWith('ANN_DEMO') || id.startsWith('ANN00'));
+      }
+
       if (filters.category && filters.category !== 'ALL') {
         list = list.filter(a => a.category === filters.category);
       }

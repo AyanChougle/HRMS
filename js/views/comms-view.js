@@ -185,7 +185,9 @@ const CommsView = {
         </div>
       ` : `
         <div class="grid" style="grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 20px;">
-          ${list.map(a => `
+          ${list.map(a => {
+            const msg = a.message || a.body || a.content || a.description || '';
+            return `
             <div class="card" style="display: flex; flex-direction: column; justify-content: space-between;">
               <div style="padding: 20px;">
                 <div class="flex justify-between items-center" style="margin-bottom: 12px;">
@@ -194,7 +196,7 @@ const CommsView = {
                 </div>
                 <h3 style="font-size: 1.15rem; font-weight: 800; color: var(--text-main); margin: 0 0 10px 0;">${a.title}</h3>
                 <p style="font-size: 0.88rem; color: var(--text-secondary); line-height: 1.5; margin-bottom: 16px;">
-                  ${(a.message || '').length > 180 ? a.message.slice(0, 180) + '...' : a.message}
+                  ${msg.length > 180 ? msg.slice(0, 180) + '...' : msg}
                 </p>
                 ${a.attachmentName ? `
                   <div style="padding: 8px 12px; background: var(--bg-hover); border-radius: 6px; font-size: 0.8rem; display: flex; align-items: center; gap: 8px; margin-bottom: 12px;">
@@ -209,7 +211,8 @@ const CommsView = {
                 <button class="btn btn-primary btn-sm" onclick="CommsView.openDetailModal('${a.id}')">Read Full Notice</button>
               </div>
             </div>
-          `).join('')}
+          `;
+          }).join('')}
         </div>
       `}
     `;

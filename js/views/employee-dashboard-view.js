@@ -35,6 +35,59 @@ const EmployeeDashboardView = {
       year: "numeric",
     });
 
+    // Dynamic Current Week Attendance Rhythm (Mon – Fri)
+    const now = new Date();
+    const todayIso = now.toISOString().slice(0, 10);
+    const dayOfWeek = now.getDay();
+    const distToMon = dayOfWeek === 0 ? -6 : 1 - dayOfWeek;
+    const monday = new Date(now);
+    monday.setDate(now.getDate() + distToMon);
+
+    const weekDays = [];
+    const dayNames = ["MON", "TUE", "WED", "THU", "FRI"];
+    for (let i = 0; i < 5; i++) {
+      const d = new Date(monday);
+      d.setDate(monday.getDate() + i);
+      const iso = d.toISOString().slice(0, 10);
+      weekDays.push({
+        name: dayNames[i],
+        iso,
+        isToday: iso === todayIso,
+        isPast: iso < todayIso,
+        isFuture: iso > todayIso,
+      });
+    }
+
+    let weekAttendanceRecords = [];
+    if (window.attendanceService && employeeId) {
+      try {
+        weekAttendanceRecords = await attendanceService.getAttendanceRecords({
+          employeeId,
+        });
+      } catch (e) {
+        console.warn("Attendance rhythm fetch warning:", e);
+      }
+    }
+    const attMap = new Map();
+    weekAttendanceRecords.forEach((r) => {
+      if (r.date) attMap.set(r.date, r);
+    });
+
+    let onTimeCount = 0;
+    let pastLoggedCount = 0;
+    weekDays.forEach((wd) => {
+      const rec = attMap.get(wd.iso);
+      if (wd.isPast && rec) {
+        pastLoggedCount++;
+        if (rec.status === "PRESENT" || rec.status === "REGULARIZED")
+          onTimeCount++;
+      }
+    });
+    const punctualityRate =
+      pastLoggedCount > 0
+        ? Math.round((onTimeCount / pastLoggedCount) * 100)
+        : 100;
+
     return `
       <!-- Welcome Hero Banner -->
       <div class="welcome-banner animate-fade-in" style="margin-bottom: 24px;">
@@ -133,11 +186,10 @@ const EmployeeDashboardView = {
                 <!-- 1. Dedicated Punch In Button -->
                 <button class="btn timecard-action-btn ${ESSView.isShiftCompletedToday ? "btn-secondary disabled" : ESSView.isPunchedIn ? "btn-secondary disabled" : "btn-primary"}" id="emp-punch-in-btn" onclick="ESSView.punchIn()" style="${ESSView.isShiftCompletedToday ? "opacity: 0.55; cursor: not-allowed;" : ESSView.isPunchedIn ? "opacity: 0.85; cursor: default; background: #f0fdf4; border-color: #86efac; color: #166534;" : "background: #16a34a; border-color: #16a34a; color: #ffffff;"}" ${ESSView.isShiftCompletedToday || ESSView.isPunchedIn ? "disabled" : ""}>
                   <svg width="17" height="17" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    ${
-                      ESSView.isPunchedIn || ESSView.isShiftCompletedToday
-                        ? '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>'
-                        : '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 16l-4-4m0 0l4-4m-4 4h14m-5 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h7a3 3 0 013 3v1"/>'
-                    }
+                    ${ESSView.isPunchedIn || ESSView.isShiftCompletedToday
+        ? '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>'
+        : '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 16l-4-4m0 0l4-4m-4 4h14m-5 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h7a3 3 0 013 3v1"/>'
+      }
                   </svg>
                   <span>${ESSView.isPunchedIn || ESSView.isShiftCompletedToday ? "Punched In" : "Punch In"}</span>
                 </button>
@@ -145,11 +197,10 @@ const EmployeeDashboardView = {
                 <!-- 2. Dedicated Punch Out Button -->
                 <button class="btn timecard-action-btn ${ESSView.isShiftCompletedToday ? "btn-secondary disabled" : ESSView.isPunchedIn ? "btn-secondary" : "btn-secondary disabled"}" id="emp-punch-out-btn" onclick="ESSView.punchOut()" style="${ESSView.isShiftCompletedToday ? "opacity: 0.7; cursor: not-allowed; background: #fef2f2; border-color: #fecaca; color: #991b1b;" : ESSView.isPunchedIn ? "color: #dc2626; border-color: #fca5a5; background: #fff5f5; cursor: pointer;" : "opacity: 0.5; cursor: not-allowed;"}" ${ESSView.isShiftCompletedToday || !ESSView.isPunchedIn ? "disabled" : ""}>
                   <svg width="17" height="17" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    ${
-                      ESSView.isShiftCompletedToday
-                        ? '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"/>'
-                        : '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"/>'
-                    }
+                    ${ESSView.isShiftCompletedToday
+        ? '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"/>'
+        : '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"/>'
+      }
                   </svg>
                   <span>${ESSView.isShiftCompletedToday ? "Punched Out" : "Punch Out"}</span>
                 </button>
@@ -162,13 +213,25 @@ const EmployeeDashboardView = {
                   <span>${ESSView.isShiftCompletedToday ? "Break" : ESSView.isOnBreak ? "Resume" : "Break"}</span>
                 </button>
 
-                <!-- 4. Apply Leave Button -->
-                <button class="btn btn-secondary timecard-action-btn" onclick="Forms.openApplyLeaveModal()">
-                  <svg width="17" height="17" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/>
-                  </svg>
-                  <span>Apply Leave</span>
-                </button>
+                <!-- 4. Apply Leave Button / Sign Agreement for Trainee -->
+                ${isTrainee
+        ? `
+                  <button class="btn btn-secondary timecard-action-btn" onclick="Router.navigate('documents')">
+                    <svg width="17" height="17" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
+                    </svg>
+                    <span>Sign Agreement</span>
+                  </button>
+                `
+        : `
+                  <button class="btn btn-secondary timecard-action-btn" onclick="Forms.openApplyLeaveModal()">
+                    <svg width="17" height="17" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/>
+                    </svg>
+                    <span>Apply Leave</span>
+                  </button>
+                `
+      }
               </div>
             </div>
 
@@ -176,13 +239,12 @@ const EmployeeDashboardView = {
         </div>
       </div>
 
-      <!-- FAST QUICK ACTIONS LAUNCHPAD (6 TILES) -->
+      <!-- FAST QUICK ACTIONS LAUNCHPAD -->
       <div class="card" style="margin-bottom: 24px; padding: 18px 20px;">
         <div style="font-size: 0.8rem; font-weight: 700; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 12px;">Quick Self-Service Actions</div>
         <div class="emp-quick-launchpad">
-          ${
-            isTrainee
-              ? `
+          ${isTrainee
+        ? `
             <button class="btn btn-soft" style="padding: 12px; height: auto; flex-direction: column; gap: 8px; justify-content: center; text-align: center; border-radius: var(--radius-md);" onclick="Router.navigate('training')">
               <span style="color: var(--primary); display: flex; align-items: center; justify-content: center;">
                 <svg width="22" height="22" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253"/></svg>
@@ -204,18 +266,11 @@ const EmployeeDashboardView = {
               <span style="font-size: 0.85rem; font-weight: 600;">Timecard & Logs</span>
             </button>
 
-            <button class="btn btn-soft" style="padding: 12px; height: auto; flex-direction: column; gap: 8px; justify-content: center; text-align: center; border-radius: var(--radius-md);" onclick="Forms.openApplyLeaveModal()">
+            <button class="btn btn-soft" style="padding: 12px; height: auto; flex-direction: column; gap: 8px; justify-content: center; text-align: center; border-radius: var(--radius-md);" onclick="Router.navigate('documents')">
               <span style="color: var(--primary); display: flex; align-items: center; justify-content: center;">
-                <svg width="22" height="22" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg>
+                <svg width="22" height="22" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
               </span>
-              <span style="font-size: 0.85rem; font-weight: 600;">Apply Leave</span>
-            </button>
-
-            <button class="btn btn-soft" style="padding: 12px; height: auto; flex-direction: column; gap: 8px; justify-content: center; text-align: center; border-radius: var(--radius-md);" onclick="RequestsView.openNewRequestModal()">
-              <span style="color: var(--primary); display: flex; align-items: center; justify-content: center;">
-                <svg width="22" height="22" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/></svg>
-              </span>
-              <span style="font-size: 0.85rem; font-weight: 600;">Raise HR Query</span>
+              <span style="font-size: 0.85rem; font-weight: 600;">Sign Agreement</span>
             </button>
 
             <button class="btn btn-soft" style="padding: 12px; height: auto; flex-direction: column; gap: 8px; justify-content: center; text-align: center; border-radius: var(--radius-md);" onclick="Router.navigate('documents')">
@@ -225,7 +280,7 @@ const EmployeeDashboardView = {
               <span style="font-size: 0.85rem; font-weight: 600;">My Documents</span>
             </button>
           `
-              : `
+        : `
             <button class="btn btn-soft" style="padding: 12px; height: auto; flex-direction: column; gap: 8px; justify-content: center; text-align: center; border-radius: var(--radius-md);" onclick="Forms.openApplyLeaveModal()">
               <span style="color: var(--primary); display: flex; align-items: center; justify-content: center;">
                 <svg width="22" height="22" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg>
@@ -275,7 +330,7 @@ const EmployeeDashboardView = {
               <span style="font-size: 0.85rem; font-weight: 600;">Goals & Appraisal</span>
             </button>
           `
-          }
+      }
         </div>
       </div>
 
@@ -286,10 +341,13 @@ const EmployeeDashboardView = {
         <div class="col-span-6 card">
           <div class="card-header">
             <div>
-              <div class="card-title">My Paid Leave Balance</div>
-              <div class="card-subtitle">Tenure-based statutory leave entitlement</div>
+              <div class="card-title">${isTrainee ? "Trainee Terms & Status" : "My Paid Leave Balance"}</div>
+              <div class="card-subtitle">${isTrainee ? "Agreement and compliance status" : "Tenure-based statutory leave entitlement"}</div>
             </div>
-            <button class="btn btn-soft btn-sm" onclick="Forms.openApplyLeaveModal()">+ Apply Leave</button>
+            ${isTrainee
+        ? `<button class="btn btn-soft btn-sm" onclick="Router.navigate('documents')">Sign Agreement</button>`
+        : `<button class="btn btn-soft btn-sm" onclick="Forms.openApplyLeaveModal()">+ Apply Leave</button>`
+      }
           </div>
           <div class="card-body">
             <div class="emp-leave-balances-grid" id="emp-leave-balances-grid">
@@ -324,7 +382,44 @@ const EmployeeDashboardView = {
           </div>
         </div>
 
-        <!-- My Performance Goals Card (Assigned by Team Leader) -->
+        <!-- Performance Goals Card (Non-Trainee) / Curriculum Track (Trainee) -->
+        ${
+          isTrainee
+            ? `
+        <div class="col-span-6 card">
+          <div class="card-header">
+            <div>
+              <div class="card-title">7-Day Training &amp; Curriculum</div>
+              <div class="card-subtitle">Daily learning modules, milestones &amp; mentor evaluation</div>
+            </div>
+            <button class="btn btn-soft btn-sm" onclick="Router.navigate('training')">Curriculum Track &rarr;</button>
+          </div>
+          <div class="card-body">
+            <div class="flex items-center justify-between" style="padding: 14px; background: var(--bg-hover); border-radius: var(--radius-sm); margin-bottom: 12px;">
+              <div>
+                <div class="font-semibold text-main" style="font-size: 0.95rem;">Graduate Onboarding Track</div>
+                <div class="text-muted" style="font-size: 0.75rem;">7 Daily Modules • Monitored and evaluated by assigned Trainer</div>
+              </div>
+              <button class="btn btn-primary btn-sm" onclick="Router.navigate('training')">Open Modules</button>
+            </div>
+            <div class="metrics-row-3" style="margin-top: 10px;">
+              <div style="padding: 8px; background: var(--bg-surface); border: 1px solid var(--border-main); border-radius: 6px;">
+                <div style="font-size: 0.7rem; color: var(--text-muted);">Current Track</div>
+                <strong style="font-size: 0.85rem; color: var(--text-main);">Day 1 of 7</strong>
+              </div>
+              <div style="padding: 8px; background: var(--bg-surface); border: 1px solid var(--border-main); border-radius: 6px;">
+                <div style="font-size: 0.7rem; color: var(--text-muted);">Evaluator</div>
+                <strong style="font-size: 0.85rem; color: var(--primary);">Lead Trainer</strong>
+              </div>
+              <div style="padding: 8px; background: var(--bg-surface); border: 1px solid var(--border-main); border-radius: 6px;">
+                <div style="font-size: 0.7rem; color: var(--text-muted);">Status</div>
+                <strong style="font-size: 0.85rem; color: var(--success);">In Training</strong>
+              </div>
+            </div>
+          </div>
+        </div>
+        `
+            : `
         <div class="col-span-6 card">
           <div class="card-header">
             <div>
@@ -357,6 +452,8 @@ const EmployeeDashboardView = {
             </div>
           </div>
         </div>
+        `
+        }
 
         <!-- Upcoming Official Paid Holidays Card -->
         <div class="col-span-6 card">
@@ -422,46 +519,78 @@ const EmployeeDashboardView = {
           </div>
           <div class="card-body">
             <div class="week-rhythm-grid">
-              <div style="padding: 12px 6px; background: var(--bg-hover); border-radius: 8px; border: 1px solid var(--border-main);">
-                <div style="font-size: 0.75rem; color: var(--text-muted); font-weight: 700;">MON</div>
-                <div style="display: flex; justify-content: center; margin: 4px 0;">
-                  <svg width="18" height="18" fill="none" viewBox="0 0 24 24" stroke="var(--success)"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7"/></svg>
-                </div>
-                <span class="badge badge-success" style="font-size: 0.65rem;">On Time</span>
-              </div>
-              <div style="padding: 12px 6px; background: var(--bg-hover); border-radius: 8px; border: 1px solid var(--border-main);">
-                <div style="font-size: 0.75rem; color: var(--text-muted); font-weight: 700;">TUE</div>
-                <div style="display: flex; justify-content: center; margin: 4px 0;">
-                  <svg width="18" height="18" fill="none" viewBox="0 0 24 24" stroke="var(--success)"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7"/></svg>
-                </div>
-                <span class="badge badge-success" style="font-size: 0.65rem;">On Time</span>
-              </div>
-              <div style="padding: 12px 6px; background: var(--bg-hover); border-radius: 8px; border: 1px solid var(--border-main);">
-                <div style="font-size: 0.75rem; color: var(--text-muted); font-weight: 700;">WED</div>
-                <div style="display: flex; justify-content: center; margin: 4px 0;">
-                  <svg width="18" height="18" fill="none" viewBox="0 0 24 24" stroke="var(--success)"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7"/></svg>
-                </div>
-                <span class="badge badge-success" style="font-size: 0.65rem;">On Time</span>
-              </div>
-              <div style="padding: 12px 6px; background: var(--bg-hover); border-radius: 8px; border: 1px solid var(--border-main);">
-                <div style="font-size: 0.75rem; color: var(--text-muted); font-weight: 700;">THU</div>
-                <div style="display: flex; justify-content: center; margin: 4px 0;">
-                  <svg width="18" height="18" fill="none" viewBox="0 0 24 24" stroke="var(--success)"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7"/></svg>
-                </div>
-                <span class="badge badge-success" style="font-size: 0.65rem;">On Time</span>
-              </div>
-              <div style="padding: 12px 6px; background: var(--primary-light); border-radius: 8px; border: 1px solid var(--primary);">
-                <div style="font-size: 0.75rem; color: var(--primary); font-weight: 800;">FRI (TODAY)</div>
-                <div style="display: flex; justify-content: center; margin: 4px 0;">
-                  <svg width="18" height="18" fill="none" viewBox="0 0 24 24" stroke="var(--primary)"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
-                </div>
-                <span class="badge badge-primary" style="font-size: 0.65rem;">Active</span>
-              </div>
+              ${weekDays.map(wd => {
+        const rec = attMap.get(wd.iso);
+        let badgeClass = 'badge-neutral';
+        let statusLabel = 'Scheduled';
+        let iconColor = 'var(--text-muted)';
+        let iconPath = 'M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z';
+        let cardBg = 'var(--bg-hover)';
+        let borderStyle = '1px solid var(--border-main)';
+
+        if (wd.isToday) {
+          cardBg = 'var(--primary-light)';
+          borderStyle = '1px solid var(--primary)';
+          iconColor = 'var(--primary)';
+          if (ESSView.isShiftCompletedToday) {
+            badgeClass = 'badge-success';
+            statusLabel = 'Completed';
+            iconPath = 'M5 13l4 4L19 7';
+          } else if (ESSView.isPunchedIn) {
+            badgeClass = ESSView.isOnBreak ? 'badge-warning' : 'badge-primary';
+            statusLabel = ESSView.isOnBreak ? 'Break' : 'Active';
+          } else {
+            badgeClass = 'badge-neutral';
+            statusLabel = 'Pending';
+          }
+        } else if (wd.isPast) {
+          if (rec) {
+            if (rec.status === 'PRESENT' || rec.status === 'REGULARIZED') {
+              badgeClass = 'badge-success';
+              statusLabel = 'On Time';
+              iconColor = 'var(--success)';
+              iconPath = 'M5 13l4 4L19 7';
+            } else if (rec.status === 'LATE') {
+              badgeClass = 'badge-warning';
+              statusLabel = 'Late';
+              iconColor = 'var(--warning)';
+              iconPath = 'M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z';
+            } else if (rec.status === 'HALF_DAY') {
+              badgeClass = 'badge-warning';
+              statusLabel = 'Half Day';
+              iconColor = 'var(--warning)';
+            } else if (rec.status === 'LEAVE' || rec.status === 'ON_LEAVE') {
+              badgeClass = 'badge-info';
+              statusLabel = 'Leave';
+              iconColor = 'var(--info)';
+              iconPath = 'M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z';
+            } else {
+              badgeClass = 'badge-neutral';
+              statusLabel = rec.status || 'Logged';
+            }
+          } else {
+            badgeClass = 'badge-neutral';
+            statusLabel = 'Unlogged';
+          }
+        }
+
+        return `
+                  <div style="padding: 12px 6px; background: ${cardBg}; border-radius: 8px; border: ${borderStyle};">
+                    <div style="font-size: 0.75rem; color: ${wd.isToday ? 'var(--primary)' : 'var(--text-muted)'}; font-weight: 700;">${wd.name}${wd.isToday ? ' (TODAY)' : ''}</div>
+                    <div style="display: flex; justify-content: center; margin: 4px 0;">
+                      <svg width="18" height="18" fill="none" viewBox="0 0 24 24" stroke="${iconColor}"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="${iconPath}"/></svg>
+                    </div>
+                    <span class="badge ${badgeClass}" style="font-size: 0.65rem;">${statusLabel}</span>
+                  </div>
+                `;
+      }).join('')}
             </div>
             <div class="flex items-center justify-between" style="margin-top: 14px; font-size: 0.8rem; color: var(--text-secondary);">
               <span>Target Work Hours: <strong>45h / week</strong></span>
-              <span>Avg Punctuality: <strong style="color: var(--success);">100%</strong></span>
+              <span>Avg Punctuality: <strong style="color: var(--success);">${punctualityRate}%</strong></span>
             </div>
+          </div>
+        </div>
           </div>
         </div>
 
@@ -500,8 +629,7 @@ const EmployeeDashboardView = {
       const tenureStatusEl = document.getElementById("emp-dash-tenure-status");
 
       const plQuota = balances.PL;
-      if (plBalEl)
-        plBalEl.textContent = `${plQuota?.available ?? 0} Days`;
+      if (plBalEl) plBalEl.textContent = `${plQuota?.available ?? 0} Days`;
       if (plSubEl)
         plSubEl.textContent = `${plQuota?.used ?? 0} Used of ${plQuota?.allocated ?? 0} • Cap: ${plQuota?.monthlyQuota ?? 0} PL/mo • ${plQuota?.pending ?? 0} Pending`;
       if (plBadgeEl && plQuota?.quotaInfo?.ruleBadge) {
@@ -521,8 +649,8 @@ const EmployeeDashboardView = {
           annBody.innerHTML = `
             <div class="grid" style="grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 16px;">
               ${announcements
-                .map(
-                  (ann) => `
+              .map(
+                (ann) => `
                 <div class="announcement-card" style="padding: 16px; background: var(--bg-hover); border-radius: var(--radius-md); border: 1px solid var(--border-main);">
                   <div class="flex items-center justify-between" style="margin-bottom: 6px;">
                     <span class="badge badge-primary" style="font-size: 0.7rem;">${ann.tag || "Notice"}</span>
@@ -532,8 +660,8 @@ const EmployeeDashboardView = {
                   <div class="announcement-desc" style="font-size: 0.85rem; color: var(--text-secondary); line-height: 1.5;">${ann.content || ann.description || ""}</div>
                 </div>
               `,
-                )
-                .join("")}
+              )
+              .join("")}
             </div>
           `;
         }

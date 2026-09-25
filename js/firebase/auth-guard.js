@@ -446,7 +446,7 @@ const AuthGuard = {
       this.permissions = window.PermissionService ? PermissionService.getUserPermissions({ roleId: 'TRAINER' }) : new Set(['training.*', 'performance.view', 'attendance.punch', 'attendance.view', 'leave.view', 'leave.create', 'own.profile']);
       this.userRole = { name: 'Trainer', id: 'TRAINER' };
     } else if (normalizedRole === 'TRAINEE') {
-      this.permissions = window.PermissionService ? PermissionService.getUserPermissions({ roleId: 'TRAINEE' }) : new Set(['training.view', 'training.submit', 'performance.view', 'attendance.punch', 'attendance.view', 'leave.view', 'leave.create', 'own.profile']);
+      this.permissions = window.PermissionService ? PermissionService.getUserPermissions({ roleId: 'TRAINEE' }) : new Set(['training.view', 'training.submit', 'attendance.punch', 'attendance.view', 'leave.view', 'leave.create', 'own.profile']);
       this.userRole = { name: 'Trainee', id: 'TRAINEE' };
     } else {
       this.userRole = { name: 'Employee', id: 'EMPLOYEE' };

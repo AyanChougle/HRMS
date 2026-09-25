@@ -102,21 +102,8 @@ const TrainingView = {
         </div>
       </div>
 
-      <!-- KPI Overview Grid -->
-      <div class="kpi-grid" style="margin-bottom: 24px;">
-        <div class="kpi-card">
-          <div class="kpi-top">
-            <div class="kpi-icon-box" style="background: var(--primary-light); color: var(--primary);">
-              <svg width="20" height="20" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z"/>
-              </svg>
-            </div>
-            <span class="kpi-trend positive">${inTrainingCount} Active</span>
-          </div>
-          <div class="kpi-value">${totalTrainees}</div>
-          <div class="kpi-label">Total Trainees & Interns</div>
-          <div class="kpi-subtitle">Across engineering, HR & finance</div>
-        </div>
+      <!-- KPI Overview Grid (Hidden for Trainee) -->
+      ${!isTrainee ? `>
 
         <div class="kpi-card">
           <div class="kpi-top">
@@ -160,6 +147,7 @@ const TrainingView = {
           <div class="kpi-subtitle">Completion & readiness score</div>
         </div>
       </div>
+      ` : ''}
 
       <!-- Navigation Tabs -->
       <div class="tab-nav" style="margin-bottom: 20px;">
@@ -483,7 +471,7 @@ const TrainingView = {
       department: 'Operations',
       trainerName: 'Lead Trainer',
       currentDay: 1,
-      progress: 14,
+      progress: 0,
       completedModules: 0,
       totalModules: 7,
       status: 'IN_TRAINING',
@@ -626,7 +614,7 @@ const TrainingView = {
               <div style="display: flex; flex-direction: column; gap: 8px; text-align: left; font-size: 0.82rem; background: var(--bg-hover); padding: 12px 14px; border-radius: var(--radius-sm); margin-bottom: 16px;">
                 <div class="flex items-center gap-2">
                   <svg width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"/></svg>
-                  <span>Diallo % — Ghansoli Mahape</span>
+                  <span>Diallo % — HQ - Mumbai</span>
                 </div>
                 <div class="flex items-center gap-2">
                   <svg width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z"/></svg>

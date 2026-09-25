@@ -26,27 +26,27 @@ const ESSView = {
       "Employee";
 
     const empDoc = await employeeService.getEmployee(employeeId);
+    const isTrainee = AuthGuard.userProfile?.role === "TRAINEE" || AuthGuard.isTrainee?.() || false;
 
     const employee = empDoc || {
       fullName: userDisplayName,
-      employeeCode: AuthGuard.userProfile?.employeeCode || "EMP-001",
-      department: AuthGuard.userProfile?.department || "Technology",
-      designation: AuthGuard.userProfile?.designation || "Software Engineer",
-      phone: AuthGuard.userProfile?.phone || "+91 98765 43210",
-      workEmail: AuthGuard.currentUser?.email || "employee@diallo.in",
+      employeeCode: AuthGuard.userProfile?.employeeCode || "—",
+      department: AuthGuard.userProfile?.department || (isTrainee ? "L&D / Training" : "General"),
+      designation: AuthGuard.userProfile?.designation || (isTrainee ? "Graduate Trainee" : "Team Member"),
+      phone: AuthGuard.userProfile?.phone || "—",
+      workEmail: AuthGuard.currentUser?.email || "—",
       personalEmail:
-        AuthGuard.userProfile?.personalEmail || "personal@diallo.in",
-      dateOfJoining: AuthGuard.userProfile?.dateOfJoining || "2025-01-15",
-      bankName: AuthGuard.userProfile?.bankName || "HDFC Bank Ltd",
-      accountNumber: AuthGuard.userProfile?.accountNumber || "••••••••4892",
-      ifscCode: AuthGuard.userProfile?.ifscCode || "HDFC0001234",
-      panNumber: AuthGuard.userProfile?.panNumber || "ABCDE1234F",
-      uanNumber: AuthGuard.userProfile?.uanNumber || "101234567890",
+        AuthGuard.userProfile?.personalEmail || AuthGuard.currentUser?.email || "—",
+      dateOfJoining: AuthGuard.userProfile?.dateOfJoining || "—",
+      bankName: AuthGuard.userProfile?.bankName || "—",
+      accountNumber: AuthGuard.userProfile?.accountNumber || "—",
+      ifscCode: AuthGuard.userProfile?.ifscCode || "—",
+      panNumber: AuthGuard.userProfile?.panNumber || "—",
+      uanNumber: AuthGuard.userProfile?.uanNumber || "—",
       emergencyContact:
-        AuthGuard.userProfile?.emergencyContact || "Family (+91 99887 76655)",
+        AuthGuard.userProfile?.emergencyContact || "—",
       address:
-        AuthGuard.userProfile?.address ||
-        "Bandra Kurla Complex, Mumbai, Maharashtra 400051",
+        AuthGuard.userProfile?.address || "—",
       branchName: AuthGuard.userProfile?.branchName || "HQ - Mumbai",
     };
 
@@ -100,11 +100,11 @@ const ESSView = {
                 <span class="badge badge-success"><span class="badge-dot"></span> Active</span>
               </div>
               <div class="flex items-center gap-3" style="margin-top: 4px; font-size: 0.88rem; color: var(--text-secondary); flex-wrap: wrap;">
-                <span>${employee.designation || "Software Engineer"}</span>
+                <span>${employee.designation || (isTrainee ? "Graduate Trainee" : "Team Member")}</span>
                 <span>•</span>
-                <span>${employee.department || "Technology"}</span>
+                <span>${employee.department || (isTrainee ? "L&D / Training" : "General")}</span>
                 <span>•</span>
-                <span style="font-family: var(--font-family-mono); font-weight: 600; color: var(--primary);">${employee.employeeCode || "EMP-001"}</span>
+                <span style="font-family: var(--font-family-mono); font-weight: 600; color: var(--primary);">${employee.employeeCode || "—"}</span>
               </div>
             </div>
           </div>
@@ -120,7 +120,7 @@ const ESSView = {
               <svg width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="currentColor" style="margin-right: 4px; display: inline-block; vertical-align: middle;">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/>
               </svg>
-              Joined: ${employee.dateOfJoining || employee.joiningDate || "Jan 2025"}
+              Joined: ${employee.dateOfJoining || employee.joiningDate || "—"}
             </span>
           </div>
         </div>
@@ -141,23 +141,23 @@ const ESSView = {
             <div class="flex flex-col gap-3" style="font-size: 0.85rem;">
               <div class="flex justify-between items-center py-1" style="border-bottom: 1px solid var(--border-light);">
                 <span class="text-muted">Full Legal Name:</span>
-                <strong class="text-main">${employee.fullName || employee.name}</strong>
+                <strong class="text-main">${employee.fullName || employee.name || "—"}</strong>
               </div>
               <div class="flex justify-between items-center py-1" style="border-bottom: 1px solid var(--border-light);">
                 <span class="text-muted">Personal Phone:</span>
-                <strong class="text-main">${employee.phone || "+91 7208533219"}</strong>
+                <strong class="text-main">${employee.phone || "—"}</strong>
               </div>
               <div class="flex justify-between items-center py-1" style="border-bottom: 1px solid var(--border-light);">
                 <span class="text-muted">Personal Email:</span>
-                <strong class="text-main">${employee.personalEmail || employee.email || AuthGuard.currentUser?.email || "ayanislight@gmail.com"}</strong>
+                <strong class="text-main">${employee.personalEmail || employee.email || AuthGuard.currentUser?.email || "—"}</strong>
               </div>
               <div class="flex justify-between items-center py-1" style="border-bottom: 1px solid var(--border-light);">
                 <span class="text-muted">Emergency Contact:</span>
-                <strong class="text-main">${employee.emergencyContact || "+91 98200 98765 (Family)"}</strong>
+                <strong class="text-main">${employee.emergencyContact || "—"}</strong>
               </div>
               <div class="flex justify-between items-start py-1">
                 <span class="text-muted">Residential Address:</span>
-                <strong class="text-main" style="max-width: 260px; text-align: right; line-height: 1.4;">${employee.address || "Flat 402, Sea Green Heights, Bandra West, Mumbai - 400050"}</strong>
+                <strong class="text-main" style="max-width: 260px; text-align: right; line-height: 1.4;">${employee.address || "—"}</strong>
               </div>
             </div>
           </div>
@@ -176,19 +176,19 @@ const ESSView = {
             <div class="flex flex-col gap-3" style="font-size: 0.85rem;">
               <div class="flex justify-between items-center py-1" style="border-bottom: 1px solid var(--border-light);">
                 <span class="text-muted">Employee Code:</span>
-                <strong style="font-family: var(--font-family-mono); letter-spacing: 0.5px; color: var(--primary);">${employee.employeeCode || "EMP-001"}</strong>
+                <strong style="font-family: var(--font-family-mono); letter-spacing: 0.5px; color: var(--primary);">${employee.employeeCode || "—"}</strong>
               </div>
               <div class="flex justify-between items-center py-1" style="border-bottom: 1px solid var(--border-light);">
                 <span class="text-muted">Department:</span>
-                <strong class="text-main">${employee.department || "Technology"}</strong>
+                <strong class="text-main">${employee.department || (isTrainee ? "L&D / Training" : "General")}</strong>
               </div>
               <div class="flex justify-between items-center py-1" style="border-bottom: 1px solid var(--border-light);">
                 <span class="text-muted">Designation / Role:</span>
-                <strong class="text-main">${employee.designation || "Software Engineer"}</strong>
+                <strong class="text-main">${employee.designation || (isTrainee ? "Graduate Trainee" : "Team Member")}</strong>
               </div>
               <div class="flex justify-between items-center py-1" style="border-bottom: 1px solid var(--border-light);">
                 <span class="text-muted">Work Email:</span>
-                <strong class="text-main">${employee.workEmail || AuthGuard.currentUser?.email || "-"}</strong>
+                <strong class="text-main">${employee.workEmail || AuthGuard.currentUser?.email || "—"}</strong>
               </div>
               <div class="flex justify-between items-center py-1" style="border-bottom: 1px solid var(--border-light);">
                 <span class="text-muted">Branch / Location:</span>
@@ -196,7 +196,7 @@ const ESSView = {
               </div>
               <div class="flex justify-between items-center py-1">
                 <span class="text-muted">Employment Status:</span>
-                <span class="badge badge-success"><span class="badge-dot"></span> ${employee.employmentStatus || "ACTIVE"}</span>
+                <span class="badge badge-success"><span class="badge-dot"></span> ${employee.employmentStatus || employee.status || "ACTIVE"}</span>
               </div>
             </div>
           </div>
@@ -215,15 +215,15 @@ const ESSView = {
             <div class="flex flex-col gap-3" style="font-size: 0.85rem;">
               <div class="flex justify-between items-center py-1" style="border-bottom: 1px solid var(--border-light);">
                 <span class="text-muted">Bank Name:</span>
-                <strong class="text-main">${employee.bankName || "HDFC Bank Ltd"}</strong>
+                <strong class="text-main">${employee.bankName || "—"}</strong>
               </div>
               <div class="flex justify-between items-center py-1" style="border-bottom: 1px solid var(--border-light);">
                 <span class="text-muted">Account Number:</span>
-                <strong class="text-main" style="font-family: var(--font-family-mono); letter-spacing: 0.5px;">${employee.accountNumber || "••••••••4892"}</strong>
+                <strong class="text-main" style="font-family: var(--font-family-mono); letter-spacing: 0.5px;">${employee.accountNumber || "—"}</strong>
               </div>
               <div class="flex justify-between items-center py-1">
                 <span class="text-muted">IFSC Code:</span>
-                <strong class="text-main" style="font-family: var(--font-family-mono); letter-spacing: 0.5px;">${employee.ifscCode || "HDFC0001234"}</strong>
+                <strong class="text-main" style="font-family: var(--font-family-mono); letter-spacing: 0.5px;">${employee.ifscCode || "—"}</strong>
               </div>
             </div>
           </div>
@@ -242,15 +242,15 @@ const ESSView = {
             <div class="flex flex-col gap-3" style="font-size: 0.85rem;">
               <div class="flex justify-between items-center py-1" style="border-bottom: 1px solid var(--border-light);">
                 <span class="text-muted">Permanent Account Number (PAN):</span>
-                <strong class="text-main" style="font-family: var(--font-family-mono); letter-spacing: 0.5px;">${employee.panNumber || "ABCDE1234F"}</strong>
+                <strong class="text-main" style="font-family: var(--font-family-mono); letter-spacing: 0.5px;">${employee.panNumber || "—"}</strong>
               </div>
               <div class="flex justify-between items-center py-1" style="border-bottom: 1px solid var(--border-light);">
                 <span class="text-muted">Universal Account Number (UAN / PF):</span>
-                <strong class="text-main" style="font-family: var(--font-family-mono); letter-spacing: 0.5px;">${employee.uanNumber || "101234567890"}</strong>
+                <strong class="text-main" style="font-family: var(--font-family-mono); letter-spacing: 0.5px;">${employee.uanNumber || "—"}</strong>
               </div>
               <div class="flex justify-between items-center py-1">
                 <span class="text-muted">ESIC Insurance Number:</span>
-                <strong class="text-main" style="font-family: var(--font-family-mono); letter-spacing: 0.5px;">${employee.esicNumber || "31000123450000001"}</strong>
+                <strong class="text-main" style="font-family: var(--font-family-mono); letter-spacing: 0.5px;">${employee.esicNumber || "—"}</strong>
               </div>
             </div>
           </div>

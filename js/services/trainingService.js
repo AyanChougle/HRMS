@@ -268,7 +268,7 @@ const trainingService = {
         title: data.title.trim(),
         category: data.category || 'Technical Engineering',
         duration: data.duration || '8 Weeks',
-        mode: data.mode || 'HYBRID', // HYBRID, CLASSROOM, VIRTUAL
+        mode: data.mode || 'CLASSROOM', // HYBRID, CLASSROOM, VIRTUAL
         trainerName: data.trainerName || 'Assigned Lead',
         trainerId: data.trainerId || null,
         enrolledCount: Number(data.enrolledCount) || 0,
@@ -300,7 +300,7 @@ const trainingService = {
   async evaluateTrainee(traineeId, evaluationData) {
     try {
       const updates = {
-        progress: Number(evaluationData.progress) || 100,
+        progress: Number(evaluationData.progress) || 0,
         rating: Number(evaluationData.rating) || 5,
         status: evaluationData.status || 'CERTIFIED',
         evaluationNotes: evaluationData.notes || '',
@@ -359,7 +359,7 @@ const trainingService = {
 
   async certifyTrainee(traineeId, rating = 5, notes = 'Completed Day 6 certification evaluation successfully.') {
     return await this.evaluateTrainee(traineeId, {
-      progress: 86,
+      progress: 0,
       rating: Number(rating) || 5,
       status: 'CERTIFIED',
       notes: notes
