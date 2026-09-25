@@ -878,6 +878,10 @@ const LeaveView = {
             <select id="alf-type" class="form-control" onchange="LeaveView.recalculateWorkingDays()">
               ${leaveTypes
                 .map((lt) => {
+                  const isUnpaid = lt.paid === false || lt.code === "LWP" || lt.code === "UL" || lt.code === "UNPAID" || (lt.name && lt.name.toLowerCase().includes("unpaid")) || (lt.name && lt.name.toLowerCase().includes("loss of pay"));
+                  if (isUnpaid) {
+                    return `<option value="${lt.code}">${lt.name} (${lt.code})</option>`;
+                  }
                   const b = balances ? balances[lt.code] : null;
                   const avail =
                     b && typeof b.available === "number"

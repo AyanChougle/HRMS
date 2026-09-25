@@ -28,6 +28,9 @@ const EmployeeDashboardView = {
       .toUpperCase()
       .trim();
     const isTrainee = rawRole === "TRAINEE";
+    const isAgreementSigned = !!localStorage.getItem(
+      "diallo_trainee_agreement_" + (employeeId || "trainee")
+    );
     const todayStr = new Date().toLocaleDateString("en-US", {
       weekday: "long",
       month: "short",
@@ -184,16 +187,27 @@ const EmployeeDashboardView = {
             <!-- Right: Action Buttons Group (2 Distinct Punch Buttons + Break + Apply Leave) -->
             <div class="timecard-actions-panel">
               <div class="timecard-action-grid">
-                <!-- 1. Dedicated Punch In Button -->
+                <!-- 1. Dedicated Punch In Button / Sign Agreement if not signed -->
+                ${isTrainee && !isAgreementSigned
+        ? `
+                <button class="btn timecard-action-btn btn-primary" id="emp-punch-in-btn" onclick="EmployeeDashboardView.openTraineeAgreementModal()" style="background: var(--primary); border-color: var(--primary); color: #ffffff; font-weight: 700;">
+                  <svg width="17" height="17" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
+                  </svg>
+                  <span>Sign Agreement</span>
+                </button>
+        `
+        : `
                 <button class="btn timecard-action-btn ${ESSView.isShiftCompletedToday ? "btn-secondary disabled" : ESSView.isPunchedIn ? "btn-secondary disabled" : "btn-primary"}" id="emp-punch-in-btn" onclick="EmployeeDashboardView.handlePunchIn()" style="${ESSView.isShiftCompletedToday ? "opacity: 0.55; cursor: not-allowed;" : ESSView.isPunchedIn ? "opacity: 0.85; cursor: default; background: #f0fdf4; border-color: #86efac; color: #166534;" : "background: #16a34a; border-color: #16a34a; color: #ffffff;"}" ${ESSView.isShiftCompletedToday || ESSView.isPunchedIn ? "disabled" : ""}>
                   <svg width="17" height="17" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     ${ESSView.isPunchedIn || ESSView.isShiftCompletedToday
         ? '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>'
-        : '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 16l-4-4m0 0l4-4m-4 4h14m-5 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h7a3 3 0 013 3v1"/>'
+        : '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 16l-4-4m0 0l4-4m-4 4h14m-5 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013 3h7a3 3 0 013 3v1"/>'
       }
                   </svg>
                   <span>${ESSView.isPunchedIn || ESSView.isShiftCompletedToday ? "Punched In" : "Punch In"}</span>
                 </button>
+        `}
 
                 <!-- 2. Dedicated Punch Out Button -->
                 <button class="btn timecard-action-btn ${ESSView.isShiftCompletedToday ? "btn-secondary disabled" : ESSView.isPunchedIn ? "btn-secondary" : "btn-secondary disabled"}" id="emp-punch-out-btn" onclick="ESSView.punchOut()" style="${ESSView.isShiftCompletedToday ? "opacity: 0.7; cursor: not-allowed; background: #fef2f2; border-color: #fecaca; color: #991b1b;" : ESSView.isPunchedIn ? "color: #dc2626; border-color: #fca5a5; background: #fff5f5; cursor: pointer;" : "opacity: 0.5; cursor: not-allowed;"}" ${ESSView.isShiftCompletedToday || !ESSView.isPunchedIn ? "disabled" : ""}>
@@ -475,7 +489,8 @@ const EmployeeDashboardView = {
         `
         }
 
-        <!-- Upcoming Official Paid Holidays Card -->
+        <!-- Upcoming Official Paid Holidays Card (Non-Trainees only) -->
+        ${!isTrainee ? `
         <div class="col-span-6 card">
           <div class="card-header">
             <div>
@@ -527,9 +542,10 @@ const EmployeeDashboardView = {
             </div>
           </div>
         </div>
+        ` : ''}
 
         <!-- Weekly Shift & Punctuality Overview -->
-        <div class="col-span-6 card">
+        <div class="${isTrainee ? 'col-span-12' : 'col-span-6'} card">
           <div class="card-header">
             <div>
               <div class="card-title">This Week's Attendance Rhythm</div>
@@ -612,7 +628,8 @@ const EmployeeDashboardView = {
           </div>
         </div>
 
-        <!-- Organization Notices & Townhall Updates -->
+        <!-- Organization Notices & Townhall Updates (Non-Trainees only) -->
+        ${!isTrainee ? `
         <div class="col-span-12 card">
           <div class="card-header">
             <div>
@@ -625,6 +642,7 @@ const EmployeeDashboardView = {
             <div style="padding: 20px; text-align: center; color: var(--text-muted);">Loading announcements...</div>
           </div>
         </div>
+        ` : ''}
 
       </div>
     `;
@@ -853,6 +871,23 @@ const EmployeeDashboardView = {
     if (aggrBadge) {
       aggrBadge.className = 'badge badge-success';
       aggrBadge.textContent = 'Signed & Active';
+    }
+
+    // Switch punch button from Sign Agreement to Punch In immediately
+    const punchInBtn = document.getElementById('emp-punch-in-btn');
+    if (punchInBtn) {
+      punchInBtn.setAttribute('onclick', 'EmployeeDashboardView.handlePunchIn()');
+      punchInBtn.className = 'btn timecard-action-btn btn-primary';
+      punchInBtn.style.background = '#16a34a';
+      punchInBtn.style.borderColor = '#16a34a';
+      punchInBtn.style.color = '#ffffff';
+      punchInBtn.style.fontWeight = '600';
+      punchInBtn.innerHTML = `
+        <svg width="17" height="17" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 16l-4-4m0 0l4-4m-4 4h14m-5 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013 3v1"/>
+        </svg>
+        <span>Punch In</span>
+      `;
     }
 
     Toast.success('Agreement successfully signed and recorded.');

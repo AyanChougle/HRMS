@@ -1184,7 +1184,7 @@ Module 4: Practical Capstone Evaluation</textarea>
         </p>
 
         <div style="display: flex; flex-direction: column; gap: 10px; margin-bottom: 20px;">
-          <a href="https://meet.google.com/xyz-diallo-hr" target="_blank" class="btn btn-primary" style="justify-content: center; width: 100%;">
+          <a href="#" target="_blank" class="btn btn-primary" style="justify-content: center; width: 100%;">
             Launch Google Meet Room
           </a>
           <button class="btn btn-secondary" style="justify-content: center; width: 100%;" onclick="ModalManager.closeModal(); Toast.success('Mentorship calendar sync invitation sent.');">

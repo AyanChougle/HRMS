@@ -258,7 +258,7 @@ const leaveService = {
           allocated: 0,
           used: lwpUsed,
           pending: 0,
-          available: 999,
+          available: Math.max(0, 0 - lwpUsed),
           carryForwardAllowed: false,
           maxCarryForward: 0,
           quotaInfo: { ruleBadge: 'Unpaid Leave', ruleExplanation: 'Salary deduction applies for unpaid absences' }
@@ -271,7 +271,7 @@ const leaveService = {
       return {
         PL: { code: 'PL', name: 'Paid Leave (PL)', allocated: 18, monthlyQuota: 3, used: 0, pending: 0, available: 18, carryForwardAllowed: false, maxCarryForward: 0, quotaInfo: { ruleBadge: '18 Paid Leaves', ruleExplanation: 'Standard annual quota (3 PL/mo max)' } },
         AL: { code: 'PL', name: 'Paid Leave (PL)', allocated: 18, monthlyQuota: 3, used: 0, pending: 0, available: 18, carryForwardAllowed: false, maxCarryForward: 0, quotaInfo: { ruleBadge: '18 Paid Leaves', ruleExplanation: 'Standard annual quota (3 PL/mo max)' } },
-        LWP: { code: 'LWP', name: 'Unpaid Leave (Loss of Pay)', allocated: 0, used: 0, pending: 0, available: 999, carryForwardAllowed: false, maxCarryForward: 0, quotaInfo: { ruleBadge: 'Unpaid Leave' } }
+        LWP: { code: 'LWP', name: 'Unpaid Leave (Loss of Pay)', allocated: 0, used: 0, pending: 0, available: 0, carryForwardAllowed: false, maxCarryForward: 0, quotaInfo: { ruleBadge: 'Unpaid Leave', ruleExplanation: 'Salary deduction applies for unpaid absences' } }
       };
     }
   },
