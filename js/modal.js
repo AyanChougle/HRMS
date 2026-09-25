@@ -31,7 +31,7 @@ const ModalManager = {
     });
   },
 
-  openModal({ id = 'generic-modal', title, subtitle = '', contentHtml, footerHtml = '', size = 'md' }) {
+  openModal({ id = 'generic-modal', title, subtitle = '', contentHtml, bodyHtml, body, footerHtml = '', size = 'md' }) {
     this.closeModal();
 
     let modalBackdrop = document.getElementById(id);
@@ -42,7 +42,8 @@ const ModalManager = {
       document.body.appendChild(modalBackdrop);
     }
 
-    const sizeClass = size === 'lg' ? 'modal-lg' : (size === 'sm' ? 'modal-sm' : '');
+    const resolvedContent = contentHtml !== undefined ? contentHtml : (bodyHtml !== undefined ? bodyHtml : (body !== undefined ? body : ''));
+    const sizeClass = (size === 'lg' || size === 'large') ? 'modal-lg' : (size === 'sm' || size === 'small' ? 'modal-sm' : '');
 
     modalBackdrop.innerHTML = `
       <div class="modal-dialog ${sizeClass}" role="dialog" aria-modal="true">
@@ -58,7 +59,7 @@ const ModalManager = {
           </button>
         </div>
         <div class="modal-body">
-          ${contentHtml}
+          ${resolvedContent}
         </div>
         ${footerHtml ? `<div class="modal-footer">${footerHtml}</div>` : ''}
       </div>

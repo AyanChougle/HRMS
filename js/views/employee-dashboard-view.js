@@ -819,9 +819,11 @@ const EmployeeDashboardView = {
 
     ModalManager.openModal({
       title: 'Trainee Cohort & Certification Agreement',
+      subtitle: 'Mandatory Attendance, Zero-Leave Cohort & Employment Conversion Terms',
+      contentHtml: bodyHtml,
       bodyHtml,
       footerHtml,
-      size: 'large'
+      size: 'lg'
     });
   },
 
