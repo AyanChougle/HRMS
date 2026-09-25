@@ -12,6 +12,13 @@
    ========================================================================== */
 
 /* --------------------------------------------------------------------------
+   GLOBAL BOX MODEL SAFETY NET
+   -------------------------------------------------------------------------- */
+*, *::before, *::after {
+  box-sizing: border-box;
+}
+
+/* --------------------------------------------------------------------------
    1. TABLET SCREENS (768px to 1024px)
    Optimize workspace for iPads and touch tablets without cramped sidebars
    -------------------------------------------------------------------------- */
@@ -62,7 +69,9 @@
   .col-span-8,
   .col-span-4,
   .col-span-6,
-  .col-span-12 {
+  .col-span-12,
+  .col-span-9,
+  .col-span-3 {
     grid-column: span 2;
   }
 
@@ -85,6 +94,12 @@
     grid-template-columns: repeat(2, 1fr);
     gap: 14px;
   }
+
+  /* Notification popover on tablet */
+  .notification-popover {
+    width: 300px;
+    max-width: calc(100vw - 24px);
+  }
 }
 
 /* --------------------------------------------------------------------------
@@ -98,7 +113,7 @@
   .col-span-8 { grid-column: span 12; }
   .col-span-4 { grid-column: span 12; }
   .col-span-6 { grid-column: span 6; }
-  
+
   .main-content {
     padding: 24px 20px 40px 20px;
   }
@@ -134,7 +149,7 @@
     max-width: 85vw;
     transition: transform 0.25s cubic-bezier(0.4, 0, 0.2, 1);
   }
-  
+
   .app-container.mobile-sidebar-open .app-sidebar {
     transform: translateX(0);
   }
@@ -157,7 +172,7 @@
     gap: 8px;
     height: var(--header-height, 58px);
   }
-  
+
   .header-left {
     gap: 8px;
     min-width: 0;
@@ -207,6 +222,21 @@
   .avatar-img {
     width: 28px;
     height: 28px;
+  }
+
+  /* Notification popover: full-width flyout on mobile */
+  .notification-popover {
+    width: calc(100vw - 20px) !important;
+    max-width: calc(100vw - 20px) !important;
+    right: -8px !important;
+    left: auto !important;
+  }
+
+  /* Dropdown popover: prevent overflow */
+  .dropdown-popover {
+    max-width: calc(100vw - 20px);
+    right: 0;
+    left: auto;
   }
 
   /* Page Headers & Action Bars */
@@ -285,7 +315,9 @@
   .col-span-8,
   .col-span-4,
   .col-span-6,
-  .col-span-12 {
+  .col-span-12,
+  .col-span-9,
+  .col-span-3 {
     grid-column: span 1 !important;
   }
 
@@ -330,12 +362,12 @@
     padding-bottom: 6px;
     margin-bottom: 16px;
     width: 100%;
-    scrollbar-width: none; /* Firefox */
+    scrollbar-width: none;
   }
   .tab-list::-webkit-scrollbar,
   .tabs-nav::-webkit-scrollbar,
   .nav-tabs::-webkit-scrollbar {
-    display: none; /* Safari & Chrome */
+    display: none;
   }
   .tab-btn {
     flex-shrink: 0;
@@ -355,12 +387,12 @@
     box-sizing: border-box;
   }
   .data-table {
-    min-width: 650px !important;
+    min-width: 600px !important;
   }
   .data-table th,
   .data-table td {
-    padding: 10px 12px;
-    font-size: 0.8rem;
+    padding: 10px 10px;
+    font-size: 0.78rem;
   }
 
   .table-toolbar {
@@ -404,29 +436,43 @@
   /* Modal Dialogs */
   .modal-backdrop {
     padding: 8px;
+    align-items: flex-end;
   }
   .modal-dialog {
-    margin: 6px auto;
+    margin: 0 auto;
     width: calc(100% - 12px) !important;
     max-width: calc(100% - 12px) !important;
-    max-height: calc(100vh - 16px);
-    border-radius: var(--radius-md);
+    max-height: 92vh;
+    border-radius: var(--radius-md) var(--radius-md) 0 0;
+    overflow-y: auto;
   }
   .modal-header {
     padding: 14px 16px;
+    position: sticky;
+    top: 0;
+    background: var(--bg-card);
+    z-index: 2;
   }
   .modal-body {
     padding: 16px 14px;
+    overflow-y: auto;
   }
   .modal-footer {
     padding: 12px 14px;
     flex-wrap: wrap;
     gap: 8px;
     justify-content: stretch;
+    display: flex;
+    flex-direction: row;
+    position: sticky;
+    bottom: 0;
+    background: var(--bg-card);
+    border-top: 1px solid var(--border-main);
+    z-index: 2;
   }
   .modal-footer .btn {
-    flex: 1 1 auto;
-    min-width: 120px;
+    flex: 1 1 0;
+    min-width: 0;
     justify-content: center;
   }
 
@@ -445,22 +491,37 @@
 
   /* Card padding adjustments */
   .card {
-    padding: 16px 14px;
     border-radius: var(--radius-md);
   }
   .card-header {
-    padding: 14px 16px;
+    padding: 12px 14px;
     flex-wrap: wrap;
     gap: 8px;
   }
   .card-body {
-    padding: 14px 16px;
+    padding: 12px 14px;
   }
 
   /* Quick Access Shortcuts */
   .quick-access-grid {
     grid-template-columns: repeat(2, 1fr) !important;
     gap: 10px;
+  }
+
+  /* Action items on mobile: stack */
+  .action-item {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 10px;
+  }
+  .action-item-buttons {
+    width: 100%;
+    justify-content: flex-end;
+  }
+
+  /* Welcome banner responsive */
+  .welcome-text h1 {
+    font-size: 1.2rem;
   }
 }
 
@@ -475,6 +536,16 @@
   .quick-access-grid {
     grid-template-columns: repeat(2, 1fr) !important;
   }
+
+  /* Compliance table on small mobile */
+  .card-header {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+  .card-header .btn,
+  .card-header button {
+    align-self: flex-start;
+  }
 }
 
 /* --------------------------------------------------------------------------
@@ -484,7 +555,7 @@
   #header-company-wrapper {
     display: none !important;
   }
-  
+
   .app-header {
     padding: 0 6px;
     gap: 4px;
@@ -503,22 +574,33 @@
   }
 
   .page-title {
-    font-size: 1.25rem;
+    font-size: 1.2rem;
   }
 
   .kpi-value {
-    font-size: 1.4rem;
+    font-size: 1.25rem !important;
+  }
+
+  .kpi-icon-box {
+    width: 30px;
+    height: 30px;
   }
 
   .modal-dialog {
-    margin: 4px auto;
-    width: calc(100% - 8px) !important;
-    max-width: calc(100% - 8px) !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    border-radius: var(--radius-md) var(--radius-md) 0 0;
   }
 
   .btn {
-    padding: 8px 12px;
+    padding: 8px 10px;
     font-size: 0.825rem;
+  }
+
+  /* Stacked page actions */
+  .page-actions .btn {
+    flex: 0 0 100%;
+    width: 100%;
   }
 }
 
@@ -706,10 +788,10 @@ body, input, button, select, textarea, table, th, td {
   gap: 14px;
 }
 
-/* Week Attendance Rhythm */
+/* Week Attendance Rhythm — default 6-col for Mon-Sat work week */
 .week-rhythm-grid {
   display: grid;
-  grid-template-columns: repeat(5, 1fr);
+  grid-template-columns: repeat(6, 1fr);
   gap: 8px;
   text-align: center;
 }
@@ -720,6 +802,25 @@ body, input, button, select, textarea, table, th, td {
   grid-template-columns: repeat(3, 1fr);
   gap: 8px;
   text-align: center;
+}
+
+/* --------------------------------------------------------------------------
+   SMALL LAPTOPS — Timecard & Launchpad (1025px - 1199px)
+   -------------------------------------------------------------------------- */
+@media (min-width: 1025px) and (max-width: 1199px) {
+  .timecard-station-grid {
+    grid-template-columns: 1fr 1fr;
+    gap: 14px;
+  }
+  .timecard-actions-panel {
+    grid-column: span 2;
+  }
+  .emp-quick-launchpad {
+    grid-template-columns: repeat(4, 1fr);
+  }
+  .ess-terminal-actions {
+    flex: 1 1 100%;
+  }
 }
 
 /* --------------------------------------------------------------------------
@@ -746,6 +847,15 @@ body, input, button, select, textarea, table, th, td {
   }
   .ess-terminal-actions .timecard-action-grid {
     grid-template-columns: repeat(4, 1fr);
+  }
+
+  /* Week rhythm on tablet: keep all 6 days side by side */
+  .week-rhythm-grid {
+    grid-template-columns: repeat(6, 1fr);
+    gap: 6px;
+  }
+  .week-rhythm-grid > div {
+    padding: 10px 4px;
   }
 }
 
@@ -825,29 +935,23 @@ body, input, button, select, textarea, table, th, td {
     gap: 10px !important;
   }
 
-  /* Week Rhythm on Mobile: keep 5 days side by side with compact padding */
+  /* Week Rhythm on Mobile: 3+3 wrapped grid for 6-day week */
   .week-rhythm-grid {
-    grid-template-columns: repeat(5, 1fr) !important;
-    gap: 4px !important;
+    grid-template-columns: repeat(3, 1fr) !important;
+    gap: 6px !important;
   }
   .week-rhythm-grid > div {
-    padding: 8px 2px !important;
+    padding: 8px 4px !important;
   }
   .week-rhythm-grid .badge {
     font-size: 0.58rem !important;
     padding: 1px 3px !important;
   }
 
-  /* Modal Footer on Mobile: equal 50% split for 2 buttons */
-  .modal-footer {
-    display: flex;
-    flex-direction: row;
-    gap: 8px;
-    width: 100%;
-  }
-  .modal-footer .btn {
-    flex: 1 1 0;
-    min-width: 0;
+  /* Metrics Row on Mobile */
+  .metrics-row-3 {
+    grid-template-columns: 1fr !important;
+    gap: 8px !important;
   }
 }
 
@@ -874,5 +978,10 @@ body, input, button, select, textarea, table, th, td {
     width: 15px;
     height: 15px;
   }
-}
 
+  /* Week rhythm on extra small: 2+2+2 grid */
+  .week-rhythm-grid {
+    grid-template-columns: repeat(2, 1fr) !important;
+    gap: 5px !important;
+  }
+}
