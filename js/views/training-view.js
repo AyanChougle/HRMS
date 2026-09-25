@@ -165,7 +165,7 @@ const TrainingView = {
 
       <!-- Navigation Tabs -->
       <div class="tab-nav" style="margin-bottom: 20px;">
-        ${!isTrainee && !isEmployee ? `
+        ${!isTrainee && !isEmployee && !isTrainer ? `
           <button class="tab-btn ${this.activeTab === 'trainees' ? 'active' : ''}" onclick="TrainingView.switchTab('trainees')">
             Trainees & Interns (${totalTrainees})
           </button>
