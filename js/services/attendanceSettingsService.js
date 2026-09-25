@@ -22,11 +22,11 @@ const attendanceSettingsService = {
     unauthorizedLeaveDeductionDays: 2, // 2 days deduction for UL
     geofence: {
       enabled: true,
-      address: 'EL207, Electronic Zone, TTC Industrial Area, Mahape, Navi Mumbai, Maharashtra 400710',
-      mapsUrl: 'https://maps.app.goo.gl/vrm35ARLi8RgGSFu9',
-      latitude: 19.110735301239913,
-      longitude: 73.02816428562234,
-      radiusMeters: 50
+      address: 'Office Premises (GPS: 19.166900, 72.931000)',
+      mapsUrl: 'https://www.google.com/maps?q=19.166900,72.931000',
+      latitude: 19.166900,
+      longitude: 72.931000,
+      radiusMeters: 60
     },
     status: 'ACTIVE'
   },

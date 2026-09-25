@@ -309,7 +309,7 @@ const ESSView = {
         <div class="card-header timecard-header">
           <div class="timecard-header-main">
             <div class="card-title">Live Geolocation Web Punch Terminal</div>
-            <div class="card-subtitle timecard-header-subtitle">Authenticated as <strong>${employee.fullName || employee.name}</strong> • ${employee.branchName || "EL207 Mahape, Navi Mumbai"}</div>
+            <div class="card-subtitle timecard-header-subtitle">Authenticated as <strong>${employee.fullName || employee.name}</strong> • ${employee.branchName || "Office Premises"}</div>
           </div>
           <div class="timecard-header-status">
             <span class="badge ${this.isPunchedIn ? "badge-success" : "badge-neutral"}" id="ess-live-badge">
@@ -325,7 +325,7 @@ const ESSView = {
                 00:00:00
               </div>
               <div style="font-size: 0.8rem; color: var(--text-secondary); margin-top: 6px;" id="ess-geo-status">
-                Office Premises Geofence: EL207, Mahape
+                Office Premises Geofence: 19.166900, 72.931000 (60m)
               </div>
               <div style="font-size: 0.8rem; margin-top: 6px; display: flex; gap: 16px; align-items: center; flex-wrap: wrap;">
                 <span style="color: var(--text-muted);">Current Break: <strong style="font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Inter', 'Segoe UI', sans-serif; font-variant-numeric: tabular-nums; color: ${this.isOnBreak ? "var(--warning)" : "var(--text-secondary)"};" id="ess-break-display">00:00</strong></span>
@@ -1785,11 +1785,11 @@ const ESSView = {
   },
 
   async executePunchOut() {
-    // Geofence Verification: Must be within 10 meters of EL207 Mahape to punch out
+    // Geofence Verification: Must be within 60 meters of office premises to punch out
     let pos;
     try {
       if (typeof Toast !== "undefined") {
-        Toast.info("Verifying GPS location within 10m office radius for check-out...");
+        Toast.info("Verifying GPS location within 60m office radius for check-out...");
       }
       pos = await this.getDeviceLocation();
     } catch (geoErr) {
@@ -1800,7 +1800,7 @@ const ESSView = {
         ModalManager.openModal({
           id: "geofence-error-modal",
           title: "GPS Location Required",
-          subtitle: "Mandatory 10-meter office perimeter check",
+          subtitle: "Mandatory 60-meter office perimeter check",
           size: "sm",
           contentHtml: `
             <div style="padding: 10px 0; text-align: center;">
@@ -1808,8 +1808,8 @@ const ESSView = {
                 Location Access Needed to Punch Out
               </div>
               <div style="font-size: 0.82rem; color: var(--text-secondary); line-height: 1.5; margin-bottom: 12px;">
-                All employees and roles must be physically present within <strong>10 meters</strong> of the office building to punch out:
-                <br/><strong>EL207, Electronic Zone, TTC Industrial Area, Mahape, Navi Mumbai 400710</strong>
+                All employees and roles must be physically present within <strong>60 meters</strong> of the office premises to punch out:
+                <br/><strong>Office Premises (GPS: 19.166900, 72.931000)</strong>
               </div>
               <div style="font-size: 0.78rem; color: #dc2626; background: #fef2f2; padding: 10px; border-radius: 6px; border: 1px solid #fecaca; text-align: left;">
                 ${geoErr.message}
@@ -1840,11 +1840,11 @@ const ESSView = {
         : `${(distanceMeters / 1000).toFixed(2)} km`;
 
     const accuracy = Math.round(pos.coords?.accuracy || 0);
-    const allowedRadius = this.OFFICE_GEOFENCE.radiusMeters || 50;
+    const allowedRadius = this.OFFICE_GEOFENCE.radiusMeters || 60;
     const effectiveDistance = Math.max(0, distanceMeters - Math.min(accuracy, 25));
 
     if (distanceMeters > allowedRadius && effectiveDistance > allowedRadius) {
-      const errorMsg = `Outside Office Perimeter: You are currently ${distanceDisplay} away from the office. Punch-out is strictly restricted to within EL207 office premises.`;
+      const errorMsg = `Outside Office Perimeter: You are currently ${distanceDisplay} away from the office. Punch-out is strictly restricted to within office premises (60m perimeter).`;
       if (typeof Toast !== "undefined") {
         Toast.error(errorMsg);
       }
@@ -1859,7 +1859,7 @@ const ESSView = {
               <div style="background: #fef2f2; border: 1px solid #fecaca; border-radius: 8px; padding: 14px; margin-bottom: 14px;">
                 <div style="font-weight: 700; color: #991b1b; font-size: 0.95rem; margin-bottom: 4px;">Punch-Out Denied: Outside Office Premises</div>
                 <div style="font-size: 0.84rem; color: #7f1d1d; line-height: 1.5;">
-                  Company policy strictly requires each and every employee across all roles to be physically located within the office premises (EL207, Mahape) to punch out.
+                  Company policy strictly requires each and every employee across all roles to be physically located within the office premises (19.166900, 72.931000) to punch out.
                 </div>
               </div>
               <div style="background: var(--bg-hover); border-radius: 8px; padding: 14px; font-size: 0.84rem; line-height: 1.6;">
@@ -1868,9 +1868,9 @@ const ESSView = {
                 <div><strong>GPS Accuracy:</strong> &plusmn;${accuracy}m</div>
                 <div style="margin-top: 10px; border-top: 1px solid var(--border-main); padding-top: 8px;">
                   <strong>Designated Office Location:</strong><br/>
-                  EL207, Electronic Zone, TTC Industrial Area, Mahape, Navi Mumbai, Maharashtra 400710
+                  Office Premises (GPS: 19.166900, 72.931000)
                   <div style="margin-top: 6px;">
-                    <a href="https://maps.app.goo.gl/vrm35ARLi8RgGSFu9" target="_blank" rel="noopener noreferrer" style="color: var(--primary); font-weight: 600; text-decoration: underline;">View Office Location on Google Maps &rarr;</a>
+                    <a href="https://www.google.com/maps?q=19.166900,72.931000" target="_blank" rel="noopener noreferrer" style="color: var(--primary); font-weight: 600; text-decoration: underline;">View Office Location on Google Maps &rarr;</a>
                   </div>
                 </div>
               </div>
@@ -1904,7 +1904,7 @@ const ESSView = {
     this.savePersistedState();
     this.updateTimecardUI();
 
-    const locationText = `EL207 Mahape (GPS: ${userLat.toFixed(5)}, ${userLng.toFixed(5)} • ${distanceMeters.toFixed(1)}m from center)`;
+    const locationText = `Office Premises (GPS: ${userLat.toFixed(5)}, ${userLng.toFixed(5)} • ${distanceMeters.toFixed(1)}m from center)`;
 
     try {
       await attendanceService.recordPunch({
@@ -1930,13 +1930,12 @@ const ESSView = {
   },
 
   OFFICE_GEOFENCE: {
-    name: "Diallo Office (Mahape HQ)",
-    address:
-      "EL207, Electronic Zone, TTC Industrial Area, Mahape, Navi Mumbai, Maharashtra 400710",
-    mapsUrl: "https://maps.app.goo.gl/vrm35ARLi8RgGSFu9",
-    latitude: 19.110735301239913,
-    longitude: 73.02816428562234,
-    radiusMeters: 50,
+    name: "Diallo Office Premises",
+    address: "Office Premises (GPS: 19.166900, 72.931000)",
+    mapsUrl: "https://www.google.com/maps?q=19.166900,72.931000",
+    latitude: 19.166900,
+    longitude: 72.931000,
+    radiusMeters: 60,
   },
 
   calculateDistanceMeters(lat1, lon1, lat2, lon2) {
@@ -1957,7 +1956,7 @@ const ESSView = {
   async getDeviceLocation() {
     if (!navigator.geolocation) {
       throw new Error(
-        "Geolocation is not supported by your browser or device. You must be physically within 10 meters of EL207, Electronic Zone, Mahape to punch in.",
+        "Geolocation is not supported by your browser or device. You must be physically within 60 meters of the office premises to punch in.",
       );
     }
     return new Promise((resolve, reject) => {
@@ -1967,7 +1966,7 @@ const ESSView = {
           let msg = "Could not obtain GPS location: ";
           if (err.code === 1) {
             msg =
-              "Location permission was denied. Please allow location access in your browser or device settings. You must be within 10 meters of EL207, Electronic Zone, Mahape to punch in.";
+              "Location permission was denied. Please allow location access in your browser or device settings. You must be within 60 meters of the office premises to punch in.";
           } else if (err.code === 2) {
             msg =
               "GPS signal unavailable. Please ensure location services are enabled on your device.";
@@ -2032,11 +2031,11 @@ const ESSView = {
         return false;
       }
 
-      // Geofence Verification: Must be within 10 meters of EL207 Mahape
+      // Geofence Verification: Must be within 60 meters of office premises
       let pos;
       try {
         if (typeof Toast !== "undefined") {
-          Toast.info("Verifying GPS location within 10m office radius...");
+          Toast.info("Verifying GPS location within 60m office radius...");
         }
         pos = await this.getDeviceLocation();
       } catch (geoErr) {
@@ -2047,7 +2046,7 @@ const ESSView = {
           ModalManager.openModal({
             id: "geofence-error-modal",
             title: "GPS Location Required",
-            subtitle: "Mandatory 10-meter office perimeter check",
+            subtitle: "Mandatory 60-meter office perimeter check",
             size: "sm",
             contentHtml: `
               <div style="padding: 10px 0; text-align: center;">
@@ -2055,8 +2054,8 @@ const ESSView = {
                   Location Access Needed to Punch In
                 </div>
                 <div style="font-size: 0.82rem; color: var(--text-secondary); line-height: 1.5; margin-bottom: 12px;">
-                  All employees and roles must be physically present within <strong>10 meters</strong> of the office building:
-                  <br/><strong>EL207, Electronic Zone, TTC Industrial Area, Mahape, Navi Mumbai 400710</strong>
+                  All employees and roles must be physically present within <strong>60 meters</strong> of the office premises:
+                  <br/><strong>Office Premises (GPS: 19.166900, 72.931000)</strong>
                 </div>
                 <div style="font-size: 0.78rem; color: #dc2626; background: #fef2f2; padding: 10px; border-radius: 6px; border: 1px solid #fecaca; text-align: left;">
                   ${geoErr.message}
@@ -2087,11 +2086,11 @@ const ESSView = {
           : `${(distanceMeters / 1000).toFixed(2)} km`;
 
       const accuracy = Math.round(pos.coords?.accuracy || 0);
-      const allowedRadius = this.OFFICE_GEOFENCE.radiusMeters || 50;
+      const allowedRadius = this.OFFICE_GEOFENCE.radiusMeters || 60;
       const effectiveDistance = Math.max(0, distanceMeters - Math.min(accuracy, 25));
 
       if (distanceMeters > allowedRadius && effectiveDistance > allowedRadius) {
-        const errorMsg = `Outside Office Perimeter: You are currently ${distanceDisplay} away from the office. Punch-in is strictly restricted to within EL207 office premises.`;
+        const errorMsg = `Outside Office Perimeter: You are currently ${distanceDisplay} away from the office. Punch-in is strictly restricted to within office premises (60m perimeter).`;
         if (typeof Toast !== "undefined") {
           Toast.error(errorMsg);
         }
@@ -2106,7 +2105,7 @@ const ESSView = {
                 <div style="background: #fef2f2; border: 1px solid #fecaca; border-radius: 8px; padding: 14px; margin-bottom: 14px;">
                   <div style="font-weight: 700; color: #991b1b; font-size: 0.95rem; margin-bottom: 4px;">Punch-In Denied: Outside Office Premises</div>
                   <div style="font-size: 0.84rem; color: #7f1d1d; line-height: 1.5;">
-                    Company policy strictly requires each and every employee across all roles to be physically located within the office premises (EL207, Mahape) to check in.
+                    Company policy strictly requires each and every employee across all roles to be physically located within the office premises (19.166900, 72.931000) to check in.
                   </div>
                 </div>
                 <div style="background: var(--bg-hover); border-radius: 8px; padding: 14px; font-size: 0.84rem; line-height: 1.6;">
@@ -2115,9 +2114,9 @@ const ESSView = {
                   <div><strong>GPS Accuracy:</strong> &plusmn;${accuracy}m</div>
                   <div style="margin-top: 10px; border-top: 1px solid var(--border-main); padding-top: 8px;">
                     <strong>Designated Office Location:</strong><br/>
-                    EL207, Electronic Zone, TTC Industrial Area, Mahape, Navi Mumbai, Maharashtra 400710
+                    Office Premises (GPS: 19.166900, 72.931000)
                     <div style="margin-top: 6px;">
-                      <a href="https://maps.app.goo.gl/vrm35ARLi8RgGSFu9" target="_blank" rel="noopener noreferrer" style="color: var(--primary); font-weight: 600; text-decoration: underline;">View Office Location on Google Maps &rarr;</a>
+                      <a href="https://www.google.com/maps?q=19.166900,72.931000" target="_blank" rel="noopener noreferrer" style="color: var(--primary); font-weight: 600; text-decoration: underline;">View Office Location on Google Maps &rarr;</a>
                     </div>
                   </div>
                 </div>
@@ -2132,7 +2131,7 @@ const ESSView = {
         return false;
       }
 
-      const locationText = `EL207 Mahape (GPS: ${userLat.toFixed(5)}, ${userLng.toFixed(5)} • ${distanceMeters.toFixed(1)}m from center)`;
+      const locationText = `Office Premises (GPS: ${userLat.toFixed(5)}, ${userLng.toFixed(5)} • ${distanceMeters.toFixed(1)}m from center)`;
       const geoStatus = document.getElementById("ess-geo-status");
       if (geoStatus) geoStatus.textContent = `Location: ${locationText}`;
 
