@@ -479,6 +479,8 @@ const TrainingView = {
 
   // 4. EMPLOYEE / TRAINEE LEARNING TAB — 7-DAY CORE CURRICULUM
   renderMyLearningTab(trainees, trainers, programs) {
+    const rawRole = (AuthGuard._previewRoleId || AuthGuard.userProfile?.roleId || 'EMPLOYEE').toString().toUpperCase().trim();
+    const isTrainer = rawRole === 'TRAINER' || rawRole === 'MENTOR';
     const userEmail = (AuthGuard.userProfile?.email || AuthGuard.currentUser?.email || '').toLowerCase();
     const userName = AuthGuard.userProfile?.displayName || 'Trainee';
 
