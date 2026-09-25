@@ -1272,7 +1272,7 @@ Module 4: Practical Capstone Evaluation</textarea>
       let bStatus = 'CURRENT';
       if (t.status === 'CERTIFIED' || t.status === 'HANDED_OVER') bStatus = 'PAST';
       else if (t.status === 'NOT_STARTED' || (t.startDate && new Date(t.startDate) > new Date())) bStatus = 'UPCOMING';
-      return '<tr class="att-row-item" data-batch-status="' + bStatus + '">' +
+      return '<tr id="att-row-' + t.id + '" class="att-row-item" data-batch-status="' + bStatus + '">' +
         '<td>' +
           '<div class="user-cell">' +
             '<div class="user-cell-avatar" style="background:var(--primary-light);color:var(--primary);font-weight:700;">' +
@@ -1298,7 +1298,7 @@ Module 4: Practical Capstone Evaluation</textarea>
             '<div style="width:' + prog + '%;height:100%;background:var(--primary);border-radius:3px;"></div>' +
           '</div>' +
         '</td>' +
-        '<td style="text-align:center;">' +
+        '<td class="att-status-cell" style="text-align:center;">' +
           '<div style="display:inline-flex;gap:5px;flex-wrap:wrap;justify-content:center;">' +
             '<button class="btn btn-sm" style="background:var(--success-light);color:var(--success);border:1px solid var(--success);" ' +
               'onclick="TrainingView.markAttendance(' + "'" + t.id + "'" + ',' + "'" + safeName + "'" + ',' + "'PRESENT'" + ',document.getElementById(' + "'att-date-picker'" + ').value,' + "'" + safeCode + "'" + ')">Present</button>' +
@@ -1404,8 +1404,8 @@ Module 4: Practical Capstone Evaluation</textarea>
         employeeCode: traineeCode,
         date: dateStr,
         status: status,
-        punchIn: status === 'ABSENT' ? null : '10:00',
-        punchOut: status === 'PRESENT' ? '19:00' : (status === 'HALF_DAY' ? '16:00' : null),
+        checkIn: status === 'ABSENT' ? '-' : '10:00 AM',
+        checkOut: status === 'PRESENT' ? '07:00 PM' : (status === 'HALF_DAY' ? '02:00 PM' : '-'),
         workedHours: status === 'PRESENT' ? 9 : (status === 'HALF_DAY' ? 6 : 0),
         markedBy: trainerName,
         markedAt: new Date().toISOString(),
