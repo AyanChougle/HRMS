@@ -185,7 +185,7 @@ const EmployeeDashboardView = {
             <div class="timecard-actions-panel">
               <div class="timecard-action-grid">
                 <!-- 1. Dedicated Punch In Button -->
-                <button class="btn timecard-action-btn ${ESSView.isShiftCompletedToday ? "btn-secondary disabled" : ESSView.isPunchedIn ? "btn-secondary disabled" : "btn-primary"}" id="emp-punch-in-btn" onclick="ESSView.punchIn()" style="${ESSView.isShiftCompletedToday ? "opacity: 0.55; cursor: not-allowed;" : ESSView.isPunchedIn ? "opacity: 0.85; cursor: default; background: #f0fdf4; border-color: #86efac; color: #166534;" : "background: #16a34a; border-color: #16a34a; color: #ffffff;"}" ${ESSView.isShiftCompletedToday || ESSView.isPunchedIn ? "disabled" : ""}>
+                <button class="btn timecard-action-btn ${ESSView.isShiftCompletedToday ? "btn-secondary disabled" : ESSView.isPunchedIn ? "btn-secondary disabled" : "btn-primary"}" id="emp-punch-in-btn" onclick="EmployeeDashboardView.handlePunchIn()" style="${ESSView.isShiftCompletedToday ? "opacity: 0.55; cursor: not-allowed;" : ESSView.isPunchedIn ? "opacity: 0.85; cursor: default; background: #f0fdf4; border-color: #86efac; color: #166534;" : "background: #16a34a; border-color: #16a34a; color: #ffffff;"}" ${ESSView.isShiftCompletedToday || ESSView.isPunchedIn ? "disabled" : ""}>
                   <svg width="17" height="17" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     ${ESSView.isPunchedIn || ESSView.isShiftCompletedToday
         ? '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>'
@@ -207,24 +207,16 @@ const EmployeeDashboardView = {
                 </button>
                 
                 <!-- 3. Break Button -->
-                <button class="btn timecard-action-btn ${ESSView.isShiftCompletedToday ? "btn-secondary disabled" : ESSView.isOnBreak ? "btn-warning" : "btn-secondary"}" id="emp-break-btn" onclick="ESSView.toggleBreak()" style="${ESSView.isShiftCompletedToday ? "opacity: 0.55; cursor: not-allowed;" : !ESSView.isOnBreak && ESSView.isPunchedIn ? "color: #d97706; border-color: #fcd34d;" : ""}" ${ESSView.isShiftCompletedToday ? "disabled" : ""}>
+                <button class="btn timecard-action-btn ${ESSView.isShiftCompletedToday ? "btn-secondary disabled" : ESSView.isOnBreak ? "btn-warning" : "btn-secondary"}" id="emp-break-btn" onclick="ESSView.toggleBreak()" style="${ESSView.isShiftCompletedToday ? "opacity: 0.55; cursor: not-allowed;" : !ESSView.isOnBreak && ESSView.isPunchedIn ? "color: #d97706; border-color: #fcd34d;" : ""}${isTrainee ? " grid-column: span 2;" : ""}" ${ESSView.isShiftCompletedToday ? "disabled" : ""}>
                   <svg width="17" height="17" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="${ESSView.isOnBreak ? "M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z M21 12a9 9 0 11-18 0 9 9 0 0118 0z" : "M18 8h1a4 4 0 010 8h-1M2 8h16v9a4 4 0 01-4 4H6a4 4 0 01-4-4V8z M6 1v3M10 1v3M14 1v3"}"/>
                   </svg>
                   <span>${ESSView.isShiftCompletedToday ? "Break" : ESSView.isOnBreak ? "Resume" : "Break"}</span>
                 </button>
 
-                <!-- 4. Apply Leave Button / Sign Agreement for Trainee -->
-                ${isTrainee
+                <!-- 4. Apply Leave Button (Only for Non-Trainees) -->
+                ${!isTrainee
         ? `
-                  <button class="btn btn-secondary timecard-action-btn" onclick="EmployeeDashboardView.openTraineeAgreementModal()">
-                    <svg width="17" height="17" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
-                    </svg>
-                    <span>Sign Agreement</span>
-                  </button>
-                `
-        : `
                   <button class="btn btn-secondary timecard-action-btn" onclick="Forms.openApplyLeaveModal()">
                     <svg width="17" height="17" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                       <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/>
@@ -232,6 +224,7 @@ const EmployeeDashboardView = {
                     <span>Apply Leave</span>
                   </button>
                 `
+        : ""
       }
               </div>
             </div>
@@ -246,6 +239,13 @@ const EmployeeDashboardView = {
         <div class="emp-quick-launchpad">
           ${isTrainee
         ? `
+            <button class="btn btn-soft" style="padding: 12px; height: auto; flex-direction: column; gap: 8px; justify-content: center; text-align: center; border-radius: var(--radius-md); border: 1.5px solid var(--primary); background: rgba(37, 99, 235, 0.08);" onclick="EmployeeDashboardView.openTraineeAgreementModal()">
+              <span style="color: var(--primary); display: flex; align-items: center; justify-content: center;">
+                <svg width="22" height="22" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
+              </span>
+              <span style="font-size: 0.85rem; font-weight: 700; color: var(--primary);">Sign Agreement</span>
+            </button>
+
             <button class="btn btn-soft" style="padding: 12px; height: auto; flex-direction: column; gap: 8px; justify-content: center; text-align: center; border-radius: var(--radius-md);" onclick="Router.navigate('training')">
               <span style="color: var(--primary); display: flex; align-items: center; justify-content: center;">
                 <svg width="22" height="22" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253"/></svg>
@@ -265,20 +265,6 @@ const EmployeeDashboardView = {
                 <svg width="22" height="22" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
               </span>
               <span style="font-size: 0.85rem; font-weight: 600;">Timecard & Logs</span>
-            </button>
-
-            <button class="btn btn-soft" style="padding: 12px; height: auto; flex-direction: column; gap: 8px; justify-content: center; text-align: center; border-radius: var(--radius-md);" onclick="EmployeeDashboardView.openTraineeAgreementModal()">
-              <span style="color: var(--primary); display: flex; align-items: center; justify-content: center;">
-                <svg width="22" height="22" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
-              </span>
-              <span style="font-size: 0.85rem; font-weight: 600;">Sign Agreement</span>
-            </button>
-
-            <button class="btn btn-soft" style="padding: 12px; height: auto; flex-direction: column; gap: 8px; justify-content: center; text-align: center; border-radius: var(--radius-md);" onclick="Router.navigate('documents')">
-              <span style="color: var(--info); display: flex; align-items: center; justify-content: center;">
-                <svg width="22" height="22" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z"/></svg>
-              </span>
-              <span style="font-size: 0.85rem; font-weight: 600;">My Documents</span>
             </button>
           `
         : `
@@ -652,6 +638,8 @@ const EmployeeDashboardView = {
       }
 
       // Check trainee agreement status if trainee
+      const role = AuthGuard.userProfile?.role || AuthGuard.userRole || "";
+      const isTrainee = role === "TRAINEE" || role === "trainee";
       const employeeId =
         AuthGuard.userProfile?.employeeId || AuthGuard.currentUser?.uid || "trainee";
       const traineeKey = "diallo_trainee_agreement_" + employeeId;
@@ -665,6 +653,15 @@ const EmployeeDashboardView = {
           aggrBadge.className = "badge badge-warning";
           aggrBadge.textContent = "Pending Review & Sign";
         }
+      }
+
+      // If trainee is new and accessing for first time without signed agreement, the agreement comes first
+      if (isTrainee && !signedDataStr) {
+        setTimeout(() => {
+          if (EmployeeDashboardView.openTraineeAgreementModal) {
+            EmployeeDashboardView.openTraineeAgreementModal();
+          }
+        }, 500);
       }
 
       // Fetch dynamic leave balances (Tenure-Based Paid Leave)
@@ -860,6 +857,23 @@ const EmployeeDashboardView = {
 
     Toast.success('Agreement successfully signed and recorded.');
     ModalManager.closeModal();
+  },
+
+  handlePunchIn() {
+    const role = (typeof AuthGuard !== 'undefined' && (AuthGuard.userProfile?.role || AuthGuard.userRole)) || '';
+    const isTrainee = role === 'TRAINEE' || role === 'trainee';
+    const employeeId =
+      (typeof AuthGuard !== 'undefined' && (AuthGuard.userProfile?.employeeId || AuthGuard.currentUser?.uid)) || 'trainee';
+    if (isTrainee && !localStorage.getItem('diallo_trainee_agreement_' + employeeId)) {
+      if (typeof Toast !== 'undefined') {
+        Toast.warning('Please review and sign the Training & Certification Agreement first before punching in.');
+      }
+      this.openTraineeAgreementModal();
+      return;
+    }
+    if (typeof ESSView !== 'undefined' && ESSView.punchIn) {
+      ESSView.punchIn();
+    }
   },
 };
 

@@ -1722,6 +1722,19 @@ const ESSView = {
   },
 
   async punchIn() {
+    const role = (typeof AuthGuard !== "undefined" && (AuthGuard.userProfile?.role || AuthGuard.userRole)) || "";
+    const isTrainee = role === "TRAINEE" || role === "trainee";
+    const empId = (typeof AuthGuard !== "undefined" && (AuthGuard.userProfile?.employeeId || AuthGuard.currentUser?.uid)) || "trainee";
+    if (isTrainee && !localStorage.getItem("diallo_trainee_agreement_" + empId)) {
+      if (typeof Toast !== "undefined") {
+        Toast.warning("Please review and sign the Training & Certification Agreement first before punching in.");
+      }
+      if (typeof EmployeeDashboardView !== "undefined" && EmployeeDashboardView.openTraineeAgreementModal) {
+        EmployeeDashboardView.openTraineeAgreementModal();
+      }
+      return false;
+    }
+
     if (this.isShiftCompletedToday) {
       if (typeof Toast !== "undefined") {
         Toast.warning(
