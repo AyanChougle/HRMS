@@ -489,8 +489,8 @@ const EmployeeDashboardView = {
         `
         }
 
-        <!-- Upcoming Official Paid Holidays Card (Non-Trainees only) -->
-        ${!isTrainee ? `
+        <!-- Upcoming Official Paid Holidays Card -->
+        ${true ? `
         <div class="col-span-6 card">
           <div class="card-header">
             <div>
@@ -545,7 +545,7 @@ const EmployeeDashboardView = {
         ` : ''}
 
         <!-- Weekly Shift & Punctuality Overview -->
-        <div class="${isTrainee ? 'col-span-12' : 'col-span-6'} card">
+        <div class="col-span-6 card">
           <div class="card-header">
             <div>
               <div class="card-title">This Week's Attendance Rhythm</div>
