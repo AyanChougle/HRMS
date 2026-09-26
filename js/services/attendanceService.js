@@ -737,25 +737,34 @@ const attendanceService = {
   },
 
   // 7. COMPUTE TODAY'S ATTENDANCE SUMMARY FOR DASHBOARDS
-  async getTodaySummary(companyId = null) {
+  async getTodaySummary(companyId = null, employeeIds = null) {
     try {
       const todayStr = this.getCompanyLocalDate();
       let query = db.collection('attendanceRecords').where('date', '==', todayStr);
       if (companyId) query = query.where('companyId', '==', companyId);
 
-      const [snapshot, totalEmpSnap] = await Promise.all([
-        query.get(),
-        db.collection('employees').where('employmentStatus', '==', 'ACTIVE').get()
-      ]);
+      const snapshot = await query.get();
+      let docs = snapshot.docs.map(doc => doc.data());
 
-      const totalEmployees = totalEmpSnap.size;
+      if (Array.isArray(employeeIds)) {
+        const idSet = new Set(employeeIds);
+        docs = docs.filter(d => idSet.has(d.employeeId) || idSet.has(d.uid));
+      }
+
+      let totalEmployees = 0;
+      if (Array.isArray(employeeIds)) {
+        totalEmployees = employeeIds.length;
+      } else {
+        const totalEmpSnap = await db.collection('employees').where('employmentStatus', '==', 'ACTIVE').get();
+        totalEmployees = totalEmpSnap.size;
+      }
+
       let present = 0;
       let late = 0;
       let onLeave = 0;
       let wfh = 0;
 
-      snapshot.docs.forEach(doc => {
-        const d = doc.data();
+      docs.forEach(d => {
         if (d.status === 'PRESENT' || d.status === 'REGULARIZED') present++;
         else if (d.status === 'LATE') { present++; late++; }
         else if (d.status === 'ON_LEAVE') onLeave++;

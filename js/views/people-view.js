@@ -319,6 +319,19 @@ const PeopleView = {
         return;
       }
 
+      const activeRole = (AuthGuard._previewRoleId || AuthGuard.userProfile?.roleId || '').toString().toUpperCase().trim();
+      const currentEmpId = AuthGuard.userProfile?.employeeId || AuthGuard.currentUser?.uid || '';
+      const currentEmpCode = AuthGuard.userProfile?.employeeCode || '';
+      const currentEmpName = AuthGuard.userProfile?.displayName || AuthGuard.userProfile?.fullName || '';
+
+      if (activeRole === 'TEAM_LEAD') {
+        const isAssigned = emp.teamLeaderId && (emp.teamLeaderId === currentEmpId || emp.teamLeaderId === currentEmpCode || emp.teamLeaderId === currentEmpName);
+        if (!isAssigned) {
+          if (typeof Toast !== 'undefined') Toast.error('Access Denied: You can only view profiles of employees assigned to your team.');
+          return;
+        }
+      }
+
       const [history, docs] = await Promise.all([
         historyService.getEmployeeHistory(employeeId),
         storageService.getEmployeeDocuments(employeeId)
@@ -344,7 +357,7 @@ const PeopleView = {
                 <span class="badge ${emp.employmentStatus === 'ACTIVE' ? 'badge-success' : 'badge-warning'}" style="font-size: 0.85rem; padding: 6px 12px;">
                   <span class="badge-dot"></span> ${emp.employmentStatus || 'ACTIVE'}
                 </span>
-                <button class="btn btn-secondary btn-sm" onclick="Forms.openEmployeeModal('${emp.id}')">Edit Profile</button>
+                ${activeRole !== 'TEAM_LEAD' ? `<button class="btn btn-secondary btn-sm" onclick="Forms.openEmployeeModal('${emp.id}')">Edit Profile</button>` : ''}
               </div>
             </div>
           </div>
@@ -358,7 +371,7 @@ const PeopleView = {
             <button type="button" class="tab-btn" onclick="PeopleView.switchProfileSubTab('ptab-org')">Organization</button>
             <button type="button" class="tab-btn" onclick="PeopleView.switchProfileSubTab('ptab-docs')">Documents (${docs.length})</button>
             <button type="button" class="tab-btn" onclick="PeopleView.switchProfileSubTab('ptab-history')">Timeline (${history.length})</button>
-            <button type="button" class="tab-btn" onclick="PeopleView.switchProfileSubTab('ptab-access')">Access & Portal</button>
+            ${activeRole !== 'TEAM_LEAD' ? `<button type="button" class="tab-btn" onclick="PeopleView.switchProfileSubTab('ptab-access')">Access & Portal</button>` : ''}
           </div>
 
           <!-- 1. OVERVIEW TAB -->

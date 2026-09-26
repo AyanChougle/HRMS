@@ -117,9 +117,12 @@ const ManagerDashboardView = {
 
   async postRender() {
     try {
-      const [employees, attendanceSum, approvals] = await Promise.all([
-        employeeService.getEmployees(),
-        attendanceService.getTodaySummary(),
+      const employees = await employeeService.getEmployees();
+      const teamEmpIds = employees.map(e => e.id);
+      const companyId = AuthGuard.userProfile?.companyId || 'comp_diallo_india';
+
+      const [attendanceSum, approvals] = await Promise.all([
+        attendanceService.getTodaySummary(companyId, teamEmpIds),
         approvalService.getPendingApprovals(),
       ]);
 
@@ -179,7 +182,10 @@ const ManagerDashboardView = {
       // Render Team Attendance Table
       const teamBody = document.getElementById("manager-team-attendance-body");
       if (employees.length === 0) {
-        teamBody.innerHTML = `<div style="padding: 24px; text-align: center; color: var(--text-muted); font-size: 0.85rem;">No employees registered in your team.</div>`;
+        teamBody.innerHTML = `<div class="empty-state" style="border: none; padding: 24px;">
+            <div class="empty-state-title" style="font-size: 0.9rem;">No team members assigned yet.</div>
+            <div class="empty-state-desc" style="font-size: 0.78rem;">Employees assigned to your teamLeaderId will appear here automatically.</div>
+          </div>`;
       } else {
         teamBody.innerHTML = `
           <div class="flex flex-col gap-2">

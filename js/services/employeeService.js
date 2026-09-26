@@ -221,6 +221,21 @@ const employeeService = {
       if (filters.branchId && filters.branchId !== 'All Branches') query = query.where('branchId', '==', filters.branchId);
       if (filters.employmentType && filters.employmentType !== 'All Types') query = query.where('employmentType', '==', filters.employmentType);
       if (filters.managerId) query = query.where('managerId', '==', filters.managerId);
+      if (filters.teamLeaderId) query = query.where('teamLeaderId', '==', filters.teamLeaderId);
+      if (filters.operationsManagerId) query = query.where('operationsManagerId', '==', filters.operationsManagerId);
+      if (filters.mentorTrainerId) query = query.where('mentorTrainerId', '==', filters.mentorTrainerId);
+
+      const activeRole = (AuthGuard._previewRoleId || AuthGuard.userProfile?.roleId || '').toString().toUpperCase().trim();
+      const currentEmpId = AuthGuard.userProfile?.employeeId || AuthGuard.currentUser?.uid || '';
+      const currentEmpCode = AuthGuard.userProfile?.employeeCode || '';
+      const currentEmpName = AuthGuard.userProfile?.displayName || AuthGuard.userProfile?.fullName || '';
+
+      if (activeRole === 'TEAM_LEAD' && !filters.bypassScope) {
+        // Enforce strict Team Leader scope
+        if (currentEmpId) {
+          query = query.where('teamLeaderId', '==', currentEmpId);
+        }
+      }
 
       const snapshot = await query.get();
       let records = snapshot.docs.map(doc => ({
@@ -257,6 +272,13 @@ const employeeService = {
         }
       });
       records = legitimateRecords;
+
+      if (activeRole === 'TEAM_LEAD' && !filters.bypassScope) {
+        records = records.filter(e => {
+          if (!e.teamLeaderId) return false;
+          return e.teamLeaderId === currentEmpId || e.teamLeaderId === currentEmpCode || e.teamLeaderId === currentEmpName;
+        });
+      }
 
       // In-memory text search filtering if provided (Code, Name, Email, Phone)
       if (filters.search && filters.search.trim() !== '') {
