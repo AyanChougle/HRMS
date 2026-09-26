@@ -334,7 +334,8 @@ const TrainingView = {
                         ${t.status !== 'CERTIFIED' && t.status !== 'HANDED_OVER' ? `
                           <button class="btn btn-secondary btn-sm" onclick="TrainingView.openCertifyModal('${t.id}', '${(t.fullName || '').replace(/'/g, "\\'")}')" title="Award Day 6 Certification">
                             Certify
-                          </button>\n                          <button class="btn btn-danger btn-sm" onclick="TrainingView.failTrainee('${t.id}', '${(t.fullName || '').replace(/'/g, "\\'")}')" title="Fail Certification and send to HR">
+                          </button>
+                          <button class="btn btn-danger btn-sm" onclick="TrainingView.failTrainee('${t.id}', '${(t.fullName || '').replace(/'/g, "\\'")}')" title="Fail Certification and send to HR">
                             Fail
                           </button>
                         ` : ''}
@@ -726,7 +727,8 @@ const TrainingView = {
       Toast.error('Could not fail trainee: ' + (e.message || e));
     }
   },
-\n  openCertifyModal(traineeId, fullName) {
+
+  openCertifyModal(traineeId, fullName) {
     const modalHtml = `
       <form id="certify-trainee-form" onsubmit="event.preventDefault(); TrainingView.submitCertify('${traineeId}');">
         <p style="margin-bottom: 16px; font-size: 0.9rem; color: var(--text-secondary);">

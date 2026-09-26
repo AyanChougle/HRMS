@@ -39,7 +39,12 @@ const workflowService = {
         query = query.where('status', '==', filters.status);
       }
 
-      const snapshot = await query.orderBy('createdAt', 'desc').get();
+      let snapshot;
+      try {
+        snapshot = await query.orderBy('createdAt', 'desc').get();
+      } catch (idxErr) {
+        snapshot = await query.get();
+      }
       let list = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
 
       if (list.length === 0) {

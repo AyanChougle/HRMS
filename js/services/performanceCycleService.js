@@ -21,10 +21,17 @@ const performanceCycleService = {
 
   async getCycles(companyId = 'comp_diallo_india') {
     try {
-      const snapshot = await db.collection('performanceCycles')
-        .where('companyId', '==', companyId)
-        .orderBy('createdAt', 'desc')
-        .get();
+      let snapshot;
+      try {
+        snapshot = await db.collection('performanceCycles')
+          .where('companyId', '==', companyId)
+          .orderBy('createdAt', 'desc')
+          .get();
+      } catch (idxErr) {
+        snapshot = await db.collection('performanceCycles')
+          .where('companyId', '==', companyId)
+          .get();
+      }
 
       if (!snapshot.empty) {
         return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));

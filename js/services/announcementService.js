@@ -51,8 +51,8 @@ const announcementService = {
         return id && (id.startsWith('ANN_DEMO') || id.startsWith('ANN00'));
       }
 
-      if (filters.category && filters.category !== 'ALL') {
-        list = list.filter(a => a.category === filters.category);
+      if (opts.category && opts.category !== 'ALL') {
+        list = list.filter(a => a && a.category === opts.category);
       }
 
       return list;

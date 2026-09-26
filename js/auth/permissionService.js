@@ -136,12 +136,39 @@ const PermissionService = {
     ],
 
     MANAGER: [
+      'people.view',
       'team.*',
       'team.view',
       'team.attendance',
       'team.leave',
       'team.approve',
+      'attendance.team',
+      'attendance.view',
+      'leave.view',
+      'leave.approve',
+      'approvals.*',
+      'approvals.process',
+      'performance.view',
+      'requests.view',
+      'workflows.view',
+      'communication.view',
+      'reports.view',
+      'own.profile',
+      'own.attendance',
+      'own.leave',
+      'own.documents',
+      'own.requests',
+      'own.expenses',
+      'ess.view'
+    ],
+
+    OPERATIONS_MANAGER: [
       'people.view',
+      'team.*',
+      'team.view',
+      'team.attendance',
+      'team.leave',
+      'team.approve',
       'attendance.team',
       'attendance.view',
       'leave.view',
@@ -163,6 +190,7 @@ const PermissionService = {
     ],
 
     TEAM_LEAD: [
+      'people.view',
       'team.view',
       'team.attendance',
       'team.leave',
@@ -182,7 +210,7 @@ const PermissionService = {
       'ess.view'
     ],
 
-    MENTOR: [
+    MENTOR_TRAINER: [
       'training.*',
       'training.view',
       'training.manage',

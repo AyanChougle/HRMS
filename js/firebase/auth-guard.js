@@ -437,16 +437,16 @@ const AuthGuard = {
       this.permissions = window.PermissionService ? PermissionService.getUserPermissions({ roleId: 'MANAGER' }) : new Set(['team.*', 'performance.view', 'attendance.view', 'leave.view', 'ess.view']);
       this.userRole = { name: 'Manager', id: 'MANAGER' };
     } else if (normalizedRole === 'TEAM_LEAD' || normalizedRole === 'TL') {
-      this.permissions = window.PermissionService ? PermissionService.getUserPermissions({ roleId: 'TEAM_LEAD' }) : new Set(['team.view', 'performance.view', 'attendance.view', 'leave.view', 'ess.view']);
+      this.permissions = window.PermissionService ? PermissionService.getUserPermissions({ roleId: 'TEAM_LEAD' }) : new Set(['people.view', 'team.view', 'performance.view', 'attendance.view', 'leave.view', 'ess.view']);
       this.userRole = { name: 'Team Leader', id: 'TEAM_LEAD' };
     } else if (normalizedRole === 'MENTOR_TRAINER') {
       this.permissions = window.PermissionService ? PermissionService.getUserPermissions({ roleId: 'MENTOR_TRAINER' }) : new Set(['training.*', 'performance.view', 'attendance.punch', 'attendance.view', 'leave.view', 'leave.create', 'own.profile']);
       this.userRole = { name: 'Mentor / Trainer', id: 'MENTOR_TRAINER' };
     } else if (normalizedRole === 'OPERATIONS_MANAGER') {
-      this.permissions = window.PermissionService ? PermissionService.getUserPermissions({ roleId: 'OPERATIONS_MANAGER' }) : new Set(['team.view', 'performance.view', 'attendance.view', 'leave.view', 'ess.view', 'approvals.view', 'approvals.approve']);
+      this.permissions = window.PermissionService ? PermissionService.getUserPermissions({ roleId: 'OPERATIONS_MANAGER' }) : new Set(['people.view', 'team.view', 'performance.view', 'attendance.view', 'leave.view', 'ess.view', 'approvals.view', 'approvals.approve']);
       this.userRole = { name: 'Operations Manager', id: 'OPERATIONS_MANAGER' };
     } else if (normalizedRole === 'MANAGER') {
-      this.permissions = window.PermissionService ? PermissionService.getUserPermissions({ roleId: 'MANAGER' }) : new Set(['team.view', 'performance.view', 'attendance.view', 'leave.view', 'ess.view', 'approvals.view', 'approvals.approve']);
+      this.permissions = window.PermissionService ? PermissionService.getUserPermissions({ roleId: 'MANAGER' }) : new Set(['people.view', 'team.view', 'performance.view', 'attendance.view', 'leave.view', 'ess.view', 'approvals.view', 'approvals.approve']);
       this.userRole = { name: 'Manager', id: 'MANAGER' };
     } else if (normalizedRole === 'TRAINEE') {
       this.permissions = window.PermissionService ? PermissionService.getUserPermissions({ roleId: 'TRAINEE' }) : new Set(['training.view', 'training.submit', 'attendance.punch', 'attendance.view', 'leave.view', 'leave.create', 'own.profile']);

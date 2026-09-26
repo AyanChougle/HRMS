@@ -10,6 +10,7 @@ const PayrollView = {
   async renderHub() {
     const rawRole = (AuthGuard._previewRoleId || AuthGuard.userProfile?.roleId || 'EMPLOYEE').toString().toUpperCase().trim();
     const isHRorAdmin = rawRole === 'SUPER_ADMIN' || rawRole === 'COMPANY_ADMIN' || rawRole === 'HR' || rawRole === 'HR_MANAGER';
+    const isEmployeeOnly = !isHRorAdmin;
 
     if (!isHRorAdmin) {
       return `
