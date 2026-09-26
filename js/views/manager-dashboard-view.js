@@ -4,7 +4,8 @@
  */
 
 const ManagerDashboardView = {
-  async render() {\n    const employeeId = AuthGuard.userProfile?.employeeId || AuthGuard.currentUser?.uid;
+  async render() {
+    const employeeId = AuthGuard.userProfile?.employeeId || AuthGuard.currentUser?.uid;
     if (typeof ESSView !== "undefined" && window.attendanceService) {
       try {
         const todayRecord = await attendanceService.getTodayRecord(employeeId);
