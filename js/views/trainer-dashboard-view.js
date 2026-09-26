@@ -205,36 +205,6 @@ const TrainerDashboardView = {
           </div>
         </div>
       </div>
-`;
-
-filesToPatch.forEach(relPath => {
-  const file = path.join(__dirname, relPath);
-  if (!fs.existsSync(file)) return;
-
-  let content = fs.readFileSync(file, 'utf8');
-
-  if (content.includes('emp-timecard-hero-card')) {
-    console.log(relPath, 'already has timecard');
-    return;
-  }
-
-  // 1. Inject sync code right after async render() {
-  content = content.replace("async render() {", "async render() {\\n" + syncCode);
-
-  // 2. Inject HTML right before <!-- 4 Team Focused KPI Cards --> or <!-- Quick KPIs -->
-  if (content.includes('<!-- 4 Team Focused KPI Cards -->')) {
-    content = content.replace('<!-- 4 Team Focused KPI Cards -->', timecardHtml + '\\n      <!-- 4 Team Focused KPI Cards -->');
-  } else if (content.includes('<!-- Dashboard KPI Cards -->')) {
-    content = content.replace('<!-- Dashboard KPI Cards -->', timecardHtml + '\\n      <!-- Dashboard KPI Cards -->');
-  } else if (content.includes('<!-- Quick KPIs -->')) {
-    content = content.replace('<!-- Quick KPIs -->', timecardHtml + '\\n      <!-- Quick KPIs -->');
-  } else if (content.includes('<!-- Top KPIs -->')) {
-    content = content.replace('<!-- Top KPIs -->', timecardHtml + '\\n      <!-- Top KPIs -->');
-  }
-
-  fs.writeFileSync(file, content, 'utf8');
-  console.log('Patched:', relPath);
-})
       <!-- 4 Trainer-Focused KPI Cards -->
       <div class="kpi-grid" style="margin-bottom: 24px;">
         <div class="kpi-card" onclick="Router.navigate('training')" style="cursor: pointer;">
