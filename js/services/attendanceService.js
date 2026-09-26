@@ -223,16 +223,16 @@ const attendanceService = {
       }
 
       // 3. Geofence Validation: (19.166900, 72.931000) - 60m radius limit
-      const officeLat = 19.166900;
-      const officeLng = 72.931000;
+      const officeLat = 19.11058435750301;
+      const officeLng = 73.02805896557284;
       const userLat = Number(punchData.latitude);
       const userLng = Number(punchData.longitude);
 
       if (!isNaN(userLat) && !isNaN(userLng)) {
         const dist = this.calculateDistanceMeters(userLat, userLng, officeLat, officeLng);
-        if (dist > 60 && !punchData.forcePunch) {
+        if (dist > 500 && !punchData.forcePunch) {
           const distStr = dist < 1000 ? `${dist.toFixed(1)}m` : `${(dist / 1000).toFixed(2)}km`;
-          throw new Error(`Geofence restriction: You are ${distStr} away from the office. Punch-in is strictly restricted to within office premises (60m perimeter).`);
+          throw new Error(`Geofence restriction: You are ${distStr} away from the office. Punch-in is strictly restricted to within office premises (Office Premises).`);
         }
       }
 
