@@ -63,7 +63,12 @@ const PeopleView = {
               </svg>
               Sync Database Users
             </button>
-            
+            <button class="btn btn-secondary btn-sm" onclick="PeopleView.purgeDemoEmployees()" style="color: var(--danger); border-color: rgba(239, 68, 68, 0.3);">
+              <svg width="15" height="15" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/>
+              </svg>
+              Purge Demo Records
+            </button>
             <button class="btn btn-secondary btn-sm" onclick="PeopleView.exportCSV()">
               <svg width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/>
@@ -566,7 +571,19 @@ const PeopleView = {
     });
   },
 
-  
+  async purgeDemoEmployees() {
+    ModalManager.confirm({
+      title: 'Erase All Legacy Demo Data',
+      message: 'This will permanently delete all old demo staff records (EMP001-EMP025, fake trainees, fake tasks) from Cloud Firestore, leaving strictly real corporate staff and official Diallo masters. Proceed?',
+      confirmText: 'Purge Demo Records',
+      confirmClass: 'btn-danger',
+      onConfirm: async () => {
+        Toast.info('Purging demo records from Firestore...');
+        await seedService.purgeAllDemoData();
+        Router.navigate('employees');
+      }
+    });
+  },
 
   // C. DYNAMIC ORGANIZATION CHART TAB
   renderOrgChartTab(employees) {
@@ -630,7 +647,12 @@ const PeopleView = {
           </div>
           <div style="display: flex; align-items: center; gap: 10px;">
             <span class="badge badge-primary" style="font-size: 0.8rem; padding: 6px 12px;">${cleanList.length} Active Personnel</span>
-            
+            <button class="btn btn-secondary btn-sm" onclick="PeopleView.purgeDemoEmployees()" style="color: var(--danger); border-color: rgba(239, 68, 68, 0.3);">
+              <svg width="15" height="15" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/>
+              </svg>
+              Clean Demo Records
+            </button>
           </div>
         </div>
 

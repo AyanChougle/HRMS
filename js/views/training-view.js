@@ -197,7 +197,7 @@ const TrainingView = {
 
       <!-- Active Tab Content View -->
       <div class="tab-content animate-fade-in">
-        ${this.renderActiveTab(trainees, trainers, programs, isEmployee)}
+        ${this.async renderActiveTab(trainees, trainers, programs, isEmployee)}
       </div>
     `;
   },
