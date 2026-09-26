@@ -1804,7 +1804,7 @@ const ESSView = {
     let pos;
     try {
       if (typeof Toast !== "undefined") {
-        Toast.info("Verifying GPS location within 60m office radius for check-out...");
+        Toast.info("Verifying GPS location within office premises for check-out...");
       }
       pos = await this.getDeviceLocation();
     } catch (geoErr) {
@@ -1815,7 +1815,7 @@ const ESSView = {
         ModalManager.openModal({
           id: "geofence-error-modal",
           title: "GPS Location Required",
-          subtitle: "Mandatory 60-meter office perimeter check",
+          subtitle: "Mandatory office location check",
           size: "sm",
           contentHtml: `
             <div style="padding: 10px 0; text-align: center;">
@@ -1823,8 +1823,7 @@ const ESSView = {
                 Location Access Needed to Punch Out
               </div>
               <div style="font-size: 0.82rem; color: var(--text-secondary); line-height: 1.5; margin-bottom: 12px;">
-                All employees and roles must be physically present within <strong>60 meters</strong> of the office premises to punch out:
-                <br/><strong>Office Premises (GPS: 19.166900, 72.931000)</strong>
+                All employees and roles must be physically present within the office premises to punch out.
               </div>
               <div style="font-size: 0.78rem; color: #dc2626; background: #fef2f2; padding: 10px; border-radius: 6px; border: 1px solid #fecaca; text-align: left;">
                 ${geoErr.message}
@@ -1859,7 +1858,7 @@ const ESSView = {
     const effectiveDistance = Math.max(0, distanceMeters - Math.min(accuracy, 25));
 
     if (distanceMeters > allowedRadius && effectiveDistance > allowedRadius) {
-      const errorMsg = `Outside Office Perimeter: You are currently ${distanceDisplay} away from the office. Punch-out is strictly restricted to within office premises (60m perimeter).`;
+      const errorMsg = `Outside Office Perimeter: You are currently ${distanceDisplay} away from the office. Punch-out is strictly restricted to within office premises.`;
       if (typeof Toast !== "undefined") {
         Toast.error(errorMsg);
       }
@@ -1867,25 +1866,24 @@ const ESSView = {
         ModalManager.openModal({
           id: "geofence-alert-modal",
           title: "Out of Geofence Boundary",
-          subtitle: `Distance: ${distanceDisplay} (Office Perimeter: ${allowedRadius}m)`,
+          subtitle: `Distance: ${distanceDisplay}`,
           size: "md",
           contentHtml: `
             <div style="padding: 10px 0;">
               <div style="background: #fef2f2; border: 1px solid #fecaca; border-radius: 8px; padding: 14px; margin-bottom: 14px;">
                 <div style="font-weight: 700; color: #991b1b; font-size: 0.95rem; margin-bottom: 4px;">Punch-Out Denied: Outside Office Premises</div>
                 <div style="font-size: 0.84rem; color: #7f1d1d; line-height: 1.5;">
-                  Company policy strictly requires each and every employee across all roles to be physically located within the office premises (19.166900, 72.931000) to punch out.
+                  Company policy strictly requires each and every employee across all roles to be physically located within the office premises to punch out.
                 </div>
               </div>
               <div style="background: var(--bg-hover); border-radius: 8px; padding: 14px; font-size: 0.84rem; line-height: 1.6;">
                 <div><strong>Your Current Distance:</strong> <span style="color: #dc2626; font-weight: 700;">${distanceDisplay}</span></div>
-                <div><strong>Allowed Perimeter:</strong> ${allowedRadius} meters</div>
                 <div><strong>GPS Accuracy:</strong> &plusmn;${accuracy}m</div>
                 <div style="margin-top: 10px; border-top: 1px solid var(--border-main); padding-top: 8px;">
                   <strong>Designated Office Location:</strong><br/>
-                  Office Premises (GPS: 19.166900, 72.931000)
+                  Diallo Office Premises
                   <div style="margin-top: 6px;">
-                    <a href="https://www.google.com/maps?q=19.166900,72.931000" target="_blank" rel="noopener noreferrer" style="color: var(--primary); font-weight: 600; text-decoration: underline;">View Office Location on Google Maps &rarr;</a>
+                    <a href="${this.OFFICE_GEOFENCE.mapsUrl}" target="_blank" rel="noopener noreferrer" style="color: var(--primary); font-weight: 600; text-decoration: underline;">View Office Location on Google Maps &rarr;</a>
                   </div>
                 </div>
               </div>
@@ -1946,10 +1944,10 @@ const ESSView = {
 
   OFFICE_GEOFENCE: {
     name: "Diallo Office Premises",
-    address: "Office Premises (GPS: 19.166900, 72.931000)",
-    mapsUrl: "https://www.google.com/maps?q=19.166900,72.931000",
-    latitude: 19.166900,
-    longitude: 72.931000,
+    address: "Diallo Office Premises",
+    mapsUrl: "https://www.google.com/maps?q=19.11058435750301,73.02805896557284",
+    latitude: 19.11058435750301,
+    longitude: 73.02805896557284,
     radiusMeters: 60,
   },
 
@@ -2050,7 +2048,7 @@ const ESSView = {
       let pos;
       try {
         if (typeof Toast !== "undefined") {
-          Toast.info("Verifying GPS location within 60m office radius...");
+          Toast.info("Verifying GPS location within office premises...");
         }
         pos = await this.getDeviceLocation();
       } catch (geoErr) {
@@ -2061,7 +2059,7 @@ const ESSView = {
           ModalManager.openModal({
             id: "geofence-error-modal",
             title: "GPS Location Required",
-            subtitle: "Mandatory 60-meter office perimeter check",
+            subtitle: "Mandatory office location check",
             size: "sm",
             contentHtml: `
               <div style="padding: 10px 0; text-align: center;">
@@ -2069,8 +2067,7 @@ const ESSView = {
                   Location Access Needed to Punch In
                 </div>
                 <div style="font-size: 0.82rem; color: var(--text-secondary); line-height: 1.5; margin-bottom: 12px;">
-                  All employees and roles must be physically present within <strong>60 meters</strong> of the office premises:
-                  <br/><strong>Office Premises (GPS: 19.166900, 72.931000)</strong>
+                  All employees and roles must be physically present within the office premises to punch in.
                 </div>
                 <div style="font-size: 0.78rem; color: #dc2626; background: #fef2f2; padding: 10px; border-radius: 6px; border: 1px solid #fecaca; text-align: left;">
                   ${geoErr.message}
@@ -2105,7 +2102,7 @@ const ESSView = {
       const effectiveDistance = Math.max(0, distanceMeters - Math.min(accuracy, 25));
 
       if (distanceMeters > allowedRadius && effectiveDistance > allowedRadius) {
-        const errorMsg = `Outside Office Perimeter: You are currently ${distanceDisplay} away from the office. Punch-in is strictly restricted to within office premises (60m perimeter).`;
+        const errorMsg = `Outside Office Perimeter: You are currently ${distanceDisplay} away from the office. Punch-in is strictly restricted to within office premises.`;
         if (typeof Toast !== "undefined") {
           Toast.error(errorMsg);
         }
@@ -2113,25 +2110,25 @@ const ESSView = {
           ModalManager.openModal({
             id: "geofence-alert-modal",
             title: "Out of Geofence Boundary",
-            subtitle: `Distance: ${distanceDisplay} (Office Perimeter: ${allowedRadius}m)`,
+            subtitle: `Distance: ${distanceDisplay}`,
             size: "md",
             contentHtml: `
               <div style="padding: 10px 0;">
                 <div style="background: #fef2f2; border: 1px solid #fecaca; border-radius: 8px; padding: 14px; margin-bottom: 14px;">
                   <div style="font-weight: 700; color: #991b1b; font-size: 0.95rem; margin-bottom: 4px;">Punch-In Denied: Outside Office Premises</div>
                   <div style="font-size: 0.84rem; color: #7f1d1d; line-height: 1.5;">
-                    Company policy strictly requires each and every employee across all roles to be physically located within the office premises (19.166900, 72.931000) to check in.
+                    Company policy strictly requires each and every employee across all roles to be physically located within the office premises to check in.
                   </div>
                 </div>
                 <div style="background: var(--bg-hover); border-radius: 8px; padding: 14px; font-size: 0.84rem; line-height: 1.6;">
                   <div><strong>Your Current Distance:</strong> <span style="color: #dc2626; font-weight: 700;">${distanceDisplay}</span></div>
-                  <div><strong>Allowed Perimeter:</strong> ${allowedRadius} meters</div>
+
                   <div><strong>GPS Accuracy:</strong> &plusmn;${accuracy}m</div>
                   <div style="margin-top: 10px; border-top: 1px solid var(--border-main); padding-top: 8px;">
                     <strong>Designated Office Location:</strong><br/>
-                    Office Premises (GPS: 19.166900, 72.931000)
+                    Diallo Office Premises
                     <div style="margin-top: 6px;">
-                      <a href="https://www.google.com/maps?q=19.166900,72.931000" target="_blank" rel="noopener noreferrer" style="color: var(--primary); font-weight: 600; text-decoration: underline;">View Office Location on Google Maps &rarr;</a>
+                      <a href="${this.OFFICE_GEOFENCE.mapsUrl}" target="_blank" rel="noopener noreferrer" style="color: var(--primary); font-weight: 600; text-decoration: underline;">View Office Location on Google Maps &rarr;</a>
                     </div>
                   </div>
                 </div>
