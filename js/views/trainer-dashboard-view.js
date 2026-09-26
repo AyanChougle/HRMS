@@ -17,15 +17,6 @@ const TrainerDashboardView = {
       }
     }
 
-    const employeeId = AuthGuard.userProfile?.employeeId || AuthGuard.currentUser?.uid;
-    if (typeof ESSView !== "undefined" && window.attendanceService) {
-      try {
-        const todayRecord = await attendanceService.getTodayRecord(employeeId);
-        await ESSView.syncWithFirestore(todayRecord);
-      } catch (e) {
-        console.warn("Dashboard ESSView sync warning:", e);
-      }
-    }
 
     const userDisplayName = AuthGuard.userProfile?.displayName || 'Corporate Trainer';
     const userEmail = (AuthGuard.userProfile?.email || AuthGuard.currentUser?.email || '').toLowerCase();
