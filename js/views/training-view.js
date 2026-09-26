@@ -334,6 +334,8 @@ const TrainingView = {
                         ${t.status !== 'CERTIFIED' && t.status !== 'HANDED_OVER' ? `
                           <button class="btn btn-secondary btn-sm" onclick="TrainingView.openCertifyModal('${t.id}', '${(t.fullName || '').replace(/'/g, "\\'")}')" title="Award Day 6 Certification">
                             Certify
+                          </button>\n                          <button class="btn btn-danger btn-sm" onclick="TrainingView.failTrainee('${t.id}', '${(t.fullName || '').replace(/'/g, "\\'")}')" title="Fail Certification and send to HR">
+                            Fail
                           </button>
                         ` : ''}
                         ${t.status !== 'HANDED_OVER' ? `
@@ -706,7 +708,25 @@ const TrainingView = {
     }
   },
 
-  openCertifyModal(traineeId, fullName) {
+  
+  async failTrainee(traineeId, traineeName) {
+    if (!confirm('Are you sure you want to fail ' + traineeName + '? This will immediately trigger the HR Termination Workflow and lock their account.')) return;
+    
+    try {
+      const reason = prompt('Please provide a reason for certification failure (required):');
+      if (!reason || !reason.trim()) {
+        Toast.error('Failure reason is required.');
+        return;
+      }
+      
+      await trainingService.failTrainee(traineeId, reason);
+      Toast.success(traineeName + ' has been marked as failed and pushed to HR termination workflow.');
+      if (window.Router) Router.navigate('training');
+    } catch (e) {
+      Toast.error('Could not fail trainee: ' + (e.message || e));
+    }
+  },
+\n  openCertifyModal(traineeId, fullName) {
     const modalHtml = `
       <form id="certify-trainee-form" onsubmit="event.preventDefault(); TrainingView.submitCertify('${traineeId}');">
         <p style="margin-bottom: 16px; font-size: 0.9rem; color: var(--text-secondary);">

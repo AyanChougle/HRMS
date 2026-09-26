@@ -7,6 +7,15 @@
 const CreateEmployeeView = {
   async render() {
     const userRole = (AuthGuard.userProfile?.roleId || '').toUpperCase().trim();
+    let employees = [];
+    try {
+      if (typeof employeeService !== 'undefined') {
+        employees = await employeeService.getAllEmployees();
+      }
+    } catch(e) { console.warn(e); }
+    
+    const mgrOptions = '<option value="">-- Select --</option>' + employees.map(e => `<option value="${e.id}">${e.fullName || e.firstName} (${e.employeeCode})</option>`).join('');
+    
     const isAuthorized = userRole === 'SUPER_ADMIN' || userRole === 'ADMIN' || userRole === 'COMPANY_ADMIN' || userRole.includes('HR') || userRole.includes('TRAIN');
 
     if (!isAuthorized) {
@@ -139,8 +148,20 @@ const CreateEmployeeView = {
                 <input type="text" id="new-emp-designation" class="form-control" placeholder="e.g. Graduate Trainee / Executive" required value="Graduate Trainee" />
               </div>
               <div class="form-group">
-                <label class="form-label">Assigned Mentor / Reporting Manager</label>
-                <input type="text" id="new-emp-mentor" class="form-control" placeholder="e.g. Mentor / Manager Name" />
+                <label class="form-label">Team Leader</label>
+                <select id="new-emp-team-leader" class="form-control">${mgrOptions}</select>
+              </div>
+              <div class="form-group">
+                <label class="form-label">Operations Manager</label>
+                <select id="new-emp-ops-manager" class="form-control">${mgrOptions}</select>
+              </div>
+              <div class="form-group">
+                <label class="form-label">Manager</label>
+                <select id="new-emp-manager" class="form-control">${mgrOptions}</select>
+              </div>
+              <div class="form-group">
+                <label class="form-label">Mentor / Trainer (If Trainee)</label>
+                <select id="new-emp-mentor" class="form-control">${mgrOptions}</select>
               </div>
               <div class="form-group">
                 <label class="form-label required">Date of Joining</label>

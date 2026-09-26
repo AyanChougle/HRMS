@@ -36,6 +36,15 @@ const approvalService = {
         list = list.filter(t => t.module === filters.module);
       }
 
+      // Enforce Scope: Only show tasks explicitly assigned to me OR to my generic HR role pool
+      if (roleId !== 'SUPER_ADMIN') {
+        list = list.filter(t => {
+          if (t.assignedTo && t.assignedTo === uid) return true;
+          if (!t.assignedTo && (t.assignedRole === roleId || t.assignedRole === 'HR' && roleId === 'HR_MANAGER')) return true;
+          return false;
+        });
+      }
+
       return list;
     } catch (err) {
       console.warn('Error fetching my approvals:', err);

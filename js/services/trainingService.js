@@ -358,12 +358,111 @@ const trainingService = {
   },
 
   async certifyTrainee(traineeId, rating = 5, notes = 'Completed Day 6 certification evaluation successfully.') {
-    return await this.evaluateTrainee(traineeId, {
-      progress: 0,
+    const res = await this.evaluateTrainee(traineeId, {
+      progress: 100,
       rating: Number(rating) || 5,
       status: 'CERTIFIED',
       notes: notes
     });
+
+    try {
+      // 1. Fetch Trainee Doc to get the actual Employee ID (often they are the same)
+      const traineeDoc = await db.collection('trainees').doc(traineeId).get();
+      if (!traineeDoc.exists) return res;
+      
+      const traineeData = traineeDoc.data();
+      const employeeId = traineeData.employeeId || traineeId; // Fallback to traineeId if it matches
+
+      // 2. Update Employees Collection
+      await db.collection('employees').doc(employeeId).set({
+        roleId: 'EMPLOYEE',
+        trainingStatus: 'COMPLETED',
+        certificationStatus: 'PASSED',
+        employmentStatus: 'ACTIVE',
+        updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+      }, { merge: true });
+
+      // 3. Update Users Collection (Auth Role)
+      // Usually userId == employeeId
+      const empDoc = await db.collection('employees').doc(employeeId).get();
+      let userId = employeeId;
+      if (empDoc.exists && empDoc.data().userId) {
+        userId = empDoc.data().userId;
+      }
+
+      await db.collection('users').doc(userId).set({
+        roleId: 'EMPLOYEE',
+        status: 'ACTIVE',
+        updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+      }, { merge: true });
+
+      // 4. Log Audit
+      if (window.auditService) {
+        await auditService.log('CERTIFICATION_PASSED', 'TRAINING', 'employees', employeeId, { rating, notes });
+      }
+
+      console.log(`Successfully transitioned Trainee ${employeeId} to Employee.`);
+    } catch (err) {
+      console.warn('Error transitioning trainee to employee:', err);
+    }
+    
+    return res;
+  },
+
+  
+  async failTrainee(traineeId, reason) {
+    try {
+      const traineeDoc = await db.collection('trainees').doc(traineeId).get();
+      if (!traineeDoc.exists) throw new Error("Trainee not found.");
+      
+      const traineeData = traineeDoc.data();
+      const employeeId = traineeData.employeeId || traineeId;
+
+      // 1. Update Trainee Record
+      await this.updateTrainee(traineeId, {
+        progress: 0,
+        status: 'FAILED',
+        certificationStatus: 'FAILED',
+        trainingStatus: 'FAILED',
+        terminationReason: reason,
+        terminatedAt: new Date().toISOString(),
+        terminatedBy: AuthGuard.userProfile?.displayName || 'Lead Trainer'
+      });
+
+      // 2. Update Employee Record (Trigger HR Workflow)
+      await db.collection('employees').doc(employeeId).set({
+        employmentStatus: 'TERMINATED',
+        trainingStatus: 'FAILED',
+        certificationStatus: 'FAILED',
+        isActive: false,
+        terminationReason: reason,
+        terminatedAt: firebase.firestore.FieldValue.serverTimestamp(),
+        updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+      }, { merge: true });
+
+      // 3. Update User Auth Status (Disable Login)
+      const empDoc = await db.collection('employees').doc(employeeId).get();
+      let userId = employeeId;
+      if (empDoc.exists && empDoc.data().userId) {
+        userId = empDoc.data().userId;
+      }
+      await db.collection('users').doc(userId).set({
+        status: 'SUSPENDED',
+        isActive: false,
+        updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+      }, { merge: true });
+
+      // 4. Create HR Workflow Request / Notification
+      if (window.auditService) {
+        await auditService.log('CERTIFICATION_FAILED', 'TRAINING', 'employees', employeeId, { reason });
+      }
+
+      console.log(`Successfully marked Trainee ${employeeId} as FAILED and triggered termination.`);
+      return true;
+    } catch (e) {
+      console.error('Error failing trainee:', e);
+      throw e;
+    }
   },
 
   async handoverToFloor(traineeId, department = 'Operations', teamLeadName = 'Reporting Manager') {

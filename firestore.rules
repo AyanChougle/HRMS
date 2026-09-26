@@ -36,12 +36,24 @@ service cloud.firestore {
     }
 
     function isAdmin() {
-      return isAuthenticated() && tokenRole() in ['SUPER_ADMIN', 'COMPANY_ADMIN', 'ADMIN'];
+      return isAuthenticated() && tokenRole() == 'SUPER_ADMIN';
     }
 
-    // "Privileged" = can manage most company data (admins, HR, payroll for their domain).
+    function isHRManager() {
+      return isAuthenticated() && tokenRole() == 'HR_MANAGER';
+    }
+
     function isPrivileged() {
-      return isAuthenticated() && (isAdmin() || tokenRole() in ['HR', 'PAYROLL']);
+      return isAuthenticated() && (isAdmin() || isHRManager());
+    }
+
+    function isManagerOfRecord(resourceData) {
+      return isAuthenticated() && (
+        resourceData.managerId == request.auth.uid || 
+        resourceData.operationsManagerId == request.auth.uid || 
+        resourceData.teamLeaderId == request.auth.uid || 
+        resourceData.mentorTrainerId == request.auth.uid
+      );
     }
 
     function isPrivilegedInCompany(companyId) {
@@ -249,7 +261,8 @@ service cloud.firestore {
             resource.data.employeeId == request.auth.uid ||
             resource.data.requestedById == request.auth.uid ||
             resource.data.recipientId == request.auth.uid ||
-            resource.data.uid == request.auth.uid
+            resource.data.uid == request.auth.uid ||
+            isManagerOfRecord(resource.data)
           ))
         );
 
@@ -277,7 +290,8 @@ service cloud.firestore {
             resource.data.employeeId == request.auth.uid ||
             resource.data.requestedById == request.auth.uid ||
             resource.data.recipientId == request.auth.uid ||
-            resource.data.uid == request.auth.uid
+            resource.data.uid == request.auth.uid ||
+            isManagerOfRecord(resource.data)
           ))
         );
     }

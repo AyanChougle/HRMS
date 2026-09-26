@@ -77,8 +77,8 @@ const UsersView = {
                     </div>
                   </td>
                   <td>
-                    <span class="badge ${u.roleId === "SUPER_ADMIN" ? "badge-primary" : u.roleId === "HR" ? "badge-success" : u.roleId === "TRAINER" ? "badge-info" : u.roleId === "TRAINEE" ? "badge-warning" : "badge-neutral"}">
-                      ${u.roleId || "EMPLOYEE"}
+                    <span class="badge ${u.roleId === "SUPER_ADMIN" ? "badge-primary" : u.roleId === "HR_MANAGER" ? "badge-success" : (u.roleId === "MANAGER" || u.roleId === "OPERATIONS_MANAGER") ? "badge-info" : u.roleId === "MENTOR_TRAINER" ? "badge-info" : u.roleId === "TRAINEE" ? "badge-warning" : "badge-neutral"}">
+                      ${u.roleId === 'HR_MANAGER' ? 'HR Manager' : u.roleId === 'MENTOR_TRAINER' ? 'Mentor/Trainer' : u.roleId === 'TEAM_LEAD' ? 'Team Lead' : u.roleId || 'Employee'}
                     </span>
                   </td>
                   <td><span class="font-medium text-main">${u.companyName || u.companyId || "Diallo India"}</span></td>
@@ -128,12 +128,12 @@ const UsersView = {
               <label class="form-label required">Account Role</label>
               <select id="usr-role" class="form-control">
                 <option value="SUPER_ADMIN">Super Administrator</option>
-                <option value="COMPANY_ADMIN">Company Administrator</option>
-                <option value="HR" selected>HR Administrator</option>
-                <option value="TRAINER">Corporate Trainer</option>
-                <option value="TRAINEE">Graduate Trainee</option>
-                <option value="PAYROLL">Payroll Officer</option>
-                <option value="MANAGER">Line Manager</option>
+                <option value="HR_MANAGER" selected>HR Manager</option>
+                <option value="MANAGER">Manager</option>
+                <option value="OPERATIONS_MANAGER">Operations Manager</option>
+                <option value="TEAM_LEAD">Team Leader</option>
+                <option value="MENTOR_TRAINER">Mentor / Trainer</option>
+                <option value="TRAINEE">Trainee</option>
                 <option value="EMPLOYEE">Employee (Self Service)</option>
               </select>
             </div>

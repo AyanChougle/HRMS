@@ -142,16 +142,16 @@ const AuthGuard = {
           this.userRole = { name: 'Super Admin', id: 'SUPER_ADMIN' };
         } else if (normalizedRoleId === 'COMPANY_ADMIN' || normalizedRoleId === 'ADMIN') {
           this.userRole = { name: 'Company Admin', id: 'COMPANY_ADMIN' };
-        } else if (normalizedRoleId === 'HR' || normalizedRoleId === 'HR_MANAGER') {
-          this.userRole = { name: 'HR Manager', id: 'HR' };
+        } else if (normalizedRoleId === 'HR_MANAGER') {
+          this.userRole = { name: 'HR Manager', id: 'HR_MANAGER' };
         } else if (normalizedRoleId === 'MANAGER') {
           this.userRole = { name: 'Manager', id: 'MANAGER' };
         } else if (normalizedRoleId === 'TEAM_LEAD' || normalizedRoleId === 'TL') {
           this.userRole = { name: 'Team Leader', id: 'TEAM_LEAD' };
-        } else if (normalizedRoleId === 'MENTOR') {
-          this.userRole = { name: 'Mentor', id: 'MENTOR' };
-        } else if (normalizedRoleId === 'TRAINER') {
-          this.userRole = { name: 'Trainer', id: 'TRAINER' };
+        } else if (normalizedRoleId === 'MENTOR_TRAINER') {
+          this.userRole = { name: 'Mentor / Trainer', id: 'MENTOR_TRAINER' };
+        } else if (normalizedRoleId === 'OPERATIONS_MANAGER') {
+          this.userRole = { name: 'Operations Manager', id: 'OPERATIONS_MANAGER' };
         } else if (normalizedRoleId === 'TRAINEE') {
           this.userRole = { name: 'Trainee', id: 'TRAINEE' };
         } else {
@@ -214,8 +214,8 @@ const AuthGuard = {
           this.userRole = { name: 'Corporate Trainer', id: 'TRAINER' };
         } else if (normalizedRoleId === 'TRAINEE') {
           this.userRole = { name: 'Graduate Trainee', id: 'TRAINEE' };
-        } else if (normalizedRoleId === 'HR' || normalizedRoleId === 'HR_MANAGER') {
-          this.userRole = { name: 'HR Manager', id: 'HR' };
+        } else if (normalizedRoleId === 'HR_MANAGER') {
+          this.userRole = { name: 'HR Manager', id: 'HR_MANAGER' };
         } else if (normalizedRoleId === 'MANAGER') {
           this.userRole = { name: 'Line Manager', id: 'MANAGER' };
         } else {
@@ -432,19 +432,22 @@ const AuthGuard = {
       this.userRole = { name: 'Company Admin', id: 'COMPANY_ADMIN' };
     } else if (normalizedRole === 'HR' || normalizedRole === 'HR_MANAGER') {
       this.permissions = window.PermissionService ? PermissionService.getUserPermissions({ roleId: 'HR' }) : new Set(['*']);
-      this.userRole = { name: 'HR Manager', id: 'HR' };
+      this.userRole = { name: 'HR Manager', id: 'HR_MANAGER' };
     } else if (normalizedRole === 'MANAGER') {
       this.permissions = window.PermissionService ? PermissionService.getUserPermissions({ roleId: 'MANAGER' }) : new Set(['team.*', 'performance.view', 'attendance.view', 'leave.view', 'ess.view']);
       this.userRole = { name: 'Manager', id: 'MANAGER' };
     } else if (normalizedRole === 'TEAM_LEAD' || normalizedRole === 'TL') {
       this.permissions = window.PermissionService ? PermissionService.getUserPermissions({ roleId: 'TEAM_LEAD' }) : new Set(['team.view', 'performance.view', 'attendance.view', 'leave.view', 'ess.view']);
       this.userRole = { name: 'Team Leader', id: 'TEAM_LEAD' };
-    } else if (normalizedRole === 'MENTOR') {
-      this.permissions = window.PermissionService ? PermissionService.getUserPermissions({ roleId: 'MENTOR' }) : new Set(['training.*', 'performance.view', 'attendance.view', 'leave.view', 'ess.view']);
-      this.userRole = { name: 'Mentor', id: 'MENTOR' };
-    } else if (normalizedRole === 'TRAINER') {
-      this.permissions = window.PermissionService ? PermissionService.getUserPermissions({ roleId: 'TRAINER' }) : new Set(['training.*', 'performance.view', 'attendance.punch', 'attendance.view', 'leave.view', 'leave.create', 'own.profile']);
-      this.userRole = { name: 'Trainer', id: 'TRAINER' };
+    } else if (normalizedRole === 'MENTOR_TRAINER') {
+      this.permissions = window.PermissionService ? PermissionService.getUserPermissions({ roleId: 'MENTOR_TRAINER' }) : new Set(['training.*', 'performance.view', 'attendance.punch', 'attendance.view', 'leave.view', 'leave.create', 'own.profile']);
+      this.userRole = { name: 'Mentor / Trainer', id: 'MENTOR_TRAINER' };
+    } else if (normalizedRole === 'OPERATIONS_MANAGER') {
+      this.permissions = window.PermissionService ? PermissionService.getUserPermissions({ roleId: 'OPERATIONS_MANAGER' }) : new Set(['team.view', 'performance.view', 'attendance.view', 'leave.view', 'ess.view', 'approvals.view', 'approvals.approve']);
+      this.userRole = { name: 'Operations Manager', id: 'OPERATIONS_MANAGER' };
+    } else if (normalizedRole === 'MANAGER') {
+      this.permissions = window.PermissionService ? PermissionService.getUserPermissions({ roleId: 'MANAGER' }) : new Set(['team.view', 'performance.view', 'attendance.view', 'leave.view', 'ess.view', 'approvals.view', 'approvals.approve']);
+      this.userRole = { name: 'Manager', id: 'MANAGER' };
     } else if (normalizedRole === 'TRAINEE') {
       this.permissions = window.PermissionService ? PermissionService.getUserPermissions({ roleId: 'TRAINEE' }) : new Set(['training.view', 'training.submit', 'attendance.punch', 'attendance.view', 'leave.view', 'leave.create', 'own.profile']);
       this.userRole = { name: 'Trainee', id: 'TRAINEE' };
@@ -472,12 +475,11 @@ const AuthGuard = {
     const roleLabels = {
       SUPER_ADMIN: 'Super Admin',
       COMPANY_ADMIN: 'Company Admin',
-      HR: 'HR Manager',
       HR_MANAGER: 'HR Manager',
       MANAGER: 'Manager',
+      OPERATIONS_MANAGER: 'Operations Manager',
       TEAM_LEAD: 'Team Leader',
-      MENTOR: 'Mentor',
-      TRAINER: 'Trainer',
+      MENTOR_TRAINER: 'Mentor / Trainer',
       TRAINEE: 'Trainee',
       EMPLOYEE: 'Employee'
     };
@@ -500,12 +502,11 @@ const AuthGuard = {
       const roleMap = {
         SUPER_ADMIN: 'Super Admin',
         COMPANY_ADMIN: 'Company Admin',
-        HR: 'HR Manager',
         HR_MANAGER: 'HR Manager',
-        MANAGER: 'Manager',
+      MANAGER: 'Manager',
+      OPERATIONS_MANAGER: 'Operations Manager',
         TEAM_LEAD: 'Team Leader',
-        MENTOR: 'Mentor',
-        TRAINER: 'Trainer',
+        MENTOR_TRAINER: 'Mentor / Trainer',
         TRAINEE: 'Trainee',
         EMPLOYEE: 'Employee'
       };
