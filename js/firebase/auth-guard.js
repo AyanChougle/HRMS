@@ -474,7 +474,6 @@ const AuthGuard = {
 
     const roleLabels = {
       SUPER_ADMIN: 'Super Admin',
-      COMPANY_ADMIN: 'Company Admin',
       HR_MANAGER: 'HR Manager',
       MANAGER: 'Manager',
       OPERATIONS_MANAGER: 'Operations Manager',
@@ -501,7 +500,6 @@ const AuthGuard = {
       const name = this.userProfile.displayName || this.userProfile.fullName || this.currentUser?.email?.split('@')[0] || 'User';
       const roleMap = {
         SUPER_ADMIN: 'Super Admin',
-        COMPANY_ADMIN: 'Company Admin',
         HR_MANAGER: 'HR Manager',
       MANAGER: 'Manager',
       OPERATIONS_MANAGER: 'Operations Manager',

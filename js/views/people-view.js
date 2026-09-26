@@ -149,7 +149,7 @@ const PeopleView = {
         <button class="tab-btn ${this.activeTab === 'orgchart' ? 'active' : ''}" onclick="PeopleView.switchTab('orgchart')">Organization Chart</button>
         <button class="tab-btn ${this.activeTab === 'onboarding' ? 'active' : ''}" onclick="PeopleView.switchTab('onboarding')">Onboarding (${pendingOnboarding})</button>
         <button class="tab-btn ${this.activeTab === 'exits' ? 'active' : ''}" onclick="PeopleView.switchTab('exits')">Separations (${pendingExits})</button>
-        <button class="tab-btn ${this.activeTab === 'masters' ? 'active' : ''}" onclick="PeopleView.switchTab('masters')">Org Masters</button>
+        ${['SUPER_ADMIN', 'HR_MANAGER', 'MANAGER', 'OPERATIONS_MANAGER'].includes(userRole) ? `<button class="tab-btn ${this.activeTab === 'masters' ? 'active' : ''}" onclick="PeopleView.switchTab('masters')">Org Masters</button>` : ''}
       </div>
 
       <!-- TAB CONTAINER -->

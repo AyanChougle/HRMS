@@ -14,12 +14,23 @@ const ManagerDashboardView = {
       year: "numeric",
     });
 
+    const role = (AuthGuard._previewRoleId || AuthGuard.userProfile?.roleId || '').toString().toUpperCase().trim();
+    let portalTitle = 'Manager Portal';
+    let portalSubtitle = 'Team attendance oversight, leave approvals, and shift monitoring';
+    if (role === 'OPERATIONS_MANAGER') {
+      portalTitle = 'Operations Manager Portal';
+      portalSubtitle = 'Operational management through Team Leaders, shift presence, and team performance oversight';
+    } else if (role === 'TEAM_LEAD') {
+      portalTitle = 'Team Leader Portal';
+      portalSubtitle = 'Direct team attendance monitoring, shift approvals, and daily goal tracking';
+    }
+
     return `
       <!-- Welcome Banner -->
       <div class="welcome-banner animate-fade-in">
         <div class="welcome-text">
-          <h1>Manager Portal — ${userDisplayName}</h1>
-          <p>Team attendance oversight, leave approvals, and shift monitoring</p>
+          <h1>${portalTitle} — ${userDisplayName}</h1>
+          <p>${portalSubtitle}</p>
         </div>
         <div class="welcome-date-badge">
           <svg width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor">
