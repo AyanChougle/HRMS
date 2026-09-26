@@ -76,6 +76,18 @@ const attendanceService = {
   },
 
   // Sanitize attendance record to guarantee accurate duration, breaks, overtime, and status
+    isSaturday(dateStr) {
+    if (!dateStr) return false;
+    try {
+      const parts = dateStr.split('-');
+      if (parts.length === 3) {
+        const d = new Date(Number(parts[0]), Number(parts[1]) - 1, Number(parts[2]));
+        return d.getDay() === 6;
+      }
+    } catch (e) {}
+    return false;
+  },
+
   sanitizeRecord(rec) {
     if (!rec) return rec;
     const r = { ...rec };
@@ -102,10 +114,12 @@ const attendanceService = {
       // Standard shift (10:00 AM to 07:00 PM) = 540 minutes gross.
       const totalGrossMinutes = Math.min(720, Math.max(0, sessionMinutes));
 
-      // Diallo % Master Policy: 9hr shift = 8hr work (480m) + 1hr break (60m).
-      // If a regularized record or full-shift has 0m recorded break, apply the standard 60m break.
+      const isSat = this.isSaturday(r.date);
+      const targetWorkMins = isSat ? 360 : 480; // Saturday shift target = 6h (360m)
+      const halfDayCutoff = isSat ? 180 : 240;   // Saturday half-day cutoff = 3h (180m)
+
       let effectiveBreakMinutes = r.totalBreakMinutes || 0;
-      if (effectiveBreakMinutes === 0 && (r.status === 'REGULARIZED' || totalGrossMinutes >= 540)) {
+      if (!isSat && effectiveBreakMinutes === 0 && (r.status === 'REGULARIZED' || totalGrossMinutes >= 540)) {
         effectiveBreakMinutes = 60;
         r.totalBreakMinutes = 60;
         r.totalBreakSeconds = 3600;
@@ -124,12 +138,12 @@ const attendanceService = {
       r.grossMinutes = totalGrossMinutes;
       r.grossHoursFormatted = `${grossHours}h ${String(grossMins).padStart(2, '0')}m`;
 
-      // Standard work target is 8 hours (480 minutes). Overtime is only beyond 8 hours of net work.
-      r.overtimeMinutes = workedMinutes > 480 ? (workedMinutes - 480) : 0;
+      // Saturday shift = 6 hours work target. Overtime is only beyond 6h on Sat (8h on Weekdays).
+      r.overtimeMinutes = workedMinutes > targetWorkMins ? (workedMinutes - targetWorkMins) : 0;
 
       // Ensure status is valid after checkOut
       if (!r.status || r.status === 'ON_BREAK') {
-        r.status = workedMinutes < 240 ? 'HALF_DAY' : (r.lateMinutes > 0 ? 'LATE' : 'PRESENT');
+        r.status = workedMinutes < halfDayCutoff ? 'HALF_DAY' : (r.lateMinutes > 0 ? 'LATE' : 'PRESENT');
       }
     } else if (r.checkIn && (!r.checkOut || r.checkOut === '-')) {
       if (!r.status) r.status = (r.lateMinutes > 0 ? 'LATE' : 'PRESENT');
@@ -378,15 +392,17 @@ const attendanceService = {
 
       const breakFormatted = this.formatBreakDuration(totalBreakSeconds);
 
-      // Early checkout & Overtime calculations (Shift 10:00 AM – 07:00 PM = 9h / 540m)
-      const shiftEndMinutes = this.timeStringToMinutes(settings.defaultEndTime || '19:00');
+      const isSat = now.getDay() === 6;
+      const defaultEndTime = isSat ? '16:00' : '19:00';
+      const shiftEndMinutes = this.timeStringToMinutes(settings.defaultEndTime || defaultEndTime);
       const currentMinutes = now.getHours() * 60 + now.getMinutes();
       const earlyCheckoutMinutes = currentMinutes < shiftEndMinutes ? shiftEndMinutes - currentMinutes : 0;
-      const shiftStandardMinutes = settings.overtimeAfterMinutes || 540;
+      const shiftStandardMinutes = isSat ? 360 : (settings.overtimeAfterMinutes || 540);
       const overtimeMinutes = workedMinutes > shiftStandardMinutes ? workedMinutes - shiftStandardMinutes : 0;
 
       let status = rec.status;
-      if (workedMinutes < (settings.minimumHalfDayMinutes || 270)) {
+      const halfDayCutoff = isSat ? 180 : (settings.minimumHalfDayMinutes || 240);
+      if (workedMinutes < halfDayCutoff) {
         status = 'HALF_DAY';
       }
 

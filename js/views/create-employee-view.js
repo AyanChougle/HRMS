@@ -174,7 +174,7 @@ const CreateEmployeeView = {
               </div>
               <div class="form-group">
                 <label class="form-label">Shift Timing Policy</label>
-                <input type="text" class="form-control" value="10:00 AM – 07:00 PM (8h Work • 1h Break)" readonly disabled style="background: var(--bg-hover);" />
+                <input type="text" class="form-control" value="Mon–Fri: 10:00 AM – 07:00 PM (8h Work) • Sat: 10:00 AM – 04:00 PM (6h Work)" readonly disabled style="background: var(--bg-hover);" />
               </div>
             </div>
 
