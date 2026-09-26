@@ -42,6 +42,7 @@ const PeopleView = {
     const newJoiners = employees.filter(e => e.employmentType === 'Probation' || e.probationStatus === 'Active').length;
     const pendingOnboarding = onboardingTasks.filter(t => t.status === 'PENDING' || t.status === 'IN_PROGRESS').length;
     const pendingExits = exits.filter(x => x.status === 'NOTICE_PERIOD' || x.status === 'CLEARANCE').length;
+    const userRole = (AuthGuard._previewRoleId || AuthGuard.userProfile?.roleId || '').toUpperCase().trim();
 
     return `
       <div class="page-header animate-fade-in">
@@ -160,6 +161,7 @@ const PeopleView = {
   },
 
   renderTabContent(employees, departments, branches, onboardingTasks, exits) {
+    const userRole = (AuthGuard._previewRoleId || AuthGuard.userProfile?.roleId || '').toUpperCase().trim();
     if (this.activeTab === 'orgchart') {
       return this.renderOrgChartTab(employees);
     } else if (this.activeTab === 'onboarding') {

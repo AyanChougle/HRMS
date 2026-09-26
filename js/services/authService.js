@@ -98,7 +98,7 @@ const authService = {
       const userEmail = (user.email || email || '').toLowerCase().trim();
       const isMasterAdmin = userEmail === 'ayanislight@gmail.com';
       let requestedRole = profileData.roleId ? profileData.roleId.toString().toUpperCase().trim() : (isMasterAdmin ? 'SUPER_ADMIN' : 'EMPLOYEE');
-      if (!['EMPLOYEE', 'TRAINER', 'TRAINEE', 'SUPER_ADMIN', 'COMPANY_ADMIN', 'HR', 'HR_MANAGER', 'PAYROLL', 'MANAGER'].includes(requestedRole)) {
+      if (!['SUPER_ADMIN', 'HR_MANAGER', 'MANAGER', 'OPERATIONS_MANAGER', 'TEAM_LEAD', 'MENTOR_TRAINER', 'TRAINEE', 'EMPLOYEE', 'COMPANY_ADMIN', 'HR', 'TRAINER', 'MENTOR'].includes(requestedRole)) {
         requestedRole = isMasterAdmin ? 'SUPER_ADMIN' : 'EMPLOYEE';
       }
       // Administrative roles can only be provisioned by Super Admin/HR inside the app

@@ -29,7 +29,7 @@ const AttendanceView = {
     const isSuperAdmin = rawRole === 'SUPER_ADMIN';
     const isCompanyAdmin = rawRole === 'COMPANY_ADMIN' || rawRole === 'ADMIN';
     const isHR = rawRole === 'HR' || rawRole === 'HR_MANAGER';
-    const isManager = rawRole === 'MANAGER';
+    const isManager = ['MANAGER', 'OPERATIONS_MANAGER', 'TEAM_LEAD'].includes(rawRole);
     const canManageAttendance = isSuperAdmin || isCompanyAdmin || isHR;
     const canApproveRegularization = canManageAttendance || isManager;
     const isStaffOnly = !canManageAttendance && !isManager;
@@ -803,7 +803,7 @@ const AttendanceView = {
     const isSuperAdmin = rawRole === 'SUPER_ADMIN';
     const isCompanyAdmin = rawRole === 'COMPANY_ADMIN' || rawRole === 'ADMIN';
     const isHR = rawRole === 'HR' || rawRole === 'HR_MANAGER';
-    const isManager = rawRole === 'MANAGER';
+    const isManager = ['MANAGER', 'OPERATIONS_MANAGER', 'TEAM_LEAD'].includes(rawRole);
     const canApprove = isSuperAdmin || isCompanyAdmin || isHR || isManager;
     const currentUserId = AuthGuard.currentUser?.uid;
     const currentEmployeeId = AuthGuard.userProfile?.employeeId;
@@ -1024,8 +1024,8 @@ const AttendanceView = {
 
   // 5. HOLIDAYS & SHIFTS TAB
   async renderHolidaysTab() {
-    const role = AuthGuard.userProfile?.roleId || 'EMPLOYEE';
-    const canManageHolidays = role === 'SUPER_ADMIN' || role === 'COMPANY_ADMIN' || role === 'HR';
+    const role = (AuthGuard._previewRoleId || AuthGuard.userProfile?.roleId || 'EMPLOYEE').toString().toUpperCase().trim();
+    const canManageHolidays = ['SUPER_ADMIN', 'COMPANY_ADMIN', 'ADMIN', 'HR', 'HR_MANAGER'].includes(role);
 
     const [holidays, shifts] = await Promise.all([
       attendanceSettingsService.getHolidays(),
@@ -1096,8 +1096,8 @@ const AttendanceView = {
   },
 
   openAddHolidayModal() {
-    const role = AuthGuard.userProfile?.roleId || 'EMPLOYEE';
-    if (role !== 'SUPER_ADMIN' && role !== 'COMPANY_ADMIN' && role !== 'HR') {
+    const role = (AuthGuard._previewRoleId || AuthGuard.userProfile?.roleId || 'EMPLOYEE').toString().toUpperCase().trim();
+    if (!['SUPER_ADMIN', 'COMPANY_ADMIN', 'ADMIN', 'HR', 'HR_MANAGER'].includes(role)) {
       Toast.error('Access restricted: Only HR and Administrators can configure holidays.');
       return;
     }

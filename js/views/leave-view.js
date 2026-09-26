@@ -8,18 +8,14 @@ const LeaveView = {
   currentFilters: {},
 
   async renderHub() {
-    const role = AuthGuard.userProfile?.roleId || "EMPLOYEE";
+    const role = (AuthGuard._previewRoleId || AuthGuard.userProfile?.roleId || "EMPLOYEE").toString().toUpperCase().trim();
     const employeeId =
       AuthGuard.userProfile?.employeeId || AuthGuard.currentUser?.uid;
-    const isEmployeeOnly = role === "EMPLOYEE";
+    const isEmployeeOnly = role === "EMPLOYEE" || role === "TRAINEE";
     const canManageSchemes =
-      role === "SUPER_ADMIN" || role === "COMPANY_ADMIN" || role === "HR";
+      ["SUPER_ADMIN", "COMPANY_ADMIN", "ADMIN", "HR", "HR_MANAGER"].includes(role);
     const canViewTeam =
-      role === "MANAGER" ||
-      role === "TEAM_LEAD" ||
-      role === "SUPER_ADMIN" ||
-      role === "COMPANY_ADMIN" ||
-      role === "HR";
+      ["SUPER_ADMIN", "COMPANY_ADMIN", "ADMIN", "HR", "HR_MANAGER", "MANAGER", "OPERATIONS_MANAGER", "TEAM_LEAD"].includes(role);
 
     if (!canManageSchemes && this.activeTab === "types") {
       this.activeTab = "my";
@@ -703,9 +699,9 @@ const LeaveView = {
 
   // 5. LEAVE TYPES MASTER TAB
   async renderLeaveTypesTab() {
-    const role = AuthGuard.userProfile?.roleId || "EMPLOYEE";
+    const role = (AuthGuard._previewRoleId || AuthGuard.userProfile?.roleId || "EMPLOYEE").toString().toUpperCase().trim();
     const canManage =
-      role === "SUPER_ADMIN" || role === "COMPANY_ADMIN" || role === "HR";
+      ["SUPER_ADMIN", "COMPANY_ADMIN", "ADMIN", "HR", "HR_MANAGER"].includes(role);
     const types = await leavePolicyService.getLeaveTypes();
 
     return `
@@ -778,9 +774,9 @@ const LeaveView = {
   },
 
   openAddLeaveTypeModal() {
-    const role = AuthGuard.userProfile?.roleId || "EMPLOYEE";
+    const role = (AuthGuard._previewRoleId || AuthGuard.userProfile?.roleId || "EMPLOYEE").toString().toUpperCase().trim();
     const canManage =
-      role === "SUPER_ADMIN" || role === "COMPANY_ADMIN" || role === "HR";
+      ["SUPER_ADMIN", "COMPANY_ADMIN", "ADMIN", "HR", "HR_MANAGER"].includes(role);
     if (!canManage) {
       Toast.error(
         "Access Denied: Only HR and Organization Administrators can create leave schemes.",
@@ -825,9 +821,9 @@ const LeaveView = {
   },
 
   async saveLeaveType() {
-    const role = AuthGuard.userProfile?.roleId || "EMPLOYEE";
+    const role = (AuthGuard._previewRoleId || AuthGuard.userProfile?.roleId || "EMPLOYEE").toString().toUpperCase().trim();
     const canManage =
-      role === "SUPER_ADMIN" || role === "COMPANY_ADMIN" || role === "HR";
+      ["SUPER_ADMIN", "COMPANY_ADMIN", "ADMIN", "HR", "HR_MANAGER"].includes(role);
     if (!canManage) {
       Toast.error(
         "Access Denied: Only HR and Organization Administrators can create leave schemes.",

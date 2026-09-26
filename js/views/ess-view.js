@@ -320,7 +320,7 @@ const ESSView = {
         <div class="card-body" style="padding: 18px 20px;">
           <div class="ess-terminal-layout">
             <div class="ess-terminal-timer-info">
-              <div style="font-size: 0.72rem; color: var(--text-muted); text-transform: uppercase; font-weight: 700; margin-bottom: 4px; letter-spacing: 0.05em;">Today's Shift Duration (8h Target)</div>
+              <div style="font-size: 0.72rem; color: var(--text-muted); text-transform: uppercase; font-weight: 700; margin-bottom: 4px; letter-spacing: 0.05em;">Today's Shift Duration (${targetHoursStr} Target)</div>
               <div style="font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Inter', 'Segoe UI', system-ui, sans-serif; font-variant-numeric: tabular-nums; font-feature-settings: 'tnum'; font-size: 2.1rem; font-weight: 700; color: var(--text-main, #0f172a); letter-spacing: 0.03em; line-height: 1.1;" id="ess-timer-display">
                 00:00:00
               </div>
@@ -1345,6 +1345,8 @@ const ESSView = {
   },
 
   updateTimecardUI() {
+    const isSaturday = new Date().getDay() === 6;
+    const targetHoursStr = isSaturday ? '6h' : '8h';
     const hrs = String(Math.floor(this.workSeconds / 3600)).padStart(2, "0");
     const mins = String(Math.floor((this.workSeconds % 3600) / 60)).padStart(
       2,
@@ -1426,7 +1428,7 @@ const ESSView = {
           ? "var(--danger)"
           : "var(--warning)";
       } else {
-        subStatusEl.textContent = "Active On Duty (8h Work Target)";
+        subStatusEl.textContent = `Active On Duty (${targetHoursStr} Work Target)`;
         subStatusEl.style.color = "var(--primary)";
       }
     }

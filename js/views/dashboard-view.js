@@ -23,9 +23,9 @@ const DashboardView = {
       roleId === "PAYROLL"
     ) {
       return window.AdminDashboardView;
-    } else if (roleId === "TRAINER") {
+    } else if (roleId === "MENTOR_TRAINER" || roleId === "TRAINER" || roleId === "MENTOR") {
       return window.TrainerDashboardView || window.ManagerDashboardView;
-    } else if (roleId === "MANAGER") {
+    } else if (roleId === "MANAGER" || roleId === "OPERATIONS_MANAGER" || roleId === "TEAM_LEAD") {
       return window.ManagerDashboardView;
     } else {
       return window.EmployeeDashboardView;

@@ -41,25 +41,16 @@ const roleAccessService = {
       'documents', 'requests', 'workflows', 'communication', 'reports', 'role-permissions',
       'settings', 'ess'
     ],
-    COMPANY_ADMIN: [
-      'dashboard', 'people', 'create-employee', 'training', 'attendance', 'leave',
-      'compliance', 'payroll', 'recruitment', 'expenses', 'assets', 'performance',
-      'documents', 'requests', 'workflows', 'communication', 'reports', 'settings', 'ess'
-    ],
-    ADMIN: [
-      'dashboard', 'people', 'create-employee', 'training', 'attendance', 'leave',
-      'compliance', 'payroll', 'recruitment', 'expenses', 'assets', 'performance',
-      'documents', 'requests', 'workflows', 'communication', 'reports', 'settings', 'ess'
-    ],
     HR_MANAGER: [
       'dashboard', 'people', 'create-employee', 'training', 'attendance', 'leave', 'payroll',
-      'recruitment', 'compliance', 'documents', 'requests', 'communication', 'reports', 'ess'
-    ],
-    HR: [
-      'dashboard', 'people', 'create-employee', 'training', 'attendance', 'leave', 'payroll',
-      'recruitment', 'compliance', 'documents', 'requests', 'communication', 'reports', 'ess'
+      'recruitment', 'compliance', 'expenses', 'assets', 'performance',
+      'documents', 'requests', 'workflows', 'communication', 'reports', 'ess'
     ],
     MANAGER: [
+      'dashboard', 'people', 'attendance', 'leave', 'performance', 'compliance',
+      'workflows', 'requests', 'communication', 'reports', 'ess'
+    ],
+    OPERATIONS_MANAGER: [
       'dashboard', 'people', 'attendance', 'leave', 'performance', 'compliance',
       'workflows', 'requests', 'communication', 'reports', 'ess'
     ],
@@ -67,13 +58,9 @@ const roleAccessService = {
       'dashboard', 'people', 'attendance', 'leave', 'performance', 'compliance',
       'workflows', 'requests', 'communication', 'reports', 'ess'
     ],
-    MENTOR: [
+    MENTOR_TRAINER: [
       'dashboard', 'training', 'attendance', 'leave', 'performance', 'compliance',
       'documents', 'communication', 'ess'
-    ],
-    TRAINER: [
-      'dashboard', 'training', 'create-employee', 'attendance', 'leave', 'performance',
-      'compliance', 'documents', 'communication', 'ess'
     ],
     TRAINEE: [
       'dashboard', 'training', 'attendance', 'leave', 'compliance',
@@ -111,7 +98,7 @@ const roleAccessService = {
         const data = snap.data() || {};
         const sanitized = { ...data };
         // Strictly sanitize: Remove payroll from non-admin/HR roles and ensure performance is present for full-time staff
-        ['EMPLOYEE', 'MENTOR', 'TRAINER', 'TEAM_LEAD', 'MANAGER'].forEach(role => {
+        ['EMPLOYEE', 'MENTOR_TRAINER', 'TEAM_LEAD', 'OPERATIONS_MANAGER', 'MANAGER'].forEach(role => {
           if (Array.isArray(sanitized[role])) {
             sanitized[role] = sanitized[role].filter(p => p !== 'payroll' && p !== 'payslip-templates');
             if (!sanitized[role].includes('performance')) {
@@ -142,25 +129,23 @@ const roleAccessService = {
       pages = [...this.DEFAULT_ROLE_PAGES[r]];
     } else if (r.includes('SUPER_ADMIN')) {
       pages = [...this.DEFAULT_ROLE_PAGES.SUPER_ADMIN];
-    } else if (r.includes('COMPANY') || r.includes('ADMIN')) {
-      pages = [...this.DEFAULT_ROLE_PAGES.COMPANY_ADMIN];
     } else if (r.includes('HR')) {
-      pages = [...this.DEFAULT_ROLE_PAGES.HR];
+      pages = [...this.DEFAULT_ROLE_PAGES.HR_MANAGER];
+    } else if (r === 'OPERATIONS_MANAGER') {
+      pages = [...this.DEFAULT_ROLE_PAGES.OPERATIONS_MANAGER];
     } else if (r.includes('MANAGER')) {
       pages = [...this.DEFAULT_ROLE_PAGES.MANAGER];
     } else if (r.includes('LEAD') || r.includes('TL')) {
       pages = [...this.DEFAULT_ROLE_PAGES.TEAM_LEAD];
-    } else if (r.includes('MENTOR')) {
-      pages = [...this.DEFAULT_ROLE_PAGES.MENTOR];
-    } else if (r.includes('TRAIN') && !r.includes('TRAINEE')) {
-      pages = [...this.DEFAULT_ROLE_PAGES.TRAINER];
+    } else if (r.includes('MENTOR') || (r.includes('TRAIN') && !r.includes('TRAINEE'))) {
+      pages = [...this.DEFAULT_ROLE_PAGES.MENTOR_TRAINER];
     } else if (r.includes('TRAINEE') || r.includes('INTERN')) {
       pages = [...this.DEFAULT_ROLE_PAGES.TRAINEE];
     } else {
       pages = [...this.DEFAULT_ROLE_PAGES.EMPLOYEE];
     }
 
-    const isHrOrAdmin = ['SUPER_ADMIN', 'COMPANY_ADMIN', 'ADMIN', 'HR', 'HR_MANAGER'].includes(r);
+    const isHrOrAdmin = ['SUPER_ADMIN', 'HR_MANAGER'].includes(r);
     // Unconditional security: Non-admin/HR roles NEVER see payroll or payslip-templates
     if (!isHrOrAdmin) {
       pages = pages.filter(p => p !== 'payroll' && p !== 'payslip-templates');
@@ -169,7 +154,7 @@ const roleAccessService = {
     // Trainees never have access to performance & appraisals
     if (r === 'TRAINEE' || r.includes('TRAINEE')) {
       pages = pages.filter(p => p !== 'performance');
-    } else if (['EMPLOYEE', 'MENTOR', 'TRAINER', 'TEAM_LEAD', 'MANAGER'].includes(r)) {
+    } else if (['EMPLOYEE', 'MENTOR_TRAINER', 'TEAM_LEAD', 'OPERATIONS_MANAGER', 'MANAGER'].includes(r)) {
       if (!pages.includes('performance')) {
         pages.push('performance');
       }

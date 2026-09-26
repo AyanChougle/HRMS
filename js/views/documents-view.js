@@ -13,8 +13,8 @@ const DocumentsView = {
   },
 
   async render() {
-    const role = AuthGuard.userProfile?.roleId || "EMPLOYEE";
-    const isEmployee = role === "EMPLOYEE";
+    const role = (AuthGuard.userProfile?.roleId || "EMPLOYEE").toUpperCase();
+    const isEmployee = ["EMPLOYEE", "TRAINEE", "MENTOR_TRAINER"].includes(role);
     const currentEmpId =
       AuthGuard.userProfile?.employeeId || AuthGuard.currentUser?.uid;
     const currentEmpName = AuthGuard.userProfile?.displayName || "Employee";
@@ -154,14 +154,14 @@ const DocumentsView = {
           ${isEmployee ? "My Document Dossier" : "All Employee Documents"} (${docs.length})
         </button>
         <button class="tab-btn ${this.activeTab === "requests" ? "active" : ""}" onclick="DocumentsView.switchTab('requests')">
-          ${isEmployee ? "My Document Requests" : "Document Requests"} (${requests.length})
+          ${isEmployee ? "My Document Requests" : "HR Document Requests"} (${requests.length})
         </button>
         <button class="tab-btn ${this.activeTab === "expiring" ? "active" : ""}" onclick="DocumentsView.switchTab('expiring')">
           Expiring & Compliance (${expiringDocs.length})
         </button>
-        <button class="tab-btn ${this.activeTab === "templates" ? "active" : ""}" onclick="DocumentsView.switchTab('templates')">
-          ${isEmployee ? "Company Policies & Letters" : "Standard Templates"}
-        </button>
+        ${!isEmployee ? `<button class="tab-btn ${this.activeTab === "templates" ? "active" : ""}" onclick="DocumentsView.switchTab('templates')">
+          Standard Templates
+        </button>` : ''}
       </div>
 
       <!-- Tab Body -->
@@ -319,7 +319,7 @@ const DocumentsView = {
       <div class="card">
         <div class="card-header">
           <div>
-            <div class="card-title">${isEmployee ? "My Document Checklists & Pending Uploads" : "Employee Document Checklists & Requests"} (${requests.length})</div>
+            <div class="card-title">${isEmployee ? "My Document Checklists & Pending Uploads" : "HR Document Requests"} (${requests.length})</div>
             <div class="card-subtitle">${isEmployee ? "Compliance documents, identity proofs, and certificates requested by HR Operations" : "Pending document requests dispatched to staff for personnel dossiers"}</div>
           </div>
           ${

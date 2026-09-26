@@ -257,11 +257,13 @@ const Router = {
     });
 
     let roleBadgeTitle = 'My Workspace';
-    if (role === 'SUPER_ADMIN') roleBadgeTitle = 'Super Admin Console';
-    else if (role.includes('HR')) roleBadgeTitle = 'HR Management';
-    else if (role === 'TRAINER') roleBadgeTitle = 'Trainer Workspace';
+    if (role === 'SUPER_ADMIN' || role === 'COMPANY_ADMIN' || role === 'ADMIN') roleBadgeTitle = 'Super Admin Console';
+    else if (role === 'HR_MANAGER' || role.includes('HR')) roleBadgeTitle = 'HR Management';
+    else if (role === 'OPERATIONS_MANAGER') roleBadgeTitle = 'Operations Portal';
+    else if (role === 'MANAGER') roleBadgeTitle = 'Manager Portal';
+    else if (role === 'TEAM_LEAD') roleBadgeTitle = 'Team Leader Portal';
+    else if (role === 'MENTOR_TRAINER' || role === 'TRAINER' || role === 'MENTOR') roleBadgeTitle = 'Trainer Workspace';
     else if (role === 'TRAINEE') roleBadgeTitle = 'Trainee Learning Track';
-    else if (role === 'COMPANY_ADMIN') roleBadgeTitle = 'Admin Portal';
 
     const renderItems = (items) => items.map(item => `
       <a href="#${item.route}" class="nav-link ${this.currentRoute === item.route ? 'active' : ''}" data-route="${item.route}">

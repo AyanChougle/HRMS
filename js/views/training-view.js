@@ -14,7 +14,7 @@ const TrainingView = {
   async renderHub() {
     const rawRole = (AuthGuard._previewRoleId || AuthGuard.userProfile?.roleId || 'EMPLOYEE').toString().toUpperCase().trim();
     const isTrainee = rawRole === 'TRAINEE';
-    const isTrainer = rawRole === 'TRAINER' || rawRole === 'MENTOR';
+    const isTrainer = ['TRAINER', 'MENTOR', 'MENTOR_TRAINER'].includes(rawRole);
     const isEmployee = rawRole === 'EMPLOYEE' || isTrainee;
     const currentEmpEmail = AuthGuard.userProfile?.email || AuthGuard.currentUser?.email;
     const currentEmpName = AuthGuard.userProfile?.displayName || 'Employee';
@@ -487,7 +487,7 @@ const TrainingView = {
   // 4. EMPLOYEE / TRAINEE LEARNING TAB — 7-DAY CORE CURRICULUM
   renderMyLearningTab(trainees, trainers, programs) {
     const rawRole = (AuthGuard._previewRoleId || AuthGuard.userProfile?.roleId || 'EMPLOYEE').toString().toUpperCase().trim();
-    const isTrainer = rawRole === 'TRAINER' || rawRole === 'MENTOR';
+    const isTrainer = ['TRAINER', 'MENTOR', 'MENTOR_TRAINER'].includes(rawRole);
     const userEmail = (AuthGuard.userProfile?.email || AuthGuard.currentUser?.email || '').toLowerCase();
     const userName = AuthGuard.userProfile?.displayName || 'Trainee';
 
@@ -658,12 +658,7 @@ const TrainingView = {
                 </div>
               </div>
 
-              <button class="btn btn-primary btn-sm" style="width: 100%; justify-content: center;" onclick="TrainingView.openMentorConnectModal('${myTrainer.fullName}')">
-                <svg width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/>
-                </svg>
-                Book 1-on-1 Review
-              </button>
+
             </div>
           </div>
 
@@ -1284,8 +1279,24 @@ Module 4: Practical Capstone Evaluation</textarea>
   // TRAINER: ATTENDANCE & MARKS TAB + MODULE MANAGEMENT
   // ===================================================================
 
-  renderAttendanceTab(trainees) {
+  async renderAttendanceTab(trainees) {
     const today = new Date().toISOString().slice(0, 10);
+    const selectedDate = this.currentFilters?.attendanceDate || today;
+    const attMap = {};
+    try {
+      const db = typeof firebase !== 'undefined' ? firebase.firestore() : null;
+      if (db) {
+        const snap = await db.collection('attendanceRecords').where('date', '==', selectedDate).where('isTrainee', '==', true).get();
+        snap.forEach(doc => {
+          if (doc.data().employeeId) {
+            attMap[doc.data().employeeId] = doc.data().status;
+          }
+        });
+      }
+    } catch(e) { console.warn(e); }
+
+    const colMap = { PRESENT: 'var(--success)', HALF_DAY: 'var(--warning)', ABSENT: 'var(--danger)' };
+
     const rows = trainees.map(function(t) {
       const curDay = Number(t.currentDay) || 1;
       const prog = t.progress || Math.round((curDay / 7) * 100);
@@ -1294,6 +1305,23 @@ Module 4: Practical Capstone Evaluation</textarea>
       let bStatus = 'CURRENT';
       if (t.status === 'CERTIFIED' || t.status === 'HANDED_OVER') bStatus = 'PAST';
       else if (t.status === 'NOT_STARTED' || (t.startDate && new Date(t.startDate) > new Date())) bStatus = 'UPCOMING';
+      
+      let statusHtml = '';
+      if (attMap[t.id]) {
+        statusHtml = '<div style="display:flex; flex-direction:column; align-items:center; gap:4px;">' +
+          '<span class="badge" style="background:' + colMap[attMap[t.id]] + ';color:#fff;">' + attMap[t.id].replace('_', ' ') + '</span>' +
+          '<button class="btn btn-soft btn-sm" style="font-size:0.7rem; padding: 2px 6px;" onclick="TrainingView.markAttendance(' + "'" + t.id + "'" + ',' + "'" + safeName + "'" + ',' + "'PRESENT'" + ',document.getElementById(' + "'att-date-picker'" + ').value,' + "'" + safeCode + "'" + ')">Edit</button></div>';
+      } else {
+        statusHtml = '<div style="display:inline-flex;gap:5px;flex-wrap:wrap;justify-content:center;">' +
+          '<button class="btn btn-sm" style="background:var(--success-light);color:var(--success);border:1px solid var(--success);" ' +
+            'onclick="TrainingView.markAttendance(' + "'" + t.id + "'" + ',' + "'" + safeName + "'" + ',' + "'PRESENT'" + ',document.getElementById(' + "'att-date-picker'" + ').value,' + "'" + safeCode + "'" + ')">Present</button>' +
+          '<button class="btn btn-sm" style="background:var(--warning-light);color:var(--warning);border:1px solid var(--warning);" ' +
+            'onclick="TrainingView.markAttendance(' + "'" + t.id + "'" + ',' + "'" + safeName + "'" + ',' + "'HALF_DAY'" + ',document.getElementById(' + "'att-date-picker'" + ').value,' + "'" + safeCode + "'" + ')">Half</button>' +
+          '<button class="btn btn-sm" style="background:var(--danger-light);color:var(--danger);border:1px solid var(--danger);" ' +
+            'onclick="TrainingView.markAttendance(' + "'" + t.id + "'" + ',' + "'" + safeName + "'" + ',' + "'ABSENT'" + ',document.getElementById(' + "'att-date-picker'" + ').value,' + "'" + safeCode + "'" + ')">Absent</button>' +
+        '</div>';
+      }
+
       return '<tr id="att-row-' + t.id + '" class="att-row-item" data-batch-status="' + bStatus + '">' +
         '<td>' +
           '<div class="user-cell">' +
@@ -1321,14 +1349,7 @@ Module 4: Practical Capstone Evaluation</textarea>
           '</div>' +
         '</td>' +
         '<td class="att-status-cell" style="text-align:center;">' +
-          '<div style="display:inline-flex;gap:5px;flex-wrap:wrap;justify-content:center;">' +
-            '<button class="btn btn-sm" style="background:var(--success-light);color:var(--success);border:1px solid var(--success);" ' +
-              'onclick="TrainingView.markAttendance(' + "'" + t.id + "'" + ',' + "'" + safeName + "'" + ',' + "'PRESENT'" + ',document.getElementById(' + "'att-date-picker'" + ').value,' + "'" + safeCode + "'" + ')">Present</button>' +
-            '<button class="btn btn-sm" style="background:var(--warning-light);color:var(--warning);border:1px solid var(--warning);" ' +
-              'onclick="TrainingView.markAttendance(' + "'" + t.id + "'" + ',' + "'" + safeName + "'" + ',' + "'HALF_DAY'" + ',document.getElementById(' + "'att-date-picker'" + ').value,' + "'" + safeCode + "'" + ')">Half Day</button>' +
-            '<button class="btn btn-sm" style="background:var(--danger-light);color:var(--danger);border:1px solid var(--danger);" ' +
-              'onclick="TrainingView.markAttendance(' + "'" + t.id + "'" + ',' + "'" + safeName + "'" + ',' + "'ABSENT'" + ',document.getElementById(' + "'att-date-picker'" + ').value,' + "'" + safeCode + "'" + ')">Absent</button>' +
-          '</div>' +
+          statusHtml +
         '</td>' +
         '<td style="text-align:center;">' +
           '<div style="display:inline-flex;gap:5px;">' +
@@ -1353,7 +1374,7 @@ Module 4: Practical Capstone Evaluation</textarea>
               <option value="UPCOMING">Upcoming Batches</option>
               <option value="PAST">Past / Completed</option>
             </select>
-            <input type="date" id="att-date-picker" class="form-control" style="width: 140px;" value="${today}" />
+            <input type="date" id="att-date-picker" class="form-control" style="width: 140px;" value="${this.currentFilters?.attendanceDate || today}" onchange="TrainingView.changeAttendanceDate(this.value)" />
             <button class="btn btn-primary btn-sm" onclick="TrainingView.switchTab('attendance')">
               <svg width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/>
