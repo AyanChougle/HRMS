@@ -1534,9 +1534,7 @@ const RecruitmentView = {
           </div>
           <div style="display: flex; align-items: center; gap: 8px;">
             ${candidates.length > 0 ? `
-              <button class="btn btn-secondary btn-sm" style="color: var(--danger); border-color: rgba(220, 38, 38, 0.3);" onclick="RecruitmentView.cleanupTestCandidates()" title="Remove junk or incomplete test candidate entries">
-                Purge Test Candidates
-              </button>
+              
             ` : ''}
             <button class="btn btn-primary btn-sm" onclick="RecruitmentView.openAddCandidateModal()">+ Add Candidate</button>
           </div>

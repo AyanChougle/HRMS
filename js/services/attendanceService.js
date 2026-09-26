@@ -339,7 +339,7 @@ const attendanceService = {
 
       if (!isNaN(userLat) && !isNaN(userLng)) {
         const dist = this.calculateDistanceMeters(userLat, userLng, officeLat, officeLng);
-        if (dist > 60 && !checkoutData.forcePunch) {
+        if (dist > 500 && !checkoutData.forcePunch) {
           const distStr = dist < 1000 ? `${dist.toFixed(1)}m` : `${(dist / 1000).toFixed(2)}km`;
           throw new Error(`Geofence restriction: You are ${distStr} away from the office. Punch-out is strictly restricted to within office premises (60m perimeter).`);
         }

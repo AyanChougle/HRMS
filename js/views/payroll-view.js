@@ -178,7 +178,7 @@ const PayrollView = {
 
       <!-- TAB CONTENT VIEWPORT -->
       <div id="payroll-tab-content">
-        ${await this.renderTabContent(cycles, employees, role)}
+        ${await this.renderTabContent(cycles, employees, rawRole)}
       </div>
     `;
   },

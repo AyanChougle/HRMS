@@ -63,12 +63,7 @@ const PeopleView = {
               </svg>
               Sync Database Users
             </button>
-            <button class="btn btn-secondary btn-sm" onclick="PeopleView.purgeDemoEmployees()" style="color: var(--danger); border-color: rgba(239, 68, 68, 0.3);">
-              <svg width="15" height="15" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/>
-              </svg>
-              Purge Demo Records
-            </button>
+            
             <button class="btn btn-secondary btn-sm" onclick="PeopleView.exportCSV()">
               <svg width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/>
@@ -525,134 +520,7 @@ const PeopleView = {
         subtitle: `${emp.employeeCode} • ${emp.designation}`,
         size: 'lg',
         contentHtml,
-        footerHtml: `<button class="btn btn-secondary btn-sm" data-modal-close>Close Profile</button>`
-      });
-    } catch (e) {
-      Toast.error(`Could not open profile: ${e.message}`);
-    }
-  },
-
-  switchProfileSubTab(tabId) {
-    document.querySelectorAll('.profile-subtab-pane').forEach(el => el.style.display = 'none');
-    document.querySelectorAll('#employee-profile-modal .tab-btn').forEach(btn => btn.classList.remove('active'));
-
-    const tab = document.getElementById(tabId);
-    if (tab) tab.style.display = 'block';
-
-    const btn = Array.from(document.querySelectorAll('#employee-profile-modal .tab-btn')).find(b => b.getAttribute('onclick')?.includes(tabId));
-    if (btn) btn.classList.add('active');
-  },
-
-  async uploadDocument(employeeId) {
-    const input = document.getElementById(`file-upload-input-${employeeId}`);
-    const file = input?.files[0];
-    if (!file) return;
-
-    try {
-      Toast.info('Uploading document to Firebase Storage...');
-      await storageService.uploadEmployeeDocument(employeeId, file, 'IDENTITY', file.name);
-      Toast.success('Document uploaded and linked to employee dossier!');
-      this.openEmployeeDrawer(employeeId);
-    } catch (e) {
-      Toast.error(`Upload failed: ${e.message}`);
-    }
-  },
-
-  confirmDeactivate(employeeId, empName) {
-    ModalManager.confirm({
-      title: 'Deactivate Employee Record',
-      message: `Are you sure you want to deactivate ${empName}? This preserves historical HR & payroll records while updating status to INACTIVE.`,
-      confirmText: 'Deactivate',
-      confirmClass: 'btn-danger',
-      onConfirm: async () => {
-        await employeeService.deactivateEmployee(employeeId);
-        Router.navigate('employees');
-      }
-    });
-  },
-
-  async purgeDemoEmployees() {
-    ModalManager.confirm({
-      title: 'Erase All Legacy Demo Data',
-      message: 'This will permanently delete all old demo staff records (EMP001-EMP025, fake trainees, fake tasks) from Cloud Firestore, leaving strictly real corporate staff and official Diallo masters. Proceed?',
-      confirmText: 'Purge Demo Records',
-      confirmClass: 'btn-danger',
-      onConfirm: async () => {
-        Toast.info('Purging demo records from Firestore...');
-        await seedService.purgeAllDemoData();
-        Router.navigate('employees');
-      }
-    });
-  },
-
-  // C. DYNAMIC ORGANIZATION CHART TAB
-  renderOrgChartTab(employees) {
-    const demoIds = ['EMP001', 'EMP002', 'EMP003', 'EMP004', 'EMP005', 'EMP006', 'EMP007', 'EMP008', 'EMP009', 'EMP010', 'EMP011', 'EMP012', 'EMP013', 'EMP014', 'EMP015', 'EMP016', 'EMP017', 'EMP018', 'EMP019', 'EMP020', 'EMP021', 'EMP022', 'EMP023', 'EMP024', 'EMP025'];
-    const demoNames = ['Vikram Sharma', 'Priya Nair', 'Rahul Mehta', 'Ananya Gupta', 'Arjun Patel', 'Sneha Desai', 'Amit Kumar', 'Rohit Saxena', 'Tanvi Agarwal', 'Meera Iyer', 'Kavya Menon', 'Pooja Verma', 'Varun Bhatt', 'Suresh Reddy', 'Naveen Singh', 'Neha Pillai', 'Roshni Chatterjee', 'Siddharth Kapoor', 'Deepika Joshi', 'Shreya Das', 'Karan Malhotra', 'Ishita Bose'];
-    const cleanList = employees.filter(e => !demoIds.includes(e.id) && !demoNames.includes(e.fullName || e.name) && !(e.id && e.id.startsWith('EMP0') && e.id.length <= 6));
-    const tree = orgService.buildOrgTree(cleanList);
-
-    const renderNode = (node) => {
-      const initials = (node.fullName || node.name || 'EM').substring(0, 2).toUpperCase();
-      const hasChildren = node.children && node.children.length > 0;
-      return `
-        <div class="tree-node" style="display: flex; flex-direction: column; align-items: center; position: relative;">
-          <!-- Node Card -->
-          <div class="card org-card" style="padding: 16px; width: 220px; text-align: center; cursor: pointer; border: 1.5px solid var(--border-main); border-radius: 12px; background: var(--bg-surface); box-shadow: 0 2px 8px rgba(0,0,0,0.04); transition: transform 0.15s ease, box-shadow 0.15s ease; position: relative;" onclick="PeopleView.openEmployeeDrawer('${node.id}')" onmouseenter="this.style.transform='translateY(-2px)'; this.style.boxShadow='0 6px 16px rgba(0,0,0,0.08)';" onmouseleave="this.style.transform='none'; this.style.boxShadow='0 2px 8px rgba(0,0,0,0.04)';">
-            <div style="width: 42px; height: 42px; border-radius: 50%; background: var(--primary-light); color: var(--primary); margin: 0 auto 8px auto; display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 0.9rem; border: 2px solid var(--primary-light);">
-              ${initials}
-            </div>
-            <div class="font-bold text-main" style="font-size: 0.95rem; margin-bottom: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;" title="${node.fullName || node.name}">${node.fullName || node.name}</div>
-            <div style="font-size: 0.8rem; font-weight: 600; color: var(--primary); margin-bottom: 6px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;" title="${node.designation || 'Staff'}">${node.designation || 'Staff'}</div>
-            <div style="margin-bottom: 8px;">
-              <span style="font-size: 0.72rem; padding: 2px 8px; border-radius: 9999px; background: var(--bg-hover); color: var(--text-secondary); display: inline-block;">${node.department || 'Operations'}</span>
-            </div>
-            <div style="font-size: 0.75rem; color: var(--text-muted); font-family: monospace; letter-spacing: 0.5px;">${node.employeeCode || ''}</div>
-            ${hasChildren ? `
-              <div style="margin-top: 10px; padding-top: 8px; border-top: 1px dashed var(--border-main);">
-                <span style="font-size: 0.72rem; font-weight: 600; color: var(--primary); background: var(--primary-light); padding: 3px 8px; border-radius: 6px;">
-                  ${node.children.length} Direct Report${node.children.length > 1 ? 's' : ''}
-                </span>
-              </div>
-            ` : ''}
-          </div>
-
-          <!-- Tree Branch Connectors -->
-          ${hasChildren ? `
-            <div style="width: 2px; height: 20px; background: var(--primary);"></div>
-            <div class="tree-children" style="display: flex; justify-content: center; gap: 24px; position: relative; padding-top: 20px;">
-              ${node.children.length > 1 ? `
-                <div style="position: absolute; top: 0; left: calc(${100 / (node.children.length * 2)}%); right: calc(${100 / (node.children.length * 2)}%); height: 2px; background: var(--primary);"></div>
-              ` : `
-                <div style="position: absolute; top: 0; left: 50%; width: 2px; height: 20px; background: var(--primary);"></div>
-              `}
-              ${node.children.map((child, idx) => `
-                <div style="display: flex; flex-direction: column; align-items: center; position: relative;">
-                  ${node.children.length > 1 ? `<div style="position: absolute; top: -20px; width: 2px; height: 20px; background: var(--primary);"></div>` : ''}
-                  ${renderNode(child)}
-                </div>
-              `).join('')}
-            </div>
-          ` : ''}
-        </div>
-      `;
-    };
-
-    return `
-      <div class="card" style="padding: 24px; overflow-x: auto;">
-        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 24px; flex-wrap: wrap; gap: 12px; border-bottom: 1px solid var(--border-main); padding-bottom: 16px;">
-          <div>
-            <h3 style="font-size: 1.15rem; font-weight: 700; color: var(--text-main); margin: 0 0 4px 0;">Diallo Organization Hierarchy Tree</h3>
-            <p style="font-size: 0.825rem; color: var(--text-muted); margin: 0;">Reporting relationships and organizational structure based on real personnel records</p>
-          </div>
-          <div style="display: flex; align-items: center; gap: 10px;">
-            <span class="badge badge-primary" style="font-size: 0.8rem; padding: 6px 12px;">${cleanList.length} Active Personnel</span>
-            <button class="btn btn-secondary btn-sm" onclick="PeopleView.purgeDemoEmployees()" style="color: var(--danger); border-color: rgba(239, 68, 68, 0.3);">
-              <svg width="15" height="15" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/>
-              </svg>
-              Clean Demo Records
-            </button>
+        footerHtml: `
           </div>
         </div>
 

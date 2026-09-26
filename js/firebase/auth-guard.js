@@ -522,7 +522,7 @@ const AuthGuard = {
       const actualRole = (this._actualRoleId || rawRole).toString().toUpperCase().trim();
       const isSuperAdmin = actualRole === 'SUPER_ADMIN';
       const isMasterAdmin = this.currentUser?.email === 'ayanislight@gmail.com';
-      const canSwitchRoles = isSuperAdmin || isMasterAdmin;
+      const canSwitchRoles = isSuperAdmin;
 
       const permItem = document.getElementById('dropdown-permissions-item');
       if (permItem) {

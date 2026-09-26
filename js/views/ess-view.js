@@ -1224,7 +1224,7 @@ const ESSView = {
         this.punchInTimestamp = inDate.getTime();
         const now = Date.now();
         const totalElapsed = Math.floor((now - this.punchInTimestamp) / 1000);
-        this.workSeconds = Math.max(0, totalElapsed - this.totalBreakSeconds);
+        this.workSeconds = Math.max(0, (totalElapsed || 0) - (this.totalBreakSeconds || 0));
       } else if (todayRecord.checkIn && typeof todayRecord.checkIn === 'string') {
         const match = todayRecord.checkIn.match(/(\d+):(\d+)\s*(AM|PM)/i);
         if (match) {
@@ -1816,7 +1816,7 @@ const ESSView = {
   },
 
   async executePunchOut() {
-    // Geofence Verification: Must be within 60 meters of office premises to punch out
+    // Geofence Verification: Must be within 500 meters of office premises to punch out
     let pos;
     try {
       if (typeof Toast !== "undefined") {
@@ -1985,7 +1985,7 @@ const ESSView = {
   async getDeviceLocation() {
     if (!navigator.geolocation) {
       throw new Error(
-        "Geolocation is not supported by your browser or device. You must be physically within 60 meters of the office premises to punch in.",
+        "Geolocation is not supported by your browser or device. You must be physically within 500 meters of the office premises to punch in.",
       );
     }
     return new Promise((resolve, reject) => {
@@ -1995,7 +1995,7 @@ const ESSView = {
           let msg = "Could not obtain GPS location: ";
           if (err.code === 1) {
             msg =
-              "Location permission was denied. Please allow location access in your browser or device settings. You must be within 60 meters of the office premises to punch in.";
+              "Location permission was denied. Please allow location access in your browser or device settings. You must be within 500 meters of the office premises to punch in.";
           } else if (err.code === 2) {
             msg =
               "GPS signal unavailable. Please ensure location services are enabled on your device.";
@@ -2060,7 +2060,7 @@ const ESSView = {
         return false;
       }
 
-      // Geofence Verification: Must be within 60 meters of office premises
+      // Geofence Verification: Must be within 500 meters of office premises
       let pos;
       try {
         if (typeof Toast !== "undefined") {
