@@ -100,7 +100,7 @@
 .kpi-trend.warning { color: var(--warning); }
 
 .kpi-value {
-  font-size: 1.85rem;
+  font-size: 1.55rem; /* Reduced for textual KPI values */
   font-weight: 700;
   color: var(--text-main);
   line-height: 1.1;

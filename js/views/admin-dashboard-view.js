@@ -4,7 +4,16 @@
  */
 
 const AdminDashboardView = {
-  async render() {
+  async render() {\n    const employeeId = AuthGuard.userProfile?.employeeId || AuthGuard.currentUser?.uid;
+    if (typeof ESSView !== "undefined" && window.attendanceService) {
+      try {
+        const todayRecord = await attendanceService.getTodayRecord(employeeId);
+        await ESSView.syncWithFirestore(todayRecord);
+      } catch (e) {
+        console.warn("Dashboard ESSView sync warning:", e);
+      }
+    }
+
     const todayStr = new Date().toLocaleDateString("en-US", {
       weekday: "long",
       month: "short",
