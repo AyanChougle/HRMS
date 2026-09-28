@@ -197,7 +197,7 @@ const TrainingView = {
 
       <!-- Active Tab Content View -->
       <div class="tab-content animate-fade-in">
-        ${this.async renderActiveTab(trainees, trainers, programs, isEmployee)}
+        ${await this.renderActiveTab(trainees, trainers, programs, isEmployee)}
       </div>
     `;
   },
@@ -207,7 +207,7 @@ const TrainingView = {
     if (window.Router) Router.navigate('training');
   },
 
-  renderActiveTab(trainees, trainers, programs, isEmployee) {
+  async renderActiveTab(trainees, trainers, programs, isEmployee) {
     switch (this.activeTab) {
       case 'trainers':
         return this.renderTrainersTab(trainers);
