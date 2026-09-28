@@ -233,6 +233,7 @@ const TrainingView = {
             <div class="card-subtitle">Active cohort members, curriculum tracks, assigned mentors, and milestone completion</div>
           </div>
           <div style="display: flex; gap: 8px;">
+            <button class="btn btn-secondary btn-sm" onclick="TrainingView.importTraineesCSV()">Import CSV</button>
             <button class="btn btn-secondary btn-sm" onclick="TrainingView.exportTraineesCSV()">
               <svg width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/>
@@ -1690,6 +1691,45 @@ Module 4: Practical Capstone Evaluation</textarea>
       }
     });
     // Call it once after render if needed
+  },
+
+  importTraineesCSV() {
+    if (typeof CsvImport === 'undefined') { Toast.error('CSV import module failed to load. Hard refresh the page.'); return; }
+    const companyId = AuthGuard.userProfile?.companyId || 'comp_diallo_india';
+    CsvImport.open({
+      title: 'Import Trainees from CSV',
+      templateName: 'Diallo_Trainees_Template.csv',
+      columns: [
+        { key: 'traineeCode', label: 'Trainee Code' },
+        { key: 'fullName', label: 'Full Name', required: true },
+        { key: 'email', label: 'Email', required: true },
+        { key: 'department', label: 'Department' },
+        { key: 'track', label: 'Track' },
+        { key: 'trainerName', label: 'Trainer' },
+        { key: 'batchName', label: 'Batch' }
+      ],
+      sampleRow: { fullName: 'Jane Doe', email: 'jane.doe@company.com', department: 'Operations', track: '7-Day Core Training Modules', batchName: 'Batch 2026-Q3' },
+      prepare: async () => {
+        const snap = await db.collection('trainees').where('companyId', '==', companyId).get();
+        const emails = new Set(), codes = new Set();
+        snap.docs.forEach(d => { const t = d.data(); if (t.email) emails.add(String(t.email).toLowerCase()); if (t.traineeCode) codes.add(String(t.traineeCode).toUpperCase()); });
+        return { emails, codes };
+      },
+      validate: (row, ctx, seen) => {
+        seen.emails = seen.emails || new Set(); seen.codes = seen.codes || new Set();
+        const email = row.email.toLowerCase(), code = row.traineeCode.toUpperCase();
+        if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return 'Invalid email';
+        if (ctx.emails.has(email)) return 'Trainee email already exists';
+        if (seen.emails.has(email)) return 'Duplicate email in file';
+        if (code && (ctx.codes.has(code) || seen.codes.has(code))) return `Trainee code ${code} already exists`;
+        seen.emails.add(email); if (code) seen.codes.add(code);
+        return null;
+      },
+      importRow: async (row) => {
+        await trainingService.createTrainee({ ...row, traineeCode: row.traineeCode || undefined, companyId });
+      },
+      onDone: (r) => { if (r.imported && window.Router) Router.navigate('training'); }
+    });
   },
 
   async exportTraineesCSV() {

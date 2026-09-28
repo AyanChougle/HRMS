@@ -64,6 +64,13 @@ const PeopleView = {
               Sync Database Users
             </button>
             
+            <button class="btn btn-secondary btn-sm" onclick="PeopleView.importCSV()">
+              <svg width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1M16 8l-4-4m0 0L8 8m4-4v12"/>
+              </svg>
+              Import CSV
+            </button>
+
             <button class="btn btn-secondary btn-sm" onclick="PeopleView.exportCSV()">
               <svg width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/>
@@ -1282,6 +1289,92 @@ const PeopleView = {
           Toast.error(`Delete failed: ${e.message}`);
         }
       }
+    });
+  },
+
+  // ---- CSV IMPORT (same columns as Export CSV, so an exported file can be re-imported) ----
+  importCSV() {
+    if (typeof CsvImport === 'undefined') { Toast.error('CSV import module failed to load. Hard refresh the page.'); return; }
+
+    const toIsoDate = (v) => {
+      v = (v || '').trim();
+      if (!v) return '';
+      let m = v.match(/^(\d{4})-(\d{1,2})-(\d{1,2})$/);
+      if (!m) { const d = v.match(/^(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{4})$/); if (d) m = [null, d[3], d[2], d[1]]; } // DD/MM/YYYY
+      if (!m) return null;
+      const iso = `${m[1]}-${String(m[2]).padStart(2, '0')}-${String(m[3]).padStart(2, '0')}`;
+      const t = new Date(iso + 'T00:00:00');
+      return isNaN(t) || t.toISOString().slice(0, 10) !== iso ? null : iso;
+    };
+    const STATUS_MAP = { ACTIVE: 'ACTIVE', CONFIRMED: 'CONFIRMED', INACTIVE: 'INACTIVE', 'ON NOTICE': 'ON_NOTICE', ON_NOTICE: 'ON_NOTICE', TERMINATED: 'TERMINATED', RESIGNED: 'RESIGNED', EXITED: 'EXITED' };
+    const companyId = AuthGuard.userProfile?.companyId || 'comp_diallo_india';
+
+    CsvImport.open({
+      title: 'Import Employees from CSV',
+      templateName: 'Diallo_Employees_Template.csv',
+      columns: [
+        { key: 'employeeCode', label: 'Employee Code', aliases: ['Emp Code', 'Code'] },
+        { key: 'fullName', label: 'Full Name', aliases: ['Employee Name', 'Name'], required: true },
+        { key: 'workEmail', label: 'Work Email', aliases: ['Email'], required: true },
+        { key: 'department', label: 'Department' },
+        { key: 'designation', label: 'Designation' },
+        { key: 'branchName', label: 'Branch', aliases: ['Branch Location', 'Location'] },
+        { key: 'manager', label: 'Reporting Manager', aliases: ['Manager'] },
+        { key: 'dateOfJoining', label: 'Joining Date', aliases: ['Date of Joining'] },
+        { key: 'employmentStatus', label: 'Status' },
+        { key: 'phone', label: 'Phone', aliases: ['Mobile'] }
+      ],
+      sampleRow: { employeeCode: '', fullName: 'Jane Doe', workEmail: 'jane.doe@company.com', department: 'Engineering', designation: 'Software Engineer', branchName: 'HQ - Mumbai', manager: '', dateOfJoining: '2026-10-01', employmentStatus: 'ACTIVE', phone: '9876543210' },
+
+      // Load existing emails/codes once so duplicates are caught in the preview
+      prepare: async () => {
+        const snap = await db.collection('employees').where('companyId', '==', companyId).get();
+        const emails = new Set(), codes = new Set();
+        snap.docs.forEach(d => {
+          const e = d.data();
+          [e.workEmail, e.email, e.personalEmail].forEach(x => x && emails.add(String(x).toLowerCase().trim()));
+          if (e.employeeCode) codes.add(String(e.employeeCode).toUpperCase().trim());
+        });
+        return { emails, codes };
+      },
+
+      validate: (row, ctx, seen) => {
+        seen.emails = seen.emails || new Set(); seen.codes = seen.codes || new Set();
+        const email = row.workEmail.toLowerCase();
+        if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return 'Invalid work email';
+        if (ctx.emails.has(email)) return 'Email already exists';
+        if (seen.emails.has(email)) return 'Duplicate email in file';
+        const code = row.employeeCode.toUpperCase();
+        if (code) {
+          if (ctx.codes.has(code)) return `Employee code ${code} already exists`;
+          if (seen.codes.has(code)) return 'Duplicate employee code in file';
+        }
+        if (row.dateOfJoining && toIsoDate(row.dateOfJoining) === null) return 'Joining Date must be YYYY-MM-DD or DD/MM/YYYY';
+        if (row.employmentStatus && !STATUS_MAP[row.employmentStatus.toUpperCase()]) return `Unknown status "${row.employmentStatus}"`;
+        seen.emails.add(email); if (code) seen.codes.add(code);
+        return null;
+      },
+
+      // Uses the existing createEmployee(): code generation, uniqueness check, history, onboarding tasks and audit log all apply
+      importRow: async (row) => {
+        const payload = {
+          employeeCode: row.employeeCode || undefined,
+          fullName: row.fullName,
+          workEmail: row.workEmail.toLowerCase(),
+          department: row.department || undefined,
+          designation: row.designation || undefined,
+          branchName: row.branchName || undefined,
+          manager: row.manager || '',
+          phone: row.phone || '',
+          dateOfJoining: toIsoDate(row.dateOfJoining) || undefined,
+          employmentStatus: row.employmentStatus ? STATUS_MAP[row.employmentStatus.toUpperCase()] : undefined
+        };
+        const parts = row.fullName.split(/\s+/);
+        payload.firstName = parts[0];
+        payload.lastName = parts.slice(1).join(' ');
+        await employeeService.createEmployee(payload);
+      },
+      onDone: (r) => { if (r.imported && window.Router) Router.navigate('employees'); }
     });
   },
 

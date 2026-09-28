@@ -1,0 +1,407 @@
+diff --git a/index.html b/index.html
+index 2329f2c..99172ad 100644
+--- a/index.html
++++ b/index.html
+@@ -515,6 +515,7 @@
+     <script src="js/theme.js?v=1790417445658"></script>
+     <script src="js/toast.js?v=1790417445658"></script>
+     <script src="js/modal.js?v=1790417445658"></script>
++    <script src="js/csvImport.js?v=1790417445658"></script>
+     <script src="js/charts.js?v=1790417445658"></script>
+     <script src="js/table.js?v=1790417445658"></script>
+     <script src="js/forms.js?v=1790417445658"></script>
+diff --git a/js/csvImport.js b/js/csvImport.js
+new file mode 100644
+index 0000000..587b81a
+--- /dev/null
++++ b/js/csvImport.js
+@@ -0,0 +1,220 @@
++/**
++ * DIALLO HRMS — CSV IMPORT
++ * Reusable "Import CSV" flow: pick file -> preview & validate -> import valid rows.
++ *
++ * Usage:
++ *   CsvImport.open({
++ *     title: 'Import Employees',
++ *     templateName: 'Diallo_Employees_Template.csv',
++ *     columns: [{ key, label, aliases: [], required: true }],
++ *     prepare: async () => ctx,                    // optional, runs once after parse (load existing data)
++ *     validate: (row, ctx, seen) => 'error' | null // optional extra validation per row
++ *     importRow: async (row, ctx) => {},           // creates one record (throws to mark row failed)
++ *     onDone: (result) => {}                       // optional, e.g. refresh the view
++ *   });
++ *
++ * Files exported by the app's own "Export CSV" buttons can be re-imported as-is
++ * because export headers are registered as aliases.
++ */
++const CsvImport = {
++  MAX_ROWS: 2000,
++
++  // ---------- CSV parsing (RFC 4180: quotes, escaped quotes, CRLF, BOM) ----------
++  parse(text) {
++    text = String(text || '').replace(/^\uFEFF/, '');
++    const rows = [];
++    let row = [], field = '', inQuotes = false;
++    for (let i = 0; i < text.length; i++) {
++      const c = text[i];
++      if (inQuotes) {
++        if (c === '"') {
++          if (text[i + 1] === '"') { field += '"'; i++; } else { inQuotes = false; }
++        } else { field += c; }
++      } else if (c === '"') { inQuotes = true; }
++      else if (c === ',') { row.push(field); field = ''; }
++      else if (c === '\n' || c === '\r') {
++        if (c === '\r' && text[i + 1] === '\n') i++;
++        row.push(field); field = '';
++        rows.push(row); row = [];
++      } else { field += c; }
++    }
++    if (field !== '' || row.length) { row.push(field); rows.push(row); }
++    return rows.filter(r => r.some(cell => String(cell).trim() !== ''));
++  },
++
++  _norm(s) { return String(s || '').toLowerCase().replace(/[^a-z0-9]/g, ''); },
++
++  _esc(s) {
++    return String(s ?? '').replace(/[&<>"']/g, ch => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[ch]));
++  },
++
++  // Guard against spreadsheet formula injection when values are later exported again
++  _clean(v) { return String(v ?? '').trim(); },
++
++  /** Map parsed rows to objects keyed by column.key using header names/aliases. */
++  mapRows(matrix, columns) {
++    const header = matrix[0].map(h => this._norm(h));
++    const index = {};
++    columns.forEach(col => {
++      const names = [col.label, col.key, ...(col.aliases || [])].map(n => this._norm(n));
++      const at = header.findIndex(h => names.includes(h));
++      if (at >= 0) index[col.key] = at;
++    });
++    const missing = columns.filter(c => c.required && !(c.key in index)).map(c => c.label);
++    const records = matrix.slice(1).map((cells, i) => {
++      const data = {};
++      columns.forEach(col => { data[col.key] = col.key in index ? this._clean(cells[index[col.key]]) : ''; });
++      return { line: i + 2, data, errors: [], status: 'pending' };
++    });
++    return { records, missing };
++  },
++
++  downloadTemplate(columns, name, sampleRow) {
++    const q = v => `"${String(v ?? '').replace(/"/g, '""')}"`;
++    const lines = [columns.map(c => q(c.label)).join(',')];
++    if (sampleRow) lines.push(columns.map(c => q(sampleRow[c.key] ?? '')).join(','));
++    const blob = new Blob(['\uFEFF' + lines.join('\r\n')], { type: 'text/csv;charset=utf-8;' });
++    const a = document.createElement('a');
++    a.href = URL.createObjectURL(blob);
++    a.download = name || 'import_template.csv';
++    document.body.appendChild(a); a.click(); document.body.removeChild(a);
++    setTimeout(() => URL.revokeObjectURL(a.href), 1000);
++  },
++
++  // ---------- UI ----------
++  _state: null,
++
++  open(config) {
++    this._state = { config, records: [], ctx: null, busy: false };
++    const c = config;
++    const required = c.columns.filter(x => x.required).map(x => x.label).join(', ');
++    ModalManager.openModal({
++      id: 'csv-import-modal',
++      title: c.title || 'Import CSV',
++      subtitle: `Required columns: ${this._esc(required)}. Max ${this.MAX_ROWS} rows.`,
++      size: 'lg',
++      contentHtml: `
++        <div id="csv-import-body">
++          <div style="display:flex; gap:10px; align-items:center; flex-wrap:wrap; margin-bottom:14px;">
++            <input type="file" id="csv-import-file" accept=".csv,text/csv" class="form-control" style="max-width:340px;">
++            <button type="button" class="btn btn-secondary btn-sm" id="csv-import-template">Download template</button>
++          </div>
++          <div id="csv-import-preview" style="color:var(--text-muted, #64748b); font-size:13px;">
++            Choose a .csv file to preview it before anything is saved.
++          </div>
++        </div>`,
++      footerHtml: `
++        <button type="button" class="btn btn-secondary" data-modal-close>Close</button>
++        <button type="button" class="btn btn-primary" id="csv-import-run" disabled>Import valid rows</button>`
++    });
++
++    document.getElementById('csv-import-template').onclick = () =>
++      this.downloadTemplate(c.columns, c.templateName, c.sampleRow);
++    document.getElementById('csv-import-file').onchange = e => this._onFile(e.target.files[0]);
++    document.getElementById('csv-import-run').onclick = () => this._run();
++  },
++
++  async _onFile(file) {
++    const box = document.getElementById('csv-import-preview');
++    const runBtn = document.getElementById('csv-import-run');
++    runBtn.disabled = true;
++    if (!file) return;
++    if (!/\.csv$/i.test(file.name) && file.type !== 'text/csv') {
++      box.innerHTML = '<span style="color:#dc2626;">Please choose a .csv file.</span>';
++      return;
++    }
++    if (file.size > 5 * 1024 * 1024) {
++      box.innerHTML = '<span style="color:#dc2626;">File is larger than 5 MB.</span>';
++      return;
++    }
++    try {
++      const st = this._state, cfg = st.config;
++      const matrix = this.parse(await file.text());
++      if (matrix.length < 2) throw new Error('The file has no data rows.');
++      if (matrix.length - 1 > this.MAX_ROWS) throw new Error(`Too many rows (${matrix.length - 1}). Split the file into chunks of ${this.MAX_ROWS}.`);
++
++      const { records, missing } = this.mapRows(matrix, cfg.columns);
++      if (missing.length) throw new Error(`Missing required column(s): ${missing.join(', ')}. Download the template to see the expected headers.`);
++
++      box.textContent = 'Checking rows...';
++      st.ctx = cfg.prepare ? await cfg.prepare(records) : {};
++      const seen = {};
++      records.forEach(r => {
++        cfg.columns.forEach(col => { if (col.required && !r.data[col.key]) r.errors.push(`${col.label} is required`); });
++        if (!r.errors.length && cfg.validate) {
++          const msg = cfg.validate(r.data, st.ctx, seen);
++          if (msg) r.errors.push(msg);
++        }
++        r.status = r.errors.length ? 'invalid' : 'valid';
++      });
++      st.records = records;
++      this._renderPreview();
++    } catch (err) {
++      box.innerHTML = `<span style="color:#dc2626;">${this._esc(err.message)}</span>`;
++    }
++  },
++
++  _renderPreview() {
++    const { config, records } = this._state;
++    const valid = records.filter(r => r.status === 'valid').length;
++    const invalid = records.filter(r => r.status === 'invalid').length;
++    const shown = config.columns.slice(0, 6);
++    const body = records.slice(0, 200).map(r => `
++      <tr style="${r.status === 'invalid' ? 'background:rgba(220,38,38,.07);' : ''}">
++        <td>${r.line}</td>
++        ${shown.map(c => `<td>${this._esc(r.data[c.key])}</td>`).join('')}
++        <td style="white-space:nowrap; color:${r.status === 'invalid' ? '#dc2626' : '#16a34a'};">
++          ${r.status === 'invalid' ? this._esc(r.errors.join('; ')) : 'Ready'}
++        </td>
++      </tr>`).join('');
++    document.getElementById('csv-import-preview').innerHTML = `
++      <div style="margin-bottom:10px; font-size:13px; color:inherit;">
++        <strong>${records.length}</strong> rows: <span style="color:#16a34a;">${valid} ready</span>,
++        <span style="color:#dc2626;">${invalid} with errors</span> (rows with errors are skipped).
++      </div>
++      <div style="max-height:320px; overflow:auto; border:1px solid var(--border-color, #e2e8f0); border-radius:8px;">
++        <table class="data-table" style="width:100%; font-size:12px;">
++          <thead><tr><th>Line</th>${shown.map(c => `<th>${this._esc(c.label)}</th>`).join('')}<th>Result</th></tr></thead>
++          <tbody>${body}</tbody>
++        </table>
++      </div>
++      ${records.length > 200 ? '<div style="margin-top:6px; font-size:12px;">Preview shows the first 200 rows; all rows are processed.</div>' : ''}`;
++    const btn = document.getElementById('csv-import-run');
++    btn.disabled = valid === 0;
++    btn.textContent = valid ? `Import ${valid} valid row${valid === 1 ? '' : 's'}` : 'Nothing to import';
++  },
++
++  async _run() {
++    const st = this._state;
++    if (st.busy) return;
++    const todo = st.records.filter(r => r.status === 'valid');
++    if (!todo.length) return;
++    st.busy = true;
++    const btn = document.getElementById('csv-import-run');
++    btn.disabled = true;
++    let ok = 0;
++    const failed = [];
++    for (let i = 0; i < todo.length; i++) {
++      btn.textContent = `Importing ${i + 1} / ${todo.length}...`;
++      try {
++        await st.config.importRow(todo[i].data, st.ctx);
++        todo[i].status = 'imported';
++        ok++;
++      } catch (err) {
++        todo[i].status = 'invalid';
++        todo[i].errors = [err.message || 'Import failed'];
++        failed.push(todo[i]);
++      }
++    }
++    st.busy = false;
++    const skipped = st.records.filter(r => r.status === 'invalid').length;
++    const msg = `Imported ${ok} row${ok === 1 ? '' : 's'}${skipped ? `, ${skipped} skipped/failed` : ''}.`;
++    if (typeof Toast !== 'undefined') (skipped ? Toast.warning : Toast.success).call(Toast, msg);
++    this._renderPreview();
++    btn.textContent = 'Done';
++    btn.disabled = true;
++    if (st.config.onDone) st.config.onDone({ imported: ok, failed: failed.length, skipped });
++  }
++};
++
++window.CsvImport = CsvImport;
+diff --git a/js/views/people-view.js b/js/views/people-view.js
+index e6f42fd..db22f4f 100644
+--- a/js/views/people-view.js
++++ b/js/views/people-view.js
+@@ -64,6 +64,13 @@ const PeopleView = {
+               Sync Database Users
+             </button>
+             
++            <button class="btn btn-secondary btn-sm" onclick="PeopleView.importCSV()">
++              <svg width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor">
++                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1M16 8l-4-4m0 0L8 8m4-4v12"/>
++              </svg>
++              Import CSV
++            </button>
++
+             <button class="btn btn-secondary btn-sm" onclick="PeopleView.exportCSV()">
+               <svg width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/>
+@@ -1285,6 +1292,92 @@ const PeopleView = {
+     });
+   },
+ 
++  // ---- CSV IMPORT (same columns as Export CSV, so an exported file can be re-imported) ----
++  importCSV() {
++    if (typeof CsvImport === 'undefined') { Toast.error('CSV import module failed to load. Hard refresh the page.'); return; }
++
++    const toIsoDate = (v) => {
++      v = (v || '').trim();
++      if (!v) return '';
++      let m = v.match(/^(\d{4})-(\d{1,2})-(\d{1,2})$/);
++      if (!m) { const d = v.match(/^(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{4})$/); if (d) m = [null, d[3], d[2], d[1]]; } // DD/MM/YYYY
++      if (!m) return null;
++      const iso = `${m[1]}-${String(m[2]).padStart(2, '0')}-${String(m[3]).padStart(2, '0')}`;
++      const t = new Date(iso + 'T00:00:00');
++      return isNaN(t) || t.toISOString().slice(0, 10) !== iso ? null : iso;
++    };
++    const STATUS_MAP = { ACTIVE: 'ACTIVE', CONFIRMED: 'CONFIRMED', INACTIVE: 'INACTIVE', 'ON NOTICE': 'ON_NOTICE', ON_NOTICE: 'ON_NOTICE', TERMINATED: 'TERMINATED', RESIGNED: 'RESIGNED', EXITED: 'EXITED' };
++    const companyId = AuthGuard.userProfile?.companyId || 'comp_diallo_india';
++
++    CsvImport.open({
++      title: 'Import Employees from CSV',
++      templateName: 'Diallo_Employees_Template.csv',
++      columns: [
++        { key: 'employeeCode', label: 'Employee Code', aliases: ['Emp Code', 'Code'] },
++        { key: 'fullName', label: 'Full Name', aliases: ['Employee Name', 'Name'], required: true },
++        { key: 'workEmail', label: 'Work Email', aliases: ['Email'], required: true },
++        { key: 'department', label: 'Department' },
++        { key: 'designation', label: 'Designation' },
++        { key: 'branchName', label: 'Branch', aliases: ['Branch Location', 'Location'] },
++        { key: 'manager', label: 'Reporting Manager', aliases: ['Manager'] },
++        { key: 'dateOfJoining', label: 'Joining Date', aliases: ['Date of Joining'] },
++        { key: 'employmentStatus', label: 'Status' },
++        { key: 'phone', label: 'Phone', aliases: ['Mobile'] }
++      ],
++      sampleRow: { employeeCode: '', fullName: 'Jane Doe', workEmail: 'jane.doe@company.com', department: 'Engineering', designation: 'Software Engineer', branchName: 'HQ - Mumbai', manager: '', dateOfJoining: '2026-10-01', employmentStatus: 'ACTIVE', phone: '9876543210' },
++
++      // Load existing emails/codes once so duplicates are caught in the preview
++      prepare: async () => {
++        const snap = await db.collection('employees').where('companyId', '==', companyId).get();
++        const emails = new Set(), codes = new Set();
++        snap.docs.forEach(d => {
++          const e = d.data();
++          [e.workEmail, e.email, e.personalEmail].forEach(x => x && emails.add(String(x).toLowerCase().trim()));
++          if (e.employeeCode) codes.add(String(e.employeeCode).toUpperCase().trim());
++        });
++        return { emails, codes };
++      },
++
++      validate: (row, ctx, seen) => {
++        seen.emails = seen.emails || new Set(); seen.codes = seen.codes || new Set();
++        const email = row.workEmail.toLowerCase();
++        if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return 'Invalid work email';
++        if (ctx.emails.has(email)) return 'Email already exists';
++        if (seen.emails.has(email)) return 'Duplicate email in file';
++        const code = row.employeeCode.toUpperCase();
++        if (code) {
++          if (ctx.codes.has(code)) return `Employee code ${code} already exists`;
++          if (seen.codes.has(code)) return 'Duplicate employee code in file';
++        }
++        if (row.dateOfJoining && toIsoDate(row.dateOfJoining) === null) return 'Joining Date must be YYYY-MM-DD or DD/MM/YYYY';
++        if (row.employmentStatus && !STATUS_MAP[row.employmentStatus.toUpperCase()]) return `Unknown status "${row.employmentStatus}"`;
++        seen.emails.add(email); if (code) seen.codes.add(code);
++        return null;
++      },
++
++      // Uses the existing createEmployee(): code generation, uniqueness check, history, onboarding tasks and audit log all apply
++      importRow: async (row) => {
++        const payload = {
++          employeeCode: row.employeeCode || undefined,
++          fullName: row.fullName,
++          workEmail: row.workEmail.toLowerCase(),
++          department: row.department || undefined,
++          designation: row.designation || undefined,
++          branchName: row.branchName || undefined,
++          manager: row.manager || '',
++          phone: row.phone || '',
++          dateOfJoining: toIsoDate(row.dateOfJoining) || undefined,
++          employmentStatus: row.employmentStatus ? STATUS_MAP[row.employmentStatus.toUpperCase()] : undefined
++        };
++        const parts = row.fullName.split(/\s+/);
++        payload.firstName = parts[0];
++        payload.lastName = parts.slice(1).join(' ');
++        await employeeService.createEmployee(payload);
++      },
++      onDone: (r) => { if (r.imported && window.Router) Router.navigate('employees'); }
++    });
++  },
++
+   async exportCSV() {
+     try {
+       const employees = await employeeService.getEmployees(this.currentFilters);
+diff --git a/js/views/training-view.js b/js/views/training-view.js
+index d97f1f3..d2b6be4 100644
+--- a/js/views/training-view.js
++++ b/js/views/training-view.js
+@@ -233,6 +233,7 @@ const TrainingView = {
+             <div class="card-subtitle">Active cohort members, curriculum tracks, assigned mentors, and milestone completion</div>
+           </div>
+           <div style="display: flex; gap: 8px;">
++            <button class="btn btn-secondary btn-sm" onclick="TrainingView.importTraineesCSV()">Import CSV</button>
+             <button class="btn btn-secondary btn-sm" onclick="TrainingView.exportTraineesCSV()">
+               <svg width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/>
+@@ -1692,6 +1693,45 @@ Module 4: Practical Capstone Evaluation</textarea>
+     // Call it once after render if needed
+   },
+ 
++  importTraineesCSV() {
++    if (typeof CsvImport === 'undefined') { Toast.error('CSV import module failed to load. Hard refresh the page.'); return; }
++    const companyId = AuthGuard.userProfile?.companyId || 'comp_diallo_india';
++    CsvImport.open({
++      title: 'Import Trainees from CSV',
++      templateName: 'Diallo_Trainees_Template.csv',
++      columns: [
++        { key: 'traineeCode', label: 'Trainee Code' },
++        { key: 'fullName', label: 'Full Name', required: true },
++        { key: 'email', label: 'Email', required: true },
++        { key: 'department', label: 'Department' },
++        { key: 'track', label: 'Track' },
++        { key: 'trainerName', label: 'Trainer' },
++        { key: 'batchName', label: 'Batch' }
++      ],
++      sampleRow: { fullName: 'Jane Doe', email: 'jane.doe@company.com', department: 'Operations', track: '7-Day Core Training Modules', batchName: 'Batch 2026-Q3' },
++      prepare: async () => {
++        const snap = await db.collection('trainees').where('companyId', '==', companyId).get();
++        const emails = new Set(), codes = new Set();
++        snap.docs.forEach(d => { const t = d.data(); if (t.email) emails.add(String(t.email).toLowerCase()); if (t.traineeCode) codes.add(String(t.traineeCode).toUpperCase()); });
++        return { emails, codes };
++      },
++      validate: (row, ctx, seen) => {
++        seen.emails = seen.emails || new Set(); seen.codes = seen.codes || new Set();
++        const email = row.email.toLowerCase(), code = row.traineeCode.toUpperCase();
++        if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return 'Invalid email';
++        if (ctx.emails.has(email)) return 'Trainee email already exists';
++        if (seen.emails.has(email)) return 'Duplicate email in file';
++        if (code && (ctx.codes.has(code) || seen.codes.has(code))) return `Trainee code ${code} already exists`;
++        seen.emails.add(email); if (code) seen.codes.add(code);
++        return null;
++      },
++      importRow: async (row) => {
++        await trainingService.createTrainee({ ...row, traineeCode: row.traineeCode || undefined, companyId });
++      },
++      onDone: (r) => { if (r.imported && window.Router) Router.navigate('training'); }
++    });
++  },
++
+   async exportTraineesCSV() {
+     try {
+       const trainees = await trainingService.getTrainees();
