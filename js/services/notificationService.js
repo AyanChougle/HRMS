@@ -28,8 +28,7 @@ const notificationService = {
       
       if (targetEmp) {
         const snap1 = await db.collection('notifications')
-          .where('employeeId', '==', targetEmp)
-          .get();
+          .where('employeeId', '==', targetEmp).orderBy('createdAt', 'desc').limit(60).get().catch(e => db.collection('notifications').where('employeeId', '==', targetEmp).limit(60).get());
         snap1.docs.forEach(doc => {
           list.push({ id: doc.id, ...doc.data() });
         });
@@ -37,8 +36,7 @@ const notificationService = {
 
       if (uid && uid !== targetEmp) {
         const snap2 = await db.collection('notifications')
-          .where('recipientUserId', '==', uid)
-          .get();
+          .where('recipientUserId', '==', uid).orderBy('createdAt', 'desc').limit(60).get().catch(e => db.collection('notifications').where('recipientUserId', '==', uid).limit(60).get());
         snap2.docs.forEach(doc => {
           if (!list.some(item => item.id === doc.id)) {
             list.push({ id: doc.id, ...doc.data() });
@@ -166,17 +164,18 @@ const notificationService = {
     try {
       const targetEmp = employeeId || AuthGuard.userProfile?.employeeId || AuthGuard.currentUser?.uid;
       const uid = AuthGuard.currentUser?.uid;
-      const batch = db.batch();
       
+      let promises = [];
       if (targetEmp) {
-        const snap = await db.collection('notifications').where('employeeId', '==', targetEmp).get();
-        snap.docs.forEach(doc => batch.delete(doc.ref));
+        const snap = await db.collection('notifications').where('employeeId', '==', targetEmp).limit(500).get();
+        snap.docs.forEach(doc => promises.push(doc.ref.delete()));
       }
       if (uid && uid !== targetEmp) {
-        const snap2 = await db.collection('notifications').where('recipientUserId', '==', uid).get();
-        snap2.docs.forEach(doc => batch.delete(doc.ref));
+        const snap2 = await db.collection('notifications').where('recipientUserId', '==', uid).limit(500).get();
+        snap2.docs.forEach(doc => promises.push(doc.ref.delete()));
       }
-      await batch.commit();
+      
+      await Promise.all(promises);
       return true;
     } catch (e) {
       console.warn('Error clearing notifications:', e);
