@@ -218,16 +218,7 @@ const Forms = {
             </div>
           </div>
 
-          <div class="form-row">
-            <div class="col-6 form-group">
-              <label class="form-label">Monthly CTC Gross (INR ₹)</label>
-              <input type="text" id="ef-salary" class="form-control font-bold" value="${emp?.salary || '₹65,000/mo'}" placeholder="₹65,000/mo" />
-            </div>
-            <div class="col-6 form-group">
-              <label class="form-label">UAN / PF Number</label>
-              <input type="text" id="ef-uan" class="form-control" value="${emp?.uan || ''}" placeholder="100987654321" maxlength="12" />
-            </div>
-          </div>
+          
         </div>
       </form>
     `;

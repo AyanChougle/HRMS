@@ -1313,16 +1313,16 @@ const PeopleView = {
       title: 'Import Employees from CSV',
       templateName: 'Diallo_Employees_Template.csv',
       columns: [
-        { key: 'employeeCode', label: 'Employee Code', aliases: ['Emp Code', 'Code'] },
+        { key: 'employeeCode', label: 'Employee Code', aliases: ['Emp Code', 'Code', 'E-ID', 'EID'] },
         { key: 'fullName', label: 'Full Name', aliases: ['Employee Name', 'Name'], required: true },
         { key: 'workEmail', label: 'Work Email', aliases: ['Email'], required: true },
         { key: 'department', label: 'Department' },
         { key: 'designation', label: 'Designation' },
-        { key: 'branchName', label: 'Branch', aliases: ['Branch Location', 'Location'] },
+        { key: 'branchName', label: 'Branch', aliases: ['Branch Location', 'Location', 'Center'] },
         { key: 'manager', label: 'Reporting Manager', aliases: ['Manager'] },
-        { key: 'dateOfJoining', label: 'Joining Date', aliases: ['Date of Joining'] },
+        { key: 'dateOfJoining', label: 'Joining Date', aliases: ['Date of Joining', 'DOJ'] },
         { key: 'employmentStatus', label: 'Status' },
-        { key: 'phone', label: 'Phone', aliases: ['Mobile'] }
+        { key: 'phone', label: 'Phone', aliases: ['Mobile', 'Mobile No'] }
       ],
       sampleRow: { employeeCode: '', fullName: 'Jane Doe', workEmail: 'jane.doe@company.com', department: 'Engineering', designation: 'Software Engineer', branchName: 'HQ - Mumbai', manager: '', dateOfJoining: '2026-10-01', employmentStatus: 'ACTIVE', phone: '9876543210' },
 
@@ -1330,10 +1330,12 @@ const PeopleView = {
       prepare: async () => {
         const snap = await db.collection('employees').where('companyId', '==', companyId).get();
         const emails = new Set(), codes = new Set();
+        ctx.managerMap = {};
         snap.docs.forEach(d => {
           const e = d.data();
           [e.workEmail, e.email, e.personalEmail].forEach(x => x && emails.add(String(x).toLowerCase().trim()));
           if (e.employeeCode) codes.add(String(e.employeeCode).toUpperCase().trim());
+          if (e.fullName) ctx.managerMap[e.fullName.toLowerCase().trim()] = d.id;
         });
         return { emails, codes };
       },
@@ -1364,7 +1366,7 @@ const PeopleView = {
           department: row.department || undefined,
           designation: row.designation || undefined,
           branchName: row.branchName || undefined,
-          manager: row.manager || '',
+          managerId: (row.manager && ctx.managerMap && ctx.managerMap[row.manager.toLowerCase().trim()]) ? ctx.managerMap[row.manager.toLowerCase().trim()] : (row.manager || ''),
           phone: row.phone || '',
           dateOfJoining: toIsoDate(row.dateOfJoining) || undefined,
           employmentStatus: row.employmentStatus ? STATUS_MAP[row.employmentStatus.toUpperCase()] : undefined
