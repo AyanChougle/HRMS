@@ -1358,7 +1358,7 @@ const PeopleView = {
       },
 
       // Uses the existing createEmployee(): code generation, uniqueness check, history, onboarding tasks and audit log all apply
-      importRow: async (row) => {
+      importRow: async (row, ctx) => {
         const payload = {
           employeeCode: row.employeeCode || undefined,
           fullName: row.fullName,
