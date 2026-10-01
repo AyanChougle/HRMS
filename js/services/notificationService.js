@@ -161,6 +161,29 @@ const notificationService = {
     }
   },
 
+  // 5. CLEAR ALL NOTIFICATIONS
+  async deleteAllNotifications(employeeId = null) {
+    try {
+      const targetEmp = employeeId || AuthGuard.userProfile?.employeeId || AuthGuard.currentUser?.uid;
+      const uid = AuthGuard.currentUser?.uid;
+      const batch = db.batch();
+      
+      if (targetEmp) {
+        const snap = await db.collection('notifications').where('employeeId', '==', targetEmp).get();
+        snap.docs.forEach(doc => batch.delete(doc.ref));
+      }
+      if (uid && uid !== targetEmp) {
+        const snap2 = await db.collection('notifications').where('recipientUserId', '==', uid).get();
+        snap2.docs.forEach(doc => batch.delete(doc.ref));
+      }
+      await batch.commit();
+      return true;
+    } catch (e) {
+      console.warn('Error clearing notifications:', e);
+      return false;
+    }
+  },
+
   // 5. MARK ALL NOTIFICATIONS AS READ
   async markAllAsRead(employeeId = null) {
     try {
@@ -262,8 +285,20 @@ const notificationService = {
     }
   },
 
+  // DELETE NOTIFICATION
+  async deleteNotification(notificationId) {
+    try {
+      await db.collection('notifications').doc(notificationId).delete();
+    } catch (e) {
+      console.warn('Error deleting notification:', e);
+    }
+  },
+
   // 8. NOTIFICATION DEEP LINK NAVIGATION
-  handleNotificationClick(relatedModule, relatedId) {
+  async handleNotificationClick(relatedModule, relatedId, notificationId) {
+    if (notificationId) {
+      await this.deleteNotification(notificationId);
+    }
     if (!relatedModule) return;
     const mod = relatedModule.toLowerCase();
 

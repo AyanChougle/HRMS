@@ -1087,6 +1087,7 @@ const ESSView = {
               },
               { merge: true },
             );
+            
         } catch (dbErr) {
           console.warn("Users collection update warning:", dbErr);
         }

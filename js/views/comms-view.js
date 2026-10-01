@@ -227,7 +227,7 @@ const CommsView = {
             <div class="card-title">My Real-Time Notifications Feed (${notifications.length})</div>
             <div class="card-subtitle">Activity alerts across Leaves, Attendance, Payroll, Expenses, and Documents</div>
           </div>
-          <button class="btn btn-secondary btn-sm" onclick="CommsView.markAllRead()">Mark All as Read</button>
+          <button class="btn btn-secondary btn-sm" onclick="CommsView.markAllRead()">Clear All Notifications</button>
         </div>
         <div class="card-body" style="padding: 0;">
           <!-- Module Filter Tabs -->
@@ -423,8 +423,8 @@ const CommsView = {
   },
 
   async markAllRead() {
-    await notificationService.markAllAsRead();
-    Toast.success('All notifications marked as read.');
+    await notificationService.deleteAllNotifications();
+    Toast.success('All notifications cleared.');
     Router.mountView('communication');
   },
 
