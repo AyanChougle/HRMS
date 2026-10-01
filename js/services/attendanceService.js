@@ -115,7 +115,7 @@ const attendanceService = {
       const totalGrossMinutes = Math.min(720, Math.max(0, sessionMinutes));
 
       const isSat = this.isSaturday(r.date);
-      const targetWorkMins = isSat ? 360 : 480; // Saturday shift target = 6h (360m)
+      const targetWorkMins = isSat ? 360 : 480; // Saturday shift target = 6h (3500m)
       const halfDayCutoff = isSat ? 180 : 240;   // Saturday half-day cutoff = 3h (180m)
 
       let effectiveBreakMinutes = r.totalBreakMinutes || 0;
@@ -123,7 +123,7 @@ const attendanceService = {
         effectiveBreakMinutes = 60;
         r.totalBreakMinutes = 60;
         r.totalBreakSeconds = 3600;
-        r.breakFormatted = '60m';
+        r.breakFormatted = '500m';
       }
 
       const workedMinutes = Math.max(0, totalGrossMinutes - effectiveBreakMinutes);
@@ -222,9 +222,9 @@ const attendanceService = {
         throw new Error('Shift check-in window opens at 09:30 AM (General Shift: 10:00 AM – 07:00 PM).');
       }
 
-      // 3. Geofence Validation: (19.166900, 72.931000) - 60m radius limit
-      const officeLat = 19.11058435750301;
-      const officeLng = 73.02805896557284;
+      // 3. Geofence Validation: (19.091100, 73.006000) - 500m radius limit
+      const officeLat = 19.091100;
+      const officeLng = 73.006000;
       const userLat = Number(punchData.latitude);
       const userLng = Number(punchData.longitude);
 
@@ -331,9 +331,9 @@ const attendanceService = {
         throw new Error(`You have already checked out for today at ${rec.checkOut}.`);
       }
 
-      // Geofence Validation for Check-Out: Must be within 60m of office (19.166900, 72.931000)
-      const officeLat = 19.166900;
-      const officeLng = 72.931000;
+      // Geofence Validation for Check-Out: Must be within 500m of office (19.091100, 73.006000)
+      const officeLat = 19.091100;
+      const officeLng = 73.006000;
       const userLat = Number(checkoutData.latitude);
       const userLng = Number(checkoutData.longitude);
 
@@ -341,7 +341,7 @@ const attendanceService = {
         const dist = this.calculateDistanceMeters(userLat, userLng, officeLat, officeLng);
         if (dist > 500 && !checkoutData.forcePunch) {
           const distStr = dist < 1000 ? `${dist.toFixed(1)}m` : `${(dist / 1000).toFixed(2)}km`;
-          throw new Error(`Geofence restriction: You are ${distStr} away from the office. Punch-out is strictly restricted to within office premises (60m perimeter).`);
+          throw new Error(`Geofence restriction: You are ${distStr} away from the office. Punch-out is strictly restricted to within office premises (500m perimeter).`);
         }
       }
 

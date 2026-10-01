@@ -4,7 +4,7 @@ const fs = require('fs');
 let c = fs.readFileSync('js/services/attendanceService.js', 'utf8');
 c = c.replace(
   'const officeLat = 19.166900;\n      const officeLng = 72.931000;',
-  'const officeLat = 19.11058435750301;\n      const officeLng = 73.02805896557284;'
+  'const officeLat = 19.074800;\n      const officeLng = 72.885700;'
 );
 c = c.replace(
   'if (dist > 60 && !punchData.forcePunch) {',
