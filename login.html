@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Sign In & Sign Up — Diallo HRMS Enterprise Cloud</title>
+  <title>Sign In — Diallo HRMS Enterprise Cloud</title>
   <meta name="description" content="Sign in or create a new organization account for Diallo HRMS Enterprise Cloud Suite." />
 
   <!-- CSS Architecture Tokens & Components -->
@@ -199,10 +199,7 @@
     </div>
 
     <!-- Sign In / Sign Up Tab Switcher -->
-    <div class="auth-tabs">
-      <button type="button" class="auth-tab-btn active" id="tab-login-btn" onclick="switchAuthTab('login')">Sign In</button>
-      <button type="button" class="auth-tab-btn" id="tab-signup-btn" onclick="switchAuthTab('signup')">Create Account (Sign Up)</button>
-    </div>
+    
 
     <!-- Alert Box -->
     <div id="auth-alert" class="auth-alert"></div>
@@ -247,66 +244,7 @@
     <!-- ======================================================================
          2. SIGN UP (REGISTER) FORM
          ====================================================================== -->
-    <form id="signup-form" style="display: none;" onsubmit="handleSignupSubmit(event)">
-      <div class="form-row">
-        <div class="col-6 form-group" style="margin-bottom: 14px;">
-          <label class="form-label required">First Name</label>
-          <input type="text" id="signup-firstname" class="form-control" placeholder="e.g. Rahul" required />
-        </div>
-        <div class="col-6 form-group" style="margin-bottom: 14px;">
-          <label class="form-label required">Last Name</label>
-          <input type="text" id="signup-lastname" class="form-control" placeholder="e.g. Sharma" required />
-        </div>
-      </div>
-
-      <div class="form-group" style="margin-bottom: 14px;">
-        <label class="form-label required">Official Email Address</label>
-        <input type="email" id="signup-email" class="form-control" placeholder="name@company.com" required />
-      </div>
-
-      <div class="form-group" style="margin-bottom: 14px;">
-        <label class="form-label required">Company / Legal Entity Name</label>
-        <input type="text" id="signup-company" class="form-control" placeholder="e.g. Diallo India Private Limited" value="Diallo India Private Limited" required />
-      </div>
-
-      <div class="form-row">
-        <div class="col-12 form-group" style="margin-bottom: 14px;">
-          <label class="form-label">Phone Number</label>
-          <input type="text" id="signup-phone" class="form-control" placeholder="+91 98765 43210" />
-        </div>
-      </div>
-      
-
-      <div class="form-group" style="margin-bottom: 14px;">
-        <label class="form-label required">Password</label>
-        <div class="password-input-wrapper">
-          <input type="password" id="signup-password" class="form-control" placeholder="Minimum 6 characters" minlength="6" required />
-          <button type="button" class="password-toggle-btn" onclick="togglePasswordVisibility('signup-password', this)" title="Show / Hide Password">
-            <svg width="18" height="18" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/>
-            </svg>
-          </button>
-        </div>
-      </div>
-
-      <div class="form-group" style="margin-bottom: 18px;">
-        <label class="form-label required">Confirm Password</label>
-        <div class="password-input-wrapper">
-          <input type="password" id="signup-confirm-password" class="form-control" placeholder="Re-enter password" minlength="6" required />
-          <button type="button" class="password-toggle-btn" onclick="togglePasswordVisibility('signup-confirm-password', this)" title="Show / Hide Password">
-            <svg width="18" height="18" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/>
-            </svg>
-          </button>
-        </div>
-      </div>
-
-      <button type="submit" id="signup-submit-btn" class="btn btn-primary btn-lg w-full">
-        <span>Create Account & Start Session</span>
-      </button>
-    </form>
+    
     <div class="auth-footer">
       <p>© 2026 Diallo India Private Limited • Enterprise Portal</p>
     </div>
@@ -329,35 +267,7 @@
   <script src="js/firebase/auth-guard.js"></script>
 
   <script>
-    // Tab switching logic
-    function switchAuthTab(tab) {
-      const loginForm = document.getElementById('login-form');
-      const signupForm = document.getElementById('signup-form');
-      const tabLoginBtn = document.getElementById('tab-login-btn');
-      const tabSignupBtn = document.getElementById('tab-signup-btn');
-      const authTitle = document.getElementById('auth-title');
-      const authSubtitle = document.getElementById('auth-subtitle');
-      const alertBox = document.getElementById('auth-alert');
-
-      alertBox.className = 'auth-alert';
-      alertBox.style.display = 'none';
-
-      if (tab === 'signup') {
-        loginForm.style.display = 'none';
-        signupForm.style.display = 'block';
-        tabLoginBtn.classList.remove('active');
-        tabSignupBtn.classList.add('active');
-        authTitle.textContent = 'Create Organization Account';
-        authSubtitle.textContent = 'Register a new administrator or employee account in Firebase';
-      } else {
-        loginForm.style.display = 'block';
-        signupForm.style.display = 'none';
-        tabLoginBtn.classList.add('active');
-        tabSignupBtn.classList.remove('active');
-        authTitle.textContent = 'Welcome Back';
-        authSubtitle.textContent = 'Sign in to access your organization workspace';
-      }
-    }
+    
 
     function togglePasswordVisibility(inputId, btn) {
       const input = document.getElementById(inputId);
@@ -439,75 +349,6 @@
     }
 
     // Explicit Sign Up Handler (always called directly by onsubmit)
-    async function handleSignupSubmit(event) {
-      event.preventDefault();
-
-      const firstName = document.getElementById('signup-firstname').value.trim();
-      const lastName = document.getElementById('signup-lastname').value.trim();
-      const email = document.getElementById('signup-email').value.trim();
-      const company = document.getElementById('signup-company').value.trim();
-      const phone = document.getElementById('signup-phone').value.trim();
-      const password = document.getElementById('signup-password').value;
-      const confirmPassword = document.getElementById('signup-confirm-password').value;
-      const alertBox = document.getElementById('auth-alert');
-      const signupBtn = document.getElementById('signup-submit-btn');
-
-      if (password !== confirmPassword) {
-        alertBox.textContent = 'Passwords do not match. Please verify and re-enter.';
-        alertBox.className = 'auth-alert error';
-        alertBox.style.display = 'block';
-        return;
-      }
-
-      isAuthenticating = true;
-      alertBox.className = 'auth-alert';
-      alertBox.style.display = 'none';
-
-      signupBtn.disabled = true;
-      signupBtn.innerHTML = '<span>Creating Firebase Account & Profile...</span>';
-
-      const roleId = document.getElementById('signup-role')?.value || 'EMPLOYEE';
-
-      const profileData = {
-        firstName,
-        lastName,
-        displayName: `${firstName} ${lastName}`.trim() || email.split('@')[0],
-        roleId: roleId,
-        companyName: company || 'Diallo India Private Limited',
-        companyId: 'comp_diallo_india',
-        branchId: 'branch_mumbai',
-        branchName: 'HQ - Mumbai',
-        phone: phone || ''
-      };
-
-      try {
-        const res = await authService.signUp(email, password, profileData);
-
-        if (res.success) {
-          signupBtn.innerHTML = '<span>Account Created! Opening Dashboard...</span>';
-          Toast.success('Account created successfully! Redirecting...');
-          const redirect = sessionStorage.getItem('redirect_after_login') || 'index.html#dashboard';
-          sessionStorage.removeItem('redirect_after_login');
-          window.location.replace(redirect);
-        } else {
-          isAuthenticating = false;
-          signupBtn.disabled = false;
-          signupBtn.innerHTML = '<span>Create Account & Start Session</span>';
-
-          alertBox.textContent = res.error;
-          alertBox.className = 'auth-alert error';
-          alertBox.style.display = 'block';
-        }
-      } catch (err) {
-        isAuthenticating = false;
-        signupBtn.disabled = false;
-        signupBtn.innerHTML = '<span>Create Account & Start Session</span>';
-        alertBox.textContent = err.message || 'An unexpected error occurred during sign up.';
-        alertBox.className = 'auth-alert error';
-        alertBox.style.display = 'block';
-      }
-    }
-
     document.addEventListener('DOMContentLoaded', () => {
       try {
         ThemeManager.init();
@@ -516,11 +357,7 @@
         console.warn('UI init warning:', e);
       }
 
-      // Check URL parameters for tab=signup
-      const urlParams = new URLSearchParams(window.location.search);
-      if (urlParams.get('tab') === 'signup' || window.location.hash === '#signup') {
-        switchAuthTab('signup');
-      }
+      
 
       // If user is already authenticated on initial page load, redirect to dashboard
       try {
