@@ -26,23 +26,19 @@ const employeeService = {
   // Suggest next available employee code (e.g. EMP-0001)
   async getNextEmployeeCode(companyId = 'comp_diallo_india') {
     try {
-      const snapshot = await db.collection('employees')
-        .where('companyId', '==', companyId)
-        .get();
-      
-      const existingCodes = new Set();
+      const snapshot = await db.collection('employees').where('companyId', '==', companyId).get();
+      let maxNum = 0;
       snapshot.docs.forEach(d => {
         const c = d.data().employeeCode;
-        if (c) existingCodes.add(c.trim().toUpperCase());
+        if (c && c.toUpperCase().startsWith('D-')) {
+          const numStr = c.substring(2);
+          const num = parseInt(numStr, 10);
+          if (!isNaN(num) && num > maxNum) maxNum = num;
+        }
       });
-
-      let count = snapshot.size + 1;
-      while (existingCodes.has(`EMP-${String(count).padStart(4, '0')}`)) {
-        count++;
-      }
-      return `EMP-${String(count).padStart(4, '0')}`;
+      return `D-${String(maxNum + 1).padStart(5, '0')}`;
     } catch (e) {
-      return `EMP-0001`;
+      return 'D-00001';
     }
   },
 

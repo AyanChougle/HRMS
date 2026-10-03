@@ -325,7 +325,7 @@ const ESSView = {
                 00:00:00
               </div>
               <div style="font-size: 0.8rem; color: var(--text-secondary); margin-top: 6px;" id="ess-geo-status">
-                Office Premises Geofence: 19.091100, 73.006000 (500m)
+                Office Premises Geofence: 19.075975, 72.87738 (500m)
               </div>
               <div style="font-size: 0.8rem; margin-top: 6px; display: flex; gap: 16px; align-items: center; flex-wrap: wrap;">
                 <span style="color: var(--text-muted);">Current Break: <strong style="font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Inter', 'Segoe UI', sans-serif; font-variant-numeric: tabular-nums; color: ${this.isOnBreak ? "var(--warning)" : "var(--text-secondary)"};" id="ess-break-display">00:00</strong></span>
@@ -1089,7 +1089,7 @@ const ESSView = {
             );
             
         } catch (dbErr) {
-          console.warn("Users collection update warning:", dbErr);
+          console.warn("Users collection update warning:", dbErr);      
         }
       }
 
@@ -1962,9 +1962,9 @@ const ESSView = {
   OFFICE_GEOFENCE: {
     name: "Diallo Office Premises",
     address: "Diallo Office Premises",
-    mapsUrl: "https://www.google.com/maps?q=19.091100,73.006000",
-    latitude: 19.091100,
-    longitude: 73.006000,
+    mapsUrl: "https://www.google.com/maps?q=19.075975,72.87738",
+    latitude: 19.075975,
+    longitude: 72.87738,
     radiusMeters: 500,
   },
 

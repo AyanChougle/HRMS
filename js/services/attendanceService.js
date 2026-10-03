@@ -222,9 +222,9 @@ const attendanceService = {
         throw new Error('Shift check-in window opens at 09:30 AM (General Shift: 10:00 AM – 07:00 PM).');
       }
 
-      // 3. Geofence Validation: (19.091100, 73.006000) - 500m radius limit
-      const officeLat = 19.091100;
-      const officeLng = 73.006000;
+      // 3. Geofence Validation: (19.075975, 72.87738) - 500m radius limit
+      const officeLat = 19.075975;
+      const officeLng = 72.87738;
       const userLat = Number(punchData.latitude);
       const userLng = Number(punchData.longitude);
 
@@ -331,9 +331,9 @@ const attendanceService = {
         throw new Error(`You have already checked out for today at ${rec.checkOut}.`);
       }
 
-      // Geofence Validation for Check-Out: Must be within 500m of office (19.091100, 73.006000)
-      const officeLat = 19.091100;
-      const officeLng = 73.006000;
+      // Geofence Validation for Check-Out: Must be within 500m of office (19.075975, 72.87738)
+      const officeLat = 19.075975;
+      const officeLng = 72.87738;
       const userLat = Number(checkoutData.latitude);
       const userLng = Number(checkoutData.longitude);
 

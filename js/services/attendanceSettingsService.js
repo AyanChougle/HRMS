@@ -22,10 +22,10 @@ const attendanceSettingsService = {
     unauthorizedLeaveDeductionDays: 2, // 2 days deduction for UL
     geofence: {
       enabled: true,
-      address: 'Office Premises (GPS: 19.091100, 73.006000)',
-      mapsUrl: 'https://www.google.com/maps?q=19.091100,73.006000',
-      latitude: 19.091100,
-      longitude: 73.006000,
+      address: 'Office Premises (GPS: 19.075975, 72.87738)',
+      mapsUrl: 'https://www.google.com/maps?q=19.075975,72.87738',
+      latitude: 19.075975,
+      longitude: 72.87738,
       radiusMeters: 60
     },
     status: 'ACTIVE'
