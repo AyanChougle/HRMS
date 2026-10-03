@@ -261,8 +261,7 @@ const App = {
 
     if (branches.length === 0) {
       branches = [
-        { id: 'b1', name: 'HQ - Mumbai', city: 'Mumbai (BKC)', timezone: 'IST (UTC+5:30)' },
-        { id: 'b2', name: 'Bengaluru Tech Hub', city: 'Bengaluru', timezone: 'IST (UTC+5:30)' }
+        { id: 'b1', name: 'Ghansoli - Navi Mumbai', city: 'Ghansoli, Navi Mumbai', timezone: 'IST (UTC+5:30)' }
       ];
     }
 

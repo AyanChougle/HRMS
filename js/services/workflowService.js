@@ -104,7 +104,7 @@ const workflowService = {
   async startWorkflow(moduleCode, recordId, requestData) {
     try {
       const companyId = requestData.companyId || AuthGuard.userProfile?.companyId || 'comp_diallo_india';
-      const initiatedBy = requestData.employeeId || AuthGuard.currentUser?.uid || 'EMP001';
+      const initiatedBy = requestData.employeeId || AuthGuard.currentUser?.uid || '';
       const initiatedByName = requestData.employeeName || AuthGuard.userProfile?.displayName || 'Employee';
 
       // Find active workflow for this module
@@ -222,7 +222,7 @@ const workflowService = {
         approverType: step.approverType,
         assignedRole: assignedRole,
         assignedTo: assignedTo, // Dynamic target ID
-        employeeId: reqData.employeeId || 'EMP001',
+        employeeId: reqData.employeeId || AuthGuard.currentUser?.uid || '',
         employeeName: reqData.employeeName || 'Staff',
         title: reqData.title || `${moduleCode} Approval Required`,
         status: 'PENDING', // PENDING, APPROVED, REJECTED, CHANGES_REQUESTED, DELEGATED

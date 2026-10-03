@@ -27,6 +27,14 @@ const settingsService = {
         financialYearStart: '01/04',
         defaultLanguage: 'English',
 
+        // Code Series Formatting
+        codeSeries: {
+          employeeCodePrefix: 'D-',
+          employeeCodeDigits: 5,
+          leavePrefix: 'LV-',
+          invoicePrefix: 'INV-'
+        },
+
         // Attendance Rules
         attendance: {
           checkInRequired: true,

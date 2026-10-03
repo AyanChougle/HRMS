@@ -7,12 +7,30 @@ const departmentService = {
   // --- Departments ---
   async getDepartments(companyId = null) {
     try {
-      let query = db.collection('departments');
-      if (companyId) {
-        query = query.where('companyId', '==', companyId);
+      const targetCompany = companyId || AuthGuard.userProfile?.companyId || 'comp_diallo_india';
+      const snap = await db.collection('departments').get();
+      let list = snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+      
+      if (list.length === 0) {
+        const defaults = [
+          { name: 'Engineering', code: 'ENG', status: 'ACTIVE', members: 0, companyId: targetCompany },
+          { name: 'Human Resources', code: 'HR', status: 'ACTIVE', members: 0, companyId: targetCompany },
+          { name: 'Finance & Accounts', code: 'FIN', status: 'ACTIVE', members: 0, companyId: targetCompany },
+          { name: 'Sales & Marketing', code: 'SALES', status: 'ACTIVE', members: 0, companyId: targetCompany },
+          { name: 'Operations & IT', code: 'OPS', status: 'ACTIVE', members: 0, companyId: targetCompany }
+        ];
+        for (const d of defaults) {
+          try {
+            const docRef = await db.collection('departments').add({
+              ...d,
+              createdAt: firebase.firestore.FieldValue.serverTimestamp(),
+              updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+            });
+            list.push({ id: docRef.id, ...d });
+          } catch(e) {}
+        }
       }
-      const snapshot = await query.orderBy('name', 'asc').get();
-      return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+      return list.sort((a, b) => (a.name || '').localeCompare(b.name || ''));
     } catch (err) {
       console.error('Error getting departments:', err);
       return [];
@@ -22,15 +40,20 @@ const departmentService = {
   async createDepartment(deptData) {
     try {
       const newRef = db.collection('departments').doc();
+      const companyId = deptData.companyId || AuthGuard.userProfile?.companyId || 'comp_diallo_india';
       const payload = {
-        ...deptData,
+        name: (deptData.name || '').trim(),
+        code: (deptData.code || '').trim().toUpperCase(),
+        companyId,
         status: deptData.status || 'ACTIVE',
         members: deptData.members || 0,
         createdAt: firebase.firestore.FieldValue.serverTimestamp(),
         updatedAt: firebase.firestore.FieldValue.serverTimestamp()
       };
       await newRef.set(payload);
-      await auditService.log('DEPARTMENT_CREATED', 'ORGANIZATION', 'departments', newRef.id, payload);
+      if (typeof auditService !== 'undefined' && auditService.log) {
+        auditService.log('DEPARTMENT_CREATED', 'departments', newRef.id, { name: payload.name, code: payload.code }).catch(() => {});
+      }
       return { id: newRef.id, ...payload };
     } catch (err) {
       console.error('Error creating department:', err);
@@ -45,7 +68,9 @@ const departmentService = {
         updatedAt: firebase.firestore.FieldValue.serverTimestamp()
       };
       await db.collection('departments').doc(id).update(payload);
-      await auditService.log('DEPARTMENT_UPDATED', 'ORGANIZATION', 'departments', id, updateData);
+      if (typeof auditService !== 'undefined' && auditService.log) {
+        auditService.log('DEPARTMENT_UPDATED', 'departments', id, updateData).catch(() => {});
+      }
       return true;
     } catch (err) {
       console.error('Error updating department:', err);
@@ -60,7 +85,9 @@ const departmentService = {
   async deleteDepartment(id) {
     try {
       await db.collection('departments').doc(id).delete();
-      await auditService.log('DEPARTMENT_DELETED', 'ORGANIZATION', 'departments', id, {});
+      if (typeof auditService !== 'undefined' && auditService.log) {
+        auditService.log('DEPARTMENT_DELETED', 'departments', id, {}).catch(() => {});
+      }
       return true;
     } catch (err) {
       console.error('Error deleting department:', err);

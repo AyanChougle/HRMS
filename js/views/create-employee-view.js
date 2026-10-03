@@ -16,19 +16,26 @@ const CreateEmployeeView = {
     
     const mgrOptions = '<option value="">-- Select --</option>' + employees.map(e => `<option value="${e.id}">${e.fullName || e.firstName} (${e.employeeCode})</option>`).join('');
     
-    const isAuthorized = userRole === 'SUPER_ADMIN' || userRole === 'ADMIN' || userRole === 'COMPANY_ADMIN' || userRole.includes('HR') || userRole.includes('TRAIN');
+    const isAuthorized = ['SUPER_ADMIN', 'COMPANY_ADMIN', 'ADMIN', 'HR_MANAGER', 'HR', 'MANAGER'].includes(userRole);
 
     if (!isAuthorized) {
       return `
         <div class="card p-6 text-center" style="max-width: 600px; margin: 40px auto;">
           <h2 style="font-size: 1.3rem; font-weight: 700; color: var(--text-main); margin-bottom: 8px;">Access Restricted</h2>
-          <p style="color: var(--text-secondary); margin-bottom: 20px;">Creating employee and trainee accounts is restricted to Super Admin, HR, and Training Mentors.</p>
+          <p style="color: var(--text-secondary); margin-bottom: 20px;">Creating employee accounts is restricted to Super Admin, HR Managers, and Managers.</p>
           <button class="btn btn-primary btn-sm" onclick="Router.navigate('dashboard')">Return to Dashboard</button>
         </div>
       `;
     }
 
-    const officialDepartments = [
+    let liveDepts = [];
+    try {
+      if (typeof departmentService !== 'undefined') {
+        liveDepts = await departmentService.getDepartments();
+      }
+    } catch(e) {}
+
+    const officialDepartments = liveDepts.length > 0 ? liveDepts.map(d => d.name || d) : [
       'Digital Team',
       'Operations',
       'Sales',
@@ -72,7 +79,7 @@ const CreateEmployeeView = {
             </div>
             <div>
               <div class="card-title">New User Onboarding Form</div>
-              <div class="card-subtitle">Official shift: 10:00 AM – 07:00 PM (8h Work • 1h Break • 10m Grace) • HQ - Mumbai</div>
+              <div class="card-subtitle">Official shift: 10:00 AM – 07:00 PM (8h Work • 1h Break • 10m Grace) • Ghansoli - Navi Mumbai</div>
             </div>
           </div>
         </div>
@@ -170,7 +177,7 @@ const CreateEmployeeView = {
               </div>
               <div class="form-group">
                 <label class="form-label">Office Location</label>
-                <input type="text" class="form-control" value="HQ - Mumbai, Maharashtra" readonly disabled style="background: var(--bg-hover);" />
+                <input type="text" class="form-control" value="Ghansoli - Navi Mumbai, Maharashtra" readonly disabled style="background: var(--bg-hover);" />
               </div>
               <div class="form-group">
                 <label class="form-label">Shift Timing Policy</label>

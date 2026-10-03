@@ -182,26 +182,7 @@
           </div>
 
           <!-- Active Role View Switcher (For Admins to test/preview any role) -->
-          <div class="dropdown-menu-wrapper" id="header-role-wrapper" style="display: none; align-items: center;">
-            <div style="display: flex; align-items: center; gap: 6px; background: var(--bg-hover, rgba(0,0,0,0.04)); padding: 3px 8px; border-radius: var(--radius-sm, 6px); border: 1px solid var(--border-color, #e2e8f0);">
-              <span style="font-size: 0.72rem; font-weight: 700; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.5px;">Role:</span>
-              <select
-                id="header-role-switcher"
-                style="padding: 2px 6px; font-size: 0.78rem; font-weight: 600; height: 26px; border-radius: 4px; border: 1px solid var(--border-color, #cbd5e1); background: var(--bg-card, #fff); color: var(--text-main, #1e293b); cursor: pointer;"
-                onchange="AuthGuard.switchRole(this.value)"
-                title="Switch Active Role View"
-              >
-                <option value="SUPER_ADMIN">Super Admin</option>
-                <option value="HR_MANAGER">HR Manager</option>
-                <option value="MANAGER">Manager</option>
-                <option value="OPERATIONS_MANAGER">Operations Manager</option>
-                <option value="TEAM_LEAD">Team Leader</option>
-                <option value="MENTOR_TRAINER">Mentor / Trainer</option>
-                <option value="TRAINEE">Trainee</option>
-                <option value="EMPLOYEE">Employee</option>
-              </select>
-            </div>
-          </div>
+          
 
           <!-- Notification Center -->
           <div class="dropdown-menu-wrapper">
@@ -318,23 +299,7 @@
                 </div>
               </div>
               <!-- Role Preview Switcher in Profile Menu -->
-              <div id="popover-role-switcher-section" style="display: none; padding: 8px 12px; background: var(--bg-hover, rgba(0,0,0,0.02)); border-bottom: 1px solid var(--border-light);">
-                <div style="font-size: 0.68rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; color: var(--text-muted); margin-bottom: 4px;">Preview Role View</div>
-                <select
-                  id="popover-role-switcher"
-                  style="width: 100%; font-size: 0.78rem; font-weight: 600; padding: 4px 6px; border-radius: 4px; border: 1px solid var(--border-color, #cbd5e1); background: var(--bg-card, #fff); color: var(--text-main, #1e293b); cursor: pointer;"
-                  onchange="AuthGuard.switchRole(this.value); document.getElementById('profile-popover').classList.remove('active');"
-                >
-                  <option value="SUPER_ADMIN">Super Admin</option>
-                  <option value="HR_MANAGER">HR Manager</option>
-                  <option value="MANAGER">Manager</option>
-                  <option value="OPERATIONS_MANAGER">Operations Manager</option>
-                  <option value="TEAM_LEAD">Team Leader</option>
-                  <option value="MENTOR_TRAINER">Mentor / Trainer</option>
-                  <option value="TRAINEE">Trainee</option>
-                  <option value="EMPLOYEE">Employee</option>
-                </select>
-              </div>
+              
               <button
                 class="dropdown-item"
                 onclick="
@@ -450,6 +415,9 @@
 
     <!-- Toast Notification Portal Container -->
     <div id="toast-container" class="toast-container"></div>
+
+    <!-- 0. SheetJS Excel & Spreadsheet Parser (XLSX, XLS, ODS, CSV, TSV) -->
+    <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
 
     <!-- 1. Firebase Web SDK (Compat CDN for Vanilla Browser) -->
     <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>

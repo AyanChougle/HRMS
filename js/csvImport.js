@@ -84,23 +84,53 @@ const CsvImport = {
   // ---------- UI ----------
   _state: null,
 
+  async _parseFile(file) {
+    const name = (file.name || '').toLowerCase();
+    const ext = name.split('.').pop();
+
+    // 1. Parse Excel / OpenDocument formats via SheetJS (XLSX) if available or if extension matches
+    if (['xlsx', 'xls', 'ods'].includes(ext) || file.type.includes('excel') || file.type.includes('spreadsheet')) {
+      if (typeof XLSX !== 'undefined') {
+        const buffer = await file.arrayBuffer();
+        const workbook = XLSX.read(buffer, { type: 'array' });
+        const firstSheetName = workbook.SheetNames[0];
+        if (!firstSheetName) throw new Error('Excel file contains no worksheets.');
+        const worksheet = workbook.Sheets[firstSheetName];
+        const matrix = XLSX.utils.sheet_to_json(worksheet, { header: 1, raw: false, defval: '' });
+        return matrix.filter(r => r && r.some(cell => String(cell).trim() !== ''));
+      } else {
+        throw new Error('Excel parser library is loading. Please wait a moment and try again.');
+      }
+    }
+
+    // 2. Parse TSV or text tab-separated format
+    const text = await file.text();
+    if (ext === 'tsv' || (text.includes('\t') && !text.includes(','))) {
+      const lines = text.replace(/^\uFEFF/, '').split(/\r?\n/);
+      return lines.map(l => l.split('\t')).filter(r => r && r.some(cell => String(cell).trim() !== ''));
+    }
+
+    // 3. Fallback to standard CSV parser
+    return this.parse(text);
+  },
+
   open(config) {
     this._state = { config, records: [], ctx: null, busy: false };
     const c = config;
     const required = c.columns.filter(x => x.required).map(x => x.label).join(', ');
     ModalManager.openModal({
       id: 'csv-import-modal',
-      title: c.title || 'Import CSV',
-      subtitle: `Required columns: ${this._esc(required)}. Max ${this.MAX_ROWS} rows.`,
+      title: c.title || 'Import Data from CSV / Excel',
+      subtitle: `Supports Excel (.xlsx, .xls) & CSV files. Required columns: ${this._esc(required)}. Max ${this.MAX_ROWS} rows.`,
       size: 'lg',
       contentHtml: `
         <div id="csv-import-body">
           <div style="display:flex; gap:10px; align-items:center; flex-wrap:wrap; margin-bottom:14px;">
-            <input type="file" id="csv-import-file" accept=".csv,text/csv" class="form-control" style="max-width:340px;">
+            <input type="file" id="csv-import-file" accept=".csv,.xlsx,.xls,.ods,.tsv,.txt,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.ms-excel" class="form-control" style="max-width:380px;">
             <button type="button" class="btn btn-secondary btn-sm" id="csv-import-template">Download template</button>
           </div>
           <div id="csv-import-preview" style="color:var(--text-muted, #64748b); font-size:13px;">
-            Choose a .csv file to preview it before anything is saved.
+            Choose a CSV or Excel file (.xlsx, .xls) to preview rows before importing.
           </div>
         </div>`,
       footerHtml: `
@@ -119,18 +149,24 @@ const CsvImport = {
     const runBtn = document.getElementById('csv-import-run');
     runBtn.disabled = true;
     if (!file) return;
-    if (!/\.csv$/i.test(file.name) && file.type !== 'text/csv') {
-      box.innerHTML = '<span style="color:#dc2626;">Please choose a .csv file.</span>';
+
+    const ext = (file.name.split('.').pop() || '').toLowerCase();
+    const allowedExts = ['csv', 'xlsx', 'xls', 'ods', 'tsv', 'txt'];
+    if (!allowedExts.includes(ext) && !file.type.includes('csv') && !file.type.includes('excel') && !file.type.includes('spreadsheet')) {
+      box.innerHTML = '<span style="color:#dc2626;">Please choose a valid spreadsheet file (.csv, .xlsx, .xls, .ods, .tsv).</span>';
       return;
     }
-    if (file.size > 5 * 1024 * 1024) {
-      box.innerHTML = '<span style="color:#dc2626;">File is larger than 5 MB.</span>';
+
+    if (file.size > 15 * 1024 * 1024) {
+      box.innerHTML = '<span style="color:#dc2626;">File is larger than 15 MB.</span>';
       return;
     }
+
     try {
       const st = this._state, cfg = st.config;
-      const matrix = this.parse(await file.text());
-      if (matrix.length < 2) throw new Error('The file has no data rows.');
+      box.textContent = 'Parsing file rows...';
+      const matrix = await this._parseFile(file);
+      if (matrix.length < 2) throw new Error('The file has no data rows or header row.');
       if (matrix.length - 1 > this.MAX_ROWS) throw new Error(`Too many rows (${matrix.length - 1}). Split the file into chunks of ${this.MAX_ROWS}.`);
 
       const { records, missing } = this.mapRows(matrix, cfg.columns);
@@ -150,6 +186,7 @@ const CsvImport = {
       st.records = records;
       this._renderPreview();
     } catch (err) {
+      console.error('Import file error:', err);
       box.innerHTML = `<span style="color:#dc2626;">${this._esc(err.message)}</span>`;
     }
   },

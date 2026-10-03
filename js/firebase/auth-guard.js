@@ -107,8 +107,8 @@ const AuthGuard = {
       // Ensure essential tenancy and status defaults while strictly preserving assigned role
       if (!this.userProfile.companyId) this.userProfile.companyId = 'comp_diallo_india';
       if (!this.userProfile.companyName) this.userProfile.companyName = 'Diallo India Private Limited';
-      if (!this.userProfile.branchId) this.userProfile.branchId = 'branch_mumbai';
-      if (!this.userProfile.branchName) this.userProfile.branchName = 'HQ - Mumbai';
+      if (!this.userProfile.branchId) this.userProfile.branchId = 'branch_ghansoli';
+      if (!this.userProfile.branchName) this.userProfile.branchName = 'Ghansoli - Navi Mumbai';
       if (!this.userProfile.status) this.userProfile.status = 'ACTIVE';
       if (!this.userProfile.roleId) this.userProfile.roleId = isMasterAdmin ? 'SUPER_ADMIN' : 'EMPLOYEE';
 
@@ -186,8 +186,8 @@ const AuthGuard = {
         roleId: roleId,
         companyId: 'comp_diallo_india',
         companyName: 'Diallo India Private Limited',
-        branchId: 'branch_mumbai',
-        branchName: 'HQ - Mumbai',
+        branchId: 'branch_ghansoli',
+        branchName: 'Ghansoli - Navi Mumbai',
         employeeId: employeeId,
         status: 'ACTIVE',
         createdAt: new Date().toISOString(),

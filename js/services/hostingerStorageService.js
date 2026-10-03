@@ -11,9 +11,9 @@
 const hostingerStorageService = {
   // Production Hostinger Storage Configuration
   CONFIG: {
-    STORAGE_DOMAIN: 'https://storage.diallo.com',
-    API_UPLOAD_URL: 'https://storage.diallo.com/api/upload.php',
-    API_DOWNLOAD_URL: 'https://storage.diallo.com/api/download.php',
+    STORAGE_DOMAIN: 'https://hrmstfw.com',
+    API_UPLOAD_URL: 'https://hrmstfw.com/hostinger-backend/upload.php',
+    API_DOWNLOAD_URL: 'https://hrmstfw.com/hostinger-backend/download.php',
     MAX_FILE_SIZES: {
       PROFILE_PHOTO: 2 * 1024 * 1024,      // 2 MB
       IDENTITY_DOC: 10 * 1024 * 1024,     // 10 MB

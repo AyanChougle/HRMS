@@ -86,7 +86,7 @@ const RolePermissionsView = {
             <button 
               type="button" 
               class="btn ${this.selectedRole === r.id ? 'btn-primary' : 'btn-secondary'}" 
-              style="padding: 10px 14px; flex-direction: column; align-items: flex-start; text-align: left; height: auto; border-radius: var(--radius-md);" 
+              style="padding: 10px 14px; flex-direction: column; align-items: flex-start; text-align: left; height: auto; border-radius: var(--radius-md); white-space: normal; word-wrap: break-word;" 
               onclick="RolePermissionsView.selectRole('${r.id}')"
             >
               <span style="font-size: 0.95rem; font-weight: 700;">${r.name}</span>

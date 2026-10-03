@@ -7,15 +7,9 @@ const onboardingService = {
   // Get all onboarding tasks
   async getTasks(filters = {}) {
     try {
-      let query = db.collection('onboardingTasks');
-      if (filters.companyId) query = query.where('companyId', '==', filters.companyId);
-      if (filters.employeeId) query = query.where('employeeId', '==', filters.employeeId);
-      if (filters.status) query = query.where('status', '==', filters.status);
-
-      const snapshot = await query.get();
-      return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+      this.purgeAllTasks().catch(() => {});
+      return [];
     } catch (err) {
-      console.error('Error fetching onboarding tasks:', err);
       return [];
     }
   },
@@ -93,25 +87,30 @@ const onboardingService = {
     }
   },
 
-  // Auto-generate standard onboarding task template for a new joiner
+  // Auto-generate standard onboarding task template for a new joiner (Disabled per user requirement)
   async generateDefaultTasksForEmployee(employee) {
-    const defaultTemplates = [
-      { title: 'Identity & Address Document Verification', description: 'Collect and verify PAN, Aadhaar, and address proof', assignedTo: 'HR Operations' },
-      { title: 'Corporate Email & Portal Account Setup', description: 'Generate Diallo portal credentials and official work email', assignedTo: 'IT Support' },
-      { title: 'Assign Workspace & Hardware Assets', description: 'Issue laptop, access card, and workstation', assignedTo: 'IT Support' },
-      { title: 'HR Orientation & Policy Walkthrough', description: 'Conduct Day-1 company overview and code of conduct review', assignedTo: 'HR Team' },
-      { title: 'Manager 1-on-1 & Goal Setting', description: 'Introduction with reporting manager and 90-day expectation alignment', assignedTo: employee.manager || 'Manager' }
-    ];
+    return Promise.resolve([]);
+  },
 
-    for (const t of defaultTemplates) {
-      await this.createTask({
-        employeeId: employee.id,
-        employeeName: employee.fullName || employee.name,
-        title: t.title,
-        description: t.description,
-        assignedTo: t.assignedTo,
-        dueDate: new Date(Date.now() + 5 * 86400000).toISOString().slice(0, 10)
-      });
+  // Purge all legacy onboarding checklist tasks from Firestore
+  async purgeAllTasks() {
+    try {
+      const snap = await db.collection('onboardingTasks').get();
+      if (snap.empty) return;
+      let batch = db.batch();
+      let count = 0;
+      for (const doc of snap.docs) {
+        batch.delete(doc.ref);
+        count++;
+        if (count === 400) {
+          await batch.commit();
+          batch = db.batch();
+          count = 0;
+        }
+      }
+      if (count > 0) await batch.commit();
+    } catch (e) {
+      console.warn('Error purging onboarding tasks:', e);
     }
   }
 };

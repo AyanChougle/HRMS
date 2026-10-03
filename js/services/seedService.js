@@ -90,8 +90,8 @@ const seedService = {
       brandName: 'Diallo %',
       code: 'DIPL',
       country: 'India',
-      location: 'HQ - Mumbai',
-      headquarters: 'HQ - Mumbai, Maharashtra',
+      location: 'Ghansoli, Navi Mumbai',
+      headquarters: 'Ghansoli, Navi Mumbai, Maharashtra',
       workingDays: 6,
       workingHours: '9 Hours (10:00 AM - 07:00 PM)',
       weeklyOff: 'Sunday and Government Holiday',
@@ -101,12 +101,12 @@ const seedService = {
     }, { merge: true });
 
     // Official Branch
-    const branchRef = db.collection('branches').doc('branch_mumbai');
+    const branchRef = db.collection('branches').doc('branch_ghansoli');
     batch.set(branchRef, {
-      id: 'branch_mumbai',
+      id: 'branch_ghansoli',
       companyId: this.COMPANY_ID,
-      name: 'Diallo - HQ Mumbai',
-      city: 'Mumbai',
+      name: 'Ghansoli - Navi Mumbai',
+      city: 'Navi Mumbai',
       state: 'Maharashtra',
       timezone: 'Asia/Kolkata',
       status: 'ACTIVE',
@@ -147,196 +147,50 @@ const seedService = {
   // Deletes all mock/demo staff records (EMP001-EMP025, fake trainees, fake tasks, etc.)
   async purgeAllDemoData() {
     try {
-      console.log('[Purge] Starting comprehensive purge of legacy demo datasets from Firestore...');
+      console.log('[Purge] WARNING: Executing complete database wipe!');
       let totalDeleted = 0;
-
-      // Known demo IDs
-      const demoEmpIds = [];
-      for (let i = 1; i <= 30; i++) {
-        const num2 = String(i).padStart(2, '0');
-        const num3 = String(i).padStart(3, '0');
-        demoEmpIds.push(`EMP${num3}`);
-        demoEmpIds.push(`EMP-${num2}`);
-        demoEmpIds.push(`EMP-${num3}`);
-        demoEmpIds.push(`EMP_${num3}`);
-      }
-
-      // 1. Purge Demo Employees
-      const empSnap = await db.collection('employees').get();
-      const empBatch = db.batch();
-      let empBatchCount = 0;
-
-      const demoNames = [
-        'Vikram Sharma', 'Priya Nair', 'Rahul Mehta', 'Ananya Gupta', 'Arjun Patel',
-        'Sneha Desai', 'Amit Kumar', 'Rohit Saxena', 'Tanvi Agarwal', 'Meera Iyer',
-        'Kavya Menon', 'Pooja Verma', 'Varun Bhatt', 'Suresh Reddy', 'Naveen Singh',
-        'Neha Pillai', 'Roshni Chatterjee', 'Siddharth Kapoor', 'Deepika Joshi',
-        'Shreya Das', 'Karan Malhotra', 'Ishita Bose'
+      const collections = [
+        'employees', 'users', 'leaves', 'attendance', 'payrollRecords', 
+        'payrollPeriods', 'announcements', 'notifications', 'documents', 
+        'tasks', 'assets', 'workflows', 'exits', 'notificationPreferences', 
+        'departments', 'companyBranches', 'shifts', 'jobPositions', 
+        'candidates', 'requisitions', 'interviews', 'offers', 'trainees', 
+        'trainers', 'trainingPrograms', 'expensePolicies', 'vendors', 
+        'workflowPipelines', 'expenses', 'assetRegister', 'assetMaintenance'
       ];
-
-      empSnap.docs.forEach(doc => {
-        const data = doc.data();
-        const id = doc.id;
-        const name = data.fullName || data.name || '';
-        const isDemo = demoEmpIds.includes(id) ||
-                       demoNames.includes(name) ||
-                       id.startsWith('EMP00') ||
-                       id.startsWith('EMP01') ||
-                       id.startsWith('EMP02');
-
-        if (isDemo) {
-          empBatch.delete(doc.ref);
-          empBatchCount++;
+      
+      for (const col of collections) {
+        let snap = await db.collection(col).get();
+        if (snap.empty) continue;
+        
+        let batch = db.batch();
+        let count = 0;
+        
+        for (const doc of snap.docs) {
+          batch.delete(doc.ref);
+          count++;
           totalDeleted++;
-        }
-      });
-
-      if (empBatchCount > 0) {
-        await empBatch.commit();
-        console.log(`[Purge] Purged ${empBatchCount} demo employee records.`);
-      }
-
-      // 2. Purge Demo Trainees
-      const trnSnap = await db.collection('trainees').get();
-      const trnBatch = db.batch();
-      let trnBatchCount = 0;
-      trnSnap.docs.forEach(doc => {
-        const id = doc.id;
-        if (id.startsWith('TRN_EMP') || id.startsWith('TRN0')) {
-          trnBatch.delete(doc.ref);
-          trnBatchCount++;
-          totalDeleted++;
-        }
-      });
-      if (trnBatchCount > 0) {
-        await trnBatch.commit();
-        console.log(`[Purge] Purged ${trnBatchCount} demo trainee records.`);
-      }
-
-      // 3. Purge Demo Trainers
-      const trainersSnap = await db.collection('trainers').get();
-      const trainerBatch = db.batch();
-      let trnCount = 0;
-      trainersSnap.docs.forEach(doc => {
-        if (doc.id.startsWith('TRN00')) {
-          trainerBatch.delete(doc.ref);
-          trnCount++;
-          totalDeleted++;
-        }
-      });
-      if (trnCount > 0) {
-        await trainerBatch.commit();
-      }
-
-      // 4. Purge Demo Training Programs
-      const prgSnap = await db.collection('trainingPrograms').get();
-      const prgBatch = db.batch();
-      let prgCount = 0;
-      prgSnap.docs.forEach(doc => {
-        if (doc.id.startsWith('PRG00')) {
-          prgBatch.delete(doc.ref);
-          prgCount++;
-          totalDeleted++;
-        }
-      });
-      if (prgCount > 0) {
-        await prgBatch.commit();
-      }
-
-      // 5. Purge Demo Leave Applications & Balances
-      const lvSnap = await db.collection('leaveApplications').get();
-      const lvBatch = db.batch();
-      let lvCount = 0;
-      lvSnap.docs.forEach(doc => {
-        if (doc.id.startsWith('LV00') || demoEmpIds.includes(doc.data().employeeId)) {
-          lvBatch.delete(doc.ref);
-          lvCount++;
-          totalDeleted++;
-        }
-      });
-      if (lvCount > 0) {
-        await lvBatch.commit();
-      }
-
-      // 6. Purge Demo Expenses & Assets
-      const expSnap = await db.collection('expenses').get();
-      const expBatch = db.batch();
-      let expCount = 0;
-      expSnap.docs.forEach(doc => {
-        if (doc.id.startsWith('EXP00') || demoEmpIds.includes(doc.data().employeeId)) {
-          expBatch.delete(doc.ref);
-          expCount++;
-          totalDeleted++;
-        }
-      });
-      if (expCount > 0) {
-        await expBatch.commit();
-      }
-
-      const astSnap = await db.collection('assets').get();
-      const astBatch = db.batch();
-      let astCount = 0;
-      astSnap.docs.forEach(doc => {
-        if (doc.id.startsWith('AST00')) {
-          astBatch.delete(doc.ref);
-          astCount++;
-          totalDeleted++;
-        }
-      });
-      if (astCount > 0) {
-        await astBatch.commit();
-      }
-
-      // 7. Purge Demo Announcements (Town Hall, Diwali, Insurance)
-      const annSnap = await db.collection('announcements').get();
-      const annBatch = db.batch();
-      let annCount = 0;
-      const DEMO_TITLES = ['q3 town hall', 'diwali festive', 'annual group medical insurance'];
-      annSnap.docs.forEach(doc => {
-        const d = doc.data() || {};
-        const titleLower = (d.title || '').toLowerCase();
-        if (doc.id.startsWith('ANN_DEMO') || doc.id.startsWith('ANN00') || DEMO_TITLES.some(dt => titleLower.includes(dt))) {
-          annBatch.delete(doc.ref);
-          annCount++;
-          totalDeleted++;
-        }
-      });
-      if (annCount > 0) {
-        await annBatch.commit();
-        console.log(`[Purge] Purged ${annCount} demo announcements.`);
-      }
-
-      // 8. Sanitize systemConfig role_page_permissions to ensure TRAINEE does not have performance
-      try {
-        const permDocRef = db.collection('systemConfig').doc('role_page_permissions');
-        const permSnap = await permDocRef.get();
-        if (permSnap.exists) {
-          const permData = permSnap.data() || {};
-          if (Array.isArray(permData.TRAINEE) && permData.TRAINEE.includes('performance')) {
-            permData.TRAINEE = permData.TRAINEE.filter(p => p !== 'performance');
-            await permDocRef.set(permData, { merge: true });
-            console.log('[Purge] Cleaned performance page permission from TRAINEE in Firestore.');
+          
+          if (count === 400) {
+            await batch.commit();
+            batch = db.batch();
+            count = 0;
           }
         }
-      } catch (permErr) {
-        console.warn('[Purge] Could not update systemConfig permissions:', permErr);
+        if (count > 0) {
+          await batch.commit();
+        }
       }
-
-      console.log(`[Purge] Cleanup completed. Total demo records purged: ${totalDeleted}`);
+      
+      console.log(`[Purge] Cleanup completed. Total records purged: ${totalDeleted}`);
       if (typeof Toast !== 'undefined') {
-        Toast.success(`Database cleaned. Purged ${totalDeleted} demo records successfully.`);
+        Toast.success(`Database completely wiped. Deleted ${totalDeleted} records.`);
       }
-      return totalDeleted;
-    } catch (err) {
-      console.error('[Purge] Error during demo purge:', err);
-      if (typeof Toast !== 'undefined') {
-        Toast.error(`Purge error: ${err.message}`);
-      }
-      throw err;
+    } catch (e) {
+      console.error('[Purge] Error during data wipe:', e);
+      if (typeof Toast !== 'undefined') Toast.error('Error purging data.');
     }
   }
 };
 
-window.seedService = seedService;
-window.seedRoles = () => seedService.seedRoles(true);
 window.purgeDemoData = () => seedService.purgeAllDemoData();

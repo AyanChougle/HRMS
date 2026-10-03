@@ -117,9 +117,7 @@ const orgService = {
 
       // Seed initial default branches if empty
       const defaultBranches = [
-        { code: 'BOM-01', name: 'HQ - Mumbai', city: 'Mumbai', state: 'Maharashtra', country: 'India', companyId: targetCompany, status: 'ACTIVE' },
-        { code: 'BLR-01', name: 'Bengaluru Tech Park', city: 'Bengaluru', state: 'Karnataka', country: 'India', companyId: targetCompany, status: 'ACTIVE' },
-        { code: 'DEL-01', name: 'Delhi Regional', city: 'New Delhi', state: 'Delhi NCR', country: 'India', companyId: targetCompany, status: 'ACTIVE' }
+        { code: 'GNS-01', name: 'Ghansoli - Navi Mumbai', city: 'Navi Mumbai', state: 'Maharashtra', country: 'India', companyId: targetCompany, status: 'ACTIVE' }
       ];
 
       for (const b of defaultBranches) {
@@ -135,9 +133,7 @@ const orgService = {
     } catch (e) {
       console.warn('Error fetching branches, using fallback:', e);
       return [
-        { id: 'b_bom', code: 'BOM-01', name: 'HQ - Mumbai', city: 'Mumbai', state: 'Maharashtra' },
-        { id: 'b_blr', code: 'BLR-01', name: 'Bengaluru Tech Park', city: 'Bengaluru', state: 'Karnataka' },
-        { id: 'b_del', code: 'DEL-01', name: 'Delhi Regional', city: 'New Delhi', state: 'Delhi NCR' }
+        { id: 'b_gns', code: 'GNS-01', name: 'Ghansoli - Navi Mumbai', city: 'Navi Mumbai', state: 'Maharashtra' }
       ];
     }
   },

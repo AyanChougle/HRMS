@@ -32,14 +32,6 @@ const Router = {
       requiredPerm: 'leave.view',
       render: () => LeaveView.renderHub()
     },
-    payroll: {
-      requiredPerm: 'payroll.view',
-      render: () => PayrollView.renderHub()
-    },
-    'payslip-templates': {
-      requiredPerm: 'payroll.view',
-      render: () => PayslipTemplatesView.render()
-    },
     'email-config': {
       requiredPerm: 'settings.manage',
       render: () => EmailConfigView.render()
@@ -84,10 +76,7 @@ const Router = {
       requiredPerm: 'reports.view',
       render: () => ReportsView.renderHub()
     },
-    workflows: {
-      requiredPerm: null,
-      render: () => WorkflowsView.render()
-    },
+    
     admin: {
       requiredPerm: 'companies.manage',
       render: () => window.MasterAdminView ? MasterAdminView.render() : AdminView.renderHub()
@@ -135,6 +124,11 @@ const Router = {
   async handleHashChange() {
     const rawHash = window.location.hash.slice(1).trim();
     const route = rawHash.split('?')[0] || 'dashboard';
+
+    if (route === 'payroll' || route === 'payslip-templates') {
+      window.location.hash = '#dashboard';
+      return;
+    }
 
     if (this.routes[route]) {
       this.currentRoute = route;

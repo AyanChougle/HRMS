@@ -6,26 +6,34 @@
 const Forms = {
   // 1. ADD / EDIT EMPLOYEE MODAL WIZARD
   async openEmployeeModal(employeeId = null) {
+    const role = (AuthGuard.userProfile?.roleId || AuthGuard.userProfile?.role || '').toUpperCase().trim();
+    const canOnboard = ['SUPER_ADMIN', 'COMPANY_ADMIN', 'ADMIN', 'HR_MANAGER', 'HR', 'MANAGER'].includes(role);
+    if (!canOnboard && !employeeId) {
+      if (typeof Toast !== 'undefined') {
+        Toast.error('Access Restricted: Only HR Managers, Super Admin, and Managers can onboard new employees.');
+      } else {
+        alert('Access Restricted: Only HR Managers, Super Admin, and Managers can onboard new employees.');
+      }
+      return;
+    }
+
     let emp = null;
     let departments = [];
     let designations = [];
     let branches = [];
-    let grades = [];
     let managers = [];
 
     try {
-      const [deptList, desigList, branchList, gradeList, empList] = await Promise.all([
+      const [deptList, desigList, branchList, empList] = await Promise.all([
         departmentService.getDepartments(),
         orgService.getDesignations(),
         orgService.getBranches(),
-        orgService.getGrades(),
         employeeService.getEmployees({ status: 'ACTIVE' })
       ]);
-      departments = deptList;
-      designations = desigList;
-      branches = branchList;
-      grades = gradeList;
-      managers = empList;
+      departments = deptList || [];
+      designations = desigList || [];
+      branches = branchList || [];
+      managers = empList || [];
 
       if (employeeId) {
         emp = await employeeService.getEmployee(employeeId);
@@ -110,13 +118,13 @@ const Forms = {
 
           <div class="form-group">
             <label class="form-label">Residential Address</label>
-            <input type="text" id="ef-address" class="form-control" value="${emp?.address || ''}" placeholder="Flat 402, High Street, BKC, Mumbai" />
+            <input type="text" id="ef-address" class="form-control" value="${emp?.address || ''}" placeholder="Ghansoli, Navi Mumbai" />
           </div>
 
           <div class="form-row">
             <div class="col-4 form-group">
               <label class="form-label">City</label>
-              <input type="text" id="ef-city" class="form-control" value="${emp?.city || 'Mumbai'}" />
+              <input type="text" id="ef-city" class="form-control" value="${emp?.city || 'Navi Mumbai'}" />
             </div>
             <div class="col-4 form-group">
               <label class="form-label">State</label>
@@ -124,7 +132,7 @@ const Forms = {
             </div>
             <div class="col-4 form-group">
               <label class="form-label">PIN Code</label>
-              <input type="text" id="ef-postal" class="form-control" value="${emp?.postalCode || '400051'}" />
+              <input type="text" id="ef-postal" class="form-control" value="${emp?.postalCode || '400701'}" />
             </div>
           </div>
         </div>
@@ -156,40 +164,28 @@ const Forms = {
               <label class="form-label required">Department</label>
               <select id="ef-dept" class="form-control">
                 ${departments.length === 0 ? `
-                  <option value="Engineering">Engineering</option>
-                  <option value="Human Resources">Human Resources</option>
-                  <option value="Finance & Accounts">Finance & Accounts</option>
-                ` : departments.map(d => `
-                  <option value="${d.name}" ${emp?.department === d.name ? 'selected' : ''}>${d.name}</option>
-                `).join('')}
+                  <option value="General">General</option>
+                ` : departments.map(d => {
+                  const dName = d.name || d.departmentName || d;
+                  const isSel = emp?.department === dName;
+                  return `<option value="${dName}" ${isSel ? 'selected' : ''}>${dName}</option>`;
+                }).join('')}
               </select>
             </div>
             <div class="col-6 form-group">
               <label class="form-label required">Designation / Role</label>
-              <input type="text" id="ef-designation" class="form-control" value="${emp?.designation || 'Software Engineer'}" placeholder="e.g. Senior Frontend Engineer" required />
+              <input type="text" id="ef-designation" class="form-control" value="${emp?.designation || 'Executive'}" placeholder="e.g. Operations Executive" required />
             </div>
           </div>
 
           <div class="form-row">
-            <div class="col-4 form-group">
+            <div class="col-6 form-group">
               <label class="form-label">Branch Office</label>
               <select id="ef-branch" class="form-control">
-                <option value="HQ - Mumbai" ${emp?.branchName === 'HQ - Mumbai' ? 'selected' : ''}>HQ - Mumbai (BKC)</option>
-                <option value="Bengaluru Tech Park" ${emp?.branchName === 'Bengaluru Tech Park' ? 'selected' : ''}>Bengaluru Tech Park</option>
-                <option value="Delhi Regional" ${emp?.branchName === 'Delhi Regional' ? 'selected' : ''}>Delhi Regional</option>
+                <option value="Ghansoli - Navi Mumbai" selected>Ghansoli - Navi Mumbai</option>
               </select>
             </div>
-            <div class="col-4 form-group">
-              <label class="form-label">Grade</label>
-              <select id="ef-grade" class="form-control">
-                <option value="G1" ${emp?.gradeId === 'G1' ? 'selected' : ''}>G1 — Executive</option>
-                <option value="G2" ${emp?.gradeId === 'G2' ? 'selected' : ''}>G2 — Senior Associate</option>
-                <option value="G3" ${emp?.gradeId === 'G3' ? 'selected' : ''}>G3 — Lead / Specialist</option>
-                <option value="G4" ${emp?.gradeId === 'G4' ? 'selected' : ''}>G4 — Manager</option>
-                <option value="G5" ${emp?.gradeId === 'G5' ? 'selected' : ''}>G5 — Director</option>
-              </select>
-            </div>
-            <div class="col-4 form-group">
+            <div class="col-6 form-group">
               <label class="form-label">Reporting Manager</label>
               <select id="ef-manager" class="form-control">
                 <option value="">No Manager (Top Level)</option>
@@ -271,34 +267,36 @@ const Forms = {
     const payload = {
       employeeCode,
       firstName,
-      middleName,
+      middleName: middleName || '',
       lastName,
       fullName: `${firstName} ${middleName ? middleName + ' ' : ''}${lastName}`.trim(),
-      dateOfBirth: document.getElementById('ef-dob')?.value,
-      gender: document.getElementById('ef-gender')?.value,
-      pan: document.getElementById('ef-pan')?.value.trim().toUpperCase(),
+      dateOfBirth: document.getElementById('ef-dob')?.value || '',
+      gender: document.getElementById('ef-gender')?.value || 'Male',
+      pan: (document.getElementById('ef-pan')?.value || '').trim().toUpperCase(),
       workEmail,
-      personalEmail: document.getElementById('ef-personal-email')?.value.trim(),
+      personalEmail: (document.getElementById('ef-personal-email')?.value || '').trim(),
       phone,
-      alternatePhone: document.getElementById('ef-alt-phone')?.value.trim(),
-      address: document.getElementById('ef-address')?.value.trim(),
-      city: document.getElementById('ef-city')?.value.trim(),
-      state: document.getElementById('ef-state')?.value.trim(),
-      postalCode: document.getElementById('ef-postal')?.value.trim(),
-      dateOfJoining: document.getElementById('ef-joining-date')?.value,
-      employmentType: document.getElementById('ef-emp-type')?.value,
-      department: document.getElementById('ef-dept')?.value,
-      designation: document.getElementById('ef-designation')?.value.trim(),
-      branchName: document.getElementById('ef-branch')?.value,
-      location: document.getElementById('ef-branch')?.value,
-      gradeId: document.getElementById('ef-grade')?.value,
-      managerId: document.getElementById('ef-manager')?.value,
-      manager: document.getElementById('ef-manager')?.selectedOptions[0]?.text || '',
-      probationStatus: document.getElementById('ef-probation-status')?.value,
-      noticePeriodDays: Number(document.getElementById('ef-notice-days')?.value) || 30,
-      salary: document.getElementById('ef-salary')?.value.trim() || '₹65,000/mo',
-      uan: document.getElementById('ef-uan')?.value.trim()
+      alternatePhone: (document.getElementById('ef-alt-phone')?.value || '').trim(),
+      address: (document.getElementById('ef-address')?.value || '').trim(),
+      city: (document.getElementById('ef-city')?.value || '').trim(),
+      state: (document.getElementById('ef-state')?.value || '').trim(),
+      postalCode: (document.getElementById('ef-postal')?.value || '').trim(),
+      dateOfJoining: document.getElementById('ef-joining-date')?.value || new Date().toISOString().slice(0, 10),
+      employmentType: document.getElementById('ef-emp-type')?.value || 'Full Time',
+      department: document.getElementById('ef-dept')?.value || 'General',
+      designation: (document.getElementById('ef-designation')?.value || '').trim(),
+      branchName: document.getElementById('ef-branch')?.value || 'Ghansoli - Navi Mumbai',
+      location: document.getElementById('ef-branch')?.value || 'Ghansoli - Navi Mumbai',
+      managerId: document.getElementById('ef-manager')?.value || '',
+      manager: document.getElementById('ef-manager')?.selectedOptions?.[0]?.text || '',
+      probationStatus: document.getElementById('ef-probation-status')?.value || 'Completed',
+      noticePeriodDays: Number(document.getElementById('ef-notice-days')?.value) || 30
     };
+
+    // Remove any undefined properties before submitting to Firestore
+    Object.keys(payload).forEach(k => {
+      if (payload[k] === undefined) delete payload[k];
+    });
 
     try {
       if (employeeId) {

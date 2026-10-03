@@ -48,7 +48,7 @@ const documentService = {
   async uploadDocument(data) {
     try {
       const companyId = data.companyId || AuthGuard.userProfile?.companyId || 'comp_diallo_india';
-      const employeeId = data.employeeId || AuthGuard.userProfile?.employeeId || AuthGuard.currentUser?.uid || 'EMP001';
+      const employeeId = data.employeeId || AuthGuard.userProfile?.employeeId || AuthGuard.currentUser?.uid || '';
       const employeeName = data.employeeName || AuthGuard.userProfile?.displayName || 'Employee';
 
       const payload = {

@@ -156,6 +156,33 @@ const ExpensesView = {
     `;
   },
 
+  
+  async createCategory() {
+    const name = prompt('Enter New Expense Category Name (e.g. Travel, Food):');
+    if (!name) return;
+    const maxCapStr = prompt('Enter Max Policy Cap amount (number only):', '5000');
+    if (!maxCapStr) return;
+    const code = name.toUpperCase().replace(/[^A-Z0-9]/g, '_');
+    const cap = parseInt(maxCapStr, 10) || 5000;
+    
+    try {
+      const companyId = window.AuthGuard?.userProfile?.companyId || 'comp_diallo_india';
+      await db.collection('expenseCategories').add({
+        name: name,
+        code: code,
+        maxPolicyCap: cap,
+        receiptRequired: true,
+        isActive: true,
+        companyId: companyId,
+        createdAt: firebase.firestore.FieldValue.serverTimestamp()
+      });
+      alert('Category added successfully!');
+      this.switchTab('categories');
+    } catch(e) {
+      alert('Error creating category: ' + e.message);
+    }
+  },
+  
   switchTab(tab) {
     this.activeTab = tab;
     Router.mountView("expenses");
@@ -520,7 +547,7 @@ const ExpensesView = {
       <div class="card">
         <div class="card-header">
           <div>
-            <div class="card-title">Configured Expense Schemes & Policy Rules (${categories.length})</div>
+            <div style="display: flex; justify-content: space-between; align-items: center;"><div class="card-title">Configured Expense Schemes & Policy Rules (${categories.length})</div><button class="btn btn-primary btn-sm" onclick="ExpensesView.createCategory()">+ Create Category</button></div>
             <div class="card-subtitle">Enforce per-claim maximum caps, daily allowances, and mandatory receipt rules</div>
           </div>
         </div>

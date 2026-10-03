@@ -230,22 +230,19 @@
   flex-shrink: 0;
 }
 .user-name-label {
-  font-size: 0.85rem;
   font-weight: 600;
+  font-size: 0.85rem;
   color: var(--text-main);
-  line-height: 1.2;
-  max-width: 100px;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  max-width: none;
+  overflow: visible;
+  white-space: normal;
 }
 .user-role-label {
   font-size: 0.7rem;
   color: var(--text-muted);
-  max-width: 100px;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  max-width: none;
+  overflow: visible;
+  white-space: normal;
 }
 
 /* ----------------------------------------------------

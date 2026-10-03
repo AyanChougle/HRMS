@@ -14,7 +14,7 @@ const DocumentsView = {
 
   async render() {
     const role = (AuthGuard.userProfile?.roleId || "EMPLOYEE").toUpperCase();
-    const isEmployee = ["EMPLOYEE", "TRAINEE", "MENTOR_TRAINER"].includes(role);
+    const isRestrictedRole = !["SUPER_ADMIN", "COMPANY_ADMIN", "HR_MANAGER", "HR"].includes(role);
     const currentEmpId =
       AuthGuard.userProfile?.employeeId || AuthGuard.currentUser?.uid;
     const currentEmpName = AuthGuard.userProfile?.displayName || "Employee";
@@ -26,7 +26,7 @@ const DocumentsView = {
     ]);
 
     // Scope for EMPLOYEE role: strictly only own documents or general company-wide policies
-    if (isEmployee) {
+    if (isRestrictedRole) {
       docs = docs.filter(
         (d) =>
           d.employeeId === currentEmpId ||
@@ -59,16 +59,16 @@ const DocumentsView = {
         <div class="breadcrumb">
           <a href="#dashboard">Dashboard</a>
           <span class="breadcrumb-separator">/</span>
-          <span class="breadcrumb-current">${isEmployee ? "My Documents" : "Document Management"}</span>
+          <span class="breadcrumb-current">${isRestrictedRole ? "My Documents" : "Document Management"}</span>
         </div>
         <div class="page-title-row">
           <div>
-            <h1 class="page-title">${isEmployee ? "My Documents & Company Policies" : "Enterprise Document Management (DMS)"}</h1>
-            <p class="page-subtitle">${isEmployee ? "Access your verified personnel dossier, contracts, tax certificates, and handbook" : "Centralized employee dossiers, compliance audits, expiry tracking, and document requests"}</p>
+            <h1 class="page-title">${isRestrictedRole ? "My Documents & Company Policies" : "Enterprise Document Management (DMS)"}</h1>
+            <p class="page-subtitle">${isRestrictedRole ? "Access your verified personnel dossier, contracts, tax certificates, and handbook" : "Centralized employee dossiers, compliance audits, expiry tracking, and document requests"}</p>
           </div>
           <div class="page-actions">
             ${
-              !isEmployee
+              !isRestrictedRole
                 ? `
               <button class="btn btn-secondary btn-sm" onclick="DocumentsView.openRequestDocumentModal()">
                 <svg width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -83,7 +83,7 @@ const DocumentsView = {
               <svg width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/>
               </svg>
-              ${isEmployee ? "+ Upload My Document" : "+ Upload Document"}
+              ${isRestrictedRole ? "+ Upload My Document" : "+ Upload Document"}
             </button>
           </div>
         </div>
@@ -101,7 +101,7 @@ const DocumentsView = {
             <span class="kpi-trend neutral">Dossier</span>
           </div>
           <div class="kpi-value">${docs.length}</div>
-          <div class="kpi-label">${isEmployee ? "My Documents" : "Total Files"}</div>
+          <div class="kpi-label">${isRestrictedRole ? "My Documents" : "Total Files"}</div>
           <div class="kpi-subtitle">${activeVerified.length} Verified & Active</div>
         </div>
 
@@ -143,23 +143,23 @@ const DocumentsView = {
             <span class="kpi-trend neutral">Requests</span>
           </div>
           <div class="kpi-value">${requests.filter((r) => r.status === "REQUESTED").length}</div>
-          <div class="kpi-label">${isEmployee ? "Pending Uploads" : "Outstanding Requests"}</div>
-          <div class="kpi-subtitle">${isEmployee ? "Requested by HR" : "Awaiting Employee Upload"}</div>
+          <div class="kpi-label">${isRestrictedRole ? "Pending Uploads" : "Outstanding Requests"}</div>
+          <div class="kpi-subtitle">${isRestrictedRole ? "Requested by HR" : "Awaiting Employee Upload"}</div>
         </div>
       </div>
 
       <!-- Tabs Navigation -->
       <div class="tabs-nav" style="margin-bottom: 20px;">
         <button class="tab-btn ${this.activeTab === "all" ? "active" : ""}" onclick="DocumentsView.switchTab('all')">
-          ${isEmployee ? "My Document Dossier" : "All Employee Documents"} (${docs.length})
+          ${isRestrictedRole ? "My Document Dossier" : "All Employee Documents"} (${docs.length})
         </button>
         <button class="tab-btn ${this.activeTab === "requests" ? "active" : ""}" onclick="DocumentsView.switchTab('requests')">
-          ${isEmployee ? "My Document Requests" : "HR Document Requests"} (${requests.length})
+          ${isRestrictedRole ? "My Document Requests" : "HR Document Requests"} (${requests.length})
         </button>
         <button class="tab-btn ${this.activeTab === "expiring" ? "active" : ""}" onclick="DocumentsView.switchTab('expiring')">
           Expiring & Compliance (${expiringDocs.length})
         </button>
-        ${!isEmployee ? `<button class="tab-btn ${this.activeTab === "templates" ? "active" : ""}" onclick="DocumentsView.switchTab('templates')">
+        ${!isRestrictedRole ? `<button class="tab-btn ${this.activeTab === "templates" ? "active" : ""}" onclick="DocumentsView.switchTab('templates')">
           Standard Templates
         </button>` : ''}
       </div>
@@ -313,17 +313,17 @@ const DocumentsView = {
   // TAB 2: DOCUMENT REQUESTS
   renderRequestsTab(requests) {
     const role = AuthGuard.userProfile?.roleId || "EMPLOYEE";
-    const isEmployee = role === "EMPLOYEE";
+    const isRestrictedRole = !["SUPER_ADMIN", "COMPANY_ADMIN", "HR_MANAGER", "HR"].includes(role);
 
     return `
       <div class="card">
         <div class="card-header">
           <div>
-            <div class="card-title">${isEmployee ? "My Document Checklists & Pending Uploads" : "HR Document Requests"} (${requests.length})</div>
-            <div class="card-subtitle">${isEmployee ? "Compliance documents, identity proofs, and certificates requested by HR Operations" : "Pending document requests dispatched to staff for personnel dossiers"}</div>
+            <div class="card-title">${isRestrictedRole ? "My Document Checklists & Pending Uploads" : "HR Document Requests"} (${requests.length})</div>
+            <div class="card-subtitle">${isRestrictedRole ? "Compliance documents, identity proofs, and certificates requested by HR Operations" : "Pending document requests dispatched to staff for personnel dossiers"}</div>
           </div>
           ${
-            !isEmployee
+            !isRestrictedRole
               ? `
             <button class="btn btn-primary btn-sm" onclick="DocumentsView.openRequestDocumentModal()">+ New Request</button>
           `
@@ -339,14 +339,14 @@ const DocumentsView = {
                 <svg width="24" height="24" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
               </div>
               <div class="empty-state-title">No Pending Document Requests</div>
-              <div class="empty-state-desc">${isEmployee ? "All your required personnel and compliance documents are up to date. HR has not requested any additional uploads." : "All employees have submitted their requested compliance documentation."}</div>
+              <div class="empty-state-desc">${isRestrictedRole ? "All your required personnel and compliance documents are up to date. HR has not requested any additional uploads." : "All employees have submitted their requested compliance documentation."}</div>
             </div>
           `
               : `
             <table class="data-table">
               <thead>
                 <tr>
-                  ${!isEmployee ? "<th>Employee</th>" : ""}
+                  ${!isRestrictedRole ? "<th>Employee</th>" : ""}
                   <th>Requested Document</th>
                   <th>Instructions / Purpose</th>
                   <th>Due Date</th>
@@ -360,7 +360,7 @@ const DocumentsView = {
                   .map(
                     (r) => `
                   <tr>
-                    ${!isEmployee ? `<td><div class="font-semibold text-main">${r.employeeName}</div></td>` : ""}
+                    ${!isRestrictedRole ? `<td><div class="font-semibold text-main">${r.employeeName}</div></td>` : ""}
                     <td>
                       <div class="font-semibold text-main">${r.documentName}</div>
                       <div class="text-muted" style="font-size: 0.75rem;">${r.documentType || "COMPLIANCE"}</div>
@@ -377,7 +377,7 @@ const DocumentsView = {
                     </td>
                     <td>
                       ${
-                        isEmployee
+                        isRestrictedRole
                           ? r.status === "REQUESTED"
                             ? `
                           <button class="btn btn-primary btn-sm" onclick="DocumentsView.openUploadForRequestModal('${r.id}', '${r.documentName.replace(/'/g, "\\'")}')">
@@ -411,14 +411,14 @@ const DocumentsView = {
   // TAB 3: EXPIRING DOCUMENTS
   renderExpiringTab(expiringDocs) {
     const role = AuthGuard.userProfile?.roleId || "EMPLOYEE";
-    const isEmployee = role === "EMPLOYEE";
+    const isRestrictedRole = !["SUPER_ADMIN", "COMPANY_ADMIN", "HR_MANAGER", "HR"].includes(role);
 
     return `
       <div class="card">
         <div class="card-header">
           <div>
             <div class="card-title">Expiring Documents & Compliance Alerts (${expiringDocs.length})</div>
-            <div class="card-subtitle">${isEmployee ? "Your documents expiring within the next 30 days" : "Passports, visas, and certifications expiring within the next 30 days"}</div>
+            <div class="card-subtitle">${isRestrictedRole ? "Your documents expiring within the next 30 days" : "Passports, visas, and certifications expiring within the next 30 days"}</div>
           </div>
         </div>
         <div class="card-body" style="padding: 0;">
@@ -432,14 +432,14 @@ const DocumentsView = {
                 </svg>
               </div>
               <div class="empty-state-title">All Documents Compliant</div>
-              <div class="empty-state-desc">${isEmployee ? "None of your registered documents are expiring soon." : "No employee documents are expiring in the next 30 days."}</div>
+              <div class="empty-state-desc">${isRestrictedRole ? "None of your registered documents are expiring soon." : "No employee documents are expiring in the next 30 days."}</div>
             </div>
           `
               : `
             <table class="data-table">
               <thead>
                 <tr>
-                  ${!isEmployee ? "<th>Employee</th>" : ""}
+                  ${!isRestrictedRole ? "<th>Employee</th>" : ""}
                   <th>Document</th>
                   <th>Expiry Date</th>
                   <th>Category</th>
@@ -451,13 +451,13 @@ const DocumentsView = {
                   .map(
                     (d) => `
                   <tr>
-                    ${!isEmployee ? `<td><div class="font-semibold text-main">${d.employeeName}</div></td>` : ""}
+                    ${!isRestrictedRole ? `<td><div class="font-semibold text-main">${d.employeeName}</div></td>` : ""}
                     <td><div class="font-semibold text-main">${d.name}</div></td>
                     <td><strong class="text-danger">${d.expiryDate}</strong></td>
                     <td><span class="badge badge-neutral">${d.categoryCode}</span></td>
                     <td>
                       ${
-                        !isEmployee
+                        !isRestrictedRole
                           ? `
                         <button class="btn btn-primary btn-sm" onclick="DocumentsView.openRequestDocumentModal('${d.employeeId}', '${d.employeeName}', '${d.name}')">
                           Request Renewal
@@ -486,9 +486,9 @@ const DocumentsView = {
   // TAB 4: STANDARD TEMPLATES & COMPANY POLICIES
   renderTemplatesTab() {
     const role = AuthGuard.userProfile?.roleId || "EMPLOYEE";
-    const isEmployee = role === "EMPLOYEE";
+    const isRestrictedRole = !["SUPER_ADMIN", "COMPANY_ADMIN", "HR_MANAGER", "HR"].includes(role);
 
-    if (isEmployee) {
+    if (isRestrictedRole) {
       const companyPolicies = [
         {
           title: "Code of Conduct & Workplace Ethics",
@@ -642,15 +642,15 @@ const DocumentsView = {
   // MODAL 1: UPLOAD DOCUMENT
   async openUploadModal() {
     const role = AuthGuard.userProfile?.roleId || "EMPLOYEE";
-    const isEmployee = role === "EMPLOYEE";
+    const isRestrictedRole = !["SUPER_ADMIN", "COMPANY_ADMIN", "HR_MANAGER", "HR"].includes(role);
     const currentEmpId =
       AuthGuard.userProfile?.employeeId ||
       AuthGuard.currentUser?.uid ||
-      "EMP001";
+      "";
     const currentEmpName = AuthGuard.userProfile?.displayName || "Employee";
 
     let employeeSelectHtml = "";
-    if (!isEmployee) {
+    if (!isRestrictedRole) {
       const employees = await employeeService.getEmployees({});
       employeeSelectHtml = `
         <div class="form-group">
@@ -664,7 +664,7 @@ const DocumentsView = {
 
     ModalManager.openModal({
       id: "upload-doc-modal",
-      title: isEmployee
+      title: isRestrictedRole
         ? "Upload My Personnel Document"
         : "Upload Employee Document",
       subtitle:
@@ -691,7 +691,7 @@ const DocumentsView = {
             <select id="udoc-visibility" class="form-control">
               <option value="EMPLOYEE">Visible to Employee & HR</option>
               ${
-                !isEmployee
+                !isRestrictedRole
                   ? `
                 <option value="HR_ONLY">Confidential (HR Only)</option>
                 <option value="ADMIN_ONLY">Super Admin Only</option>
@@ -720,13 +720,13 @@ const DocumentsView = {
 
   async saveUpload() {
     const role = AuthGuard.userProfile?.roleId || "EMPLOYEE";
-    const isEmployee = role === "EMPLOYEE";
+    const isRestrictedRole = !["SUPER_ADMIN", "COMPANY_ADMIN", "HR_MANAGER", "HR"].includes(role);
 
     let employeeId =
       AuthGuard.userProfile?.employeeId || AuthGuard.currentUser?.uid;
     let employeeName = AuthGuard.userProfile?.displayName || "Employee";
 
-    if (!isEmployee) {
+    if (!isRestrictedRole) {
       const empSelect = document.getElementById("udoc-emp");
       if (empSelect) {
         employeeId = empSelect.value;
@@ -876,7 +876,7 @@ const DocumentsView = {
     const employeeId =
       AuthGuard.userProfile?.employeeId ||
       AuthGuard.currentUser?.uid ||
-      "EMP001";
+      "";
     const employeeName = AuthGuard.userProfile?.displayName || "Employee";
 
     try {

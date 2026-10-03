@@ -26,19 +26,31 @@ const employeeService = {
   // Suggest next available employee code (e.g. EMP-0001)
   async getNextEmployeeCode(companyId = 'comp_diallo_india') {
     try {
+      let prefix = 'D-';
+      let digits = 3;
+      try {
+        if (typeof settingsService !== 'undefined') {
+          const cfg = await settingsService.getCompanySettings(companyId);
+          if (cfg && cfg.codeSeries) {
+            prefix = cfg.codeSeries.employeeCodePrefix || 'D-';
+            digits = Number(cfg.codeSeries.employeeCodeDigits) || 3;
+          }
+        }
+      } catch (e) {}
+
       const snapshot = await db.collection('employees').where('companyId', '==', companyId).get();
       let maxNum = 0;
       snapshot.docs.forEach(d => {
         const c = d.data().employeeCode;
-        if (c && c.toUpperCase().startsWith('D-')) {
-          const numStr = c.substring(2);
+        if (c && c.toUpperCase().startsWith(prefix.toUpperCase())) {
+          const numStr = c.substring(prefix.length);
           const num = parseInt(numStr, 10);
           if (!isNaN(num) && num > maxNum) maxNum = num;
         }
       });
-      return `D-${String(maxNum + 1).padStart(5, '0')}`;
+      return `${prefix}${String(maxNum + 1).padStart(digits, '0')}`;
     } catch (e) {
-      return 'D-00001';
+      return 'D-001';
     }
   },
 
@@ -445,6 +457,7 @@ const employeeService = {
         updatedAt: firebase.firestore.FieldValue.serverTimestamp()
       };
 
+      Object.keys(payload).forEach(k => { if (payload[k] === undefined) delete payload[k]; });
       const docRef = await db.collection('employees').add(payload);
       payload.id = docRef.id;
 
@@ -457,10 +470,11 @@ const employeeService = {
       );
 
       // Auto-generate onboarding checklist tasks
-      await onboardingService.generateDefaultTasksForEmployee(payload);
+      // await onboardingService.generateDefaultTasksForEmployee(payload);
 
       await auditService.log('EMPLOYEE_CREATED', 'PEOPLE', 'employees', docRef.id, { employeeCode, fullName });
-      return payload;
+        await this.syncToMySQL(payload);
+        return payload;
     } catch (err) {
       console.error('Error creating employee:', err);
       throw err;
@@ -528,7 +542,9 @@ const employeeService = {
       }
 
       await auditService.log('EMPLOYEE_UPDATED', 'PEOPLE', 'employees', actualDocId, updates);
-      return true;
+        const snap = await db.collection('employees').doc(actualDocId).get();
+        if (snap.exists) await this.syncToMySQL(snap.data());
+        return true;
     } catch (err) {
       console.error('Error updating employee:', err);
       throw err;
@@ -561,7 +577,36 @@ const employeeService = {
       console.error('Error deleting employee:', err);
       throw err;
     }
+  },
+
+  // Sync core details to Hostinger MySQL Database
+  async syncToMySQL(employeeData) {
+    try {
+      const payload = {
+        employee_code: employeeData.employeeCode,
+        email: employeeData.workEmail || employeeData.email || employeeData.personalEmail || '',
+        full_name: employeeData.fullName || employeeData.name,
+        role: employeeData.roleId || 'EMPLOYEE'
+      };
+      
+      if (!payload.employee_code || !payload.email || !payload.full_name) return;
+
+      const response = await fetch('https://hrmstfw.com/hostinger-backend/sync_user.php', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      });
+      
+      if (!response.ok) {
+        console.warn('MySQL Sync non-OK response', await response.text());
+      }
+    } catch (err) {
+      console.warn('Could not sync to MySQL backend:', err);
+    }
   }
 };
 
 window.employeeService = employeeService;
+
+
+
