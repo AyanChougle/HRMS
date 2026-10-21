@@ -65,7 +65,13 @@ const PeopleView = {
               Sync Database Users
             </button>
             
-            <button class="btn btn-secondary btn-sm" onclick="PeopleView.importCSV()">
+                          <button class="btn btn-soft btn-sm" onclick="PeopleView.pushAllToMySQL()" style="color: var(--primary);">
+                <svg width="15" height="15" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16V4m0 0L3 8m4-4l4 4m6 0v12m0 0l4-4m-4 4l-4-4"/>
+                </svg>
+                Push to MySQL
+              </button>
+              <button class="btn btn-secondary btn-sm" onclick="PeopleView.importCSV()">
               <svg width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1M16 8l-4-4m0 0L8 8m4-4v12"/>
               </svg>
@@ -1381,6 +1387,23 @@ const PeopleView = {
   },
 
   // ---- CSV IMPORT (same columns as Export CSV, so an exported file can be re-imported) ----
+    async pushAllToMySQL() {
+    if (!confirm('This will force-sync all currently visible employees to your Hostinger MySQL database. Proceed?')) return;
+    try {
+      const emps = await employeeService.getEmployees(this.currentFilters);
+      let count = 0;
+      for (const e of emps) {
+        if (e.employeeCode && (e.workEmail || e.email || e.personalEmail)) {
+          await employeeService.syncToMySQL(e);
+          count++;
+        }
+      }
+      Toast.success(Successfully pushed  employees to MySQL!);
+    } catch (err) {
+      Toast.error('Error pushing to MySQL: ' + err.message);
+    }
+  },
+
   importCSV() {
     if (typeof CsvImport === 'undefined') { Toast.error('CSV import module failed to load. Hard refresh the page.'); return; }
 
@@ -1608,3 +1631,5 @@ const PeopleView = {
 };
 
 window.PeopleView = PeopleView;
+
+

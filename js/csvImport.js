@@ -249,7 +249,12 @@ const CsvImport = {
     if (typeof Toast !== 'undefined') (skipped ? Toast.warning : Toast.success).call(Toast, msg);
     this._renderPreview();
     btn.textContent = 'Done';
-    btn.disabled = true;
+    btn.disabled = false;
+    btn.onclick = () => {
+      if (typeof ModalManager !== 'undefined') {
+        ModalManager.closeModal('csv-import-modal');
+      }
+    };
     if (st.config.onDone) st.config.onDone({ imported: ok, failed: failed.length, skipped });
   }
 };

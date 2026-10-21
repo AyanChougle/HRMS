@@ -104,7 +104,7 @@
                 fill="none"
                 viewBox="0 0 24 24"
                 stroke="currentColor"
-              >
+              > 
                 <path
                   stroke-linecap="round"
                   stroke-linejoin="round"
@@ -182,9 +182,26 @@
           </div>
 
           <!-- Active Role View Switcher (For Admins to test/preview any role) -->
-          
-
-          <!-- Notification Center -->
+          <div class="dropdown-menu-wrapper" id="header-role-wrapper" style="display: none; align-items: center;">
+            <div style="display: flex; align-items: center; gap: 6px; background: var(--bg-hover, rgba(0,0,0,0.04)); padding: 3px 8px; border-radius: var(--radius-sm, 6px); border: 1px solid var(--border-color, #e2e8f0);">
+              <span style="font-size: 0.72rem; font-weight: 700; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.5px;">Preview As:</span>
+              <select
+                id="header-role-switcher"
+                style="padding: 2px 6px; font-size: 0.78rem; font-weight: 600; height: 26px; border-radius: 4px; border: 1px solid var(--border-color, #cbd5e1); background: var(--bg-card, #fff); color: var(--text-main, #1e293b); cursor: pointer;"
+                onchange="AuthGuard.switchRole(this.value)"
+                title="Switch Active Role View"
+              >
+                <option value="SUPER_ADMIN">Super Admin</option>
+                <option value="HR_MANAGER">HR Manager</option>
+                <option value="MANAGER">Manager</option>
+                <option value="OPERATIONS_MANAGER">Operations Manager</option>
+                <option value="TEAM_LEAD">Team Leader</option>
+                <option value="MENTOR_TRAINER">Mentor / Trainer</option>
+                <option value="TRAINEE">Trainee</option>
+                <option value="EMPLOYEE">Employee (ESS)</option>
+              </select>
+            </div>
+          </div>
           <div class="dropdown-menu-wrapper">
             <button
               class="header-icon-btn"
