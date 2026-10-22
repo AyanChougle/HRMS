@@ -23,6 +23,7 @@ const PermissionService = {
       'departments.manage',
       'users.manage',
       'settings.manage',
+      'users.manage',
       'audit.view'
     ],
 
@@ -61,6 +62,7 @@ const PermissionService = {
       'approvals.process',
       'companies.view',
       'settings.manage',
+      'users.manage',
       'recruitment.*',
       'performance.*',
       'expenses.*',
@@ -106,6 +108,7 @@ const PermissionService = {
       'approvals.process',
       'companies.view',
       'settings.manage',
+      'users.manage',
       'recruitment.*',
       'performance.*',
       'expenses.*',
@@ -375,7 +378,8 @@ const PermissionService = {
         'workflows.view', 'workflows.manage',
         'reports.view', 'reports.export',
         'communication.view', 'communication.manage',
-        'settings.manage', 'documents.view', 'documents.upload',
+        'settings.manage',
+      'users.manage', 'documents.view', 'documents.upload',
         'own.profile', 'own.payslips', 'own.attendance', 'own.leave'
       ];
       if (hrAllowedPerms.includes(permissionName) || 

@@ -7,6 +7,27 @@ const departmentService = {
   // --- Departments ---
   async getDepartments(companyId = null) {
     try {
+      // 1. Fetch dynamically from Hostinger MySQL API if available
+      if (typeof apiClient !== 'undefined') {
+        try {
+          const resp = await apiClient.get('departments.php');
+          if (resp && resp.success && Array.isArray(resp.departments) && resp.departments.length > 0) {
+            return resp.departments.map(d => ({
+              id: d.id,
+              name: d.name,
+              code: d.code,
+              headName: d.head_name || '',
+              description: d.description || '',
+              status: d.status || 'ACTIVE',
+              members: d.members || 0
+            })).sort((a, b) => (a.name || '').localeCompare(b.name || ''));
+          }
+        } catch (apiErr) {
+          console.warn('[DepartmentService] MySQL fetch fallback to Firestore:', apiErr.message);
+        }
+      }
+
+      // 2. Fallback to Firestore
       const targetCompany = companyId || AuthGuard.userProfile?.companyId || 'comp_diallo_india';
       const snap = await db.collection('departments').get();
       let list = snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
@@ -39,6 +60,16 @@ const departmentService = {
 
   async createDepartment(deptData) {
     try {
+      if (typeof apiClient !== 'undefined') {
+        try {
+          await apiClient.post('departments.php', {
+            name: deptData.name,
+            code: deptData.code,
+            head_name: deptData.headName || '',
+            description: deptData.description || ''
+          });
+        } catch (_) {}
+      }
       const newRef = db.collection('departments').doc();
       const companyId = deptData.companyId || AuthGuard.userProfile?.companyId || 'comp_diallo_india';
       const payload = {

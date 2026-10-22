@@ -166,7 +166,20 @@ const authService = {
   // Send Password Reset Email
   async sendPasswordReset(email) {
     try {
-      await auth.sendPasswordResetEmail(email);
+      const origin = (typeof window !== 'undefined' && window.location.origin) ? window.location.origin : 'https://hrmstfw.com';
+      const actionCodeSettings = {
+        url: `${origin}/reset-password.html`,
+        handleCodeInApp: true
+      };
+      try {
+        await auth.sendPasswordResetEmail(email, actionCodeSettings);
+      } catch (settingsErr) {
+        if (settingsErr.code === 'auth/unauthorized-continue-uri') {
+          await auth.sendPasswordResetEmail(email);
+        } else {
+          throw settingsErr;
+        }
+      }
       try {
         if (typeof auditService !== 'undefined' && auditService.log) {
           auditService.log('PASSWORD_RESET_REQUESTED', 'AUTH', 'users', null, { email }).catch(() => {});
@@ -178,6 +191,8 @@ const authService = {
       let message = 'Failed to send password reset email.';
       if (err.code === 'auth/user-not-found') {
         message = 'No registered account found with this email address.';
+      } else if (err.message) {
+        message = err.message;
       }
       return { success: false, error: message, code: err.code };
     }

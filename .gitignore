@@ -22,3 +22,9 @@ Thumbs.db
 firebase-debug.log*
 firestore-debug.log*
 ui-debug.log*
+
+# Database dumps & backup files
+*.bak
+*.dump
+backup/
+backups/

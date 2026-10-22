@@ -1,0 +1,16 @@
+# ==============================================================================
+# DIALLO HRMS — BACKEND API DIRECTORY SECURITY (.htaccess)
+# ==============================================================================
+
+Options -Indexes
+
+# Block direct access to SQL schemas, database dumps, and documentation
+<FilesMatch "\.(sql|log|md|bak|json)$">
+    <IfModule mod_authz_core.c>
+        Require all denied
+    </IfModule>
+    <IfModule !mod_authz_core.c>
+        Order deny,allow
+        Deny from all
+    </IfModule>
+</FilesMatch>

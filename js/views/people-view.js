@@ -31,9 +31,8 @@ const PeopleView = {
       console.warn('Could not load people directory data:', e);
     }
 
-    const demoIds = ['EMP001', 'EMP002', 'EMP003', 'EMP004', 'EMP005', 'EMP006', 'EMP007', 'EMP008', 'EMP009', 'EMP010', 'EMP011', 'EMP012', 'EMP013', 'EMP014', 'EMP015', 'EMP016', 'EMP017', 'EMP018', 'EMP019', 'EMP020', 'EMP021', 'EMP022', 'EMP023', 'EMP024', 'EMP025'];
-    const demoNames = ['Vikram Sharma', 'Priya Nair', 'Rahul Mehta', 'Ananya Gupta', 'Arjun Patel', 'Sneha Desai', 'Amit Kumar', 'Rohit Saxena', 'Tanvi Agarwal', 'Meera Iyer', 'Kavya Menon', 'Pooja Verma', 'Varun Bhatt', 'Suresh Reddy', 'Naveen Singh', 'Neha Pillai', 'Roshni Chatterjee', 'Siddharth Kapoor', 'Deepika Joshi', 'Shreya Das', 'Karan Malhotra', 'Ishita Bose'];
-    employees = employees.filter(e => !demoIds.includes(e.id) && !demoNames.includes(e.fullName || e.name) && !(e.id && e.id.startsWith('EMP0') && e.id.length <= 6));
+    // Exclude invalid or empty records
+    employees = employees.filter(e => e && (e.fullName || e.name || e.employeeCode));
 
     const total = employees.length;
     const active = employees.filter(e => e.employmentStatus === 'ACTIVE').length;
@@ -593,9 +592,7 @@ const PeopleView = {
     const userRole = (AuthGuard._previewRoleId || AuthGuard.userProfile?.roleId || AuthGuard.userProfile?.role || '').toUpperCase().trim();
     const canOnboard = ['SUPER_ADMIN', 'COMPANY_ADMIN', 'ADMIN', 'HR_MANAGER', 'HR', 'MANAGER'].includes(userRole);
 
-    const demoIds = ['EMP001', 'EMP002', 'EMP003', 'EMP004', 'EMP005', 'EMP006', 'EMP007', 'EMP008', 'EMP009', 'EMP010', 'EMP011', 'EMP012', 'EMP013', 'EMP014', 'EMP015', 'EMP016', 'EMP017', 'EMP018', 'EMP019', 'EMP020', 'EMP021', 'EMP022', 'EMP023', 'EMP024', 'EMP025'];
-    const demoNames = ['Vikram Sharma', 'Priya Nair', 'Rahul Mehta', 'Ananya Gupta', 'Arjun Patel', 'Sneha Desai', 'Amit Kumar', 'Rohit Saxena', 'Tanvi Agarwal', 'Meera Iyer', 'Kavya Menon', 'Pooja Verma', 'Varun Bhatt', 'Suresh Reddy', 'Naveen Singh', 'Neha Pillai', 'Roshni Chatterjee', 'Siddharth Kapoor', 'Deepika Joshi', 'Shreya Das', 'Karan Malhotra', 'Ishita Bose'];
-    const cleanList = employees.filter(e => !demoIds.includes(e.id) && !demoNames.includes(e.fullName || e.name) && !(e.id && e.id.startsWith('EMP0') && e.id.length <= 6));
+    const cleanList = employees.filter(e => e && (e.fullName || e.name || e.employeeCode));
     const tree = orgService.buildOrgTree(cleanList);
 
     setTimeout(() => { if (this.initOrgChartCanvas) this.initOrgChartCanvas(); }, 100);
