@@ -1398,7 +1398,7 @@ const PeopleView = {
           count++;
         }
       }
-      Toast.success(Successfully pushed  employees to MySQL!);
+      Toast.success(`Successfully pushed ${count} employees to MySQL!`);
     } catch (err) {
       Toast.error('Error pushing to MySQL: ' + err.message);
     }

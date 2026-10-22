@@ -1817,102 +1817,24 @@ const ESSView = {
   },
 
   async executePunchOut() {
-    // Geofence Verification: Must be within 500 meters of office premises to punch out
-    let pos;
+    // Location capture for Punch-Out (logs location only - no geofence block)
+    let pos = null;
+    let userLat = null, userLng = null, distanceMeters = 0, distanceDisplay = 'Unknown';
     try {
-      if (typeof Toast !== "undefined") {
-        Toast.info("Verifying GPS location within office premises for check-out...");
-      }
+      Toast.info("Capturing your location for punch-out record...");
       pos = await this.getDeviceLocation();
-    } catch (geoErr) {
-      if (typeof Toast !== "undefined") {
-        Toast.error(geoErr.message);
-      }
-      if (typeof ModalManager !== "undefined") {
-        ModalManager.openModal({
-          id: "geofence-error-modal",
-          title: "GPS Location Required",
-          subtitle: "Mandatory office location check",
-          size: "sm",
-          contentHtml: `
-            <div style="padding: 10px 0; text-align: center;">
-              <div style="font-size: 0.88rem; color: var(--text-main); margin-bottom: 10px; font-weight: 600;">
-                Location Access Needed to Punch Out
-              </div>
-              <div style="font-size: 0.82rem; color: var(--text-secondary); line-height: 1.5; margin-bottom: 12px;">
-                All employees and roles must be physically present within the office premises to punch out.
-              </div>
-              <div style="font-size: 0.78rem; color: #dc2626; background: #fef2f2; padding: 10px; border-radius: 6px; border: 1px solid #fecaca; text-align: left;">
-                ${geoErr.message}
-              </div>
-            </div>
-          `,
-          footerHtml: `
-            <button class="btn btn-secondary btn-sm" data-modal-close>Close</button>
-            <button class="btn btn-primary btn-sm" onclick="ModalManager.closeModal(); ESSView.punchOut();">Retry GPS Check</button>
-          `,
-        });
-      }
-      return false;
-    }
-
-    const userLat = pos.coords.latitude;
-    const userLng = pos.coords.longitude;
-    const distanceMeters = this.calculateDistanceMeters(
-      userLat,
-      userLng,
-      this.OFFICE_GEOFENCE.latitude,
-      this.OFFICE_GEOFENCE.longitude,
-    );
-
-    const distanceDisplay =
-      distanceMeters < 1000
+      userLat = pos.coords.latitude;
+      userLng = pos.coords.longitude;
+      distanceMeters = this.calculateDistanceMeters(
+        userLat, userLng,
+        this.OFFICE_GEOFENCE.latitude, this.OFFICE_GEOFENCE.longitude
+      );
+      distanceDisplay = distanceMeters < 1000
         ? `${distanceMeters.toFixed(1)} meters`
         : `${(distanceMeters / 1000).toFixed(2)} km`;
-
-    const accuracy = Math.round(pos.coords?.accuracy || 0);
-    const allowedRadius = this.OFFICE_GEOFENCE.radiusMeters || 60;
-    const effectiveDistance = Math.max(0, distanceMeters - Math.min(accuracy, 25));
-
-    if (distanceMeters > allowedRadius && effectiveDistance > allowedRadius) {
-      const errorMsg = `Outside Office Perimeter: You are currently ${distanceDisplay} away from the office. Punch-out is strictly restricted to within office premises.`;
-      if (typeof Toast !== "undefined") {
-        Toast.error(errorMsg);
-      }
-      if (typeof ModalManager !== "undefined") {
-        ModalManager.openModal({
-          id: "geofence-alert-modal",
-          title: "Out of Geofence Boundary",
-          subtitle: `Distance: ${distanceDisplay}`,
-          size: "md",
-          contentHtml: `
-            <div style="padding: 10px 0;">
-              <div style="background: #fef2f2; border: 1px solid #fecaca; border-radius: 8px; padding: 14px; margin-bottom: 14px;">
-                <div style="font-weight: 700; color: #991b1b; font-size: 0.95rem; margin-bottom: 4px;">Punch-Out Denied: Outside Office Premises</div>
-                <div style="font-size: 0.84rem; color: #7f1d1d; line-height: 1.5;">
-                  Company policy strictly requires each and every employee across all roles to be physically located within the office premises to punch out.
-                </div>
-              </div>
-              <div style="background: var(--bg-hover); border-radius: 8px; padding: 14px; font-size: 0.84rem; line-height: 1.6;">
-                <div><strong>Your Current Distance:</strong> <span style="color: #dc2626; font-weight: 700;">${distanceDisplay}</span></div>
-                <div><strong>GPS Accuracy:</strong> &plusmn;${accuracy}m</div>
-                <div style="margin-top: 10px; border-top: 1px solid var(--border-main); padding-top: 8px;">
-                  <strong>Designated Office Location:</strong><br/>
-                  Diallo Office Premises
-                  <div style="margin-top: 6px;">
-                    <a href="${this.OFFICE_GEOFENCE.mapsUrl}" target="_blank" rel="noopener noreferrer" style="color: var(--primary); font-weight: 600; text-decoration: underline;">View Office Location on Google Maps &rarr;</a>
-                  </div>
-                </div>
-              </div>
-            </div>
-          `,
-          footerHtml: `
-            <button class="btn btn-secondary btn-sm" data-modal-close>Dismiss</button>
-            <button class="btn btn-primary btn-sm" onclick="ModalManager.closeModal(); ESSView.punchOut();">Retry Punch Out</button>
-          `,
-        });
-      }
-      return false;
+    } catch (geoErr) {
+      // Location is optional - punch-out still proceeds without GPS
+      console.warn('Could not capture punch-out location (non-blocking):', geoErr.message);
     }
 
     // Auto-end break if on break
@@ -1934,13 +1856,15 @@ const ESSView = {
     this.savePersistedState();
     this.updateTimecardUI();
 
-    const locationText = `Office Premises (GPS: ${userLat.toFixed(5)}, ${userLng.toFixed(5)} • ${distanceMeters.toFixed(1)}m from center)`;
+    const locationText = userLat != null
+      ? `Logged Location (GPS: ${userLat.toFixed(5)}, ${userLng.toFixed(5)} | ${distanceDisplay} from office)`
+      : 'Location not captured';
 
     try {
       await attendanceService.recordPunch({
         name: AuthGuard.userProfile?.displayName || "Employee",
         punchType: "Out",
-        device: "ESS Web GPS Terminal (Geofence Verified)",
+        device: "ESS Web GPS Terminal",
         status: "Shift Completed",
         location: locationText,
         latitude: userLat,
@@ -2061,108 +1985,31 @@ const ESSView = {
         return false;
       }
 
-      // Geofence Verification: Must be within 500 meters of office premises
-      let pos;
+      // Location capture for Punch-In (logs location only - no geofence block)
+      let pos = null;
+      let userLat = null, userLng = null, distanceMeters = 0, distanceDisplay = 'Unknown';
       try {
-        if (typeof Toast !== "undefined") {
-          Toast.info("Verifying GPS location within office premises...");
-        }
+        Toast.info("Capturing your location for punch-in record...");
         pos = await this.getDeviceLocation();
-      } catch (geoErr) {
-        if (typeof Toast !== "undefined") {
-          Toast.error(geoErr.message);
-        }
-        if (typeof ModalManager !== "undefined") {
-          ModalManager.openModal({
-            id: "geofence-error-modal",
-            title: "GPS Location Required",
-            subtitle: "Mandatory office location check",
-            size: "sm",
-            contentHtml: `
-              <div style="padding: 10px 0; text-align: center;">
-                <div style="font-size: 0.88rem; color: var(--text-main); margin-bottom: 10px; font-weight: 600;">
-                  Location Access Needed to Punch In
-                </div>
-                <div style="font-size: 0.82rem; color: var(--text-secondary); line-height: 1.5; margin-bottom: 12px;">
-                  All employees and roles must be physically present within the office premises to punch in.
-                </div>
-                <div style="font-size: 0.78rem; color: #dc2626; background: #fef2f2; padding: 10px; border-radius: 6px; border: 1px solid #fecaca; text-align: left;">
-                  ${geoErr.message}
-                </div>
-              </div>
-            `,
-            footerHtml: `
-              <button class="btn btn-secondary btn-sm" data-modal-close>Close</button>
-              <button class="btn btn-primary btn-sm" onclick="ModalManager.closeModal(); ESSView.punchIn();">Retry GPS Check</button>
-            `,
-          });
-        }
-        return false;
-      }
-
-      const userLat = pos.coords.latitude;
-      const userLng = pos.coords.longitude;
-      const distanceMeters = this.calculateDistanceMeters(
-        userLat,
-        userLng,
-        this.OFFICE_GEOFENCE.latitude,
-        this.OFFICE_GEOFENCE.longitude,
-      );
-
-      const distanceDisplay =
-        distanceMeters < 1000
+        userLat = pos.coords.latitude;
+        userLng = pos.coords.longitude;
+        distanceMeters = this.calculateDistanceMeters(
+          userLat, userLng,
+          this.OFFICE_GEOFENCE.latitude, this.OFFICE_GEOFENCE.longitude
+        );
+        distanceDisplay = distanceMeters < 1000
           ? `${distanceMeters.toFixed(1)} meters`
           : `${(distanceMeters / 1000).toFixed(2)} km`;
-
-      const accuracy = Math.round(pos.coords?.accuracy || 0);
-      const allowedRadius = this.OFFICE_GEOFENCE.radiusMeters || 60;
-      const effectiveDistance = Math.max(0, distanceMeters - Math.min(accuracy, 25));
-
-      if (distanceMeters > allowedRadius && effectiveDistance > allowedRadius) {
-        const errorMsg = `Outside Office Perimeter: You are currently ${distanceDisplay} away from the office. Punch-in is strictly restricted to within office premises.`;
-        if (typeof Toast !== "undefined") {
-          Toast.error(errorMsg);
-        }
-        if (typeof ModalManager !== "undefined") {
-          ModalManager.openModal({
-            id: "geofence-alert-modal",
-            title: "Out of Geofence Boundary",
-            subtitle: `Distance: ${distanceDisplay}`,
-            size: "md",
-            contentHtml: `
-              <div style="padding: 10px 0;">
-                <div style="background: #fef2f2; border: 1px solid #fecaca; border-radius: 8px; padding: 14px; margin-bottom: 14px;">
-                  <div style="font-weight: 700; color: #991b1b; font-size: 0.95rem; margin-bottom: 4px;">Punch-In Denied: Outside Office Premises</div>
-                  <div style="font-size: 0.84rem; color: #7f1d1d; line-height: 1.5;">
-                    Company policy strictly requires each and every employee across all roles to be physically located within the office premises to check in.
-                  </div>
-                </div>
-                <div style="background: var(--bg-hover); border-radius: 8px; padding: 14px; font-size: 0.84rem; line-height: 1.6;">
-                  <div><strong>Your Current Distance:</strong> <span style="color: #dc2626; font-weight: 700;">${distanceDisplay}</span></div>
-
-                  <div><strong>GPS Accuracy:</strong> &plusmn;${accuracy}m</div>
-                  <div style="margin-top: 10px; border-top: 1px solid var(--border-main); padding-top: 8px;">
-                    <strong>Designated Office Location:</strong><br/>
-                    Diallo Office Premises
-                    <div style="margin-top: 6px;">
-                      <a href="${this.OFFICE_GEOFENCE.mapsUrl}" target="_blank" rel="noopener noreferrer" style="color: var(--primary); font-weight: 600; text-decoration: underline;">View Office Location on Google Maps &rarr;</a>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            `,
-            footerHtml: `
-              <button class="btn btn-secondary btn-sm" data-modal-close>Dismiss</button>
-              <button class="btn btn-primary btn-sm" onclick="ModalManager.closeModal(); ESSView.punchIn();">Retry Punch In</button>
-            `,
-          });
-        }
-        return false;
+      } catch (geoErr) {
+        // Location is optional - punch-in still proceeds without GPS
+        console.warn('Could not capture punch-in location (non-blocking):', geoErr.message);
       }
 
-      const locationText = `Office Premises (GPS: ${userLat.toFixed(5)}, ${userLng.toFixed(5)} • ${distanceMeters.toFixed(1)}m from center)`;
+      const locationText = userLat != null
+        ? `Logged Location (GPS: ${userLat.toFixed(5)}, ${userLng.toFixed(5)} | ${distanceDisplay} from office)`
+        : 'Location not captured';
       const geoStatus = document.getElementById("ess-geo-status");
-      if (geoStatus) geoStatus.textContent = `Location: ${locationText}`;
+      if (geoStatus) geoStatus.textContent = userLat != null ? `Location: ${locationText}` : 'Location: Not available';
 
       this.isPunchedIn = true;
       this.isOnBreak = false;
@@ -2183,7 +2030,7 @@ const ESSView = {
         await attendanceService.recordPunch({
           name: AuthGuard.userProfile?.displayName || "Employee",
           punchType: "In",
-          device: "ESS Web GPS Terminal (Office Geofence Verified)",
+          device: "ESS Web GPS Terminal",
           status: "On Time",
           location: locationText,
           latitude: userLat,

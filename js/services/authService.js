@@ -63,54 +63,13 @@ const authService = {
         console.warn('User profile check in signIn:', dbErr);
       }
 
-      // Safe non-blocking login session log (no IP fetch / external API — browser-only signals)
+      // Safe non-blocking audit logging
       try {
-        const tz       = Intl.DateTimeFormat().resolvedOptions().timeZone || 'Unknown';
-        const locale   = navigator.language || navigator.userLanguage || 'Unknown';
-        const ua       = navigator.userAgent || '';
-        // Derive a human-readable browser label from the UA string
-        let browser = 'Unknown Browser';
-        if (/Edg\//.test(ua))          browser = 'Microsoft Edge';
-        else if (/OPR\/|Opera/.test(ua)) browser = 'Opera';
-        else if (/Chrome\//.test(ua))  browser = 'Chrome';
-        else if (/Firefox\//.test(ua)) browser = 'Firefox';
-        else if (/Safari\//.test(ua))  browser = 'Safari';
-        // Derive OS
-        let os = 'Unknown OS';
-        if (/Windows NT/.test(ua))     os = 'Windows';
-        else if (/Mac OS X/.test(ua))  os = 'macOS';
-        else if (/Android/.test(ua))   os = 'Android';
-        else if (/iPhone|iPad/.test(ua)) os = 'iOS';
-        else if (/Linux/.test(ua))     os = 'Linux';
-        // Derive device type
-        const isMobile = /Mobi|Android|iPhone|iPad/.test(ua);
-        const device   = isMobile ? 'Mobile / Tablet' : 'Desktop / Laptop';
-
-        const loginMeta = {
-          email,
-          timezone:    tz,
-          locale,
-          browser,
-          os,
-          device,
-          loginAt:     new Date().toISOString(),
-        };
-
-        // Write a dedicated login-session record into Firestore
-        db.collection('loginSessions').add({
-          userId:    user.uid,
-          email:     user.email,
-          companyId: 'comp_diallo_india',
-          ...loginMeta,
-          timestamp: firebase.firestore.FieldValue.serverTimestamp()
-        }).catch(() => {});
-
-        // Also audit-log it (existing audit trail)
         if (typeof auditService !== 'undefined' && auditService.log) {
-          auditService.log('USER_LOGIN', 'AUTH', 'users', user.uid, loginMeta).catch(() => {});
+          auditService.log('USER_LOGIN', 'AUTH', 'users', user.uid, { email }).catch(() => {});
         }
       } catch (e) {
-        console.warn('Login session log skipped:', e);
+        console.warn('Audit log skipped:', e);
       }
 
       return { success: true, user };
