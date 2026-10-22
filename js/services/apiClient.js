@@ -55,6 +55,19 @@ const apiClient = {
       method: 'POST',
       body: JSON.stringify(body)
     });
+  },
+
+  async put(endpoint, body = {}) {
+    return this.request(endpoint, {
+      method: 'PUT',
+      body: JSON.stringify(body)
+    });
+  },
+
+  async delete(endpoint, params = {}) {
+    const query = new URLSearchParams(params).toString();
+    const fullEndpoint = query ? `${endpoint}?${query}` : endpoint;
+    return this.request(fullEndpoint, { method: 'DELETE' });
   }
 };
 

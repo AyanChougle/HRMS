@@ -267,7 +267,7 @@ const organizationService = {
         ...data,
         updatedAt: firebase.firestore.FieldValue.serverTimestamp()
       };
-      await db.collection('departments').doc(id).update(payload);
+      await db.collection('departments').doc(String(id)).set(payload, { merge: true });
       if (typeof auditService !== 'undefined') {
         await auditService.log('DEPARTMENT_UPDATED', 'ORGANIZATION', 'departments', id, data);
       }

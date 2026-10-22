@@ -46,7 +46,7 @@ $charset = 'utf8mb4';
 $options = [
     PDO::ATTR_ERRMODE            => PDO::ERRMODE_EXCEPTION,
     PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC,
-    PDO::ATTR_EMULATE_PREPARES   => false,
+    PDO::ATTR_EMULATE_PREPARES   => true,
     PDO::ATTR_TIMEOUT            => 5
 ];
 
@@ -86,8 +86,8 @@ if (!$pdo) {
     exit();
 }
 
-try {
-    // Auto-heal legacy users table schema if older columns detected
+// Only run schema auto-heal if explicitly requested via query parameter
+if (!empty($_GET['heal_schema']) && $_GET['heal_schema'] === '1') {
     try {
         $cols = $pdo->query("SHOW COLUMNS FROM users")->fetchAll(PDO::FETCH_COLUMN);
         if (!empty($cols)) {
@@ -129,11 +129,8 @@ try {
             }
         }
     } catch (\Throwable $patchErr) {
-        // Table doesn't exist yet or user lacks alter privileges; non-fatal
+        // Non-fatal
     }
-} catch (\Throwable $initErr) {
-    // Non-fatal initialization warning
-    error_log("[DB Init Warning] " . $initErr->getMessage());
 }
 
 /**

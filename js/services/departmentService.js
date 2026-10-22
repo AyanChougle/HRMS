@@ -94,13 +94,27 @@ const departmentService = {
 
   async updateDepartment(id, updateData) {
     try {
+      if (typeof apiClient !== 'undefined') {
+        try {
+          await apiClient.post('departments.php', {
+            id: id,
+            name: updateData.name,
+            code: updateData.code,
+            head_name: updateData.headName || updateData.head_name || '',
+            description: updateData.description || '',
+            status: updateData.status || 'ACTIVE'
+          });
+        } catch (apiErr) {
+          console.warn('[DepartmentService] MySQL update notice:', apiErr.message);
+        }
+      }
       const payload = {
         ...updateData,
         updatedAt: firebase.firestore.FieldValue.serverTimestamp()
       };
-      await db.collection('departments').doc(id).update(payload);
+      await db.collection('departments').doc(String(id)).set(payload, { merge: true });
       if (typeof auditService !== 'undefined' && auditService.log) {
-        auditService.log('DEPARTMENT_UPDATED', 'departments', id, updateData).catch(() => {});
+        auditService.log('DEPARTMENT_UPDATED', 'departments', String(id), updateData).catch(() => {});
       }
       return true;
     } catch (err) {
@@ -115,9 +129,14 @@ const departmentService = {
 
   async deleteDepartment(id) {
     try {
-      await db.collection('departments').doc(id).delete();
+      if (typeof apiClient !== 'undefined') {
+        try {
+          await apiClient.request(`departments.php?id=${encodeURIComponent(id)}`, { method: 'DELETE' });
+        } catch (_) {}
+      }
+      await db.collection('departments').doc(String(id)).delete();
       if (typeof auditService !== 'undefined' && auditService.log) {
-        auditService.log('DEPARTMENT_DELETED', 'departments', id, {}).catch(() => {});
+        auditService.log('DEPARTMENT_DELETED', 'departments', String(id), {}).catch(() => {});
       }
       return true;
     } catch (err) {

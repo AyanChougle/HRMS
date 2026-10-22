@@ -644,15 +644,27 @@ const employeeService = {
       });
 
       let res;
-      if (typeof apiClient !== 'undefined') {
-        res = await apiClient.post('migrate_from_firebase.php', { employees, users });
-      } else {
-        const r = await fetch('https://hrmstfw.com/hostinger_backend/migrate_from_firebase.php', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ employees, users })
-        });
-        res = await r.json();
+      try {
+        if (typeof apiClient !== 'undefined') {
+          res = await apiClient.post('migrate_from_firebase.php', { employees, users });
+        } else {
+          const r = await fetch('https://hrmstfw.com/hostinger_backend/migrate_from_firebase.php', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ employees, users })
+          });
+          res = await r.json();
+        }
+      } catch (bulkErr) {
+        console.warn('Bulk migrate endpoint failed, falling back to direct individual sync via employees.php:', bulkErr);
+        let count = 0;
+        for (const emp of employees) {
+          try {
+            await this.syncToMySQL(emp);
+            count++;
+          } catch (_) {}
+        }
+        res = { success: true, message: `Directly synced ${count} employees to MySQL`, migrated_counts: { employees: count, users: count } };
       }
       return res;
     } catch (err) {

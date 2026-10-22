@@ -893,8 +893,8 @@ const PeopleView = {
             ${canOnboard ? `<button class="btn btn-primary btn-sm" onclick="Forms.openEmployeeModal()">+ Onboard Employee</button>` : ''}
           </div>
         ` : `
-          <div id="org-chart-viewport" style="width: 100%; overflow: auto; cursor: grab; position: relative; min-height: 520px; display: flex; justify-content: center; align-items: flex-start; padding: 20px 0; background: var(--bg-hover, #f8fafc); border-radius: 8px;">
-            <div id="org-chart-canvas" class="org-tree-canvas" style="transform-origin: top center; transition: transform 0.15s ease-out;">
+          <div id="org-chart-viewport" style="width: 100%; overflow: auto; cursor: grab; position: relative; min-height: 540px; text-align: center; padding: 20px 0; background: var(--bg-hover, #f8fafc); border-radius: 8px;">
+            <div id="org-chart-canvas" class="org-tree-canvas" style="display: inline-block; min-width: max-content; padding: 30px 120px; transform-origin: top center; transition: transform 0.15s ease-out;">
               ${tree.map(renderNode).join('')}
             </div>
           </div>
@@ -915,33 +915,79 @@ const PeopleView = {
     this._orgScale = 1;
     const canvas = document.getElementById('org-chart-canvas');
     const label = document.getElementById('org-zoom-level');
+    const vp = document.getElementById('org-chart-viewport');
     if (canvas) canvas.style.transform = `scale(1)`;
     if (label) label.textContent = `100%`;
+    if (vp && canvas) {
+      vp.scrollLeft = Math.max(0, (canvas.scrollWidth - vp.clientWidth) / 2);
+    }
   },
   initOrgChartCanvas() {
     const vp = document.getElementById('org-chart-viewport');
-    if (!vp || vp._dragInited) return;
+    const canvas = document.getElementById('org-chart-canvas');
+    if (!vp || !canvas) return;
+
+    // Automatically center the viewport so the user can drag BOTH left and right without boundary trap
+    setTimeout(() => {
+      if (canvas.scrollWidth > vp.clientWidth) {
+        vp.scrollLeft = Math.max(0, (canvas.scrollWidth - vp.clientWidth) / 2);
+      }
+    }, 120);
+
+    if (vp._dragInited) return;
     vp._dragInited = true;
-    let isDown = false, startX = 0, startY = 0, scrollLeft = 0, scrollTop = 0;
+
+    let isDown = false;
+    let startX = 0;
+    let startY = 0;
+    let initialScrollLeft = 0;
+    let initialScrollTop = 0;
+
     vp.addEventListener('mousedown', (e) => {
-      if (e.target.closest('.org-card')) return;
+      if (e.target.closest('.org-card') || e.target.closest('button') || e.target.closest('select') || e.target.closest('input')) return;
       isDown = true;
       vp.style.cursor = 'grabbing';
       startX = e.pageX - vp.offsetLeft;
       startY = e.pageY - vp.offsetTop;
-      scrollLeft = vp.scrollLeft;
-      scrollTop = vp.scrollTop;
+      initialScrollLeft = vp.scrollLeft;
+      initialScrollTop = vp.scrollTop;
     });
-    vp.addEventListener('mouseleave', () => { isDown = false; vp.style.cursor = 'grab'; });
-    vp.addEventListener('mouseup', () => { isDown = false; vp.style.cursor = 'grab'; });
+
+    window.addEventListener('mouseup', () => {
+      if (isDown) {
+        isDown = false;
+        if (vp) vp.style.cursor = 'grab';
+      }
+    });
+
     vp.addEventListener('mousemove', (e) => {
       if (!isDown) return;
       e.preventDefault();
-      const x = e.pageX - vp.offsetLeft;
-      const y = e.pageY - vp.offsetTop;
-      vp.scrollLeft = scrollLeft - (x - startX);
-      vp.scrollTop = scrollTop - (y - startY);
+      const currentX = e.pageX - vp.offsetLeft;
+      const currentY = e.pageY - vp.offsetTop;
+      vp.scrollLeft = initialScrollLeft - (currentX - startX);
+      vp.scrollTop = initialScrollTop - (currentY - startY);
     });
+
+    // Touch support for mobile and trackpad dragging
+    let touchStartX = 0, touchStartY = 0;
+    vp.addEventListener('touchstart', (e) => {
+      if (e.touches.length === 1 && !e.target.closest('.org-card') && !e.target.closest('button')) {
+        touchStartX = e.touches[0].pageX;
+        touchStartY = e.touches[0].pageY;
+        initialScrollLeft = vp.scrollLeft;
+        initialScrollTop = vp.scrollTop;
+      }
+    }, { passive: true });
+
+    vp.addEventListener('touchmove', (e) => {
+      if (e.touches.length === 1) {
+        const deltaX = e.touches[0].pageX - touchStartX;
+        const deltaY = e.touches[0].pageY - touchStartY;
+        vp.scrollLeft = initialScrollLeft - deltaX;
+        vp.scrollTop = initialScrollTop - deltaY;
+      }
+    }, { passive: true });
   },
 
   // D. ONBOARDING WORKFLOW TAB
