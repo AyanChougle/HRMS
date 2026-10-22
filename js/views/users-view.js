@@ -70,6 +70,18 @@ const UsersView = {
             <p class="page-subtitle">Inspect login IDs, assign system roles (RBAC), and manage credentials connected to Hostinger MySQL</p>
           </div>
           <div class="page-actions flex items-center gap-2">
+            <button class="btn btn-secondary btn-sm" onclick="UsersView.importCSV()">
+              <svg width="15" height="15" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"/>
+              </svg>
+              <span>Import CSV</span>
+            </button>
+            <button class="btn btn-secondary btn-sm" onclick="UsersView.exportCSV()">
+              <svg width="15" height="15" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/>
+              </svg>
+              <span>Export Logins CSV</span>
+            </button>
             <button class="btn btn-secondary btn-sm" onclick="UsersView.syncAllToHostinger()">
               <svg width="15" height="15" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/>
@@ -141,6 +153,7 @@ const UsersView = {
               <option value="MANAGER">Manager</option>
               <option value="OPERATIONS_MANAGER">Operations Manager</option>
               <option value="TEAM_LEAD">Team Leader</option>
+              <option value="RELATIONSHIP_MANAGER">Relationship Manager</option>
               <option value="MENTOR_TRAINER">Mentor / Trainer</option>
               <option value="TRAINEE">Graduate Trainee</option>
               <option value="EMPLOYEE">Employee (Self Service)</option>
@@ -173,6 +186,7 @@ const UsersView = {
                 <th>Department & Designation</th>
                 <th>Assigned Role</th>
                 <th>Status</th>
+                <th style="min-width: 150px;">Login Password</th>
                 <th style="text-align: right; min-width: 190px;">Actions</th>
               </tr>
             </thead>
@@ -192,6 +206,7 @@ const UsersView = {
       MANAGER: { label: 'Manager', style: 'background: rgba(37, 99, 235, 0.12); color: #2563eb; border: 1px solid rgba(37, 99, 235, 0.3);' },
       OPERATIONS_MANAGER: { label: 'Ops Manager', style: 'background: rgba(2, 132, 199, 0.12); color: #0284c7; border: 1px solid rgba(2, 132, 199, 0.3);' },
       TEAM_LEAD: { label: 'Team Leader', style: 'background: rgba(79, 70, 229, 0.12); color: #4f46e5; border: 1px solid rgba(79, 70, 229, 0.3);' },
+      RELATIONSHIP_MANAGER: { label: 'Relationship Manager', style: 'background: rgba(8, 145, 178, 0.12); color: #0891b2; border: 1px solid rgba(8, 145, 178, 0.3);' },
       MENTOR_TRAINER: { label: 'Mentor / Trainer', style: 'background: rgba(217, 119, 6, 0.12); color: #d97706; border: 1px solid rgba(217, 119, 6, 0.3);' },
       TRAINEE: { label: 'Graduate Trainee', style: 'background: rgba(234, 88, 12, 0.12); color: #ea580c; border: 1px solid rgba(234, 88, 12, 0.3);' },
       EMPLOYEE: { label: 'Employee', style: 'background: rgba(100, 116, 139, 0.12); color: #475569; border: 1px solid rgba(100, 116, 139, 0.3);' }
@@ -202,7 +217,7 @@ const UsersView = {
 
   renderTableRows(users) {
     if (!users || users.length === 0) {
-      return `<tr><td colspan="6" style="text-align: center; padding: 32px; color: var(--text-muted);">No login accounts match your criteria.</td></tr>`;
+      return `<tr><td colspan="7" style="text-align: center; padding: 32px; color: var(--text-muted);">No login accounts match your criteria.</td></tr>`;
     }
 
     return users.map(u => `
@@ -237,6 +252,22 @@ const UsersView = {
           <span class="badge ${u.status === 'ACTIVE' ? 'badge-success' : u.status === 'SUSPENDED' ? 'badge-danger' : 'badge-warning'}">
             <span class="badge-dot"></span> ${u.status || 'ACTIVE'}
           </span>
+        </td>
+        <td>
+          <div class="flex items-center gap-1" style="font-family: monospace; font-size: 0.8rem; background: var(--bg-hover); padding: 4px 8px; border-radius: 4px; border: 1px solid var(--border-light); width: fit-content;">
+            <span id="pwd-text-${u.uid || u.id}" data-raw="${u.initialPassword || u.password || 'Diallo@2026'}" style="letter-spacing: 0.5px;">••••••••</span>
+            <button type="button" class="btn btn-ghost btn-sm" onclick="UsersView.togglePasswordVisibility('${u.uid || u.id}')" title="Show/Hide Password" style="padding: 1px 3px; margin-left: 2px;">
+              <svg width="13" height="13" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/>
+              </svg>
+            </button>
+            <button type="button" class="btn btn-ghost btn-sm" onclick="UsersView.copyText('${u.initialPassword || u.password || 'Diallo@2026'}')" title="Copy Password" style="padding: 1px 3px;">
+              <svg width="12" height="12" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 5H6a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2v-1M8 5a2 2 0 002 2h2a2 2 0 002-2M8 5a2 2 0 012-2h2a2 2 0 012 2m0 0h2a2 2 0 012 2v3m2 4H10m0 0l3-3m-3 3l3 3"/>
+              </svg>
+            </button>
+          </div>
         </td>
         <td style="text-align: right;">
           <div class="flex items-center justify-end gap-1">
@@ -307,6 +338,7 @@ const UsersView = {
       { id: 'MANAGER', name: 'Manager' },
       { id: 'OPERATIONS_MANAGER', name: 'Operations Manager' },
       { id: 'TEAM_LEAD', name: 'Team Leader' },
+      { id: 'RELATIONSHIP_MANAGER', name: 'Relationship Manager' },
       { id: 'MENTOR_TRAINER', name: 'Mentor / Trainer' },
       { id: 'TRAINEE', name: 'Graduate Trainee' },
       { id: 'EMPLOYEE', name: 'Employee (Self Service)' }
@@ -369,6 +401,15 @@ const UsersView = {
             </div>
           </div>
 
+          <div class="form-group mb-3">
+            <label class="form-label">Login / Initial Password</label>
+            <div class="flex items-center gap-2">
+              <input type="text" id="edit-usr-password" class="form-control font-mono" value="${user.initialPassword || user.password || 'Diallo@2026'}" />
+              <button type="button" class="btn btn-secondary btn-sm" onclick="UsersView.copyText(document.getElementById('edit-usr-password').value)" title="Copy Password">Copy</button>
+            </div>
+            <div style="font-size: 0.72rem; color: var(--text-muted); margin-top: 3px;">Assigned login credential. Update here or send a reset link below.</div>
+          </div>
+
           <div style="background: var(--bg-hover); padding: 12px; border-radius: var(--radius-sm); border: 1px solid var(--border-light); margin-top: 8px;">
             <div class="flex items-center justify-between">
               <div>
@@ -394,6 +435,7 @@ const UsersView = {
     const designation = document.getElementById('edit-usr-desig')?.value.trim();
     const phone = document.getElementById('edit-usr-phone')?.value.trim();
     const status = document.getElementById('edit-usr-status')?.value;
+    const initialPassword = document.getElementById('edit-usr-password')?.value.trim();
 
     if (!name || !roleId) {
       Toast.error('Please enter name and select a role.');
@@ -412,7 +454,8 @@ const UsersView = {
           department,
           designation,
           phone,
-          status
+          status,
+          initialPassword: initialPassword || undefined
         }).catch(err => console.warn('Hostinger MySQL user update:', err));
       }
 
@@ -424,7 +467,8 @@ const UsersView = {
           department,
           designation,
           phone,
-          status
+          status,
+          initialPassword: initialPassword || undefined
         });
       }
 
@@ -518,6 +562,158 @@ const UsersView = {
     navigator.clipboard?.writeText(txt).then(() => {
       Toast.info(`Copied to clipboard: ${txt}`);
     }).catch(() => {});
+  },
+
+  togglePasswordVisibility(uid) {
+    const el = document.getElementById(`pwd-text-${uid}`);
+    if (!el) return;
+    const raw = el.getAttribute('data-raw') || 'Diallo@2026';
+    if (el.textContent === '••••••••') {
+      el.textContent = raw;
+      el.style.color = 'var(--primary)';
+      el.style.fontWeight = '700';
+    } else {
+      el.textContent = '••••••••';
+      el.style.color = '';
+      el.style.fontWeight = 'normal';
+    }
+  },
+
+  async exportCSV() {
+    try {
+      const users = this.cachedUsers || await userService.getUsers();
+      const headers = ['UID', 'Employee Code', 'Full Name', 'Official Email', 'Role', 'Department', 'Designation', 'Status', 'Login Password'];
+      const rows = users.map(u => [
+        `"${u.uid || u.id || ''}"`,
+        `"${u.employeeCode || ''}"`,
+        `"${u.displayName || u.fullName || ''}"`,
+        `"${u.email || ''}"`,
+        `"${u.roleId || 'EMPLOYEE'}"`,
+        `"${u.department || ''}"`,
+        `"${u.designation || ''}"`,
+        `"${u.status || 'ACTIVE'}"`,
+        `"${u.initialPassword || u.password || 'Diallo@2026'}"`
+      ]);
+
+      const csv = [headers.join(','), ...rows.map(r => r.join(','))].join('\n');
+      const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = `Diallo_Logins_${new Date().toISOString().slice(0, 10)}.csv`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      Toast.success('Exported Authorized User Logins CSV with Passwords.');
+    } catch (e) {
+      Toast.error(`Export failed: ${e.message}`);
+    }
+  },
+
+  importCSV() {
+    const companyId = AuthGuard.userProfile?.companyId || 'comp_diallo_india';
+    CsvImport.open({
+      title: 'Import User Accounts & Logins from CSV',
+      templateName: 'Diallo_Logins_Template.csv',
+      columns: [
+        { key: 'fullName', label: 'Full Name', aliases: ['Name', 'Employee Name', 'User Name'], required: true },
+        { key: 'email', label: 'Official Email', aliases: ['Work Email', 'Email', 'Login ID'], required: true },
+        { key: 'employeeCode', label: 'Employee Code', aliases: ['Emp Code', 'Code', 'ID'] },
+        { key: 'roleId', label: 'Role', aliases: ['System Role', 'Role ID', 'User Role'] },
+        { key: 'department', label: 'Department', aliases: ['Dept'] },
+        { key: 'designation', label: 'Designation', aliases: ['Title', 'Position'] },
+        { key: 'loginPassword', label: 'Login Password', aliases: ['Password', 'Pass', 'Initial Password', 'User Password'] },
+        { key: 'status', label: 'Status', aliases: ['Account Status'] }
+      ],
+      sampleRow: {
+        fullName: 'Jane Doe',
+        email: 'jane.doe@company.com',
+        employeeCode: 'EMP-101',
+        roleId: 'EMPLOYEE',
+        department: 'Operations',
+        designation: 'Operations Executive',
+        loginPassword: 'Diallo@2026',
+        status: 'ACTIVE'
+      },
+      prepare: async () => {
+        const snap = await db.collection('users').get();
+        const existingEmails = new Set();
+        snap.docs.forEach(d => {
+          const u = d.data();
+          if (u.email) existingEmails.add(u.email.toLowerCase().trim());
+        });
+        return { existingEmails };
+      },
+      validate: (row, ctx, seen) => {
+        seen.emails = seen.emails || new Set();
+        const email = (row.email || '').toLowerCase().trim();
+        if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return 'Invalid email address';
+        if (seen.emails.has(email)) return 'Duplicate email in file';
+        seen.emails.add(email);
+        return null;
+      },
+      importRow: async (row, ctx) => {
+        const email = (row.email || '').toLowerCase().trim();
+        const code = (row.employeeCode || '').toUpperCase().trim();
+        const pass = (row.loginPassword || '').trim() || 'Diallo@2026';
+        const role = (row.roleId || '').toUpperCase().trim() || 'EMPLOYEE';
+        const parts = row.fullName.split(/\s+/);
+        const firstName = parts[0] || '';
+        const lastName = parts.slice(1).join(' ') || '';
+
+        const uid = 'usr_' + (code ? code.toLowerCase().replace(/[^a-z0-9]/g, '') : Date.now() + Math.floor(Math.random() * 1000));
+
+        // 1. Write to Firestore 'users'
+        await db.collection('users').doc(uid).set({
+          uid,
+          email,
+          displayName: row.fullName,
+          firstName,
+          lastName,
+          employeeCode: code || '',
+          roleId: role,
+          department: row.department || '',
+          designation: row.designation || '',
+          initialPassword: pass,
+          companyId,
+          status: (row.status || 'ACTIVE').toUpperCase(),
+          updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+        }, { merge: true });
+
+        // 2. Also keep 'employees' record updated/created
+        try {
+          await db.collection('employees').doc(uid).set({
+            id: uid,
+            employeeCode: code || '',
+            fullName: row.fullName,
+            firstName,
+            lastName,
+            email,
+            workEmail: email,
+            roleId: role,
+            department: row.department || '',
+            designation: row.designation || '',
+            initialPassword: pass,
+            loginPassword: pass,
+            employmentStatus: (row.status || 'ACTIVE').toUpperCase(),
+            status: (row.status || 'ACTIVE').toUpperCase(),
+            companyId,
+            updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+          }, { merge: true });
+        } catch (_) {}
+      },
+      onDone: async (r) => {
+        if (r.imported) {
+          Toast.info('Synchronizing imported login accounts with Hostinger MySQL...');
+          try {
+            await UsersView.syncAllToHostinger();
+          } catch (_) {}
+          if (window.Router) {
+            Router.mountView('users');
+          }
+        }
+      }
+    });
   }
 };
 

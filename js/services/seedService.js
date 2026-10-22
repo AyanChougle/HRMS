@@ -14,9 +14,7 @@ const seedService = {
       // 1. Ensure official roles exist in Firestore
       await this.checkAndSeedModule('roles', () => this.seedRoles());
       await this.checkAndSeedModule('companies', () => this.seedCoreStructure());
-      // 2. Automatically sweep and purge legacy demo records from Firestore
-      await this.purgeAllDemoData();
-      console.log('[Seed] System dataset verification and cleanup complete.');
+      console.log('[Seed] System dataset verification complete.');
     } catch (err) {
       console.warn('[Seed] Bootstrap check warning:', err);
     }

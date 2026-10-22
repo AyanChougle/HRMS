@@ -552,29 +552,112 @@ const employeeService = {
     }
   },
 
-  // Sync core details to Hostinger MySQL Database
+  // Sync core employee details to Hostinger MySQL Database (both employees and users tables)
   async syncToMySQL(employeeData) {
     try {
-      const payload = {
-        employee_code: employeeData.employeeCode,
-        email: employeeData.workEmail || employeeData.email || employeeData.personalEmail || '',
-        full_name: employeeData.fullName || employeeData.name,
-        role: employeeData.roleId || 'EMPLOYEE'
-      };
+      const code = employeeData.employeeCode || '';
+      const email = employeeData.workEmail || employeeData.email || employeeData.personalEmail || '';
+      const fullName = employeeData.fullName || employeeData.name || '';
       
-      if (!payload.employee_code || !payload.email || !payload.full_name) return;
+      if (!code || !email || !fullName) return;
 
-      const response = await fetch('https://hrmstfw.com/hostinger-backend/sync_user.php', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload)
-      });
-      
-      if (!response.ok) {
-        console.warn('MySQL Sync non-OK response', await response.text());
+      const payload = {
+        id: employeeData.id || ('emp_' + code.toLowerCase().replace(/[^a-z0-9]/g, '')),
+        employee_code: code,
+        first_name: employeeData.firstName || fullName.split(/\s+/)[0] || '',
+        last_name: employeeData.lastName || fullName.split(/\s+/).slice(1).join(' ') || '',
+        full_name: fullName,
+        email: email,
+        work_email: email,
+        phone: employeeData.phone || '',
+        department: employeeData.department || 'Operations',
+        designation: employeeData.designation || 'Associate',
+        role_id: employeeData.roleId || 'EMPLOYEE',
+        manager_id: employeeData.managerId || null,
+        manager: employeeData.manager || null,
+        mentor: employeeData.mentor || null,
+        date_of_joining: employeeData.dateOfJoining || employeeData.joiningDate || new Date().toISOString().slice(0, 10),
+        employment_status: employeeData.employmentStatus || employeeData.status || 'ACTIVE'
+      };
+
+      if (typeof apiClient !== 'undefined') {
+        await apiClient.post('employees.php', payload);
+      } else {
+        await fetch('https://hrmstfw.com/hostinger_backend/employees.php', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload)
+        });
       }
     } catch (err) {
-      console.warn('Could not sync to MySQL backend:', err);
+      console.warn('Could not sync employee to MySQL backend:', err);
+    }
+  },
+
+  // Bulk sync all employees and users from Firestore to Hostinger MySQL
+  async syncAllEmployeesToMySQL() {
+    try {
+      const snap = await db.collection('employees').get();
+      const userSnap = await db.collection('users').get();
+
+      const employees = [];
+      snap.docs.forEach(doc => {
+        const e = doc.data();
+        const fullName = e.fullName || e.name || '';
+        employees.push({
+          id: doc.id,
+          employeeCode: e.employeeCode || '',
+          fullName: fullName,
+          firstName: e.firstName || fullName.split(/\s+/)[0] || '',
+          lastName: e.lastName || fullName.split(/\s+/).slice(1).join(' ') || '',
+          workEmail: e.workEmail || e.email || '',
+          email: e.email || e.workEmail || '',
+          phone: e.phone || '',
+          department: e.department || 'Operations',
+          designation: e.designation || 'Associate',
+          roleId: e.roleId || 'EMPLOYEE',
+          managerId: e.managerId || null,
+          manager: e.manager || null,
+          mentor: e.mentor || null,
+          dateOfJoining: e.dateOfJoining || e.joiningDate || new Date().toISOString().slice(0, 10),
+          employmentStatus: e.employmentStatus || e.status || 'ACTIVE'
+        });
+      });
+
+      const users = [];
+      userSnap.docs.forEach(doc => {
+        const u = doc.data();
+        const name = u.displayName || u.fullName || u.name || '';
+        users.push({
+          uid: doc.id,
+          employeeCode: u.employeeCode || '',
+          email: u.email || '',
+          displayName: name,
+          firstName: u.firstName || name.split(/\s+/)[0] || '',
+          lastName: u.lastName || name.split(/\s+/).slice(1).join(' ') || '',
+          phone: u.phone || '',
+          roleId: u.roleId || 'EMPLOYEE',
+          department: u.department || 'Operations',
+          designation: u.designation || 'Associate',
+          status: u.status || 'ACTIVE'
+        });
+      });
+
+      let res;
+      if (typeof apiClient !== 'undefined') {
+        res = await apiClient.post('migrate_from_firebase.php', { employees, users });
+      } else {
+        const r = await fetch('https://hrmstfw.com/hostinger_backend/migrate_from_firebase.php', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ employees, users })
+        });
+        res = await r.json();
+      }
+      return res;
+    } catch (err) {
+      console.error('Error syncing all employees to MySQL:', err);
+      throw err;
     }
   }
 };

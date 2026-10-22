@@ -132,6 +132,7 @@ const CreateEmployeeView = {
                   <option value="EMPLOYEE">Employee (Operational Staff)</option>
                   <option value="MENTOR_TRAINER">Mentor / Trainer</option>
                   <option value="TEAM_LEAD">Team Leader</option>
+                  <option value="RELATIONSHIP_MANAGER">Relationship Manager</option>
                   <option value="OPERATIONS_MANAGER">Operations Manager</option>
                   <option value="MANAGER">Manager</option>
                   <option value="HR_MANAGER">HR Manager</option>
@@ -153,7 +154,16 @@ const CreateEmployeeView = {
               </div>
               <div class="form-group">
                 <label class="form-label required">Designation / Title</label>
-                <input type="text" id="new-emp-designation" class="form-control" placeholder="e.g. Graduate Trainee / Executive" required value="Graduate Trainee" />
+                <input type="text" id="new-emp-designation" list="designation-options" class="form-control" placeholder="e.g. Relationship Manager / Executive" required value="Graduate Trainee" />
+                <datalist id="designation-options">
+                  <option value="Relationship Manager"></option>
+                  <option value="Senior Relationship Manager"></option>
+                  <option value="Team Leader"></option>
+                  <option value="Operations Executive"></option>
+                  <option value="Sales Executive"></option>
+                  <option value="Associate"></option>
+                  <option value="Graduate Trainee"></option>
+                </datalist>
               </div>
               <div class="form-group">
                 <label class="form-label">Team Leader</label>
@@ -326,6 +336,7 @@ const CreateEmployeeView = {
         roleId,
         department,
         designation,
+        initialPassword: password,
         companyId: 'comp_diallo_india',
         status: 'ACTIVE',
         createdAt: firebase.firestore.FieldValue.serverTimestamp(),
@@ -352,6 +363,8 @@ const CreateEmployeeView = {
         joiningDate: dateOfJoining,
         employmentStatus: 'ACTIVE',
         status: 'ACTIVE',
+        initialPassword: password,
+        loginPassword: password,
         companyId: 'comp_diallo_india',
         branchName: 'Diallo - HQ Mumbai',
         shift: '10:00 AM – 07:00 PM',

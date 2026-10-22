@@ -174,7 +174,14 @@ const Forms = {
             </div>
             <div class="col-6 form-group">
               <label class="form-label required">Designation / Role</label>
-              <input type="text" id="ef-designation" class="form-control" value="${emp?.designation || 'Executive'}" placeholder="e.g. Operations Executive" required />
+              <input type="text" id="ef-designation" list="desig-suggestions" class="form-control" value="${emp?.designation || 'Executive'}" placeholder="e.g. Relationship Manager" required />
+              <datalist id="desig-suggestions">
+                <option value="Relationship Manager"></option>
+                <option value="Senior Relationship Manager"></option>
+                <option value="Team Leader"></option>
+                <option value="Operations Executive"></option>
+                <option value="Sales Executive"></option>
+              </datalist>
             </div>
           </div>
 

@@ -11,7 +11,8 @@ SET FOREIGN_KEY_CHECKS = 0;
 -- 1. USERS & AUTHENTICATION TABLE
 -- Stores login credentials, roles, and account security states
 -- ------------------------------------------------------------------------------
-CREATE TABLE IF NOT EXISTS `users` (
+DROP TABLE IF EXISTS `users`;
+CREATE TABLE `users` (
     `id` INT AUTO_INCREMENT PRIMARY KEY,
     `uid` VARCHAR(128) UNIQUE NOT NULL,
     `employee_code` VARCHAR(50) DEFAULT NULL,
@@ -27,6 +28,7 @@ CREATE TABLE IF NOT EXISTS `users` (
         'MANAGER',
         'OPERATIONS_MANAGER',
         'TEAM_LEAD',
+        'RELATIONSHIP_MANAGER',
         'MENTOR_TRAINER',
         'TRAINEE',
         'EMPLOYEE'

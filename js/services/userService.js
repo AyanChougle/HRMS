@@ -11,6 +11,7 @@ const userService = {
     { id: 'MANAGER', name: 'Line Manager', badge: 'badge-info', color: '#2563eb', desc: 'Team oversight, approvals, performance & attendance' },
     { id: 'OPERATIONS_MANAGER', name: 'Operations Manager', badge: 'badge-info', color: '#0284c7', desc: 'Operational workflow oversight, teams & shift management' },
     { id: 'TEAM_LEAD', name: 'Team Leader', badge: 'badge-info', color: '#4f46e5', desc: 'Shift leadership, daily roster, team reviews & sign-offs' },
+    { id: 'RELATIONSHIP_MANAGER', name: 'Relationship Manager', badge: 'badge-info', color: '#0891b2', desc: 'Client relations, accounts, portfolio & operations management' },
     { id: 'MENTOR_TRAINER', name: 'Mentor / Trainer', badge: 'badge-warning', color: '#d97706', desc: 'Training curriculum, module evaluations & trainee guidance' },
     { id: 'TRAINEE', name: 'Graduate Trainee', badge: 'badge-warning', color: '#ea580c', desc: 'Restricted access strictly to 7-day training & punch-in' },
     { id: 'EMPLOYEE', name: 'Employee (Self Service)', badge: 'badge-neutral', color: '#475569', desc: 'Standard self-service profile, timecard, leaves & requests' }

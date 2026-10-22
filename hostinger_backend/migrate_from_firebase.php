@@ -20,6 +20,7 @@ $results = [
 ];
 
 try {
+    $pdo->exec("SET FOREIGN_KEY_CHECKS = 0;");
     $pdo->beginTransaction();
 
     // -------------------------------------------------------------------------
@@ -53,7 +54,7 @@ try {
                 ':fname' => $fname,
                 ':lname' => $lname,
                 ':phone' => $u['phone'] ?? null,
-                ':role' => in_array($role, ['SUPER_ADMIN', 'HR_MANAGER', 'MANAGER', 'OPERATIONS_MANAGER', 'TEAM_LEAD', 'MENTOR_TRAINER', 'TRAINEE', 'EMPLOYEE']) ? $role : 'EMPLOYEE',
+                ':role' => in_array($role, ['SUPER_ADMIN', 'HR_MANAGER', 'MANAGER', 'OPERATIONS_MANAGER', 'TEAM_LEAD', 'RELATIONSHIP_MANAGER', 'MENTOR_TRAINER', 'TRAINEE', 'EMPLOYEE']) ? $role : 'EMPLOYEE',
                 ':comp' => $u['companyId'] ?? 'comp_diallo_india',
                 ':branch' => $u['branchName'] ?? 'Ghansoli - Navi Mumbai, Maharashtra',
                 ':dept' => $u['department'] ?? 'Operations',
@@ -108,7 +109,7 @@ try {
                 ':phone' => $e['phone'] ?? null,
                 ':dept' => $e['department'] ?? 'Operations',
                 ':desig' => $e['designation'] ?? 'Associate',
-                ':role' => in_array($role, ['SUPER_ADMIN', 'HR_MANAGER', 'MANAGER', 'OPERATIONS_MANAGER', 'TEAM_LEAD', 'MENTOR_TRAINER', 'TRAINEE', 'EMPLOYEE']) ? $role : 'EMPLOYEE',
+                ':role' => in_array($role, ['SUPER_ADMIN', 'HR_MANAGER', 'MANAGER', 'OPERATIONS_MANAGER', 'TEAM_LEAD', 'RELATIONSHIP_MANAGER', 'MENTOR_TRAINER', 'TRAINEE', 'EMPLOYEE']) ? $role : 'EMPLOYEE',
                 ':mid' => $e['managerId'] ?? null,
                 ':mname' => $e['manager'] ?? null,
                 ':mentor' => $e['mentor'] ?? null,
@@ -161,6 +162,7 @@ try {
     }
 
     $pdo->commit();
+    $pdo->exec("SET FOREIGN_KEY_CHECKS = 1;");
 
     json_out([
         "success" => true,
@@ -170,6 +172,7 @@ try {
 
 } catch (\Exception $e) {
     if ($pdo->inTransaction()) $pdo->rollBack();
+    try { $pdo->exec("SET FOREIGN_KEY_CHECKS = 1;"); } catch (\Exception $_) {}
     json_out(["success" => false, "error" => "Migration failed: " . $e->getMessage()], 500);
 }
 ?>

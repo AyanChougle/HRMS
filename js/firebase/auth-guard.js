@@ -148,6 +148,8 @@ const AuthGuard = {
           this.userRole = { name: 'Manager', id: 'MANAGER' };
         } else if (normalizedRoleId === 'TEAM_LEAD' || normalizedRoleId === 'TL') {
           this.userRole = { name: 'Team Leader', id: 'TEAM_LEAD' };
+        } else if (normalizedRoleId === 'RELATIONSHIP_MANAGER' || normalizedRoleId === 'RM') {
+          this.userRole = { name: 'Relationship Manager', id: 'RELATIONSHIP_MANAGER' };
         } else if (normalizedRoleId === 'MENTOR_TRAINER') {
           this.userRole = { name: 'Mentor / Trainer', id: 'MENTOR_TRAINER' };
         } else if (normalizedRoleId === 'OPERATIONS_MANAGER') {
@@ -439,6 +441,9 @@ const AuthGuard = {
     } else if (normalizedRole === 'TEAM_LEAD' || normalizedRole === 'TL') {
       this.permissions = window.PermissionService ? PermissionService.getUserPermissions({ roleId: 'TEAM_LEAD' }) : new Set(['people.view', 'team.view', 'performance.view', 'attendance.view', 'leave.view', 'ess.view']);
       this.userRole = { name: 'Team Leader', id: 'TEAM_LEAD' };
+    } else if (normalizedRole === 'RELATIONSHIP_MANAGER' || normalizedRole === 'RM') {
+      this.permissions = window.PermissionService ? PermissionService.getUserPermissions({ roleId: 'RELATIONSHIP_MANAGER' }) : new Set(['people.view', 'team.view', 'performance.view', 'attendance.view', 'leave.view', 'expenses.view', 'ess.view']);
+      this.userRole = { name: 'Relationship Manager', id: 'RELATIONSHIP_MANAGER' };
     } else if (normalizedRole === 'MENTOR_TRAINER') {
       this.permissions = window.PermissionService ? PermissionService.getUserPermissions({ roleId: 'MENTOR_TRAINER' }) : new Set(['training.*', 'performance.view', 'attendance.punch', 'attendance.view', 'leave.view', 'leave.create', 'own.profile']);
       this.userRole = { name: 'Mentor / Trainer', id: 'MENTOR_TRAINER' };
@@ -478,6 +483,7 @@ const AuthGuard = {
       MANAGER: 'Manager',
       OPERATIONS_MANAGER: 'Operations Manager',
       TEAM_LEAD: 'Team Leader',
+      RELATIONSHIP_MANAGER: 'Relationship Manager',
       MENTOR_TRAINER: 'Mentor / Trainer',
       TRAINEE: 'Trainee',
       EMPLOYEE: 'Employee'
@@ -504,6 +510,7 @@ const AuthGuard = {
       MANAGER: 'Manager',
       OPERATIONS_MANAGER: 'Operations Manager',
         TEAM_LEAD: 'Team Leader',
+        RELATIONSHIP_MANAGER: 'Relationship Manager',
         MENTOR_TRAINER: 'Mentor / Trainer',
         TRAINEE: 'Trainee',
         EMPLOYEE: 'Employee'

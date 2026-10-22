@@ -46,6 +46,40 @@ const expenseService = {
     }
   },
 
+  // 1B. UPDATE EXPENSE CATEGORY & POLICY RULES (ADMIN)
+  async updateCategory(catIdOrCode, data) {
+    try {
+      const targetCompany = AuthGuard.userProfile?.companyId || 'comp_diallo_india';
+      let docId = catIdOrCode;
+      if (!docId.includes('_')) {
+        docId = `${targetCompany}_${catIdOrCode.toLowerCase()}`;
+      }
+
+      const updatePayload = {
+        ...data,
+        companyId: targetCompany,
+        updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+      };
+
+      await db.collection('expenseCategories').doc(docId).set(updatePayload, { merge: true });
+
+      // Update in-memory DEFAULT_CATEGORIES
+      const inMem = this.DEFAULT_CATEGORIES.find(c => c.id === catIdOrCode || c.code === catIdOrCode);
+      if (inMem) {
+        Object.assign(inMem, data);
+      }
+
+      if (typeof auditService !== 'undefined' && auditService.log) {
+        await auditService.log('EXPENSE_CATEGORY_UPDATED', 'EXPENSES', 'expenseCategories', docId, data);
+      }
+
+      return true;
+    } catch (err) {
+      console.error('Error updating expense category:', err);
+      throw err;
+    }
+  },
+
   // 2. GET EXPENSES (With Role-Based & Multitenant Scoping)
   async getExpenses(filters = {}) {
     try {

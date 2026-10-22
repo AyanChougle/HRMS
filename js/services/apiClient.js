@@ -7,8 +7,8 @@
 const apiClient = {
   // Production Hostinger API Base URL
   BASE_URL: (window.location.hostname === 'hrmstfw.com' || window.location.hostname.endsWith('hrmstfw.com'))
-    ? '/hostinger-backend'
-    : 'https://hrmstfw.com/hostinger-backend',
+    ? '/hostinger_backend'
+    : 'https://hrmstfw.com/hostinger_backend',
 
   async request(endpoint, options = {}) {
     const url = endpoint.startsWith('http') ? endpoint : `${this.BASE_URL}/${endpoint.replace(/^\//, '')}`;

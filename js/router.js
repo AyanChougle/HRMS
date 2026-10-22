@@ -18,7 +18,11 @@ const Router = {
     employees: {
       requiredPerm: 'people.view',
       render: () => PeopleView.renderEmployees(),
-      postRender: () => PeopleView.initEmployeesTable()
+      postRender: () => {
+        if (typeof PeopleView !== 'undefined' && typeof PeopleView.initEmployeesTable === 'function') {
+          PeopleView.initEmployeesTable();
+        }
+      }
     },
     departments: {
       requiredPerm: 'people.view',

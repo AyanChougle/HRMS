@@ -157,29 +157,164 @@ const ExpensesView = {
   },
 
   
-  async createCategory() {
-    const name = prompt('Enter New Expense Category Name (e.g. Travel, Food):');
-    if (!name) return;
-    const maxCapStr = prompt('Enter Max Policy Cap amount (number only):', '5000');
-    if (!maxCapStr) return;
-    const code = name.toUpperCase().replace(/[^A-Z0-9]/g, '_');
-    const cap = parseInt(maxCapStr, 10) || 5000;
-    
+  async openEditCategoryModal(catIdOrCode) {
+    const categories = await expenseService.getCategories();
+    const cat = categories.find(c => c.id === catIdOrCode || c.code === catIdOrCode);
+    if (!cat) {
+      Toast.error('Expense category not found.');
+      return;
+    }
+
+    const currentCap = cat.maxAmount || cat.maxPolicyCap || 5000;
+    const reqReceipt = cat.requiresReceipt !== undefined ? cat.requiresReceipt : (cat.receiptRequired !== false);
+    const isActive = cat.isActive !== false && cat.status !== 'INACTIVE';
+
+    ModalManager.openModal({
+      id: 'edit-expense-category-modal',
+      title: `Edit Policy: ${cat.name}`,
+      subtitle: `Configure maximum claim cap, receipt rules and active status`,
+      contentHtml: `
+        <form id="edit-cat-form" onsubmit="event.preventDefault(); ExpensesView.saveCategoryEdit('${cat.id || cat.code}');">
+          <div class="form-group" style="margin-bottom: 14px;">
+            <label class="form-label required">Category Name</label>
+            <input type="text" id="edit-cat-name" class="form-control" value="${cat.name}" required />
+          </div>
+          <div class="form-row" style="margin-bottom: 14px;">
+            <div class="col-6 form-group">
+              <label class="form-label required">Category Code</label>
+              <input type="text" id="edit-cat-code" class="form-control" value="${cat.code}" readonly style="background: var(--bg-hover);" />
+            </div>
+            <div class="col-6 form-group">
+              <label class="form-label required">Max Policy Cap (INR ₹)</label>
+              <input type="number" id="edit-cat-cap" class="form-control" value="${currentCap}" min="0" step="500" required />
+            </div>
+          </div>
+          <div class="form-row" style="margin-bottom: 20px;">
+            <div class="col-6 form-group">
+              <label class="form-label required">Receipt Requirement</label>
+              <select id="edit-cat-receipt" class="form-control">
+                <option value="true" ${reqReceipt ? 'selected' : ''}>Mandatory (Receipt Required)</option>
+                <option value="false" ${!reqReceipt ? 'selected' : ''}>Optional (No Receipt Needed)</option>
+              </select>
+            </div>
+            <div class="col-6 form-group">
+              <label class="form-label required">Policy Status</label>
+              <select id="edit-cat-status" class="form-control">
+                <option value="ACTIVE" ${isActive ? 'selected' : ''}>ACTIVE (Enabled)</option>
+                <option value="INACTIVE" ${!isActive ? 'selected' : ''}>INACTIVE (Disabled)</option>
+              </select>
+            </div>
+          </div>
+          <div class="flex justify-end gap-2">
+            <button type="button" class="btn btn-secondary btn-sm" onclick="ModalManager.closeModal()">Cancel</button>
+            <button type="submit" class="btn btn-primary btn-sm">Save Policy</button>
+          </div>
+        </form>
+      `
+    });
+  },
+
+  async saveCategoryEdit(catIdOrCode) {
     try {
+      const name = document.getElementById('edit-cat-name').value.trim();
+      const maxAmount = Number(document.getElementById('edit-cat-cap').value);
+      const requiresReceipt = document.getElementById('edit-cat-receipt').value === 'true';
+      const status = document.getElementById('edit-cat-status').value;
+      const isActive = status === 'ACTIVE';
+
+      await expenseService.updateCategory(catIdOrCode, {
+        name,
+        maxAmount,
+        maxPolicyCap: maxAmount,
+        requiresReceipt,
+        receiptRequired: requiresReceipt,
+        status,
+        isActive
+      });
+
+      Toast.success(`Policy for "${name}" updated successfully.`);
+      ModalManager.closeModal();
+      this.switchTab('settings');
+    } catch (e) {
+      Toast.error('Failed to update category: ' + e.message);
+    }
+  },
+
+  async createCategory() {
+    ModalManager.openModal({
+      id: 'create-expense-category-modal',
+      title: 'Create Expense Scheme & Category',
+      subtitle: 'Define new reimbursement category, maximum cap, and receipt policies',
+      contentHtml: `
+        <form id="create-cat-form" onsubmit="event.preventDefault(); ExpensesView.saveNewCategory();">
+          <div class="form-group" style="margin-bottom: 14px;">
+            <label class="form-label required">Category Name</label>
+            <input type="text" id="new-cat-name" class="form-control" placeholder="e.g. Client Site Travel" required />
+          </div>
+          <div class="form-row" style="margin-bottom: 14px;">
+            <div class="col-6 form-group">
+              <label class="form-label required">Category Code</label>
+              <input type="text" id="new-cat-code" class="form-control" placeholder="e.g. CLIENT_TRAVEL" required />
+            </div>
+            <div class="col-6 form-group">
+              <label class="form-label required">Max Policy Cap (INR ₹)</label>
+              <input type="number" id="new-cat-cap" class="form-control" value="10000" min="0" step="500" required />
+            </div>
+          </div>
+          <div class="form-row" style="margin-bottom: 20px;">
+            <div class="col-6 form-group">
+              <label class="form-label required">Receipt Requirement</label>
+              <select id="new-cat-receipt" class="form-control">
+                <option value="true" selected>Mandatory (Receipt Required)</option>
+                <option value="false">Optional (No Receipt Needed)</option>
+              </select>
+            </div>
+            <div class="col-6 form-group">
+              <label class="form-label required">Policy Status</label>
+              <select id="new-cat-status" class="form-control">
+                <option value="ACTIVE" selected>ACTIVE (Enabled)</option>
+                <option value="INACTIVE">INACTIVE (Disabled)</option>
+              </select>
+            </div>
+          </div>
+          <div class="flex justify-end gap-2">
+            <button type="button" class="btn btn-secondary btn-sm" onclick="ModalManager.closeModal()">Cancel</button>
+            <button type="submit" class="btn btn-primary btn-sm">Create Category</button>
+          </div>
+        </form>
+      `
+    });
+  },
+
+  async saveNewCategory() {
+    try {
+      const name = document.getElementById('new-cat-name').value.trim();
+      const code = document.getElementById('new-cat-code').value.trim().toUpperCase().replace(/[^A-Z0-9]/g, '_');
+      const maxAmount = Number(document.getElementById('new-cat-cap').value) || 5000;
+      const requiresReceipt = document.getElementById('new-cat-receipt').value === 'true';
+      const status = document.getElementById('new-cat-status').value;
       const companyId = window.AuthGuard?.userProfile?.companyId || 'comp_diallo_india';
-      await db.collection('expenseCategories').add({
-        name: name,
-        code: code,
-        maxPolicyCap: cap,
-        receiptRequired: true,
-        isActive: true,
-        companyId: companyId,
+
+      const docId = `${companyId}_${code.toLowerCase()}`;
+      await db.collection('expenseCategories').doc(docId).set({
+        id: docId,
+        name,
+        code,
+        maxAmount,
+        maxPolicyCap: maxAmount,
+        requiresReceipt,
+        receiptRequired: requiresReceipt,
+        status,
+        isActive: status === 'ACTIVE',
+        companyId,
         createdAt: firebase.firestore.FieldValue.serverTimestamp()
       });
-      alert('Category added successfully!');
-      this.switchTab('categories');
-    } catch(e) {
-      alert('Error creating category: ' + e.message);
+
+      Toast.success(`Expense category "${name}" created successfully.`);
+      ModalManager.closeModal();
+      this.switchTab('settings');
+    } catch (e) {
+      Toast.error('Failed to create category: ' + e.message);
     }
   },
   
@@ -560,6 +695,7 @@ const ExpensesView = {
                 <th>Max Policy Cap</th>
                 <th>Receipt Required</th>
                 <th>Status</th>
+                <th style="text-align: right;">Actions</th>
               </tr>
             </thead>
             <tbody>
@@ -569,13 +705,22 @@ const ExpensesView = {
                 <tr>
                   <td><div class="font-semibold text-main">${c.name}</div></td>
                   <td><code style="font-size: 0.8rem;">${c.code}</code></td>
-                  <td><strong>₹${(c.maxAmount || 5000).toLocaleString("en-IN")}</strong></td>
+                  <td><strong>₹${(c.maxAmount || c.maxPolicyCap || 5000).toLocaleString("en-IN")}</strong></td>
                   <td>
-                    <span class="badge ${c.requiresReceipt ? "badge-warning" : "badge-neutral"}">
-                      ${c.requiresReceipt ? "Mandatory" : "Optional"}
+                    <span class="badge ${c.requiresReceipt !== false && c.receiptRequired !== false ? "badge-warning" : "badge-neutral"}">
+                      ${c.requiresReceipt !== false && c.receiptRequired !== false ? "Mandatory" : "Optional"}
                     </span>
                   </td>
-                  <td><span class="badge badge-success">ACTIVE</span></td>
+                  <td>
+                    <span class="badge ${c.isActive !== false && c.status !== 'INACTIVE' ? "badge-success" : "badge-neutral"}">
+                      ${c.isActive !== false && c.status !== 'INACTIVE' ? "ACTIVE" : "INACTIVE"}
+                    </span>
+                  </td>
+                  <td style="text-align: right;">
+                    <button class="btn btn-secondary btn-sm" onclick="ExpensesView.openEditCategoryModal('${c.id || c.code}')" style="padding: 4px 10px; font-size: 0.75rem; font-weight: 600;">
+                      Edit Policy
+                    </button>
+                  </td>
                 </tr>
               `,
                 )
@@ -605,7 +750,7 @@ const ExpensesView = {
           <div class="col-6 form-group">
             <label class="form-label required">Category</label>
             <select id="exp-category" class="form-control" required>
-              ${categories.map((c) => `<option value="${c.code}" data-name="${c.name}">${c.name} (Cap: ₹${(c.maxAmount || 0).toLocaleString("en-IN")})</option>`).join("")}
+              ${categories.map((c) => `<option value="${c.code}" data-name="${c.name}">${c.name}</option>`).join("")}
             </select>
           </div>
         </div>

@@ -46,6 +46,14 @@ $defaultRoles = [
         'permissions' => ['people.view', 'attendance.view', 'leave.view', 'performance.view', 'compliance.view', 'requests.view', 'communication.view', 'reports.view', 'ess']
     ],
     [
+        'id' => 'RELATIONSHIP_MANAGER',
+        'name' => 'Relationship Manager',
+        'badge' => 'badge-info',
+        'color' => '#0891b2',
+        'desc' => 'Client relations, accounts, portfolio & operations management',
+        'permissions' => ['people.view', 'attendance.view', 'leave.view', 'performance.view', 'compliance.view', 'requests.view', 'communication.view', 'reports.view', 'ess']
+    ],
+    [
         'id' => 'MENTOR_TRAINER',
         'name' => 'Mentor / Trainer',
         'badge' => 'badge-warning',

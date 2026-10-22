@@ -58,6 +58,10 @@ const roleAccessService = {
       'dashboard', 'people', 'attendance', 'leave', 'performance', 'compliance',
       'requests', 'communication', 'reports', 'ess'
     ],
+    RELATIONSHIP_MANAGER: [
+      'dashboard', 'people', 'attendance', 'leave', 'performance', 'compliance',
+      'requests', 'communication', 'reports', 'ess'
+    ],
     MENTOR_TRAINER: [
       'dashboard', 'training', 'attendance', 'leave', 'performance', 'compliance',
       'documents', 'communication', 'ess'

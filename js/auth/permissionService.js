@@ -213,6 +213,26 @@ const PermissionService = {
       'ess.view'
     ],
 
+    RELATIONSHIP_MANAGER: [
+      'people.view',
+      'team.view',
+      'team.attendance',
+      'attendance.view',
+      'leave.view',
+      'performance.view',
+      'expenses.view',
+      'expenses.create',
+      'communication.view',
+      'reports.view',
+      'own.profile',
+      'own.attendance',
+      'own.leave',
+      'own.documents',
+      'own.requests',
+      'own.expenses',
+      'ess.view'
+    ],
+
     MENTOR_TRAINER: [
       'training.*',
       'training.view',

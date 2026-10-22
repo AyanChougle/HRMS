@@ -24,6 +24,9 @@ Options -Indexes
     # Route Firebase / Hostinger Auth Action URLs to branded reset-password.html
     RewriteRule ^__/auth/action/?$ reset-password.html [L,QSA]
 
+    # Map hostinger-backend (hyphen) to hostinger_backend (underscore) seamlessly
+    RewriteRule ^hostinger-backend/(.*)$ hostinger_backend/$1 [L,QSA]
+
     RewriteRule "(^|/)\.(?!well-known)" - [F]
 </IfModule>
 

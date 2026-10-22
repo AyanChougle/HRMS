@@ -546,12 +546,12 @@ const EmployeeDashboardView = {
 
         <!-- Weekly Shift & Punctuality Overview -->
         <div class="${isTrainee ? 'col-span-12' : 'col-span-6'} card">
-          <div class="card-header">
+          <div class="card-header" style="display: flex; justify-content: space-between; align-items: flex-start; gap: 12px;">
             <div>
               <div class="card-title">This Week's Attendance Rhythm</div>
               <div class="card-subtitle">Monday – Saturday punctuality summary (Saturday Half Day: 10:00 AM – 04:00 PM)</div>
             </div>
-            <button class="btn btn-ghost btn-sm" onclick="Router.navigate('attendance')">My Attendance</button>
+            <button class="btn btn-ghost btn-sm" onclick="Router.navigate('attendance')" style="white-space: nowrap; flex-shrink: 0;">My Attendance</button>
           </div>
           <div class="card-body">
             <div class="week-rhythm-grid">
@@ -611,18 +611,18 @@ const EmployeeDashboardView = {
         }
 
         return `
-                  <div style="padding: 12px 6px; background: ${cardBg}; border-radius: 8px; border: ${borderStyle};">
-                    <div style="font-size: 0.75rem; color: ${wd.isToday ? 'var(--primary)' : 'var(--text-muted)'}; font-weight: 700;">${wd.name}${wd.isSaturday ? ' (HALF DAY)' : ''}${wd.isToday ? ' (TODAY)' : ''}</div>
+                  <div style="padding: 10px 4px; background: ${cardBg}; border-radius: 8px; border: ${borderStyle}; min-width: 0; text-align: center;">
+                    <div style="font-size: 0.72rem; color: ${wd.isToday ? 'var(--primary)' : 'var(--text-muted)'}; font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${wd.name}${wd.isToday ? ' (Today)' : (wd.isSaturday ? ' (Half)' : '')}</div>
                     <div style="display: flex; justify-content: center; margin: 4px 0;">
                       <svg width="18" height="18" fill="none" viewBox="0 0 24 24" stroke="${iconColor}"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="${iconPath}"/></svg>
                     </div>
-                    <span class="badge ${badgeClass}" style="font-size: 0.65rem;">${statusLabel}</span>
+                    <span class="badge ${badgeClass}" style="font-size: 0.65rem; padding: 2px 4px;">${statusLabel}</span>
                   </div>
                 `;
       }).join('')}
             </div>
-            <div class="flex items-center justify-between" style="margin-top: 14px; font-size: 0.8rem; color: var(--text-secondary);">
-              <span>Target Work Hours: <strong>46h / week (Sat Half Day: 10 AM – 4 PM)</strong></span>
+            <div style="display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px; margin-top: 14px; font-size: 0.78rem; color: var(--text-secondary);">
+              <span>Target: <strong>46h / wk (Sat: 10AM–4PM)</strong></span>
               <span>Avg Punctuality: <strong style="color: var(--success);">${punctualityRate}%</strong></span>
             </div>
           </div>

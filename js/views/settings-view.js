@@ -482,6 +482,7 @@ const SettingsView = {
           <div class="module-card-footer">
             <span>Configure prefixes</span>
             <svg class="arrow-icon" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg>
+          </div>
         </div>
 
         <div class="module-nav-card" onclick="Router.navigate('payslip-templates')" style="border: 1.5px solid var(--accent-leave);">

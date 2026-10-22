@@ -190,29 +190,141 @@ const orgService = {
     }
   },
 
-  // 5. DYNAMIC ORGANIZATION HIERARCHY TREE
-  // Builds tree from employees array by linking managerId -> employee.id / employee.employeeCode
+  // 5. DYNAMIC SMART ORGANIZATION HIERARCHY TREE
   buildOrgTree(employees = []) {
     if (!employees || employees.length === 0) return [];
 
-    const map = {};
-    const roots = [];
+    const nodeMap = new Map();
+    const nameIndex = new Map();
 
-    // Index all employees
+    // 1. Index all employees
     employees.forEach(emp => {
-      map[emp.id] = { ...emp, children: [] };
-      if (emp.employeeCode) map[emp.employeeCode] = map[emp.id];
+      const id = emp.id || ('emp_' + (emp.employeeCode || Math.random().toString(36).slice(2, 7)));
+      const fullName = (emp.fullName || emp.name || 'Unnamed').trim();
+      const node = {
+        ...emp,
+        id,
+        name: fullName,
+        fullName,
+        designation: emp.designation || 'Staff',
+        department: emp.department || 'Operations',
+        branch: emp.branch || emp.branchName || 'HQ',
+        managerName: (emp.manager || emp.reportingManager || '').trim(),
+        managerId: emp.managerId || '',
+        children: []
+      };
+      nodeMap.set(id, node);
+
+      // Index by employee code
+      if (emp.employeeCode) {
+        nameIndex.set(emp.employeeCode.toUpperCase().trim(), id);
+      }
+
+      // Index by full name, variations, initials
+      const clean = fullName.toLowerCase();
+      nameIndex.set(clean, id);
+      const parts = clean.split(/\s+/).filter(Boolean);
+      if (parts.length >= 2) {
+        const first = parts[0];
+        const last = parts[parts.length - 1];
+        const lastInit = last[0];
+        nameIndex.set(`${first} ${lastInit}`, id);
+        nameIndex.set(`${first}.${lastInit}`, id);
+        nameIndex.set(`${first} ${last}`, id);
+        nameIndex.set(`${first}.${last}`, id);
+        if (parts.length > 2) {
+          nameIndex.set(`${first} ${parts[1]}`, id);
+        }
+      }
+      if (parts.length > 0 && !nameIndex.has(parts[0])) {
+        nameIndex.set(parts[0], id);
+      }
     });
 
-    // Build hierarchy
+    // 2. Identify top unlinked managers referenced by employees
+    const missingMap = new Map();
     employees.forEach(emp => {
-      const node = map[emp.id];
-      const mgrId = emp.managerId || emp.manager;
-      if (mgrId && map[mgrId] && map[mgrId] !== node) {
-        map[mgrId].children.push(node);
-      } else {
-        roots.push(node);
+      const m = (emp.manager || emp.reportingManager || '').trim();
+      if (!m) return;
+      const clean = m.toLowerCase();
+      const cleanDot = clean.replace('.', ' ');
+      if (!nameIndex.has(clean) && !nameIndex.has(cleanDot)) {
+        missingMap.set(clean, m);
       }
+    });
+
+    // If Akash T (Managing Director) is referenced, auto-anchor as Apex Executive Node
+    let apexId = null;
+    if (missingMap.has('akash t') || missingMap.has('akash')) {
+      apexId = 'emp_apex_akash';
+      const apexNode = {
+        id: apexId,
+        employeeCode: 'DIR-001',
+        name: 'Akash T',
+        fullName: 'Akash T',
+        designation: 'Managing Director / Leadership',
+        department: 'Executive Management',
+        branch: 'Headquarters',
+        status: 'ACTIVE',
+        children: []
+      };
+      nodeMap.set(apexId, apexNode);
+      nameIndex.set('akash t', apexId);
+      nameIndex.set('akash', apexId);
+    }
+
+    // Link Jiya Hr -> HR Lead (Jagruti Saroj) or Rushikesh B or Apex
+    if (missingMap.has('jiya hr') || missingMap.has('jiya')) {
+      const hrLeadId = nameIndex.get('jagruti amarnath saroj') || nameIndex.get('rushikesh b') || apexId;
+      if (hrLeadId) {
+        nameIndex.set('jiya hr', hrLeadId);
+        nameIndex.set('jiya', hrLeadId);
+      }
+    }
+
+    // Link Adinath Jamadar -> Sales Lead (Adil Khan) or Arshad M or Apex
+    if (missingMap.has('adinath jamadar') || missingMap.has('adinath')) {
+      const salesLeadId = nameIndex.get('adil khan') || nameIndex.get('arshad m') || apexId;
+      if (salesLeadId) {
+        nameIndex.set('adinath jamadar', salesLeadId);
+        nameIndex.set('adinath', salesLeadId);
+      }
+    }
+
+    // 3. Connect hierarchy with cycle prevention
+    const isDescendant = (candidateId, current, visited = new Set()) => {
+      if (!current || !current.id) return false;
+      if (current.id === candidateId) return true;
+      if (visited.has(current.id)) return false;
+      visited.add(current.id);
+      if (!current.parentManagerId || !nodeMap.has(current.parentManagerId)) return false;
+      return isDescendant(candidateId, nodeMap.get(current.parentManagerId), visited);
+    };
+
+    const roots = [];
+    nodeMap.forEach(node => {
+      let mId = node.managerId;
+      if (!mId && node.managerName) {
+        const codeMatch = node.managerName.match(/\(([^)]+)\)/);
+        if (codeMatch && codeMatch[1]) {
+          mId = nameIndex.get(codeMatch[1].toUpperCase().trim());
+        }
+        if (!mId) {
+          const clean = node.managerName.toLowerCase().trim();
+          mId = nameIndex.get(clean) || nameIndex.get(clean.replace('.', ' '));
+        }
+      }
+
+      if (mId && nodeMap.has(mId) && mId !== node.id) {
+        const parent = nodeMap.get(mId);
+        if (!isDescendant(node.id, parent)) {
+          node.parentManagerId = mId;
+          parent.children.push(node);
+          return;
+        }
+      }
+
+      roots.push(node);
     });
 
     return roots;

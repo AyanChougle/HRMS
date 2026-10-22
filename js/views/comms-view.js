@@ -168,10 +168,10 @@ const CommsView = {
 
     return `
       <!-- Category Filter Pills -->
-      <div class="flex items-center gap-2" style="margin-bottom: 20px; overflow-x: auto; padding-bottom: 4px;">
-        <button class="btn ${this.selectedCategory === 'ALL' ? 'btn-primary' : 'btn-soft'} btn-sm" onclick="CommsView.filterCategory('ALL')">All Notices</button>
+      <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 20px; overflow-x: auto; padding-bottom: 8px; -webkit-overflow-scrolling: touch; scrollbar-width: thin;">
+        <button class="btn ${this.selectedCategory === 'ALL' ? 'btn-primary' : 'btn-soft'} btn-sm" onclick="CommsView.filterCategory('ALL')" style="white-space: nowrap; flex-shrink: 0; font-size: 0.8rem; padding: 5px 14px; border-radius: 20px; font-weight: 600;">All Notices</button>
         ${announcementService.ANNOUNCEMENT_CATEGORIES.map(c => `
-          <button class="btn ${this.selectedCategory === c.code ? 'btn-primary' : 'btn-soft'} btn-sm" onclick="CommsView.filterCategory('${c.code}')">
+          <button class="btn ${this.selectedCategory === c.code ? 'btn-primary' : 'btn-soft'} btn-sm" onclick="CommsView.filterCategory('${c.code}')" style="white-space: nowrap; flex-shrink: 0; font-size: 0.8rem; padding: 5px 14px; border-radius: 20px; font-weight: 500;">
             ${c.name}
           </button>
         `).join('')}

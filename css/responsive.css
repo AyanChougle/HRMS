@@ -804,6 +804,21 @@ body, input, button, select, textarea, table, th, td {
   text-align: center;
 }
 
+/* Header Auto-Fit for Laptops & Desktops */
+@media (max-width: 1380px) {
+  #header-branch-wrapper {
+    display: none !important;
+  }
+}
+@media (max-width: 1150px) {
+  #header-company-wrapper {
+    display: none !important;
+  }
+  .header-center {
+    max-width: 180px;
+  }
+}
+
 /* --------------------------------------------------------------------------
    SMALL LAPTOPS — Timecard & Launchpad (1025px - 1199px)
    -------------------------------------------------------------------------- */

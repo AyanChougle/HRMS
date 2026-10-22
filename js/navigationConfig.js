@@ -1,5 +1,5 @@
 // navigationConfig.js
-export const navigation = {
+const navigation = {
   admin: [
     { label: "Dashboard", icon: "dashboard", route: "#dashboard" },
     { label: "People", icon: "users", children: [
@@ -59,3 +59,10 @@ export const navigation = {
     { label: "Settings", icon: "gear", route: "#settings" }
   ]
 };
+
+if (typeof window !== 'undefined') {
+  window.navigationConfig = navigation;
+}
+if (typeof module !== 'undefined' && module.exports) {
+  module.exports = navigation;
+}

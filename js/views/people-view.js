@@ -1,5 +1,5 @@
 /**
- * DIALLO HRMS ΓÇö PEOPLE & EMPLOYEE MANAGEMENT MODULE (PHASE 4)
+ * DIALLO HRMS — PEOPLE & EMPLOYEE MANAGEMENT MODULE (PHASE 4)
  * Comprehensive People Dashboard, 8-Tab Employee Profile, Dynamic Org Chart, Org Masters, Onboarding & Exits
  */
 
@@ -194,6 +194,11 @@ const PeopleView = {
     const userRole = (AuthGuard._previewRoleId || AuthGuard.userProfile?.roleId || AuthGuard.userProfile?.role || '').toUpperCase().trim();
     const canOnboard = ['SUPER_ADMIN', 'COMPANY_ADMIN', 'ADMIN', 'HR_MANAGER', 'HR', 'MANAGER'].includes(userRole);
 
+    const distinctDepts = Array.from(new Set([
+      ...departments.map(d => (d.name || '').trim()),
+      ...employees.map(e => (e.department || '').trim())
+    ])).filter(Boolean).sort();
+
     return `
       <!-- Search & Filters Toolbar -->
       <div class="card" style="margin-bottom: 20px; padding: 16px;">
@@ -204,8 +209,8 @@ const PeopleView = {
 
           <select id="filter-emp-dept" class="form-control" style="width: 180px;">
             <option value="All Departments">All Departments</option>
-            ${departments.map(d => `
-              <option value="${d.name}" ${this.currentFilters.department === d.name ? 'selected' : ''}>${d.name}</option>
+            ${distinctDepts.map(dName => `
+              <option value="${dName}" ${this.currentFilters.department === dName ? 'selected' : ''}>${dName}</option>
             `).join('')}
           </select>
 
@@ -364,7 +369,7 @@ const PeopleView = {
                 <div>
                   <h2 style="font-size: 1.3rem; font-weight: 800; color: var(--text-main); margin: 0 0 4px 0;">${emp.fullName || emp.name}</h2>
                   <div style="font-size: 0.85rem; color: var(--text-secondary);">
-                    <strong style="font-family: monospace; color: var(--primary);">${emp.employeeCode || 'EMP-0000'}</strong> ΓÇó ${emp.designation || 'Staff'} ΓÇó ${emp.department || 'General'}
+                    <strong style="font-family: monospace; color: var(--primary);">${emp.employeeCode || 'EMP-0000'}</strong> &bull; ${(emp.designation && emp.department && emp.designation.trim().toLowerCase() !== emp.department.trim().toLowerCase()) ? `${emp.designation} &bull; ${emp.department}` : (emp.designation || emp.department || 'Staff')}
                   </div>
                 </div>
               </div>
@@ -482,7 +487,7 @@ const PeopleView = {
                       <div class="flex items-center justify-between" style="padding: 10px 14px; border: 1px solid var(--border-light); border-radius: 6px;">
                         <div>
                           <div class="font-semibold text-main" style="font-size: 0.85rem;">${d.documentName || d.fileName}</div>
-                          <div class="text-muted" style="font-size: 0.75rem;">${d.documentType || 'General'} ΓÇó Uploaded by ${d.uploadedBy || 'HR'}</div>
+                          <div class="text-muted" style="font-size: 0.75rem;">${d.documentType || 'General'} &bull; Uploaded by ${d.uploadedBy || 'HR'}</div>
                         </div>
                         <a href="${d.downloadUrl || '#'}" target="_blank" class="btn btn-soft btn-sm">Download</a>
                       </div>
@@ -535,7 +540,7 @@ const PeopleView = {
       ModalManager.openModal({
         id: 'employee-profile-modal',
         title: `Employee Profile: ${emp.fullName || emp.name}`,
-        subtitle: `${emp.employeeCode} ΓÇó ${emp.designation}`,
+        subtitle: `${emp.employeeCode || ''} &bull; ${emp.designation || emp.department || 'Staff'}`,
         size: 'lg',
         contentHtml,
         footerHtml: `<button class="btn btn-secondary btn-sm" data-modal-close>Close Profile</button>`
@@ -588,119 +593,308 @@ const PeopleView = {
 
   // C. DYNAMIC ORGANIZATION CHART TAB
   // C. DYNAMIC ORGANIZATION CHART TAB
+  _collapsedNodes: new Set(),
+  _orgDeptFilter: 'ALL',
+
+  toggleOrgNode(nodeId) {
+    if (!this._collapsedNodes) this._collapsedNodes = new Set();
+    if (this._collapsedNodes.has(nodeId)) {
+      this._collapsedNodes.delete(nodeId);
+    } else {
+      this._collapsedNodes.add(nodeId);
+    }
+    const container = document.getElementById('people-tab-content');
+    if (container && this._lastEmployees) {
+      container.innerHTML = this.renderOrgChartTab(this._lastEmployees);
+      if (this.initOrgChartCanvas) this.initOrgChartCanvas();
+    }
+  },
+
+  expandAllOrgNodes() {
+    this._collapsedNodes = new Set();
+    const container = document.getElementById('people-tab-content');
+    if (container && this._lastEmployees) {
+      container.innerHTML = this.renderOrgChartTab(this._lastEmployees);
+      if (this.initOrgChartCanvas) this.initOrgChartCanvas();
+    }
+  },
+
+  collapseTeamsOrgNodes() {
+    this._collapsedNodes = new Set();
+    // Collapse any node with > 2 reports so leadership is clean
+    if (this._lastEmployees) {
+      const cleanList = this._lastEmployees.filter(e => e && (e.fullName || e.name || e.employeeCode));
+      const tree = orgService.buildOrgTree(cleanList);
+      const markCollapsed = (nodes, depth = 0) => {
+        nodes.forEach(n => {
+          if (n.children && n.children.length > 0) {
+            if (depth >= 2) this._collapsedNodes.add(n.id);
+            markCollapsed(n.children, depth + 1);
+          }
+        });
+      };
+      markCollapsed(tree, 0);
+    }
+    const container = document.getElementById('people-tab-content');
+    if (container && this._lastEmployees) {
+      container.innerHTML = this.renderOrgChartTab(this._lastEmployees);
+      if (this.initOrgChartCanvas) this.initOrgChartCanvas();
+    }
+  },
+
+  filterOrgChartDept(dept) {
+    this._orgDeptFilter = dept;
+    const container = document.getElementById('people-tab-content');
+    if (container && this._lastEmployees) {
+      container.innerHTML = this.renderOrgChartTab(this._lastEmployees);
+      if (this.initOrgChartCanvas) this.initOrgChartCanvas();
+    }
+  },
+
   renderOrgChartTab(employees) {
+    this._lastEmployees = employees;
     const userRole = (AuthGuard._previewRoleId || AuthGuard.userProfile?.roleId || AuthGuard.userProfile?.role || '').toUpperCase().trim();
     const canOnboard = ['SUPER_ADMIN', 'COMPANY_ADMIN', 'ADMIN', 'HR_MANAGER', 'HR', 'MANAGER'].includes(userRole);
 
-    const cleanList = employees.filter(e => e && (e.fullName || e.name || e.employeeCode));
-    const tree = orgService.buildOrgTree(cleanList);
+    let cleanList = employees.filter(e => e && (e.fullName || e.name || e.employeeCode));
+    
+    // Distinct departments for filter dropdown
+    const depts = Array.from(new Set(cleanList.map(e => e.department).filter(Boolean))).sort();
 
+    // Department filtering
+    if (this._orgDeptFilter && this._orgDeptFilter !== 'ALL') {
+      const targetDept = this._orgDeptFilter.toLowerCase();
+      cleanList = cleanList.filter(e => (e.department || '').toLowerCase() === targetDept || (e.designation || '').toLowerCase().includes(targetDept) || (e.manager || '').toLowerCase().includes(targetDept));
+    }
+
+    const tree = orgService.buildOrgTree(cleanList);
     setTimeout(() => { if (this.initOrgChartCanvas) this.initOrgChartCanvas(); }, 100);
+
+    const isCollapsed = (nodeId) => this._collapsedNodes && this._collapsedNodes.has(nodeId);
 
     const renderNode = (node) => {
       const initials = (node.fullName || node.name || 'EM').substring(0, 2).toUpperCase();
       const hasChildren = node.children && node.children.length > 0;
       const childCount = hasChildren ? node.children.length : 0;
+      const collapsed = isCollapsed(node.id);
 
-      // Dynamic compact width & font scaling based on team growth
-      let cardWidth = 200;
-      let avatarSize = 40;
-      let fontSize = '0.9rem';
-      let titleSize = '0.78rem';
-      let padding = '14px 12px';
-      let childGap = 20;
+      // Check if all children are leaf nodes (individual contributors)
+      const allChildrenAreLeaves = hasChildren && node.children.every(c => !c.children || c.children.length === 0);
 
-      if (childCount >= 8) {
-        cardWidth = 140;
-        avatarSize = 30;
-        fontSize = '0.78rem';
-        titleSize = '0.7rem';
-        padding = '10px 8px';
-        childGap = 10;
-      } else if (childCount >= 4) {
-        cardWidth = 165;
-        avatarSize = 34;
-        fontSize = '0.84rem';
-        titleSize = '0.74rem';
-        padding = '12px 10px';
-        childGap = 14;
-      }
+      // Card sizing
+      const cardWidth = 175;
+      const avatarSize = 36;
 
       return `
-        <div class="tree-node" style="display: flex; flex-direction: column; align-items: center; position: relative;">
-          <!-- Node Card -->
-          <div class="card org-card" style="padding: ${padding}; width: ${cardWidth}px; text-align: center; cursor: pointer; border: 1.5px solid var(--border-main); border-radius: 12px; background: var(--bg-surface); box-shadow: 0 2px 8px rgba(0,0,0,0.04); transition: transform 0.15s ease, box-shadow 0.15s ease; position: relative;" onclick="PeopleView.openEmployeeDrawer('${node.id}')" onmouseenter="this.style.transform='translateY(-2px)'; this.style.boxShadow='0 6px 16px rgba(0,0,0,0.08)';" onmouseleave="this.style.transform='none'; this.style.boxShadow='0 2px 8px rgba(0,0,0,0.04)';">
-            <div style="width: ${avatarSize}px; height: ${avatarSize}px; border-radius: 50%; background: var(--primary-light); color: var(--primary); margin: 0 auto 6px auto; display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: ${titleSize}; border: 2px solid var(--primary-light);">
+        <div class="tree-node-block">
+          <!-- Card -->
+          <div class="org-card" onclick="PeopleView.openEmployeeDrawer('${node.id}')" title="Click to view complete employee profile">
+            <div style="display: flex; align-items: center; justify-content: center; width: ${avatarSize}px; height: ${avatarSize}px; border-radius: 50%; background: var(--primary-light, #eff6ff); color: var(--primary, #2563eb); margin: 0 auto 6px auto; font-weight: 700; font-size: 0.8rem; border: 2px solid var(--primary-light, #eff6ff);">
               ${initials}
             </div>
-            <div class="font-bold text-main" style="font-size: ${fontSize}; margin-bottom: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;" title="${node.fullName || node.name}">${node.fullName || node.name}</div>
-            <div style="font-size: ${titleSize}; font-weight: 600; color: var(--primary); margin-bottom: 4px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;" title="${node.designation || 'Staff'}">${node.designation || 'Staff'}</div>
-            <div style="margin-bottom: 6px;">
-              <span style="font-size: 0.68rem; padding: 2px 6px; border-radius: 9999px; background: var(--bg-hover); color: var(--text-secondary); display: inline-block;">${node.department || 'Operations'}</span>
+            <div style="font-weight: 700; font-size: 0.85rem; color: var(--text-main); margin-bottom: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
+              ${node.fullName || node.name}
             </div>
-            <div style="font-size: 0.7rem; color: var(--text-muted); font-family: monospace; letter-spacing: 0.5px;">${node.employeeCode || ''}</div>
+            <div style="font-size: 0.74rem; font-weight: 600; color: var(--primary); margin-bottom: 3px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
+              ${node.designation || 'Staff'}
+            </div>
+            <div style="margin-bottom: 4px;">
+              <span style="font-size: 0.65rem; padding: 2px 6px; border-radius: 9999px; background: var(--bg-hover, #f1f5f9); color: var(--text-secondary); display: inline-block;">
+                ${node.department || 'Operations'}
+              </span>
+            </div>
+            <div style="font-size: 0.68rem; color: var(--text-muted); font-family: monospace;">${node.employeeCode || ''}</div>
+            
             ${hasChildren ? `
-              <div style="margin-top: 8px; padding-top: 6px; border-top: 1px dashed var(--border-main);">
-                <span style="font-size: 0.68rem; font-weight: 600; color: var(--primary); background: var(--primary-light); padding: 2px 6px; border-radius: 6px;">
-                  ${node.children.length} Direct Report${node.children.length > 1 ? 's' : ''}
-                </span>
+              <div style="margin-top: 6px; padding-top: 5px; border-top: 1px dashed var(--border-main);">
+                <button type="button" class="btn btn-xs" style="font-size: 0.66rem; font-weight: 700; padding: 2px 6px; border-radius: 6px; background: ${collapsed ? 'var(--primary)' : 'var(--primary-light)'}; color: ${collapsed ? '#ffffff' : 'var(--primary)'}; border: none; cursor: pointer;" onclick="event.stopPropagation(); PeopleView.toggleOrgNode('${node.id}')" title="${collapsed ? 'Click to expand team' : 'Click to collapse team'}">
+                  ${collapsed ? `+ ${childCount} Report${childCount > 1 ? 's' : ''}` : `▼ ${childCount} Report${childCount > 1 ? 's' : ''}`}
+                </button>
               </div>
             ` : ''}
           </div>
 
           <!-- Tree Branch Connectors -->
-          ${hasChildren ? `
-            <div style="width: 2px; height: 18px; background: var(--primary);"></div>
-            <div class="tree-children" style="display: flex; justify-content: center; gap: ${childGap}px; position: relative; padding-top: 18px;">
-              ${node.children.length > 1 ? `
-                <div style="position: absolute; top: 0; left: calc(${100 / (node.children.length * 2)}%); right: calc(${100 / (node.children.length * 2)}%); height: 2px; background: var(--primary);"></div>
-              ` : `
-                <div style="position: absolute; top: 0; left: 50%; width: 2px; height: 18px; background: var(--primary);"></div>
-              `}
-              ${node.children.map((child) => `
-                <div style="display: flex; flex-direction: column; align-items: center; position: relative;">
-                  ${node.children.length > 1 ? `<div style="position: absolute; top: -18px; width: 2px; height: 18px; background: var(--primary);"></div>` : ''}
-                  ${renderNode(child)}
+          ${(hasChildren && !collapsed) ? `
+            <div class="tree-node-stem-down"></div>
+            
+            ${(allChildrenAreLeaves && childCount >= 5) ? `
+              <!-- Compact Grid Pod for large leaf teams (keeps layout neatly arranged!) -->
+              <div class="team-pod-card" style="margin-top: 0; background: var(--bg-surface, #ffffff); border: 1.5px solid var(--border-main); border-radius: 12px; padding: 12px; box-shadow: 0 4px 12px rgba(0,0,0,0.05); max-width: 420px;">
+                <div style="font-size: 0.72rem; font-weight: 700; color: var(--text-muted); text-transform: uppercase; margin-bottom: 8px; text-align: left; display: flex; justify-content: space-between;">
+                  <span>Direct Team (${childCount})</span>
+                  <span style="color: var(--primary); font-size: 0.68rem;">Compact Grid</span>
                 </div>
-              `).join('')}
-            </div>
+                <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px;">
+                  ${node.children.map(c => `
+                    <div style="display: flex; align-items: center; gap: 8px; padding: 6px 8px; background: var(--bg-hover, #f8fafc); border: 1px solid var(--border-main); border-radius: 8px; cursor: pointer; text-align: left; transition: background 0.15s ease;" onclick="PeopleView.openEmployeeDrawer('${c.id}')" onmouseenter="this.style.background='var(--primary-light)'" onmouseleave="this.style.background='var(--bg-hover)'">
+                      <div style="width: 26px; height: 26px; border-radius: 50%; background: var(--primary-light); color: var(--primary); display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 0.68rem; flex-shrink: 0;">
+                        ${(c.fullName || c.name || 'EM').substring(0, 2).toUpperCase()}
+                      </div>
+                      <div style="overflow: hidden;">
+                        <div style="font-size: 0.75rem; font-weight: 600; color: var(--text-main); white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${c.fullName || c.name}</div>
+                        <div style="font-size: 0.65rem; color: var(--text-muted); font-family: monospace;">${c.employeeCode || ''} &bull; ${c.designation || 'Sales'}</div>
+                      </div>
+                    </div>
+                  `).join('')}
+                </div>
+              </div>
+            ` : `
+              <!-- Standard Pure CSS Multi-Branch Connectors (Mathematically Centered!) -->
+              <ul class="tree-children-list">
+                ${node.children.map((child, idx, arr) => {
+                  const isFirst = idx === 0;
+                  const isLast = idx === arr.length - 1;
+                  const isOnly = arr.length === 1;
+                  const posClass = isOnly ? 'is-only' : (isFirst ? 'is-first' : (isLast ? 'is-last' : ''));
+                  return `
+                    <li class="tree-child-wrapper ${posClass}">
+                      ${renderNode(child)}
+                    </li>
+                  `;
+                }).join('')}
+              </ul>
+            `}
           ` : ''}
         </div>
       `;
     };
 
     return `
-      <div class="card" style="padding: 24px; position: relative; overflow: hidden; user-select: none;">
-        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; flex-wrap: wrap; gap: 12px; border-bottom: 1px solid var(--border-main); padding-bottom: 16px;">
+      <style>
+        /* Scoped Pure CSS Hierarchy Engine */
+        .org-tree-canvas {
+          display: inline-flex;
+          flex-direction: column;
+          align-items: center;
+          padding: 24px;
+          min-width: 100%;
+        }
+        .tree-node-block {
+          display: flex;
+          flex-direction: column;
+          align-items: center;
+          position: relative;
+        }
+        .tree-node-stem-down {
+          width: 2px;
+          height: 22px;
+          background: var(--primary, #2563eb);
+        }
+        .tree-children-list {
+          display: flex;
+          justify-content: center;
+          list-style: none;
+          margin: 0;
+          padding: 0;
+          position: relative;
+        }
+        .tree-child-wrapper {
+          display: flex;
+          flex-direction: column;
+          align-items: center;
+          position: relative;
+          padding: 22px 10px 0 10px;
+        }
+        /* Top vertical line entering each child */
+        .tree-child-wrapper::before {
+          content: '';
+          position: absolute;
+          top: 0;
+          left: 50%;
+          width: 2px;
+          height: 22px;
+          background: var(--primary, #2563eb);
+          transform: translateX(-50%);
+        }
+        /* Horizontal sibling line */
+        .tree-child-wrapper::after {
+          content: '';
+          position: absolute;
+          top: 0;
+          left: 0;
+          width: 100%;
+          height: 2px;
+          background: var(--primary, #2563eb);
+        }
+        .tree-child-wrapper.is-first::after {
+          left: 50%;
+          width: 50%;
+        }
+        .tree-child-wrapper.is-last::after {
+          left: 0;
+          width: 50%;
+        }
+        .tree-child-wrapper.is-only::after {
+          display: none;
+        }
+        .org-card {
+          width: 175px;
+          padding: 12px 10px;
+          background: var(--bg-surface, #ffffff);
+          border: 1.5px solid var(--border-main, #e2e8f0);
+          border-radius: 12px;
+          text-align: center;
+          box-shadow: 0 2px 8px rgba(0,0,0,0.04);
+          transition: transform 0.15s ease, box-shadow 0.15s ease;
+          position: relative;
+          cursor: pointer;
+        }
+        .org-card:hover {
+          transform: translateY(-2px);
+          box-shadow: 0 6px 16px rgba(0,0,0,0.08);
+          border-color: var(--primary, #2563eb);
+        }
+      </style>
+
+      <div class="card" style="padding: 20px; position: relative; overflow: hidden; user-select: none;">
+        <!-- Header Controls -->
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; flex-wrap: wrap; gap: 12px; border-bottom: 1px solid var(--border-main); padding-bottom: 14px;">
           <div>
             <h3 style="font-size: 1.15rem; font-weight: 700; color: var(--text-main); margin: 0 0 4px 0;">Diallo Organization Hierarchy Tree</h3>
-            <p style="font-size: 0.825rem; color: var(--text-muted); margin: 0;">Interactive view: drag canvas to pan around, zoom in/out, auto-scaled for team growth</p>
+            <p style="font-size: 0.8rem; color: var(--text-muted); margin: 0;">Interactive view: zoom, pan, toggle teams, or filter by department</p>
           </div>
-          <div style="display: flex; align-items: center; gap: 8px;">
-            <span class="badge badge-primary" style="font-size: 0.8rem; padding: 6px 12px; margin-right: 8px;">${cleanList.length} Active Personnel</span>
-            <button class="btn btn-secondary btn-sm" onclick="PeopleView.zoomOrgChart(-0.1)" title="Zoom Out (-)">
-              <svg width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 12H4"/></svg>
+          
+          <div style="display: flex; align-items: center; gap: 8px; flex-wrap: wrap;">
+            <!-- Department Filter -->
+            <select class="form-control" style="font-size: 0.8rem; padding: 4px 8px; width: auto; height: 32px;" onchange="PeopleView.filterOrgChartDept(this.value)">
+              <option value="ALL" ${this._orgDeptFilter === 'ALL' ? 'selected' : ''}>All Departments</option>
+              ${depts.map(d => `<option value="${d}" ${this._orgDeptFilter === d ? 'selected' : ''}>${d}</option>`).join('')}
+            </select>
+
+            <!-- Expand / Collapse buttons -->
+            <button class="btn btn-secondary btn-sm" onclick="PeopleView.expandAllOrgNodes()" title="Expand All Teams">
+              Expand All
             </button>
-            <span id="org-zoom-level" style="font-size: 0.8rem; font-weight: 600; min-width: 44px; text-align: center;">100%</span>
-            <button class="btn btn-secondary btn-sm" onclick="PeopleView.zoomOrgChart(0.1)" title="Zoom In (+)">
-              <svg width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/></svg>
+            <button class="btn btn-secondary btn-sm" onclick="PeopleView.collapseTeamsOrgNodes()" title="Collapse Large Teams">
+              Focus Leads
             </button>
-            <button class="btn btn-secondary btn-sm" onclick="PeopleView.resetOrgChartZoom()" title="Reset Zoom">Fit / Reset</button>
+
+            <!-- Zoom Controls -->
+            <div style="display: flex; align-items: center; gap: 4px; border-left: 1px solid var(--border-main); padding-left: 8px;">
+              <button class="btn btn-secondary btn-sm" onclick="PeopleView.zoomOrgChart(-0.1)" title="Zoom Out (-)">
+                <svg width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 12H4"/></svg>
+              </button>
+              <span id="org-zoom-level" style="font-size: 0.8rem; font-weight: 600; min-width: 44px; text-align: center;">100%</span>
+              <button class="btn btn-secondary btn-sm" onclick="PeopleView.zoomOrgChart(0.1)" title="Zoom In (+)">
+                <svg width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/></svg>
+              </button>
+              <button class="btn btn-secondary btn-sm" onclick="PeopleView.resetOrgChartZoom()" title="Reset Zoom">Fit</button>
+            </div>
+
+            <span class="badge badge-primary" style="font-size: 0.8rem; padding: 6px 12px; margin-left: 4px;">${cleanList.length} Personnel</span>
           </div>
         </div>
 
         ${tree.length === 0 ? `
           <div style="padding: 48px; text-align: center; color: var(--text-muted);">
-            <div style="width: 48px; height: 48px; border-radius: 50%; background: var(--bg-hover); display: flex; align-items: center; justify-content: center; margin: 0 auto 12px auto; color: var(--text-muted);">
-              <svg width="24" height="24" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"/></svg>
-            </div>
             <div style="font-weight: 600; font-size: 1rem; color: var(--text-main); margin-bottom: 4px;">No Hierarchy Records Found</div>
-            <div style="font-size: 0.85rem; margin-bottom: 16px;">Add real employees with designated reporting managers to visualize the organization hierarchy.</div>
+            <div style="font-size: 0.85rem; margin-bottom: 16px;">Try switching the department filter to "All Departments".</div>
             ${canOnboard ? `<button class="btn btn-primary btn-sm" onclick="Forms.openEmployeeModal()">+ Onboard Employee</button>` : ''}
           </div>
         ` : `
-          <div id="org-chart-viewport" style="width: 100%; overflow: auto; cursor: grab; position: relative; min-height: 480px; display: flex; justify-content: center; align-items: flex-start; padding: 20px 0; scrollbar-width: none;">
-            <div id="org-chart-canvas" style="transform-origin: top center; transition: transform 0.15s ease-out; display: inline-flex; justify-content: center; gap: 36px; min-width: max-content;">
+          <div id="org-chart-viewport" style="width: 100%; overflow: auto; cursor: grab; position: relative; min-height: 520px; display: flex; justify-content: center; align-items: flex-start; padding: 20px 0; background: var(--bg-hover, #f8fafc); border-radius: 8px;">
+            <div id="org-chart-canvas" class="org-tree-canvas" style="transform-origin: top center; transition: transform 0.15s ease-out;">
               ${tree.map(renderNode).join('')}
             </div>
           </div>
@@ -1384,18 +1578,12 @@ const PeopleView = {
   },
 
   // ---- CSV IMPORT (same columns as Export CSV, so an exported file can be re-imported) ----
-    async pushAllToMySQL() {
-    if (!confirm('This will force-sync all currently visible employees to your Hostinger MySQL database. Proceed?')) return;
+  async pushAllToMySQL() {
     try {
-      const emps = await employeeService.getEmployees(this.currentFilters);
-      let count = 0;
-      for (const e of emps) {
-        if (e.employeeCode && (e.workEmail || e.email || e.personalEmail)) {
-          await employeeService.syncToMySQL(e);
-          count++;
-        }
-      }
-      Toast.success(`Successfully pushed ${count} employees to MySQL!`);
+      Toast.info('Synchronizing all employees & users to Hostinger MySQL database...');
+      const res = await employeeService.syncAllEmployeesToMySQL();
+      const count = res?.migrated_counts?.employees || 'all';
+      Toast.success(`Successfully pushed ${count} employees and user credentials to Hostinger MySQL database!`);
     } catch (err) {
       Toast.error('Error pushing to MySQL: ' + err.message);
     }
@@ -1409,7 +1597,7 @@ const PeopleView = {
       v = String(v).trim();
       if (!v) return '';
 
-      // Handle Excel serial date numbers (e.g. 45500)
+      // Handle Excel serial date numbers (e.g. 45500, 46308)
       if (/^\d{4,5}(\.\d+)?$/.test(v)) {
         const num = parseFloat(v);
         if (num > 30000 && num < 60000) {
@@ -1421,8 +1609,18 @@ const PeopleView = {
         }
       }
 
+      // DD-Mon-YY or D-Mon-YYYY (e.g. 10-Aug-22, 2-Mar-24, 1-Dec-25)
+      const months = { jan: '01', feb: '02', mar: '03', apr: '04', may: '05', jun: '06', jul: '07', aug: '08', sep: '09', oct: '10', nov: '11', dec: '12' };
+      let match = v.match(/^(\d{1,2})[\s\-]+([A-Za-z]{3})[\s\-]+(\d{2,4})$/i);
+      if (match) {
+        const d = String(match[1]).padStart(2, '0');
+        const mon = months[match[2].toLowerCase().substring(0, 3)] || '01';
+        const y = match[3].length === 2 ? ('20' + match[3]) : match[3];
+        return `${y}-${mon}-${d}`;
+      }
+
       // 1. YYYY-MM-DD or YYYY/MM/DD
-      let match = v.match(/^(\d{4})[\/\-](\d{1,2})[\/\-](\d{1,2})$/);
+      match = v.match(/^(\d{4})[\/\-](\d{1,2})[\/\-](\d{1,2})$/);
       if (match) {
         const y = parseInt(match[1], 10);
         const m = parseInt(match[2], 10);
@@ -1475,14 +1673,28 @@ const PeopleView = {
         { key: 'manager', label: 'Reporting Manager', aliases: ['Reporting', 'Manager'] },
         { key: 'dateOfJoining', label: 'Joining Date', aliases: ['Date of Joining', 'DOJ'] },
         { key: 'employmentStatus', label: 'Status', aliases: ['Employment Status'] },
-        { key: 'phone', label: 'Phone', aliases: ['Mobile', 'Mobile No', 'Mobile Number'] }
+        { key: 'phone', label: 'Phone', aliases: ['Mobile', 'Mobile No', 'Mobile Number'] },
+        { key: 'loginPassword', label: 'Login Password', aliases: ['Password', 'Pass', 'Initial Password', 'User Password', 'User Pass', 'Initial Pass'] }
       ],
-      sampleRow: { employeeCode: '', fullName: 'Jane Doe', workEmail: 'jane.doe@company.com', department: 'Operations', designation: 'Operations Executive', branchName: 'Ghansoli - Navi Mumbai', manager: '', dateOfJoining: '2026-10-01', employmentStatus: 'ACTIVE', phone: '9876543210' },
+      sampleRow: { employeeCode: '', fullName: 'Jane Doe', workEmail: 'jane.doe@company.com', department: 'Operations', designation: 'Operations Executive', branchName: 'Ghansoli - Navi Mumbai', manager: '', dateOfJoining: '2026-10-01', employmentStatus: 'ACTIVE', phone: '9876543210', loginPassword: 'Diallo@2026' },
 
       // Load existing emails/codes once so duplicates within file are caught and existing records can be updated
       prepare: async () => {
         const snap = await db.collection('employees').where('companyId', '==', companyId).get();
         const emailToDocMap = {}, codeToDocMap = {}, managerMap = {};
+
+        const registerManagerKeys = (name, docId) => {
+          if (!name || !docId) return;
+          const clean = name.trim().toLowerCase();
+          managerMap[clean] = docId;
+          const parts = clean.split(/\s+/);
+          if (parts.length >= 2) {
+            managerMap[`${parts[0]} ${parts[parts.length - 1][0]}`] = docId;
+            managerMap[`${parts[0]}.${parts[parts.length - 1][0]}`] = docId;
+            managerMap[`${parts[0]} ${parts[parts.length - 1]}`] = docId;
+          }
+        };
+
         snap.docs.forEach(d => {
           const e = d.data();
           const docId = d.id;
@@ -1490,56 +1702,106 @@ const PeopleView = {
             if (x) emailToDocMap[String(x).toLowerCase().trim()] = docId;
           });
           if (e.employeeCode) codeToDocMap[String(e.employeeCode).toUpperCase().trim()] = docId;
-          if (e.fullName) managerMap[e.fullName.toLowerCase().trim()] = docId;
+          if (e.fullName) registerManagerKeys(e.fullName, docId);
         });
-        return { emailToDocMap, codeToDocMap, managerMap };
+
+        // Also fetch user accounts to map login passwords
+        const userPassMap = {};
+        try {
+          const uSnap = await db.collection('users').get();
+          uSnap.docs.forEach(d => {
+            const u = d.data();
+            if (u.email) userPassMap[u.email.toLowerCase().trim()] = u.initialPassword || u.password || 'Diallo@2026';
+          });
+        } catch (_) {}
+
+        // Track registered departments so we dynamically auto-create any new department in CSV
+        const knownDepartments = new Set();
+        try {
+          const deptSnap = await db.collection('departments').get();
+          deptSnap.docs.forEach(d => {
+            const dName = (d.data().name || '').trim().toLowerCase();
+            if (dName) knownDepartments.add(dName);
+          });
+        } catch (_) {}
+
+        return { emailToDocMap, codeToDocMap, managerMap, userPassMap, knownDepartments, registerManagerKeys };
       },
 
       validate: (row, ctx, seen) => {
         seen.emails = seen.emails || new Set(); seen.codes = seen.codes || new Set();
         const email = (row.workEmail || '').toLowerCase().trim();
-        if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return 'Invalid work email';
-        if (seen.emails.has(email)) return 'Duplicate email in file';
+        if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return 'Invalid work email: ' + (row.workEmail || 'blank');
+        if (seen.emails.has(email)) return 'Duplicate email in file: ' + email;
         const code = (row.employeeCode || '').toUpperCase().trim();
-        if (code && seen.codes.has(code)) return 'Duplicate employee code in file';
-        if (row.dateOfJoining && toIsoDate(row.dateOfJoining) === null) return 'Joining Date must be YYYY-MM-DD or DD/MM/YYYY';
-        if (row.employmentStatus && !STATUS_MAP[row.employmentStatus.toUpperCase()]) return `Unknown status "${row.employmentStatus}"`;
+        if (code && seen.codes.has(code)) return 'Duplicate employee code in file: ' + code;
+        if (row.dateOfJoining && toIsoDate(row.dateOfJoining) === null) return 'Joining Date could not be parsed: ' + row.dateOfJoining;
         seen.emails.add(email); if (code) seen.codes.add(code);
         return null;
       },
 
       importRow: async (row, ctx) => {
         const email = (row.workEmail || '').toLowerCase().trim();
-        const code = (row.employeeCode || '').toUpperCase().trim();
+        let code = (row.employeeCode || '').toUpperCase().trim();
+        if (!code) {
+          code = 'D' + String(Math.floor(10000 + Math.random() * 90000));
+        }
         const existingId = ctx.emailToDocMap[email] || (code ? ctx.codeToDocMap[code] : null);
 
+        const fullName = (row.fullName || '').trim();
+        const dept = (row.department || '').trim();
+        const desig = (row.designation || '').trim();
+        const branch = (row.branchName || row.branch || 'Ghansoli - Navi Mumbai').trim();
+        const phone = (row.phone || '').replace(/[^0-9+]/g, '');
+
+        // 1. Dynamic Department Auto-Creation in Firestore & MySQL
+        if (dept && !ctx.knownDepartments.has(dept.toLowerCase())) {
+          try {
+            const deptCode = dept.substring(0, 4).toUpperCase().replace(/[^A-Z]/g, '') || 'DEPT';
+            const deptRef = db.collection('departments').doc();
+            await deptRef.set({
+              id: deptRef.id,
+              name: dept,
+              code: deptCode,
+              status: 'ACTIVE',
+              companyId: companyId,
+              createdAt: firebase.firestore.FieldValue.serverTimestamp()
+            });
+            ctx.knownDepartments.add(dept.toLowerCase());
+            if (typeof apiClient !== 'undefined') {
+              apiClient.post('departments.php', { name: dept, code: deptCode, status: 'ACTIVE' }).catch(() => {});
+            }
+          } catch (_) {}
+        }
+
         const payload = {
-          fullName: row.fullName,
+          fullName,
           workEmail: email,
-          phone: row.phone || ''
+          phone,
+          employeeCode: code,
+          department: dept,
+          designation: desig,
+          branchName: branch,
+          branch
         };
-        if (code) payload.employeeCode = code;
-        if (row.department) payload.department = row.department;
-        if (row.designation) payload.designation = row.designation;
-        if (row.branchName) payload.branchName = row.branchName;
+
+        // Manager / Hierarchy Linking
         if (row.manager) {
           let mgrStr = row.manager.trim();
+          let cleanName = mgrStr.replace(/\s*\([^)]+\)/, '').trim();
           let resolvedMgrId = null;
-          let cleanName = mgrStr.replace(/\s*\([^)]+\)/, '').trim(); // Remove (Code) part
-          
+
           let codeMatch = mgrStr.match(/\(([^)]+)\)/);
           if (codeMatch && codeMatch[1]) {
-             let mCode = codeMatch[1].toUpperCase().trim();
-             if (ctx.codeToDocMap && ctx.codeToDocMap[mCode]) {
-               resolvedMgrId = ctx.codeToDocMap[mCode];
-             }
+            let mCode = codeMatch[1].toUpperCase().trim();
+            if (ctx.codeToDocMap && ctx.codeToDocMap[mCode]) {
+              resolvedMgrId = ctx.codeToDocMap[mCode];
+            }
           }
           if (!resolvedMgrId && ctx.managerMap) {
-             if (ctx.managerMap[cleanName.toLowerCase()]) {
-               resolvedMgrId = ctx.managerMap[cleanName.toLowerCase()];
-             } else if (ctx.managerMap[mgrStr.toLowerCase()]) {
-               resolvedMgrId = ctx.managerMap[mgrStr.toLowerCase()];
-             }
+            const k1 = cleanName.toLowerCase();
+            const k2 = k1.replace('.', ' ');
+            resolvedMgrId = ctx.managerMap[k1] || ctx.managerMap[k2] || ctx.managerMap[mgrStr.toLowerCase()];
           }
           if (resolvedMgrId) {
             payload.managerId = resolvedMgrId;
@@ -1548,19 +1810,24 @@ const PeopleView = {
             payload.manager = mgrStr;
           }
         }
+
         const parsedDoj = toIsoDate(row.dateOfJoining);
         if (parsedDoj) {
           payload.dateOfJoining = parsedDoj;
           payload.joiningDate = parsedDoj;
         }
-        if (row.employmentStatus && STATUS_MAP[row.employmentStatus.toUpperCase()]) {
-          payload.employmentStatus = STATUS_MAP[row.employmentStatus.toUpperCase()];
-          payload.status = STATUS_MAP[row.employmentStatus.toUpperCase()];
-        }
 
-        const parts = row.fullName.split(/\s+/);
+        const rawStatus = (row.employmentStatus || 'ACTIVE').toUpperCase().trim();
+        payload.employmentStatus = STATUS_MAP[rawStatus] || 'ACTIVE';
+        payload.status = payload.employmentStatus;
+
+        const parts = fullName.split(/\s+/);
         payload.firstName = parts[0] || '';
         payload.lastName = parts.slice(1).join(' ') || '';
+
+        const loginPass = (row.loginPassword || '').trim() || (ctx.userPassMap && ctx.userPassMap[email]) || 'Diallo@2026';
+        payload.initialPassword = loginPass;
+        payload.loginPassword = loginPass;
 
         let savedId = existingId;
         if (existingId) {
@@ -1570,33 +1837,117 @@ const PeopleView = {
           savedId = newEmp.id;
         }
 
-        // Dynamically cache this row so subsequent rows in the same file can reference it as a manager
+        // Keep user login account synchronized in Firestore 'users' collection
+        try {
+          const targetUid = savedId || ('emp_' + code.toLowerCase().replace(/[^a-z0-9]/g, ''));
+          await db.collection('users').doc(targetUid).set({
+            uid: targetUid,
+            employeeCode: code,
+            email: email,
+            displayName: fullName,
+            firstName: payload.firstName,
+            lastName: payload.lastName,
+            phone: payload.phone || '',
+            department: dept,
+            designation: desig,
+            roleId: 'EMPLOYEE',
+            initialPassword: loginPass,
+            companyId: companyId,
+            status: payload.employmentStatus || 'ACTIVE',
+            updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+          }, { merge: true });
+        } catch (_) {}
+
+        // Dynamically register this employee in managerMap so subsequent rows match immediately
         if (savedId) {
-           if (email) ctx.emailToDocMap[email] = savedId;
-           if (code) ctx.codeToDocMap[code] = savedId;
-           if (row.fullName) ctx.managerMap[row.fullName.toLowerCase().trim()] = savedId;
+          if (email) ctx.emailToDocMap[email] = savedId;
+          if (code) ctx.codeToDocMap[code] = savedId;
+          if (ctx.registerManagerKeys) ctx.registerManagerKeys(fullName, savedId);
         }
       },
-      onDone: (r) => { if (r.imported && window.Router) Router.navigate('employees'); }
+      onDone: async (r) => {
+        if (r.imported) {
+          Toast.info('Connecting organizational hierarchy & syncing with Hostinger MySQL...');
+          try {
+            // Second pass: resolve any hierarchical managers listed later in the CSV file
+            const allSnap = await db.collection('employees').where('companyId', '==', companyId).get();
+            const emps = allSnap.docs.map(d => ({ id: d.id, ...d.data() }));
+            const mLookup = {};
+            emps.forEach(e => {
+              if (e.fullName) {
+                const clean = e.fullName.trim().toLowerCase();
+                mLookup[clean] = e.id;
+                const parts = clean.split(/\s+/);
+                if (parts.length >= 2) {
+                  mLookup[`${parts[0]} ${parts[parts.length - 1][0]}`] = e.id;
+                  mLookup[`${parts[0]}.${parts[parts.length - 1][0]}`] = e.id;
+                  mLookup[`${parts[0]} ${parts[parts.length - 1]}`] = e.id;
+                }
+              }
+            });
+
+            const batch = db.batch();
+            let linkCount = 0;
+            emps.forEach(e => {
+              if (e.manager && !e.managerId) {
+                const k1 = e.manager.trim().toLowerCase();
+                const k2 = k1.replace('.', ' ');
+                const matchedId = mLookup[k1] || mLookup[k2];
+                if (matchedId && matchedId !== e.id) {
+                  batch.update(db.collection('employees').doc(e.id), { managerId: matchedId });
+                  linkCount++;
+                }
+              }
+            });
+            if (linkCount > 0) {
+              await batch.commit();
+              console.log(`[CSV Import] Linked ${linkCount} manager-employee hierarchy reporting lines.`);
+            }
+          } catch (hierErr) {
+            console.warn('[CSV Import] Hierarchy resolution warning:', hierErr);
+          }
+
+          try {
+            await PeopleView.syncDatabaseUsers();
+          } catch (_) {}
+          if (window.Router) Router.navigate('employees');
+        }
+      }
     });
   },
 
   async exportCSV() {
     try {
       const employees = await employeeService.getEmployees(this.currentFilters);
-      const headers = ['Employee Code', 'Full Name', 'Department', 'Designation', 'Branch', 'Reporting Manager', 'Joining Date', 'Status', 'Work Email', 'Phone'];
-      const rows = employees.map(e => [
-        `"${e.employeeCode || ''}"`,
-        `"${e.fullName || e.name || ''}"`,
-        `"${e.department || ''}"`,
-        `"${e.designation || ''}"`,
-        `"${e.branchName || e.location || ''}"`,
-        `"${e.manager || ''}"`,
-        `"${e.dateOfJoining || e.joiningDate || ''}"`,
-        `"${e.employmentStatus || ''}"`,
-        `"${e.workEmail || e.email || ''}"`,
-        `"${e.phone || ''}"`
-      ]);
+
+      // Fetch user accounts mapping for login passwords
+      const userPassMap = {};
+      try {
+        const uSnap = await db.collection('users').get();
+        uSnap.docs.forEach(d => {
+          const u = d.data();
+          if (u.email) userPassMap[u.email.toLowerCase().trim()] = u.initialPassword || u.password;
+        });
+      } catch (_) {}
+
+      const headers = ['Employee Code', 'Full Name', 'Department', 'Designation', 'Branch', 'Reporting Manager', 'Joining Date', 'Status', 'Work Email', 'Phone', 'Login Password'];
+      const rows = employees.map(e => {
+        const email = (e.workEmail || e.email || '').toLowerCase().trim();
+        const pass = e.loginPassword || e.initialPassword || userPassMap[email] || 'Diallo@2026';
+        return [
+          `"${e.employeeCode || ''}"`,
+          `"${e.fullName || e.name || ''}"`,
+          `"${e.department || ''}"`,
+          `"${e.designation || ''}"`,
+          `"${e.branchName || e.location || ''}"`,
+          `"${e.manager || ''}"`,
+          `"${e.dateOfJoining || e.joiningDate || ''}"`,
+          `"${e.employmentStatus || ''}"`,
+          `"${e.workEmail || e.email || ''}"`,
+          `"${e.phone || ''}"`,
+          `"${pass}"`
+        ];
+      });
 
       const csv = [headers.join(','), ...rows.map(r => r.join(','))].join('\n');
       const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
@@ -1607,18 +1958,29 @@ const PeopleView = {
       document.body.appendChild(link);
       link.click();
       document.body.removeChild(link);
-      Toast.success('Exported Employee Census CSV.');
+      Toast.success('Exported Employee Census CSV with Login Passwords.');
     } catch (e) {
       Toast.error(`Export failed: ${e.message}`);
     }
   },
 
+  initEmployeesTable() {
+    if (this.activeTab === 'orgchart' && typeof this.initOrgChartCanvas === 'function') {
+      this.initOrgChartCanvas();
+    }
+  },
+
   async syncDatabaseUsers() {
     try {
-      if (typeof Toast !== 'undefined') Toast.info('Synchronizing registered database users to employee roster...');
+      if (typeof Toast !== 'undefined') Toast.info('Synchronizing registered database users & MySQL...');
       const res = await employeeService.syncUsersToEmployees(true);
+      try {
+        await employeeService.syncAllEmployeesToMySQL();
+      } catch (sqlErr) {
+        console.warn('MySQL bulk sync notice:', sqlErr);
+      }
       if (typeof Toast !== 'undefined') {
-        Toast.success(`Synchronization complete! ${res.created} new employee profiles created, ${res.synced} existing users synced.`);
+        Toast.success(`Synchronization complete! ${res.created} new profiles created, synced to Hostinger MySQL.`);
       }
       Router.navigate('employees');
     } catch (e) {
