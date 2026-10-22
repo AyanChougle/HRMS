@@ -22,6 +22,7 @@ const App = {
     this.bindSidebarToggle();
     this.bindDropdowns();
     this.bindGlobalSearch();
+    this.bindTabsHorizontalWheel();
 
     // 3. Initialize Auth Guard FIRST to ensure permissions and active profile are established
     try {
@@ -54,6 +55,18 @@ const App = {
     }
 
     console.log('[App] Diallo HRMS Enterprise Application Initialized.');
+  },
+
+  // Translate vertical wheel scroll to horizontal scrolling on tab navigations
+  bindTabsHorizontalWheel() {
+    document.addEventListener('wheel', (e) => {
+      const tabsNav = e.target.closest('.tabs-nav, .tab-list, .nav-tabs');
+      if (tabsNav && tabsNav.scrollWidth > tabsNav.clientWidth) {
+        if (Math.abs(e.deltaY) > Math.abs(e.deltaX)) {
+          tabsNav.scrollLeft += (e.deltaY * 0.9);
+        }
+      }
+    }, { passive: true });
   },
 
   // Sidebar Collapse and Mobile Drawer

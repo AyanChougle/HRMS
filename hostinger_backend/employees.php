@@ -92,6 +92,55 @@ try {
     }
 
     // -----------------------------------------------------------------------------
+    // DELETE / POST action=delete: Delete Employee & Associated User Account
+    // -----------------------------------------------------------------------------
+    if ($method === 'DELETE' || ($method === 'POST' && ($action === 'delete' || ($input['action'] ?? '') === 'delete'))) {
+        $id = trim($_GET['id'] ?? $input['id'] ?? '');
+        $code = trim($_GET['employee_code'] ?? $input['employee_code'] ?? $input['code'] ?? '');
+        $email = strtolower(trim($_GET['email'] ?? $input['email'] ?? $input['work_email'] ?? ''));
+
+        if (empty($id) && empty($code) && empty($email)) {
+            json_out(["success" => false, "error" => "Employee id, employee_code, or email is required to delete."], 400);
+        }
+
+        $empDeleted = 0;
+        $userDeleted = 0;
+
+        // If specific ID or employee_code provided, delete only that specific record
+        if (!empty($id) || !empty($code)) {
+            $delEmp = $pdo->prepare("DELETE FROM employees WHERE id = :id OR (employee_code = :c AND :c != '')");
+            $delEmp->execute([':id' => $id, ':c' => $code]);
+            $empDeleted = $delEmp->rowCount();
+
+            $delUser = $pdo->prepare("DELETE FROM users WHERE uid = :id OR (employee_code = :c AND :c != '')");
+            $delUser->execute([':id' => $id, ':c' => $code]);
+            $userDeleted = $delUser->rowCount();
+        } elseif (!empty($email)) {
+            $delEmp = $pdo->prepare("DELETE FROM employees WHERE LOWER(work_email) = :e OR LOWER(email) = :e");
+            $delEmp->execute([':e' => $email]);
+            $empDeleted = $delEmp->rowCount();
+
+            $delUser = $pdo->prepare("DELETE FROM users WHERE LOWER(email) = :e");
+            $delUser->execute([':e' => $email]);
+            $userDeleted = $delUser->rowCount();
+        }
+
+        log_audit($pdo, 'admin', 'system', 'EMPLOYEE_DELETED', 'employees', $id ?: $code, [
+            'id' => $id,
+            'code' => $code,
+            'email' => $email,
+            'emp_deleted' => $empDeleted,
+            'user_deleted' => $userDeleted
+        ]);
+
+        json_out([
+            "success" => true,
+            "message" => "Employee record and login account permanently deleted from MySQL.",
+            "deleted_count" => $empDeleted
+        ]);
+    }
+
+    // -----------------------------------------------------------------------------
     // POST: Create or Update Employee
     // -----------------------------------------------------------------------------
     if ($method === 'POST') {

@@ -381,18 +381,39 @@
   border-bottom: 1px solid var(--border-main);
   margin-bottom: 20px;
   overflow-x: auto;
+  overflow-y: hidden;
   -webkit-overflow-scrolling: touch;
   white-space: nowrap;
-  scrollbar-width: none;
+  scrollbar-width: thin;
+  scrollbar-color: var(--border-focus, #cbd5e1) transparent;
   width: 100%;
+  padding-bottom: 2px;
 }
 .tab-list::-webkit-scrollbar,
 .tabs-nav::-webkit-scrollbar,
 .nav-tabs::-webkit-scrollbar {
-  display: none;
+  height: 5px;
+  display: block;
+}
+.tab-list::-webkit-scrollbar-track,
+.tabs-nav::-webkit-scrollbar-track,
+.nav-tabs::-webkit-scrollbar-track {
+  background: transparent;
+}
+.tab-list::-webkit-scrollbar-thumb,
+.tabs-nav::-webkit-scrollbar-thumb,
+.nav-tabs::-webkit-scrollbar-thumb {
+  background: var(--border-focus, #cbd5e1);
+  border-radius: 4px;
+}
+.tab-list::-webkit-scrollbar-thumb:hover,
+.tabs-nav::-webkit-scrollbar-thumb:hover,
+.nav-tabs::-webkit-scrollbar-thumb:hover {
+  background: var(--primary, #0284c7);
 }
 
 .tab-btn {
+  flex-shrink: 0 !important;
   padding: 10px 16px;
   font-size: 0.875rem;
   font-weight: 500;
@@ -402,6 +423,7 @@
   cursor: pointer;
   transition: all 0.15s ease;
   white-space: nowrap;
+  user-select: none;
 }
 
 .tab-btn:hover {
@@ -412,6 +434,34 @@
   color: var(--primary);
   border-bottom-color: var(--primary);
   font-weight: 600;
+}
+
+.tabs-scroll-wrapper {
+  position: relative;
+  display: flex;
+  align-items: center;
+  width: 100%;
+  margin-bottom: 20px;
+}
+.tab-scroll-arrow {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  border: 1px solid var(--border-main);
+  background: var(--bg-surface);
+  color: var(--text-main);
+  cursor: pointer;
+  flex-shrink: 0;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.08);
+  transition: all 0.15s ease;
+}
+.tab-scroll-arrow:hover {
+  background: var(--primary-light, #e0f2fe);
+  color: var(--primary, #0284c7);
+  border-color: var(--primary, #0284c7);
 }
 
 /* ----------------------------------------------------

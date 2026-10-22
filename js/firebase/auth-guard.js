@@ -10,6 +10,46 @@ const AuthGuard = {
   permissions: new Set(),
   isInitialized: false,
 
+  // Canonical Role Resolver (infers management/leadership roles from designation if defaulted to EMPLOYEE)
+  resolveCanonicalRole(roleId, designation, email) {
+    const cleanEmail = (email || '').toLowerCase().trim();
+    if (cleanEmail === 'ayan@tradeforwealth.co.in' || cleanEmail === 'ayanislight@gmail.com') return 'SUPER_ADMIN';
+
+    const cleanRole = (roleId || '').toString().toUpperCase().trim();
+    if (['SUPER_ADMIN', 'COMPANY_ADMIN', 'ADMIN'].includes(cleanRole)) return cleanRole;
+    if (['OPERATIONS_MANAGER', 'MANAGER', 'TEAM_LEAD', 'HR_MANAGER', 'RELATIONSHIP_MANAGER', 'MENTOR_TRAINER', 'TRAINEE'].includes(cleanRole)) {
+      return cleanRole;
+    }
+
+    const desig = (designation || '').toString().toLowerCase().trim();
+    if (desig.includes('operations manager') || desig.includes('ops manager')) return 'OPERATIONS_MANAGER';
+    if (desig.includes('team lead') || desig.includes('team leader') || desig.includes('assistant team leader') || desig.includes('atl') || desig.includes('tl')) return 'TEAM_LEAD';
+    if (desig.includes('human resources') || desig.includes('hr lead') || desig.includes('hr manager') || desig.includes('recruiter')) return 'HR_MANAGER';
+    if (desig.includes('process owner') || desig.includes('general manager') || desig.includes('manager')) return 'MANAGER';
+    if (desig.includes('trainer') || desig.includes('mentor')) return 'MENTOR_TRAINER';
+    if (desig.includes('relationship manager') || desig.includes('rm')) return 'RELATIONSHIP_MANAGER';
+    if (desig.includes('trainee') || desig.includes('intern')) return 'TRAINEE';
+
+    return cleanRole || 'EMPLOYEE';
+  },
+
+  getRoleLabel(roleId) {
+    const map = {
+      SUPER_ADMIN: 'Super Admin',
+      COMPANY_ADMIN: 'Company Admin',
+      ADMIN: 'Administrator',
+      HR_MANAGER: 'HR Manager',
+      OPERATIONS_MANAGER: 'Operations Manager',
+      MANAGER: 'Manager',
+      TEAM_LEAD: 'Team Leader',
+      RELATIONSHIP_MANAGER: 'Relationship Manager',
+      MENTOR_TRAINER: 'Mentor / Trainer',
+      TRAINEE: 'Trainee',
+      EMPLOYEE: 'Employee'
+    };
+    return map[roleId] || roleId || 'Employee';
+  },
+
   // Initialize Auth Guard on page load
   init(options = {}) {
     const { isPublicPage = false } = options;
@@ -70,6 +110,74 @@ const AuthGuard = {
 
           resolve(user);
         } else {
+          // Check for active fallback session (Hostinger MySQL authenticated user)
+          let fallbackSession = null;
+          try {
+            const raw = sessionStorage.getItem('dh_user_session') || localStorage.getItem('dh_user_session');
+            if (raw) fallbackSession = JSON.parse(raw);
+          } catch (e) {}
+
+          if (fallbackSession && fallbackSession.email && (fallbackSession.status || 'ACTIVE').toUpperCase() === 'ACTIVE') {
+            const resolvedRole = this.resolveCanonicalRole(fallbackSession.roleId, fallbackSession.designation, fallbackSession.email);
+            fallbackSession.roleId = resolvedRole;
+            try {
+              sessionStorage.setItem('dh_user_session', JSON.stringify(fallbackSession));
+              localStorage.setItem('dh_user_session', JSON.stringify(fallbackSession));
+            } catch (_) {}
+
+            this.currentUser = {
+              uid: fallbackSession.uid,
+              email: fallbackSession.email,
+              displayName: fallbackSession.displayName || fallbackSession.email.split('@')[0],
+              getIdToken: async () => 'mysql-session-token'
+            };
+
+            this.userProfile = {
+              uid: fallbackSession.uid,
+              id: fallbackSession.uid,
+              email: fallbackSession.email,
+              displayName: fallbackSession.displayName,
+              roleId: resolvedRole,
+              department: fallbackSession.department || 'Operations',
+              designation: fallbackSession.designation || 'Staff',
+              companyId: fallbackSession.companyId || 'comp_diallo_india',
+              companyName: fallbackSession.companyName || 'Diallo India Private Limited',
+              branchId: fallbackSession.branchId || 'branch_ghansoli',
+              branchName: fallbackSession.branchName || 'Ghansoli - Navi Mumbai',
+              employeeId: fallbackSession.employeeCode || fallbackSession.uid,
+              employeeCode: fallbackSession.employeeCode || '',
+              status: fallbackSession.status || 'ACTIVE'
+            };
+
+            const normalizedRoleId = resolvedRole;
+            if (['SUPER_ADMIN', 'COMPANY_ADMIN', 'ADMIN'].includes(normalizedRoleId)) {
+              this.permissions = new Set(['*']);
+              this.userRole = { name: this.getRoleLabel(normalizedRoleId), id: normalizedRoleId };
+            } else if (window.PermissionService) {
+              this.permissions = PermissionService.getUserPermissions(this.userProfile);
+              this.userRole = { name: this.getRoleLabel(normalizedRoleId), id: normalizedRoleId };
+            } else {
+              this.permissions = new Set(['*']);
+              this.userRole = { name: this.getRoleLabel(normalizedRoleId), id: normalizedRoleId };
+            }
+
+            if (isPublicPage) {
+              window.location.replace('index.html#dashboard');
+              return;
+            }
+
+            this.isInitialized = true;
+            this.syncHeaderProfile();
+
+            if (window.Router) {
+              if (window.Router.renderDynamicSidebar) window.Router.renderDynamicSidebar();
+              if (window.Router.handleHashChange) window.Router.handleHashChange();
+            }
+
+            resolve(this.currentUser);
+            return;
+          }
+
           this.currentUser = null;
           this.userProfile = null;
           this.userRole = null;
@@ -112,6 +220,10 @@ const AuthGuard = {
       if (!this.userProfile.status) this.userProfile.status = 'ACTIVE';
       if (!this.userProfile.roleId) this.userProfile.roleId = isMasterAdmin ? 'SUPER_ADMIN' : 'EMPLOYEE';
 
+      // Auto-resolve canonical role from designation if user was imported/defaulted to EMPLOYEE
+      const resolvedRole = this.resolveCanonicalRole(this.userProfile.roleId, this.userProfile.designation, userEmail);
+      this.userProfile.roleId = resolvedRole;
+
       // Load Role definition if present
       let roleDocData = null;
       if (this.userProfile.roleId) {
@@ -138,44 +250,43 @@ const AuthGuard = {
 
       // Initialize userRole object if not already populated from Firestore roles collection
       if (!this.userRole) {
-        if (normalizedRoleId === 'SUPER_ADMIN') {
-          this.userRole = { name: 'Super Admin', id: 'SUPER_ADMIN' };
-        } else if (normalizedRoleId === 'COMPANY_ADMIN' || normalizedRoleId === 'ADMIN') {
-          this.userRole = { name: 'Company Admin', id: 'COMPANY_ADMIN' };
-        } else if (normalizedRoleId === 'HR_MANAGER') {
-          this.userRole = { name: 'HR Manager', id: 'HR_MANAGER' };
-        } else if (normalizedRoleId === 'MANAGER') {
-          this.userRole = { name: 'Manager', id: 'MANAGER' };
-        } else if (normalizedRoleId === 'TEAM_LEAD' || normalizedRoleId === 'TL') {
-          this.userRole = { name: 'Team Leader', id: 'TEAM_LEAD' };
-        } else if (normalizedRoleId === 'RELATIONSHIP_MANAGER' || normalizedRoleId === 'RM') {
-          this.userRole = { name: 'Relationship Manager', id: 'RELATIONSHIP_MANAGER' };
-        } else if (normalizedRoleId === 'MENTOR_TRAINER') {
-          this.userRole = { name: 'Mentor / Trainer', id: 'MENTOR_TRAINER' };
-        } else if (normalizedRoleId === 'OPERATIONS_MANAGER') {
-          this.userRole = { name: 'Operations Manager', id: 'OPERATIONS_MANAGER' };
-        } else if (normalizedRoleId === 'TRAINEE') {
-          this.userRole = { name: 'Trainee', id: 'TRAINEE' };
-        } else {
-          this.userRole = { name: 'Employee', id: 'EMPLOYEE' };
-        }
+        this.userRole = { name: this.getRoleLabel(normalizedRoleId), id: normalizedRoleId };
       }
     } else {
       // Self-heal: user exists in Firebase Auth but has no Firestore profile document yet
-      const roleId = isMasterAdmin ? 'SUPER_ADMIN' : 'EMPLOYEE';
+      let roleId = isMasterAdmin ? 'SUPER_ADMIN' : 'EMPLOYEE';
       const displayName = this.currentUser?.displayName || (userEmail ? userEmail.split('@')[0] : 'User');
       let employeeId = null;
+      let desig = 'Staff';
+      let dept = 'Operations';
+      let empCode = '';
 
-      // Link matching employee document by email if available
+      // Link matching employee document by email if available (prioritize non-test records with leadership designations)
       try {
-        const empSnap = await db.collection('employees').where('workEmail', '==', userEmail).limit(1).get();
+        const empSnap = await db.collection('employees').where('workEmail', '==', userEmail).get();
+        let matchedDoc = null;
         if (!empSnap.empty) {
-          employeeId = empSnap.docs[0].id;
+          const sorted = [...empSnap.docs].sort((a, b) => {
+            const ad = a.data() || {}, bd = b.data() || {};
+            const aIsMgr = /manager|lead|trainer/i.test(ad.designation || '');
+            const bIsMgr = /manager|lead|trainer/i.test(bd.designation || '');
+            if (aIsMgr && !bIsMgr) return -1;
+            if (bIsMgr && !aIsMgr) return 1;
+            return (bd.employeeCode || '').localeCompare(ad.employeeCode || '');
+          });
+          matchedDoc = sorted[0];
         } else {
-          const empSnap2 = await db.collection('employees').where('email', '==', userEmail).limit(1).get();
-          if (!empSnap2.empty) {
-            employeeId = empSnap2.docs[0].id;
-          }
+          const empSnap2 = await db.collection('employees').where('email', '==', userEmail).get();
+          if (!empSnap2.empty) matchedDoc = empSnap2.docs[0];
+        }
+
+        if (matchedDoc) {
+          employeeId = matchedDoc.id;
+          const eData = matchedDoc.data() || {};
+          if (eData.designation) desig = eData.designation;
+          if (eData.department) dept = eData.department;
+          if (eData.employeeCode) empCode = eData.employeeCode;
+          roleId = this.resolveCanonicalRole(roleId, desig, userEmail);
         }
       } catch (empErr) {
         // Non-fatal employee directory check
@@ -186,6 +297,9 @@ const AuthGuard = {
         email: this.currentUser?.email || userEmail,
         displayName: displayName,
         roleId: roleId,
+        designation: desig,
+        department: dept,
+        employeeCode: empCode,
         companyId: 'comp_diallo_india',
         companyName: 'Diallo India Private Limited',
         branchId: 'branch_ghansoli',
@@ -565,10 +679,19 @@ const AuthGuard = {
       } else {
         await auth.signOut();
       }
-      sessionStorage.clear();
+      try {
+        sessionStorage.removeItem('dh_user_session');
+        localStorage.removeItem('dh_user_session');
+        sessionStorage.clear();
+      } catch (_) {}
       window.location.replace('login.html');
     } catch (err) {
       console.error('Logout error:', err);
+      try {
+        sessionStorage.removeItem('dh_user_session');
+        localStorage.removeItem('dh_user_session');
+        sessionStorage.clear();
+      } catch (_) {}
       window.location.replace('login.html');
     }
   }

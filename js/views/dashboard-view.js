@@ -25,7 +25,13 @@ const DashboardView = {
       return window.AdminDashboardView;
     } else if (roleId === "MENTOR_TRAINER" || roleId === "TRAINER" || roleId === "MENTOR") {
       return window.TrainerDashboardView || window.ManagerDashboardView;
-    } else if (roleId === "MANAGER" || roleId === "OPERATIONS_MANAGER" || roleId === "TEAM_LEAD") {
+    } else if (
+      roleId === "MANAGER" ||
+      roleId === "OPERATIONS_MANAGER" ||
+      roleId === "TEAM_LEAD" ||
+      roleId.includes("MANAGER") ||
+      roleId.includes("LEAD")
+    ) {
       return window.ManagerDashboardView;
     } else {
       return window.EmployeeDashboardView;

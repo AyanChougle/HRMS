@@ -59,209 +59,200 @@ const employeeService = {
   // Synchronize registered Firestore users from users collection into official employee roster
   async syncUsersToEmployees(force = false) {
     const now = Date.now();
-    // Cache for 30 seconds unless explicitly forced
     if (!force && this._lastUserSyncTime && (now - this._lastUserSyncTime < 30000)) {
       return { created: 0, synced: 0, cached: true };
     }
     this._lastUserSyncTime = now;
 
     try {
-      if (typeof db === 'undefined') return { created: 0, synced: 0 };
-
-      const usersSnap = await db.collection('users').get();
-      if (usersSnap.empty) return { created: 0, synced: 0 };
-
-      const empSnap = await db.collection('employees').get();
-      const existingEmployees = empSnap.docs.map(d => ({ id: d.id, ...d.data() }));
-
-      const empByUid = new Map();
-      const empByEmail = new Map();
-      const empCodes = new Set();
-
-      existingEmployees.forEach(emp => {
-        if (emp.id) empByUid.set(emp.id, emp);
-        if (emp.userId) empByUid.set(emp.userId, emp);
-        const wEmail = (emp.workEmail || emp.email || '').toLowerCase().trim();
-        if (wEmail) empByEmail.set(wEmail, emp);
-        const pEmail = (emp.personalEmail || '').toLowerCase().trim();
-        if (pEmail) empByEmail.set(pEmail, emp);
-        if (emp.employeeCode) empCodes.add(emp.employeeCode.trim().toUpperCase());
-      });
-
-      let nextCodeNum = existingEmployees.length + 1;
-      const getNextCode = () => {
-        while (empCodes.has(`EMP-${String(nextCodeNum).padStart(4, '0')}`)) {
-          nextCodeNum++;
-        }
-        const code = `EMP-${String(nextCodeNum).padStart(4, '0')}`;
-        empCodes.add(code);
-        return code;
-      };
-
       let createdCount = 0;
       let syncedCount = 0;
 
-      for (const uDoc of usersSnap.docs) {
-        const u = uDoc.data() || {};
-        const uid = uDoc.id;
-        const email = (u.email || '').toLowerCase().trim();
-
-        // Skip demo/test email domains
-        if (email.endsWith('@example.com') || email.endsWith('@demo.com')) continue;
-
-        let matchedEmp = empByUid.get(uid) || (email ? empByEmail.get(email) : null);
-        if (u.employeeId && !matchedEmp) {
-          matchedEmp = existingEmployees.find(e => e.id === u.employeeId);
-        }
-
-        if (matchedEmp) {
-          // Keep UID and email linked on employee record
-          const empUpdates = {};
-          if (!matchedEmp.userId || matchedEmp.userId !== uid) {
-            empUpdates.userId = uid;
+      // 1. Fetch from Hostinger MySQL users.php and employees.php
+      let mysqlEmployees = [];
+      let mysqlUsers = [];
+      if (typeof apiClient !== 'undefined') {
+        try {
+          const empResp = await apiClient.get('employees.php');
+          if (empResp && empResp.success && Array.isArray(empResp.employees)) {
+            mysqlEmployees = empResp.employees;
           }
-          if (!matchedEmp.workEmail && email) {
-            empUpdates.workEmail = email;
-            empUpdates.email = email;
+          const userResp = await apiClient.get('users.php');
+          if (userResp && userResp.success && Array.isArray(userResp.users)) {
+            mysqlUsers = userResp.users;
           }
-          if (Object.keys(empUpdates).length > 0) {
-            await db.collection('employees').doc(matchedEmp.id).set(empUpdates, { merge: true });
-          }
-
-          // Keep employeeId & employeeCode linked on users doc
-          if (u.employeeId !== matchedEmp.id || !u.employeeCode) {
-            await db.collection('users').doc(uid).set({
-              employeeId: matchedEmp.id,
-              employeeCode: matchedEmp.employeeCode || u.employeeCode || ''
-            }, { merge: true });
-          }
-          syncedCount++;
-        } else {
-          // Provision new employee record for this database user
-          const employeeCode = u.employeeCode || getNextCode();
-          const fullName = (u.displayName || (email ? email.split('@')[0] : 'Employee')).trim();
-          const nameParts = fullName.split(' ');
-          const firstName = nameParts[0] || fullName;
-          const lastName = nameParts.slice(1).join(' ') || '';
-
-          const roleId = (u.roleId || 'EMPLOYEE').toUpperCase().trim();
-          let dept = u.department || 'Engineering';
-          let desig = u.designation || 'Software Engineer';
-          if (roleId === 'SUPER_ADMIN') {
-            dept = 'Executive Office';
-            desig = 'Super Administrator';
-          } else if (roleId === 'COMPANY_ADMIN' || roleId === 'ADMIN') {
-            dept = 'Executive Office';
-            desig = 'Company Administrator';
-          } else if (roleId === 'HR' || roleId === 'HR_MANAGER') {
-            dept = 'Human Resources';
-            desig = 'HR Manager';
-          } else if (roleId === 'MANAGER') {
-            dept = 'Operations';
-            desig = 'Operations Manager';
-          }
-
-          const newEmp = {
-            employeeCode,
-            firstName,
-            lastName,
-            fullName,
-            name: fullName,
-            userId: uid,
-            workEmail: email,
-            email: email,
-            personalEmail: email,
-            phone: u.phone || '',
-            roleId,
-            department: dept,
-            designation: desig,
-            companyId: u.companyId || 'comp_diallo_india',
-            companyName: u.companyName || 'Diallo India Private Limited',
-            branchId: u.branchId || 'branch_mumbai',
-            branchName: u.branchName || 'HQ - Mumbai',
-            location: u.branchName || 'HQ - Mumbai',
-            employmentStatus: u.status || 'ACTIVE',
-            status: u.status || 'ACTIVE',
-            employmentType: 'Full Time',
-            dateOfJoining: new Date().toISOString().slice(0, 10),
-            joiningDate: new Date().toISOString().slice(0, 10),
-            probationStatus: 'Completed',
-            salary: '₹65,000/mo',
-            createdAt: firebase.firestore.FieldValue.serverTimestamp(),
-            updatedAt: firebase.firestore.FieldValue.serverTimestamp()
-          };
-
-          await db.collection('employees').doc(uid).set(newEmp, { merge: true });
-          await db.collection('users').doc(uid).set({
-            employeeId: uid,
-            employeeCode
-          }, { merge: true });
-
-          empByUid.set(uid, { id: uid, ...newEmp });
-          if (email) empByEmail.set(email, { id: uid, ...newEmp });
-          createdCount++;
+        } catch (e) {
+          console.warn('[syncUsersToEmployees] MySQL fetch notice:', e.message);
         }
       }
 
-      return { created: createdCount, synced: syncedCount };
+      // 2. Fetch existing Firestore employees and users
+      const empSnap = (typeof db !== 'undefined') ? await db.collection('employees').get() : { docs: [] };
+      const existingEmployees = empSnap.docs.map(d => ({ id: d.id, ...d.data() }));
+      const existingIds = new Set(existingEmployees.map(e => e.id));
+
+      // 3. Upsert MySQL employees into Firestore employees collection
+      if (typeof db !== 'undefined') {
+        for (const me of mysqlEmployees) {
+          const id = me.id;
+          const payload = {
+            userId: me.user_id || id,
+            employeeCode: me.employee_code || '',
+            firstName: me.first_name || '',
+            lastName: me.last_name || '',
+            fullName: me.full_name || `${me.first_name || ''} ${me.last_name || ''}`.trim(),
+            name: me.full_name || `${me.first_name || ''} ${me.last_name || ''}`.trim(),
+            workEmail: me.work_email || me.email || '',
+            email: me.email || me.work_email || '',
+            phone: me.phone || '',
+            companyId: me.company_id || 'comp_diallo_india',
+            companyName: me.company_name || 'Diallo India Private Limited',
+            branchName: me.branch_name || 'Ghansoli - Navi Mumbai, Maharashtra',
+            location: me.location || 'Ghansoli - Navi Mumbai, Maharashtra',
+            department: me.department || 'Operations',
+            designation: me.designation || 'Associate',
+            gradeId: me.grade_id || 'G2',
+            roleId: me.role_id || 'EMPLOYEE',
+            managerId: me.manager_id || null,
+            manager: me.manager || null,
+            mentor: me.mentor || null,
+            dateOfJoining: me.date_of_joining || '',
+            employmentStatus: me.employment_status || me.status || 'ACTIVE',
+            status: me.status || me.employment_status || 'ACTIVE'
+          };
+
+          await db.collection('employees').doc(String(id)).set(payload, { merge: true });
+          if (!existingIds.has(id)) {
+            createdCount++;
+            existingIds.add(id);
+          } else {
+            syncedCount++;
+          }
+        }
+
+        // 4. Also upsert MySQL users into Firestore users collection
+        for (const mu of mysqlUsers) {
+          const uid = mu.uid || String(mu.id);
+          await db.collection('users').doc(uid).set({
+            uid: uid,
+            employeeCode: mu.employee_code || '',
+            displayName: mu.display_name || `${mu.first_name || ''} ${mu.last_name || ''}`.trim(),
+            firstName: mu.first_name || '',
+            lastName: mu.last_name || '',
+            email: mu.email || '',
+            phone: mu.phone || '',
+            roleId: mu.role_id || 'EMPLOYEE',
+            department: mu.department || 'Operations',
+            designation: mu.designation || 'Associate',
+            status: mu.status || 'ACTIVE'
+          }, { merge: true });
+        }
+      }
+
+      const total = mysqlEmployees.length || (createdCount + syncedCount);
+      return { created: createdCount, synced: syncedCount, total };
     } catch (err) {
       console.warn('Error syncing users to employees:', err);
       return { created: 0, synced: 0, error: err.message };
     }
   },
 
-  // Get employee list with multi-attribute filtering and pagination
+  // Get employee list with multi-attribute filtering and pagination (MySQL First, Firestore Fallback)
   async getEmployees(filters = {}, pagination = null) {
     try {
-      // Auto-synchronize registered database users to official employee collection
-      try {
-        await this.syncUsersToEmployees();
-      } catch (syncErr) {
-        console.warn('Background user-employee sync warning:', syncErr);
-      }
+      let records = [];
+      let loadedFromMySQL = false;
 
-      let query = db.collection('employees');
-
-      if (filters.companyId) query = query.where('companyId', '==', filters.companyId);
-      if (filters.department && filters.department !== 'All Departments') query = query.where('department', '==', filters.department);
-      if (filters.employmentStatus && filters.employmentStatus !== 'All Status') query = query.where('employmentStatus', '==', filters.employmentStatus);
-      if (filters.status && filters.status !== 'All') query = query.where('employmentStatus', '==', filters.status);
-      if (filters.branchId && filters.branchId !== 'All Branches') query = query.where('branchId', '==', filters.branchId);
-      if (filters.employmentType && filters.employmentType !== 'All Types') query = query.where('employmentType', '==', filters.employmentType);
-      if (filters.managerId) query = query.where('managerId', '==', filters.managerId);
-      if (filters.teamLeaderId) query = query.where('teamLeaderId', '==', filters.teamLeaderId);
-      if (filters.operationsManagerId) query = query.where('operationsManagerId', '==', filters.operationsManagerId);
-      if (filters.mentorTrainerId) query = query.where('mentorTrainerId', '==', filters.mentorTrainerId);
-
-      const activeRole = (AuthGuard._previewRoleId || AuthGuard.userProfile?.roleId || '').toString().toUpperCase().trim();
-      const currentEmpId = AuthGuard.userProfile?.employeeId || AuthGuard.currentUser?.uid || '';
-      const currentEmpCode = AuthGuard.userProfile?.employeeCode || '';
-      const currentEmpName = AuthGuard.userProfile?.displayName || AuthGuard.userProfile?.fullName || '';
-
-      if (activeRole === 'TEAM_LEAD' && !filters.bypassScope) {
-        // Enforce strict Team Leader scope
-        if (currentEmpId) {
-          query = query.where('teamLeaderId', '==', currentEmpId);
+      // 1. Primary: Fetch dynamically from Hostinger MySQL API if available
+      if (typeof apiClient !== 'undefined') {
+        try {
+          const resp = await apiClient.get('employees.php');
+          if (resp && resp.success && Array.isArray(resp.employees) && resp.employees.length > 0) {
+            records = resp.employees.map(e => ({
+              id: e.id,
+              userId: e.user_id || e.id,
+              employeeCode: e.employee_code || '',
+              firstName: e.first_name || '',
+              lastName: e.last_name || '',
+              fullName: e.full_name || `${e.first_name || ''} ${e.last_name || ''}`.trim(),
+              name: e.full_name || `${e.first_name || ''} ${e.last_name || ''}`.trim(),
+              email: e.email || e.work_email || '',
+              workEmail: e.work_email || e.email || '',
+              personalEmail: e.personal_email || null,
+              phone: e.phone || '',
+              profilePhotoUrl: e.profile_photo_url || null,
+              companyId: e.company_id || 'comp_diallo_india',
+              companyName: e.company_name || 'Diallo India Private Limited',
+              branchId: e.branch_id || 'branch_mumbai',
+              branchName: e.branch_name || 'Ghansoli - Navi Mumbai, Maharashtra',
+              location: e.location || 'Ghansoli - Navi Mumbai, Maharashtra',
+              department: e.department || 'Operations',
+              designation: e.designation || 'Associate',
+              gradeId: e.grade_id || 'G2',
+              roleId: e.role_id || 'EMPLOYEE',
+              role: e.role_id || 'EMPLOYEE',
+              managerId: e.manager_id || '',
+              manager: e.manager || '',
+              reportingManager: e.manager || '',
+              mentor: e.mentor || '',
+              dateOfJoining: e.date_of_joining || '',
+              employmentStatus: e.employment_status || e.status || 'ACTIVE',
+              status: e.status || e.employment_status || 'ACTIVE'
+            }));
+            loadedFromMySQL = true;
+          }
+        } catch (apiErr) {
+          console.warn('[EmployeeService] MySQL fetch notice, fallback to Firestore:', apiErr.message);
         }
       }
 
-      const snapshot = await query.get();
-      let records = snapshot.docs.map(doc => ({
-        id: doc.id,
-        ...doc.data()
-      }));
+      // 2. Secondary: Fallback to Firestore if MySQL was empty or failed
+      if (!loadedFromMySQL && typeof db !== 'undefined') {
+        let query = db.collection('employees');
+        const snapshot = await query.get();
+        records = snapshot.docs.map(doc => ({
+          id: doc.id,
+          ...doc.data()
+        }));
+      } else if (loadedFromMySQL && typeof db !== 'undefined') {
+        // Also merge any Firestore-only records that might not be in MySQL yet
+        try {
+          const snapshot = await db.collection('employees').get();
+          const existingCodes = new Set(records.map(r => (r.employeeCode || '').toUpperCase().trim()));
+          const existingIds = new Set(records.map(r => r.id));
+          snapshot.docs.forEach(doc => {
+            const data = doc.data();
+            const code = (data.employeeCode || '').toUpperCase().trim();
+            if (!existingIds.has(doc.id) && (!code || !existingCodes.has(code))) {
+              records.push({ id: doc.id, ...data });
+            }
+          });
+        } catch (_) {}
+      }
 
       // Filter out empty or corrupted records
       records = records.filter(e => e && (e.fullName || e.name || e.employeeCode || e.workEmail || e.email));
 
-      if (activeRole === 'TEAM_LEAD' && !filters.bypassScope) {
-        records = records.filter(e => {
-          if (!e.teamLeaderId) return false;
-          return e.teamLeaderId === currentEmpId || e.teamLeaderId === currentEmpCode || e.teamLeaderId === currentEmpName;
-        });
+      // Client-side filtering for search & attributes
+      if (filters.companyId) {
+        records = records.filter(e => e.companyId === filters.companyId);
       }
-
-      // In-memory text search filtering if provided (Code, Name, Email, Phone)
+      if (filters.department && filters.department !== 'All Departments') {
+        const dTarget = filters.department.toLowerCase().trim();
+        records = records.filter(e => (e.department || '').toLowerCase().trim() === dTarget);
+      }
+      if (filters.employmentStatus && filters.employmentStatus !== 'All Status') {
+        records = records.filter(e => (e.employmentStatus || e.status) === filters.employmentStatus);
+      }
+      if (filters.status && filters.status !== 'All') {
+        records = records.filter(e => (e.employmentStatus || e.status) === filters.status);
+      }
+      if (filters.branchId && filters.branchId !== 'All Branches') {
+        records = records.filter(e => e.branchId === filters.branchId || (e.branchName && e.branchName.includes(filters.branchId)));
+      }
+      if (filters.managerId) {
+        records = records.filter(e => e.managerId === filters.managerId);
+      }
       if (filters.search && filters.search.trim() !== '') {
         const term = filters.search.toLowerCase().trim();
         records = records.filter(e => 
@@ -293,6 +284,39 @@ const employeeService = {
   async getEmployee(employeeId) {
     try {
       const searchTarget = employeeId || AuthGuard.userProfile?.employeeId || AuthGuard.currentUser?.uid;
+      // 0. Search in Hostinger MySQL API first if available
+      if (typeof apiClient !== 'undefined') {
+        try {
+          const resp = await apiClient.get('employees.php', { id: searchTarget });
+          if (resp && resp.success && resp.employee) {
+            const e = resp.employee;
+            return {
+              id: e.id,
+              userId: e.user_id || e.id,
+              employeeCode: e.employee_code || '',
+              firstName: e.first_name || '',
+              lastName: e.last_name || '',
+              fullName: e.full_name || `${e.first_name || ''} ${e.last_name || ''}`.trim(),
+              name: e.full_name || `${e.first_name || ''} ${e.last_name || ''}`.trim(),
+              email: e.email || e.work_email || '',
+              workEmail: e.work_email || e.email || '',
+              phone: e.phone || '',
+              department: e.department || 'Operations',
+              designation: e.designation || 'Associate',
+              gradeId: e.grade_id || 'G2',
+              roleId: e.role_id || 'EMPLOYEE',
+              role: e.role_id || 'EMPLOYEE',
+              managerId: e.manager_id || '',
+              manager: e.manager || '',
+              mentor: e.mentor || '',
+              dateOfJoining: e.date_of_joining || '',
+              employmentStatus: e.employment_status || e.status || 'ACTIVE',
+              status: e.status || e.employment_status || 'ACTIVE'
+            };
+          }
+        } catch (_) {}
+      }
+
       if (!searchTarget) return null;
 
       // 1. Search directly by Firestore Doc ID

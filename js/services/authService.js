@@ -4,37 +4,46 @@
  */
 
 const authService = {
-  // Email & Password Sign In
+  // Email & Password Sign In (Hybrid: Firebase Auth with MySQL Failover)
   async signIn(email, password) {
-    try {
-      const userCredential = await auth.signInWithEmailAndPassword(email, password);
-      const user = userCredential.user;
+    const cleanEmail = (email || '').toLowerCase().trim();
+    let firebaseUser = null;
+    let fbErr = null;
 
-      // Ensure user profile document exists in Firestore (self-heal missing profile)
+    // 1. Attempt Primary Authentication via Firebase Auth
+    try {
+      const userCredential = await auth.signInWithEmailAndPassword(cleanEmail, password);
+      firebaseUser = userCredential.user;
+    } catch (err) {
+      fbErr = err;
+      console.warn('Firebase Auth signIn failed, attempting Hostinger MySQL fallback:', err.code || err.message);
+    }
+
+    // If Firebase succeeded, sync profile & clean up any fallback session
+    if (firebaseUser) {
       try {
-        const userDocRef = db.collection('users').doc(user.uid);
+        const userDocRef = db.collection('users').doc(firebaseUser.uid);
         const docSnap = await userDocRef.get();
-        const userEmail = (user.email || '').toLowerCase().trim();
-        const isMasterAdmin = userEmail === 'ayanislight@gmail.com';
+        const isMasterAdmin = cleanEmail === 'ayanislight@gmail.com';
 
         if (!docSnap.exists) {
           let employeeId = null;
           try {
-            const empSnap = await db.collection('employees').where('workEmail', '==', userEmail).limit(1).get();
+            const empSnap = await db.collection('employees').where('workEmail', '==', cleanEmail).limit(1).get();
             if (!empSnap.empty) {
               employeeId = empSnap.docs[0].id;
             }
           } catch (empErr) {}
 
           const selfProfile = {
-            uid: user.uid,
-            email: user.email,
-            displayName: user.displayName || (user.email ? user.email.split('@')[0] : 'User'),
+            uid: firebaseUser.uid,
+            email: firebaseUser.email,
+            displayName: firebaseUser.displayName || cleanEmail.split('@')[0],
             roleId: isMasterAdmin ? 'SUPER_ADMIN' : 'EMPLOYEE',
             companyId: 'comp_diallo_india',
             companyName: 'Diallo India Private Limited',
-            branchId: 'branch_mumbai',
-            branchName: 'HQ - Mumbai',
+            branchId: 'branch_ghansoli',
+            branchName: 'Ghansoli - Navi Mumbai',
             employeeId: employeeId,
             status: 'ACTIVE',
             createdAt: firebase.firestore.FieldValue.serverTimestamp(),
@@ -42,7 +51,6 @@ const authService = {
           };
           await userDocRef.set(selfProfile, { merge: true });
         } else {
-          // If doc exists, verify critical defaults while strictly preserving user's assigned role
           const existingData = docSnap.data() || {};
           const updates = {};
           if (!existingData.status) updates.status = 'ACTIVE';
@@ -54,39 +62,115 @@ const authService = {
           }
         }
 
-        // Ensure user is provisioned as an official employee
         if (window.AuthGuard && typeof AuthGuard.ensureEmployeeProfile === 'function') {
           const profileData = (await userDocRef.get()).data() || {};
-          await AuthGuard.ensureEmployeeProfile(user.uid, user.email, profileData);
+          await AuthGuard.ensureEmployeeProfile(firebaseUser.uid, firebaseUser.email, profileData);
         }
       } catch (dbErr) {
         console.warn('User profile check in signIn:', dbErr);
       }
 
-      // Safe non-blocking audit logging
       try {
         if (typeof auditService !== 'undefined' && auditService.log) {
-          auditService.log('USER_LOGIN', 'AUTH', 'users', user.uid, { email }).catch(() => {});
+          auditService.log('USER_LOGIN', 'AUTH', 'users', firebaseUser.uid, { email: cleanEmail, method: 'FIREBASE' }).catch(() => {});
         }
-      } catch (e) {
-        console.warn('Audit log skipped:', e);
-      }
+      } catch (e) {}
 
-      return { success: true, user };
-    } catch (err) {
-      console.error('Sign in error:', err);
-      let message = 'Failed to sign in. Please check your credentials.';
-      if (err.code === 'auth/user-not-found' || err.code === 'auth/wrong-password' || err.code === 'auth/invalid-credential' || err.code === 'auth/invalid-login-credentials') {
-        message = 'Invalid email or password. Please verify your credentials or register a new account.';
-      } else if (err.code === 'auth/too-many-requests') {
+      sessionStorage.removeItem('dh_user_session');
+      localStorage.removeItem('dh_user_session');
+      return { success: true, user: firebaseUser };
+    }
+
+    // 2. Fallback: Authenticate via Hostinger MySQL Backend (auth.php?action=login)
+    try {
+      if (typeof apiClient !== 'undefined' && apiClient.post) {
+        const mySqlResp = await apiClient.post('auth.php?action=login', { email: cleanEmail, password });
+        if (mySqlResp && mySqlResp.success && mySqlResp.user) {
+          const mUser = mySqlResp.user;
+
+          // Attempt opportunistic auto-provisioning into Firebase Auth for future logins
+          try {
+            const newCred = await auth.createUserWithEmailAndPassword(cleanEmail, password);
+            if (newCred && newCred.user && mUser.display_name) {
+              await newCred.user.updateProfile({ displayName: mUser.display_name }).catch(() => {});
+            }
+          } catch (pErr) {
+            // Already exists in Firebase or policy restriction; ignore silently
+          }
+
+          let resolvedRole = (mUser.role_id || 'EMPLOYEE').toString().toUpperCase().trim();
+          const desigLower = (mUser.designation || '').toLowerCase().trim();
+          if (cleanEmail === 'ayan@tradeforwealth.co.in' || cleanEmail === 'ayanislight@gmail.com') {
+            resolvedRole = 'SUPER_ADMIN';
+          } else if (resolvedRole === 'EMPLOYEE' || !resolvedRole) {
+            if (desigLower.includes('operations manager') || desigLower.includes('ops manager')) {
+              resolvedRole = 'OPERATIONS_MANAGER';
+            } else if (desigLower.includes('team lead') || desigLower.includes('team leader') || desigLower.includes('assistant team leader')) {
+              resolvedRole = 'TEAM_LEAD';
+            } else if (desigLower.includes('hr lead') || desigLower.includes('human resources') || desigLower.includes('recruiter')) {
+              resolvedRole = 'HR_MANAGER';
+            } else if (desigLower.includes('process owner') || desigLower.includes('manager')) {
+              resolvedRole = 'MANAGER';
+            } else if (desigLower.includes('trainer') || desigLower.includes('mentor')) {
+              resolvedRole = 'MENTOR_TRAINER';
+            } else if (desigLower.includes('relationship manager')) {
+              resolvedRole = 'RELATIONSHIP_MANAGER';
+            }
+          }
+
+          const sessionPayload = {
+            uid: mUser.uid || ('usr_' + mUser.id),
+            id: mUser.id,
+            email: mUser.email || cleanEmail,
+            displayName: mUser.display_name || `${mUser.first_name || ''} ${mUser.last_name || ''}`.trim() || cleanEmail.split('@')[0],
+            roleId: resolvedRole,
+            department: mUser.department || 'Operations',
+            designation: mUser.designation || 'Staff',
+            employeeCode: mUser.employee_code || '',
+            status: mUser.status || 'ACTIVE',
+            companyId: mUser.company_id || 'comp_diallo_india',
+            companyName: mUser.company_name || 'Diallo India Private Limited',
+            branchId: mUser.branch_id || 'branch_ghansoli',
+            branchName: mUser.branch_name || 'Ghansoli - Navi Mumbai',
+            isMySQLSession: true,
+            authenticatedAt: Date.now()
+          };
+
+          sessionStorage.setItem('dh_user_session', JSON.stringify(sessionPayload));
+          localStorage.setItem('dh_user_session', JSON.stringify(sessionPayload));
+
+          try {
+            if (typeof auditService !== 'undefined' && auditService.log) {
+              auditService.log('USER_LOGIN', 'AUTH', 'users', sessionPayload.uid, { email: cleanEmail, method: 'MYSQL' }).catch(() => {});
+            }
+          } catch (e) {}
+
+          return { success: true, user: sessionPayload };
+        } else if (mySqlResp && mySqlResp.error) {
+          return { success: false, error: mySqlResp.error };
+        }
+      }
+    } catch (sqlErr) {
+      console.warn('MySQL fallback authentication error:', sqlErr);
+      if (sqlErr.message && !sqlErr.message.includes('401') && !sqlErr.message.includes('404')) {
+        // Unexpected server or network error
+      }
+    }
+
+    // 3. Format informative error if both authentications failed
+    let message = 'Failed to sign in. Please verify your email and password.';
+    if (fbErr) {
+      if (fbErr.code === 'auth/user-not-found' || fbErr.code === 'auth/wrong-password' || fbErr.code === 'auth/invalid-credential' || fbErr.code === 'auth/invalid-login-credentials') {
+        message = 'Invalid email or password. For first-time user login, please use default password Diallo@2026 or Diallo@123, or contact HR.';
+      } else if (fbErr.code === 'auth/too-many-requests') {
         message = 'Access temporarily disabled due to many failed login attempts. Please try again later.';
-      } else if (err.code === 'auth/user-disabled') {
+      } else if (fbErr.code === 'auth/user-disabled') {
         message = 'This account has been deactivated. Please contact your HR administrator.';
-      } else if (err.code === 'auth/network-request-failed') {
+      } else if (fbErr.code === 'auth/network-request-failed') {
         message = 'Network connectivity error. Please check your internet connection.';
       }
-      return { success: false, error: message, code: err.code };
     }
+    return { success: false, error: message, code: fbErr?.code };
   },
 
   // User Registration (with Firestore profile creation)
@@ -205,18 +289,34 @@ const authService = {
       if (user && typeof auditService !== 'undefined' && auditService.log) {
         auditService.log('USER_LOGOUT', 'AUTH', 'users', user.uid, { email: user.email }).catch(() => {});
       }
-      await auth.signOut();
-      sessionStorage.clear();
+      try {
+        await auth.signOut();
+      } catch (_) {}
+      try {
+        sessionStorage.removeItem('dh_user_session');
+        localStorage.removeItem('dh_user_session');
+        sessionStorage.clear();
+      } catch (_) {}
       return { success: true };
     } catch (err) {
       console.error('Sign out error:', err);
+      try {
+        sessionStorage.removeItem('dh_user_session');
+        localStorage.removeItem('dh_user_session');
+        sessionStorage.clear();
+      } catch (_) {}
       return { success: false, error: err.message };
     }
   },
 
   // Get current auth state
   getCurrentUser() {
-    return auth.currentUser;
+    if (auth.currentUser) return auth.currentUser;
+    try {
+      const raw = sessionStorage.getItem('dh_user_session') || localStorage.getItem('dh_user_session');
+      if (raw) return JSON.parse(raw);
+    } catch (_) {}
+    return null;
   }
 };
 

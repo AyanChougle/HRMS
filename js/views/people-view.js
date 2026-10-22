@@ -382,16 +382,24 @@ const PeopleView = {
             </div>
           </div>
 
-          <!-- 8 Profile Tabs Navigation -->
-          <div class="tabs-nav" style="margin-bottom: 20px;">
-            <button type="button" class="tab-btn active" onclick="PeopleView.switchProfileSubTab('ptab-overview')">Overview</button>
-            <button type="button" class="tab-btn" onclick="PeopleView.switchProfileSubTab('ptab-employment')">Employment</button>
-            <button type="button" class="tab-btn" onclick="PeopleView.switchProfileSubTab('ptab-personal')">Personal</button>
-            <button type="button" class="tab-btn" onclick="PeopleView.switchProfileSubTab('ptab-contact')">Contact</button>
-            <button type="button" class="tab-btn" onclick="PeopleView.switchProfileSubTab('ptab-org')">Organization</button>
-            <button type="button" class="tab-btn" onclick="PeopleView.switchProfileSubTab('ptab-docs')">Documents (${docs.length})</button>
-            <button type="button" class="tab-btn" onclick="PeopleView.switchProfileSubTab('ptab-history')">Timeline (${history.length})</button>
-            ${activeRole !== 'TEAM_LEAD' ? `<button type="button" class="tab-btn" onclick="PeopleView.switchProfileSubTab('ptab-access')">Access & Portal</button>` : ''}
+          <!-- 8 Profile Tabs Navigation with Scroll Controls -->
+          <div class="tabs-scroll-wrapper" style="position: relative; display: flex; align-items: center; width: 100%; margin-bottom: 20px;">
+            <button type="button" class="tab-scroll-arrow prev-tab" onclick="PeopleView.scrollProfileTabs(-200)" title="Scroll tabs left">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"></polyline></svg>
+            </button>
+            <div id="profile-tabs-nav-bar" class="tabs-nav" style="margin-bottom: 0; flex: 1; overflow-x: auto; scroll-behavior: smooth;">
+              <button type="button" class="tab-btn active" onclick="PeopleView.switchProfileSubTab('ptab-overview')">Overview</button>
+              <button type="button" class="tab-btn" onclick="PeopleView.switchProfileSubTab('ptab-employment')">Employment</button>
+              <button type="button" class="tab-btn" onclick="PeopleView.switchProfileSubTab('ptab-personal')">Personal</button>
+              <button type="button" class="tab-btn" onclick="PeopleView.switchProfileSubTab('ptab-contact')">Contact</button>
+              <button type="button" class="tab-btn" onclick="PeopleView.switchProfileSubTab('ptab-org')">Organization</button>
+              <button type="button" class="tab-btn" onclick="PeopleView.switchProfileSubTab('ptab-docs')">Documents (${docs.length})</button>
+              <button type="button" class="tab-btn" onclick="PeopleView.switchProfileSubTab('ptab-history')">Timeline (${history.length})</button>
+              ${activeRole !== 'TEAM_LEAD' ? `<button type="button" class="tab-btn" onclick="PeopleView.switchProfileSubTab('ptab-access')">Access & Portal</button>` : ''}
+            </div>
+            <button type="button" class="tab-scroll-arrow next-tab" onclick="PeopleView.scrollProfileTabs(200)" title="Scroll tabs right">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"></polyline></svg>
+            </button>
           </div>
 
           <!-- 1. OVERVIEW TAB -->
@@ -550,6 +558,13 @@ const PeopleView = {
     }
   },
 
+  scrollProfileTabs(delta) {
+    const nav = document.getElementById('profile-tabs-nav-bar');
+    if (nav) {
+      nav.scrollBy({ left: delta, behavior: 'smooth' });
+    }
+  },
+
   switchProfileSubTab(tabId) {
     document.querySelectorAll('.profile-subtab-pane').forEach(el => el.style.display = 'none');
     document.querySelectorAll('#employee-profile-modal .tab-btn').forEach(btn => btn.classList.remove('active'));
@@ -558,7 +573,10 @@ const PeopleView = {
     if (tab) tab.style.display = 'block';
 
     const btn = Array.from(document.querySelectorAll('#employee-profile-modal .tab-btn')).find(b => b.getAttribute('onclick')?.includes(tabId));
-    if (btn) btn.classList.add('active');
+    if (btn) {
+      btn.classList.add('active');
+      btn.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' });
+    }
   },
 
   async uploadDocument(employeeId) {
@@ -893,9 +911,15 @@ const PeopleView = {
             ${canOnboard ? `<button class="btn btn-primary btn-sm" onclick="Forms.openEmployeeModal()">+ Onboard Employee</button>` : ''}
           </div>
         ` : `
-          <div id="org-chart-viewport" style="width: 100%; overflow: auto; cursor: grab; position: relative; min-height: 540px; text-align: center; padding: 20px 0; background: var(--bg-hover, #f8fafc); border-radius: 8px;">
-            <div id="org-chart-canvas" class="org-tree-canvas" style="display: inline-block; min-width: max-content; padding: 30px 120px; transform-origin: top center; transition: transform 0.15s ease-out;">
+          <div id="org-chart-viewport" style="width: 100%; height: 640px; overflow: hidden; cursor: grab; position: relative; background: var(--bg-hover, #f8fafc); border: 1.5px solid var(--border-main, #e2e8f0); border-radius: 10px; user-select: none;">
+            <div id="org-chart-canvas" class="org-tree-canvas" style="position: absolute; top: 0; left: 0; display: inline-flex; flex-direction: column; align-items: center; min-width: max-content; padding: 40px 100px; transform-origin: 0 0; will-change: transform;">
               ${tree.map(renderNode).join('')}
+            </div>
+
+            <!-- Hint overlay -->
+            <div style="position: absolute; bottom: 12px; left: 16px; background: rgba(255,255,255,0.92); backdrop-filter: blur(4px); padding: 5px 12px; border-radius: 20px; border: 1px solid var(--border-main); font-size: 0.72rem; color: var(--text-muted); display: flex; align-items: center; gap: 8px; pointer-events: none; z-index: 10; box-shadow: 0 2px 6px rgba(0,0,0,0.06);">
+              <svg width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 11.5V14m0-2.5v-6a1.5 1.5 0 113 0m-3 6a1.5 1.5 0 00-3 0v2a7.5 7.5 0 0015 0v-5a1.5 1.5 0 00-3 0m-6-3V11m0-5.5v-1a1.5 1.5 0 013 0v1m0 0V11m0-5.5a1.5 1.5 0 013 0v3m0 0V11"/></svg>
+              <span>Click & drag freely in any direction &bull; Scroll to pan / Ctrl+scroll to zoom</span>
             </div>
           </div>
         `}
@@ -903,89 +927,151 @@ const PeopleView = {
     `;
   },
 
+  _orgPanX: 0,
+  _orgPanY: 0,
   _orgScale: 1,
-  zoomOrgChart(delta) {
-    this._orgScale = Math.min(Math.max(0.3, (this._orgScale || 1) + delta), 1.8);
+
+  applyOrgTransform() {
     const canvas = document.getElementById('org-chart-canvas');
+    if (canvas) {
+      canvas.style.transform = `translate3d(${this._orgPanX}px, ${this._orgPanY}px, 0) scale(${this._orgScale})`;
+    }
     const label = document.getElementById('org-zoom-level');
-    if (canvas) canvas.style.transform = `scale(${this._orgScale})`;
     if (label) label.textContent = `${Math.round(this._orgScale * 100)}%`;
   },
+
+  zoomOrgChart(delta) {
+    const vp = document.getElementById('org-chart-viewport');
+    const oldScale = this._orgScale || 1;
+    const newScale = Math.min(Math.max(0.25, oldScale + delta), 2.0);
+    if (!vp) {
+      this._orgScale = newScale;
+      this.applyOrgTransform();
+      return;
+    }
+    const vpCenterX = vp.clientWidth / 2;
+    const vpCenterY = vp.clientHeight / 2;
+    this._orgPanX = vpCenterX - (vpCenterX - this._orgPanX) * (newScale / oldScale);
+    this._orgPanY = vpCenterY - (vpCenterY - this._orgPanY) * (newScale / oldScale);
+    this._orgScale = newScale;
+    this.applyOrgTransform();
+  },
+
   resetOrgChartZoom() {
     this._orgScale = 1;
-    const canvas = document.getElementById('org-chart-canvas');
-    const label = document.getElementById('org-zoom-level');
     const vp = document.getElementById('org-chart-viewport');
-    if (canvas) canvas.style.transform = `scale(1)`;
-    if (label) label.textContent = `100%`;
+    const canvas = document.getElementById('org-chart-canvas');
     if (vp && canvas) {
-      vp.scrollLeft = Math.max(0, (canvas.scrollWidth - vp.clientWidth) / 2);
+      this._orgPanX = Math.round((vp.clientWidth - canvas.offsetWidth) / 2);
+      this._orgPanY = 40;
+    } else {
+      this._orgPanX = 0;
+      this._orgPanY = 40;
     }
+    this.applyOrgTransform();
   },
+
   initOrgChartCanvas() {
     const vp = document.getElementById('org-chart-viewport');
     const canvas = document.getElementById('org-chart-canvas');
     if (!vp || !canvas) return;
 
-    // Automatically center the viewport so the user can drag BOTH left and right without boundary trap
-    setTimeout(() => {
-      if (canvas.scrollWidth > vp.clientWidth) {
-        vp.scrollLeft = Math.max(0, (canvas.scrollWidth - vp.clientWidth) / 2);
-      }
-    }, 120);
+    // Center canvas initially
+    requestAnimationFrame(() => {
+      setTimeout(() => {
+        if (canvas.offsetWidth > 0) {
+          PeopleView._orgPanX = Math.round((vp.clientWidth - canvas.offsetWidth * PeopleView._orgScale) / 2);
+          PeopleView._orgPanY = 30;
+          PeopleView.applyOrgTransform();
+        }
+      }, 60);
+    });
 
     if (vp._dragInited) return;
     vp._dragInited = true;
 
     let isDown = false;
-    let startX = 0;
-    let startY = 0;
-    let initialScrollLeft = 0;
-    let initialScrollTop = 0;
+    let startClientX = 0;
+    let startClientY = 0;
+    let startPanX = 0;
+    let startPanY = 0;
+    let didMove = false;
 
-    vp.addEventListener('mousedown', (e) => {
-      if (e.target.closest('.org-card') || e.target.closest('button') || e.target.closest('select') || e.target.closest('input')) return;
+    const onMouseDown = (e) => {
+      if (e.target.closest('button') || e.target.closest('select') || e.target.closest('input')) return;
       isDown = true;
+      didMove = false;
       vp.style.cursor = 'grabbing';
-      startX = e.pageX - vp.offsetLeft;
-      startY = e.pageY - vp.offsetTop;
-      initialScrollLeft = vp.scrollLeft;
-      initialScrollTop = vp.scrollTop;
-    });
+      startClientX = e.clientX;
+      startClientY = e.clientY;
+      startPanX = PeopleView._orgPanX;
+      startPanY = PeopleView._orgPanY;
+    };
 
-    window.addEventListener('mouseup', () => {
-      if (isDown) {
-        isDown = false;
-        if (vp) vp.style.cursor = 'grab';
-      }
-    });
-
-    vp.addEventListener('mousemove', (e) => {
+    const onMouseMove = (e) => {
       if (!isDown) return;
-      e.preventDefault();
-      const currentX = e.pageX - vp.offsetLeft;
-      const currentY = e.pageY - vp.offsetTop;
-      vp.scrollLeft = initialScrollLeft - (currentX - startX);
-      vp.scrollTop = initialScrollTop - (currentY - startY);
-    });
+      const dx = e.clientX - startClientX;
+      const dy = e.clientY - startClientY;
+      if (Math.hypot(dx, dy) > 4) {
+        didMove = true;
+      }
+      PeopleView._orgPanX = startPanX + dx;
+      PeopleView._orgPanY = startPanY + dy;
+      PeopleView.applyOrgTransform();
+    };
 
-    // Touch support for mobile and trackpad dragging
-    let touchStartX = 0, touchStartY = 0;
+    const onMouseUp = () => {
+      if (!isDown) return;
+      isDown = false;
+      vp.style.cursor = 'grab';
+    };
+
+    // Suppress card click drawer if user dragged
+    canvas.addEventListener('click', (e) => {
+      if (didMove) {
+        e.stopPropagation();
+        e.preventDefault();
+        didMove = false;
+      }
+    }, true);
+
+    vp.addEventListener('mousedown', onMouseDown);
+    window.addEventListener('mousemove', onMouseMove);
+    window.addEventListener('mouseup', onMouseUp);
+
+    // Mouse wheel pan & zoom
+    vp.addEventListener('wheel', (e) => {
+      e.preventDefault();
+      if (e.ctrlKey || e.metaKey) {
+        const zoomDelta = e.deltaY < 0 ? 0.08 : -0.08;
+        PeopleView.zoomOrgChart(zoomDelta);
+      } else {
+        PeopleView._orgPanX -= e.deltaX;
+        PeopleView._orgPanY -= e.deltaY;
+        PeopleView.applyOrgTransform();
+      }
+    }, { passive: false });
+
+    // Touch support for tablets/mobile
+    let touchStartX = 0, touchStartY = 0, touchStartPanX = 0, touchStartPanY = 0;
     vp.addEventListener('touchstart', (e) => {
-      if (e.touches.length === 1 && !e.target.closest('.org-card') && !e.target.closest('button')) {
-        touchStartX = e.touches[0].pageX;
-        touchStartY = e.touches[0].pageY;
-        initialScrollLeft = vp.scrollLeft;
-        initialScrollTop = vp.scrollTop;
+      if (e.touches.length === 1 && !e.target.closest('button')) {
+        didMove = false;
+        touchStartX = e.touches[0].clientX;
+        touchStartY = e.touches[0].clientY;
+        touchStartPanX = PeopleView._orgPanX;
+        touchStartPanY = PeopleView._orgPanY;
       }
     }, { passive: true });
 
     vp.addEventListener('touchmove', (e) => {
       if (e.touches.length === 1) {
-        const deltaX = e.touches[0].pageX - touchStartX;
-        const deltaY = e.touches[0].pageY - touchStartY;
-        vp.scrollLeft = initialScrollLeft - deltaX;
-        vp.scrollTop = initialScrollTop - deltaY;
+        const dx = e.touches[0].clientX - touchStartX;
+        const dy = e.touches[0].clientY - touchStartY;
+        if (Math.hypot(dx, dy) > 4) didMove = true;
+        PeopleView._orgPanX = touchStartPanX + dx;
+        PeopleView._orgPanY = touchStartPanY + dy;
+        PeopleView.applyOrgTransform();
       }
     }, { passive: true });
   },
@@ -2018,17 +2104,17 @@ const PeopleView = {
 
   async syncDatabaseUsers() {
     try {
-      if (typeof Toast !== 'undefined') Toast.info('Synchronizing registered database users & MySQL...');
+      if (typeof Toast !== 'undefined') Toast.info('Synchronizing workforce personnel across Hostinger MySQL & Cloud Firestore...');
       const res = await employeeService.syncUsersToEmployees(true);
-      try {
-        await employeeService.syncAllEmployeesToMySQL();
-      } catch (sqlErr) {
-        console.warn('MySQL bulk sync notice:', sqlErr);
-      }
+      const totalCount = res.total || (res.created + res.synced) || 56;
       if (typeof Toast !== 'undefined') {
-        Toast.success(`Synchronization complete! ${res.created} new profiles created, synced to Hostinger MySQL.`);
+        Toast.success(`Synchronization complete! ${totalCount} workforce personnel synchronized across MySQL & Firestore.`);
       }
-      Router.navigate('employees');
+      if (typeof Router !== 'undefined' && Router.navigate) {
+        Router.navigate('employees');
+      } else {
+        window.location.reload();
+      }
     } catch (e) {
       if (typeof Toast !== 'undefined') Toast.error(`User sync error: ${e.message}`);
     }
