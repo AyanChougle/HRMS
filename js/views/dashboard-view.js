@@ -28,9 +28,13 @@ const DashboardView = {
     } else if (
       roleId === "MANAGER" ||
       roleId === "OPERATIONS_MANAGER" ||
+      roleId === "OPS" ||
+      roleId === "PROCESS_OWNER" ||
+      roleId === "COMPLIANCE" ||
       roleId === "TEAM_LEAD" ||
       roleId.includes("MANAGER") ||
-      roleId.includes("LEAD")
+      roleId.includes("LEAD") ||
+      roleId.includes("OWNER")
     ) {
       return window.ManagerDashboardView;
     } else {

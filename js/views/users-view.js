@@ -146,12 +146,15 @@ const UsersView = {
             </div>
           </div>
           <div class="flex items-center gap-2">
-            <select id="user-role-filter" class="form-control form-control-sm" style="width: 170px;" onchange="UsersView.handleRoleFilter(this.value)">
+            <select id="user-role-filter" class="form-control form-control-sm" style="width: 180px;" onchange="UsersView.handleRoleFilter(this.value)">
               <option value="All">All Roles</option>
               <option value="SUPER_ADMIN">Super Administrator</option>
-              <option value="HR_MANAGER">HR Manager</option>
+              <option value="HR_MANAGER">HR Manager (HRS)</option>
+              <option value="OPERATIONS_MANAGER">Operations Manager (OPS)</option>
               <option value="MANAGER">Manager</option>
-              <option value="OPERATIONS_MANAGER">Operations Manager</option>
+              <option value="PROCESS_OWNER">Process Owner</option>
+              <option value="COMPLIANCE">Compliance Officer</option>
+              <option value="DIGITAL_MARKETING">Digital Marketing</option>
               <option value="TEAM_LEAD">Team Leader</option>
               <option value="RELATIONSHIP_MANAGER">Relationship Manager</option>
               <option value="MENTOR_TRAINER">Mentor / Trainer</option>
@@ -205,6 +208,9 @@ const UsersView = {
       HR_MANAGER: { label: 'HR Manager', style: 'background: rgba(5, 150, 105, 0.12); color: #059669; border: 1px solid rgba(5, 150, 105, 0.3);' },
       MANAGER: { label: 'Manager', style: 'background: rgba(37, 99, 235, 0.12); color: #2563eb; border: 1px solid rgba(37, 99, 235, 0.3);' },
       OPERATIONS_MANAGER: { label: 'Ops Manager', style: 'background: rgba(2, 132, 199, 0.12); color: #0284c7; border: 1px solid rgba(2, 132, 199, 0.3);' },
+      PROCESS_OWNER: { label: 'Process Owner', style: 'background: rgba(147, 51, 234, 0.12); color: #9333ea; border: 1px solid rgba(147, 51, 234, 0.3);' },
+      COMPLIANCE: { label: 'Compliance Officer', style: 'background: rgba(16, 185, 129, 0.12); color: #10b981; border: 1px solid rgba(16, 185, 129, 0.3);' },
+      DIGITAL_MARKETING: { label: 'Digital Marketing', style: 'background: rgba(236, 72, 153, 0.12); color: #ec4899; border: 1px solid rgba(236, 72, 153, 0.3);' },
       TEAM_LEAD: { label: 'Team Leader', style: 'background: rgba(79, 70, 229, 0.12); color: #4f46e5; border: 1px solid rgba(79, 70, 229, 0.3);' },
       RELATIONSHIP_MANAGER: { label: 'Relationship Manager', style: 'background: rgba(8, 145, 178, 0.12); color: #0891b2; border: 1px solid rgba(8, 145, 178, 0.3);' },
       MENTOR_TRAINER: { label: 'Mentor / Trainer', style: 'background: rgba(217, 119, 6, 0.12); color: #d97706; border: 1px solid rgba(217, 119, 6, 0.3);' },
@@ -334,9 +340,12 @@ const UsersView = {
 
     const roles = [
       { id: 'SUPER_ADMIN', name: 'Super Administrator' },
-      { id: 'HR_MANAGER', name: 'HR Manager' },
+      { id: 'HR_MANAGER', name: 'HR Manager (HRS)' },
+      { id: 'OPERATIONS_MANAGER', name: 'Operations Manager (OPS)' },
       { id: 'MANAGER', name: 'Manager' },
-      { id: 'OPERATIONS_MANAGER', name: 'Operations Manager' },
+      { id: 'PROCESS_OWNER', name: 'Process Owner' },
+      { id: 'COMPLIANCE', name: 'Compliance Officer' },
+      { id: 'DIGITAL_MARKETING', name: 'Digital Marketing' },
       { id: 'TEAM_LEAD', name: 'Team Leader' },
       { id: 'RELATIONSHIP_MANAGER', name: 'Relationship Manager' },
       { id: 'MENTOR_TRAINER', name: 'Mentor / Trainer' },

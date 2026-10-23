@@ -118,21 +118,32 @@ if ($action === 'login') {
         $currentRole = strtoupper(trim($user['role_id'] ?? 'EMPLOYEE'));
 
         $resolvedRole = $currentRole;
-        if ($email === 'ayan@tradeforwealth.co.in' || $email === 'ayanislight@gmail.com') {
+        $empExplicitRole = strtoupper(trim($matchedEmp['role_id'] ?? ''));
+        if (!empty($empExplicitRole) && $empExplicitRole !== 'EMPLOYEE') {
+            $resolvedRole = $empExplicitRole;
+        } elseif ($email === 'ayan@tradeforwealth.co.in' || $email === 'ayanislight@gmail.com') {
             $resolvedRole = 'SUPER_ADMIN';
         } elseif ($currentRole === 'EMPLOYEE' || empty($currentRole)) {
-            if (strpos($desigLower, 'operations manager') !== false || strpos($desigLower, 'ops manager') !== false) {
+            if (strpos($desigLower, 'operations manager') !== false || strpos($desigLower, 'ops manager') !== false || $desigLower === 'ops') {
                 $resolvedRole = 'OPERATIONS_MANAGER';
+            } elseif (strpos($desigLower, 'compliance') !== false) {
+                $resolvedRole = 'COMPLIANCE';
+            } elseif (strpos($desigLower, 'process owner') !== false) {
+                $resolvedRole = 'PROCESS_OWNER';
+            } elseif (strpos($desigLower, 'digital marketing') !== false || strpos($desigLower, 'digital') !== false || strpos($desigLower, 'seo') !== false) {
+                $resolvedRole = 'DIGITAL_MARKETING';
             } elseif (strpos($desigLower, 'team lead') !== false || strpos($desigLower, 'team leader') !== false || strpos($desigLower, 'assistant team leader') !== false) {
                 $resolvedRole = 'TEAM_LEAD';
-            } elseif (strpos($desigLower, 'human resources') !== false || strpos($desigLower, 'hr lead') !== false || strpos($desigLower, 'recruiter') !== false) {
+            } elseif (strpos($desigLower, 'human resources') !== false || strpos($desigLower, 'hr lead') !== false || strpos($desigLower, 'recruiter') !== false || $desigLower === 'hr' || $desigLower === 'hrs') {
                 $resolvedRole = 'HR_MANAGER';
-            } elseif (strpos($desigLower, 'process owner') !== false || strpos($desigLower, 'manager') !== false) {
+            } elseif (strpos($desigLower, 'relationship manager') !== false) {
+                $resolvedRole = 'RELATIONSHIP_MANAGER';
+            } elseif (strpos($desigLower, 'general manager') !== false || strpos($desigLower, 'branch manager') !== false || strpos($desigLower, 'manager') !== false) {
                 $resolvedRole = 'MANAGER';
             } elseif (strpos($desigLower, 'trainer') !== false || strpos($desigLower, 'mentor') !== false) {
                 $resolvedRole = 'MENTOR_TRAINER';
-            } elseif (strpos($desigLower, 'relationship manager') !== false) {
-                $resolvedRole = 'RELATIONSHIP_MANAGER';
+            } elseif (strpos($desigLower, 'trainee') !== false || strpos($desigLower, 'intern') !== false) {
+                $resolvedRole = 'TRAINEE';
             }
         }
 

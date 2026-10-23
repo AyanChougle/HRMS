@@ -17,17 +17,20 @@ const AuthGuard = {
 
     const cleanRole = (roleId || '').toString().toUpperCase().trim();
     if (['SUPER_ADMIN', 'COMPANY_ADMIN', 'ADMIN'].includes(cleanRole)) return cleanRole;
-    if (['OPERATIONS_MANAGER', 'MANAGER', 'TEAM_LEAD', 'HR_MANAGER', 'RELATIONSHIP_MANAGER', 'MENTOR_TRAINER', 'TRAINEE'].includes(cleanRole)) {
+    if (['OPERATIONS_MANAGER', 'MANAGER', 'TEAM_LEAD', 'HR_MANAGER', 'RELATIONSHIP_MANAGER', 'MENTOR_TRAINER', 'TRAINEE', 'COMPLIANCE', 'PROCESS_OWNER', 'DIGITAL_MARKETING'].includes(cleanRole)) {
       return cleanRole;
     }
 
     const desig = (designation || '').toString().toLowerCase().trim();
-    if (desig.includes('operations manager') || desig.includes('ops manager')) return 'OPERATIONS_MANAGER';
+    if (desig.includes('operations manager') || desig.includes('ops manager') || desig === 'ops') return 'OPERATIONS_MANAGER';
+    if (desig.includes('compliance')) return 'COMPLIANCE';
+    if (desig.includes('process owner')) return 'PROCESS_OWNER';
+    if (desig.includes('digital marketing') || desig.includes('digital') || desig.includes('seo') || desig.includes('social media')) return 'DIGITAL_MARKETING';
     if (desig.includes('team lead') || desig.includes('team leader') || desig.includes('assistant team leader') || desig.includes('atl') || desig.includes('tl')) return 'TEAM_LEAD';
-    if (desig.includes('human resources') || desig.includes('hr lead') || desig.includes('hr manager') || desig.includes('recruiter')) return 'HR_MANAGER';
-    if (desig.includes('process owner') || desig.includes('general manager') || desig.includes('manager')) return 'MANAGER';
-    if (desig.includes('trainer') || desig.includes('mentor')) return 'MENTOR_TRAINER';
+    if (desig.includes('human resources') || desig.includes('hr lead') || desig.includes('hr manager') || desig.includes('recruiter') || desig === 'hr' || desig === 'hrs') return 'HR_MANAGER';
     if (desig.includes('relationship manager') || desig.includes('rm')) return 'RELATIONSHIP_MANAGER';
+    if (desig.includes('general manager') || desig.includes('branch manager') || desig.includes('manager')) return 'MANAGER';
+    if (desig.includes('trainer') || desig.includes('mentor')) return 'MENTOR_TRAINER';
     if (desig.includes('trainee') || desig.includes('intern')) return 'TRAINEE';
 
     return cleanRole || 'EMPLOYEE';
@@ -38,9 +41,12 @@ const AuthGuard = {
       SUPER_ADMIN: 'Super Admin',
       COMPANY_ADMIN: 'Company Admin',
       ADMIN: 'Administrator',
-      HR_MANAGER: 'HR Manager',
-      OPERATIONS_MANAGER: 'Operations Manager',
+      HR_MANAGER: 'HR Manager (HRS)',
+      OPERATIONS_MANAGER: 'Operations Manager (OPS)',
       MANAGER: 'Manager',
+      PROCESS_OWNER: 'Process Owner',
+      COMPLIANCE: 'Compliance Officer',
+      DIGITAL_MARKETING: 'Digital Marketing',
       TEAM_LEAD: 'Team Leader',
       RELATIONSHIP_MANAGER: 'Relationship Manager',
       MENTOR_TRAINER: 'Mentor / Trainer',
@@ -563,7 +569,16 @@ const AuthGuard = {
       this.userRole = { name: 'Mentor / Trainer', id: 'MENTOR_TRAINER' };
     } else if (normalizedRole === 'OPERATIONS_MANAGER') {
       this.permissions = window.PermissionService ? PermissionService.getUserPermissions({ roleId: 'OPERATIONS_MANAGER' }) : new Set(['people.view', 'team.view', 'performance.view', 'attendance.view', 'leave.view', 'ess.view', 'approvals.view', 'approvals.approve']);
-      this.userRole = { name: 'Operations Manager', id: 'OPERATIONS_MANAGER' };
+      this.userRole = { name: 'Operations Manager (OPS)', id: 'OPERATIONS_MANAGER' };
+    } else if (normalizedRole === 'PROCESS_OWNER') {
+      this.permissions = window.PermissionService ? PermissionService.getUserPermissions({ roleId: 'PROCESS_OWNER' }) : new Set(['people.view', 'team.view', 'performance.view', 'attendance.view', 'leave.view', 'ess.view', 'approvals.view', 'approvals.approve']);
+      this.userRole = { name: 'Process Owner', id: 'PROCESS_OWNER' };
+    } else if (normalizedRole === 'COMPLIANCE') {
+      this.permissions = window.PermissionService ? PermissionService.getUserPermissions({ roleId: 'COMPLIANCE' }) : new Set(['compliance.*', 'documents.view', 'reports.view', 'attendance.view', 'leave.view', 'ess.view']);
+      this.userRole = { name: 'Compliance Officer', id: 'COMPLIANCE' };
+    } else if (normalizedRole === 'DIGITAL_MARKETING') {
+      this.permissions = window.PermissionService ? PermissionService.getUserPermissions({ roleId: 'DIGITAL_MARKETING' }) : new Set(['performance.view', 'assets.view', 'documents.view', 'attendance.view', 'leave.view', 'ess.view']);
+      this.userRole = { name: 'Digital Marketing', id: 'DIGITAL_MARKETING' };
     } else if (normalizedRole === 'MANAGER') {
       this.permissions = window.PermissionService ? PermissionService.getUserPermissions({ roleId: 'MANAGER' }) : new Set(['people.view', 'team.view', 'performance.view', 'attendance.view', 'leave.view', 'ess.view', 'approvals.view', 'approvals.approve']);
       this.userRole = { name: 'Manager', id: 'MANAGER' };

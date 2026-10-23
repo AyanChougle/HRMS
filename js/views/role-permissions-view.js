@@ -26,13 +26,17 @@ const RolePermissionsView = {
 
     const rolesList = [
       { id: 'SUPER_ADMIN', name: 'Super Administrator', desc: 'Root system administrator with global access across all companies and modules' },
-      { id: 'HR_MANAGER', name: 'HR Manager', desc: 'Company-level HR operations, employee lifecycle, payroll, compliance, and terminations' },
+      { id: 'HR_MANAGER', name: 'HR Manager (HRS)', desc: 'Company-level HR operations, employee lifecycle, payroll, compliance, and terminations' },
+      { id: 'OPERATIONS_MANAGER', name: 'Operations Manager (OPS)', desc: 'Operations management, cross-departmental coordination, and performance oversight' },
       { id: 'MANAGER', name: 'Manager', desc: 'Departmental operational manager overseeing assigned organizational areas and teams' },
-      { id: 'OPERATIONS_MANAGER', name: 'Operations Manager', desc: 'Operations management through Team Leaders and team performance oversight' },
+      { id: 'PROCESS_OWNER', name: 'Process Owner', desc: 'End-to-end business process governance, workflow compliance, and operational KPIs' },
+      { id: 'COMPLIANCE', name: 'Compliance Officer', desc: 'Regulatory oversight, statutory audit records, policy adherence, and risk tracking' },
+      { id: 'DIGITAL_MARKETING', name: 'Digital Marketing', desc: 'Marketing campaigns, media assets, growth reporting, and performance analytics' },
       { id: 'TEAM_LEAD', name: 'Team Leader', desc: 'Direct operational manager for assigned team attendance, leave, goals, and approvals' },
+      { id: 'RELATIONSHIP_MANAGER', name: 'Relationship Manager', desc: 'Client relationship management, business development, and client accounts' },
       { id: 'MENTOR_TRAINER', name: 'Mentor / Trainer', desc: 'Dedicated training programs, daily module evaluation, assessments, and certifications' },
       { id: 'TRAINEE', name: 'Trainee', desc: 'Restricted 7-day learning track role undergoing assessment and certification' },
-      { id: 'EMPLOYEE', name: 'Employee', desc: 'Normal operational staff with personal self-service profile, attendance, and leave' }
+      { id: 'EMPLOYEE', name: 'Employee (ESS)', desc: 'Standard staff member with personal self-service profile, attendance, and leave' }
     ];
 
     const allPages = roleAccessService.PAGES;

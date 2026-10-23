@@ -414,6 +414,7 @@ const employeeService = {
         designationId: employeeData.designationId || '',
         designation: employeeData.designation || 'Staff',
         gradeId: employeeData.gradeId || 'G2',
+        roleId: employeeData.roleId || 'EMPLOYEE',
         costCenterId: employeeData.costCenterId || '',
         managerId: employeeData.managerId || '',
         manager: employeeData.manager || '',
@@ -538,6 +539,19 @@ const employeeService = {
         AuthGuard.userProfile.employeeId = actualDocId;
       }
 
+      // Also sync roleId and basic details to Firestore users collection
+      if (payload.roleId) {
+        try {
+          await db.collection('users').doc(actualDocId).set({
+            roleId: payload.roleId,
+            designation: payload.designation,
+            department: payload.department,
+            displayName: payload.fullName || payload.name,
+            phone: payload.phone || ''
+          }, { merge: true });
+        } catch (_) {}
+      }
+
       await auditService.log('EMPLOYEE_UPDATED', 'PEOPLE', 'employees', actualDocId, updates);
         const snap = await db.collection('employees').doc(actualDocId).get();
         if (snap.exists) await this.syncToMySQL(snap.data());
@@ -564,11 +578,64 @@ const employeeService = {
     }
   },
 
-  // Delete employee permanently
-  async deleteEmployee(employeeId) {
+  // Delete employee permanently from Hostinger MySQL & Firestore
+  async deleteEmployee(employeeId, employeeCode = '', employeeEmail = '') {
     try {
-      await db.collection('employees').doc(employeeId).delete();
-      await auditService.log('EMPLOYEE_DELETED', 'PEOPLE', 'employees', employeeId, {});
+      // 1. Delete from Hostinger MySQL (both employees and users tables)
+      if (typeof apiClient !== 'undefined') {
+        try {
+          await apiClient.post('employees.php?action=delete', {
+            id: employeeId || '',
+            employee_code: employeeCode || '',
+            email: employeeEmail || ''
+          });
+        } catch (sqlErr) {
+          console.warn('[employeeService] Hostinger MySQL delete notice:', sqlErr.message || sqlErr);
+        }
+      }
+
+      // 2. Delete from Firestore employees collection
+      if (employeeId) {
+        try {
+          await db.collection('employees').doc(String(employeeId)).delete();
+        } catch (_) {}
+      }
+      if (employeeCode) {
+        try {
+          const snap = await db.collection('employees').where('employeeCode', '==', employeeCode).get();
+          snap.forEach(d => d.ref.delete());
+        } catch (_) {}
+      }
+      if (employeeEmail) {
+        try {
+          const snap = await db.collection('employees').where('workEmail', '==', employeeEmail).get();
+          snap.forEach(d => d.ref.delete());
+        } catch (_) {}
+      }
+
+      // 3. Delete from Firestore users collection
+      if (employeeId) {
+        try {
+          await db.collection('users').doc(String(employeeId)).delete();
+        } catch (_) {}
+      }
+      if (employeeCode) {
+        try {
+          const snap = await db.collection('users').where('employeeCode', '==', employeeCode).get();
+          snap.forEach(d => d.ref.delete());
+        } catch (_) {}
+      }
+      if (employeeEmail) {
+        try {
+          const snap = await db.collection('users').where('email', '==', employeeEmail).get();
+          snap.forEach(d => d.ref.delete());
+        } catch (_) {}
+      }
+
+      await auditService.log('EMPLOYEE_DELETED', 'PEOPLE', 'employees', employeeId || employeeCode, {
+        employeeCode,
+        employeeEmail
+      });
       return true;
     } catch (err) {
       console.error('Error deleting employee:', err);

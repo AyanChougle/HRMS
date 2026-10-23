@@ -52,18 +52,26 @@ try {
 
         if ($email === 'ayan@tradeforwealth.co.in' || $email === 'ayanislight@gmail.com') {
             $newRole = 'SUPER_ADMIN';
-        } elseif (strpos($desig, 'operations manager') !== false || strpos($desig, 'ops manager') !== false) {
+        } elseif ($currentRole !== 'EMPLOYEE' && in_array($currentRole, ['SUPER_ADMIN', 'HR_MANAGER', 'OPERATIONS_MANAGER', 'MANAGER', 'PROCESS_OWNER', 'COMPLIANCE', 'DIGITAL_MARKETING', 'TEAM_LEAD', 'RELATIONSHIP_MANAGER', 'MENTOR_TRAINER', 'TRAINEE'])) {
+            $newRole = $currentRole;
+        } elseif (strpos($desig, 'operations manager') !== false || strpos($desig, 'ops manager') !== false || $desig === 'ops') {
             $newRole = 'OPERATIONS_MANAGER';
+        } elseif (strpos($desig, 'compliance') !== false) {
+            $newRole = 'COMPLIANCE';
+        } elseif (strpos($desig, 'process owner') !== false) {
+            $newRole = 'PROCESS_OWNER';
+        } elseif (strpos($desig, 'digital marketing') !== false || strpos($desig, 'digital') !== false || strpos($desig, 'seo') !== false) {
+            $newRole = 'DIGITAL_MARKETING';
         } elseif (strpos($desig, 'team lead') !== false || strpos($desig, 'team leader') !== false || strpos($desig, 'assistant team leader') !== false || strpos($desig, 'atl') !== false) {
             $newRole = 'TEAM_LEAD';
-        } elseif (strpos($desig, 'human resources') !== false || strpos($desig, 'hr lead') !== false || strpos($desig, 'hr manager') !== false || strpos($desig, 'recruiter') !== false) {
+        } elseif (strpos($desig, 'human resources') !== false || strpos($desig, 'hr lead') !== false || strpos($desig, 'hr manager') !== false || strpos($desig, 'recruiter') !== false || $desig === 'hr' || $desig === 'hrs') {
             $newRole = 'HR_MANAGER';
-        } elseif (strpos($desig, 'process owner') !== false || strpos($desig, 'general manager') !== false || strpos($desig, 'manager') !== false) {
+        } elseif (strpos($desig, 'relationship manager') !== false) {
+            $newRole = 'RELATIONSHIP_MANAGER';
+        } elseif (strpos($desig, 'general manager') !== false || strpos($desig, 'branch manager') !== false || strpos($desig, 'manager') !== false) {
             $newRole = 'MANAGER';
         } elseif (strpos($desig, 'trainer') !== false || strpos($desig, 'mentor') !== false) {
             $newRole = 'MENTOR_TRAINER';
-        } elseif (strpos($desig, 'relationship manager') !== false) {
-            $newRole = 'RELATIONSHIP_MANAGER';
         } elseif (strpos($desig, 'trainee') !== false || strpos($desig, 'intern') !== false) {
             $newRole = 'TRAINEE';
         }

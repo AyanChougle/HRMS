@@ -46,13 +46,25 @@ const roleAccessService = {
       'dashboard', 'people', 'create-employee', 'training', 'attendance', 'leave', 'recruitment', 'compliance', 'expenses', 'assets', 'performance',
       'documents', 'requests', 'communication', 'reports', 'users', 'ess'
     ],
-    MANAGER: [
-      'dashboard', 'people', 'attendance', 'leave', 'performance', 'compliance',
-      'requests', 'communication', 'reports', 'ess'
-    ],
     OPERATIONS_MANAGER: [
       'dashboard', 'people', 'attendance', 'leave', 'performance', 'compliance',
-      'requests', 'communication', 'reports', 'ess'
+      'assets', 'documents', 'requests', 'communication', 'reports', 'ess'
+    ],
+    MANAGER: [
+      'dashboard', 'people', 'attendance', 'leave', 'performance', 'compliance',
+      'documents', 'requests', 'communication', 'reports', 'ess'
+    ],
+    PROCESS_OWNER: [
+      'dashboard', 'people', 'attendance', 'leave', 'performance', 'compliance',
+      'documents', 'requests', 'communication', 'reports', 'ess'
+    ],
+    COMPLIANCE: [
+      'dashboard', 'compliance', 'documents', 'reports', 'attendance', 'leave',
+      'communication', 'requests', 'ess'
+    ],
+    DIGITAL_MARKETING: [
+      'dashboard', 'attendance', 'leave', 'performance', 'compliance',
+      'assets', 'documents', 'requests', 'communication', 'reports', 'ess'
     ],
     TEAM_LEAD: [
       'dashboard', 'people', 'attendance', 'leave', 'performance', 'compliance',
@@ -136,8 +148,14 @@ const roleAccessService = {
       pages = [...this.DEFAULT_ROLE_PAGES.SUPER_ADMIN];
     } else if (r.includes('HR')) {
       pages = [...this.DEFAULT_ROLE_PAGES.HR_MANAGER];
-    } else if (r === 'OPERATIONS_MANAGER') {
+    } else if (r === 'OPERATIONS_MANAGER' || r === 'OPS') {
       pages = [...this.DEFAULT_ROLE_PAGES.OPERATIONS_MANAGER];
+    } else if (r === 'PROCESS_OWNER' || r.includes('PROCESS')) {
+      pages = [...this.DEFAULT_ROLE_PAGES.PROCESS_OWNER];
+    } else if (r === 'COMPLIANCE' || r.includes('COMPLIANCE')) {
+      pages = [...this.DEFAULT_ROLE_PAGES.COMPLIANCE];
+    } else if (r === 'DIGITAL_MARKETING' || r.includes('DIGITAL')) {
+      pages = [...this.DEFAULT_ROLE_PAGES.DIGITAL_MARKETING];
     } else if (r.includes('MANAGER')) {
       pages = [...this.DEFAULT_ROLE_PAGES.MANAGER];
     } else if (r.includes('LEAD') || r.includes('TL')) {

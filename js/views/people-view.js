@@ -297,7 +297,7 @@ const PeopleView = {
                         <button class="btn btn-soft btn-sm" onclick="PeopleView.openEmployeeDrawer('${emp.id}')" title="View 8-Tab Profile">View</button>
                         ${canOnboard ? `
                           <button class="btn btn-secondary btn-sm" onclick="Forms.openEmployeeModal('${emp.id}')" title="Edit Details">Edit</button>
-                          <button class="btn btn-danger btn-sm" onclick="PeopleView.confirmDeleteEmployee('${emp.id}', '${emp.fullName || emp.name}')" title="Delete">Delete</button>
+                          <button class="btn btn-danger btn-sm" onclick="PeopleView.confirmDeleteEmployee('${emp.id}', '${(emp.fullName || emp.name || '').replace(/'/g, "\\'")}', '${emp.employeeCode || ''}', '${emp.workEmail || emp.email || ''}')" title="Delete">Delete</button>
                         ` : ''}
                       </div>
                     </td>
@@ -1392,15 +1392,15 @@ const PeopleView = {
     });
   },
 
-  confirmDeleteEmployee(employeeId, empName) {
+  confirmDeleteEmployee(employeeId, empName, empCode = '', empEmail = '') {
     ModalManager.confirm({
       title: 'Delete Employee Record',
-      message: `Are you sure you want to permanently delete ${empName} from the Employee Directory? This action cannot be undone.`,
-      confirmText: 'Delete Employee',
+      message: `Are you sure you want to permanently delete ${empName} (${empCode || employeeId}) from the Employee Directory? This removes their record from both MySQL and Firestore.`,
+      confirmText: 'Delete Employee Permanently',
       confirmClass: 'btn-danger',
       onConfirm: async () => {
         try {
-          await employeeService.deleteEmployee(employeeId);
+          await employeeService.deleteEmployee(employeeId, empCode, empEmail);
           Toast.success(`Employee ${empName} deleted permanently.`);
           Router.mountView('employees');
         } catch (e) {

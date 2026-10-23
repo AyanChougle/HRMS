@@ -151,7 +151,7 @@ try {
         $dept = trim($input['department'] ?? 'Operations');
         $desig = trim($input['designation'] ?? 'Associate');
         $role = strtoupper(trim($input['role_id'] ?? $input['role'] ?? 'EMPLOYEE'));
-        $validRoles = ['SUPER_ADMIN', 'HR_MANAGER', 'MANAGER', 'OPERATIONS_MANAGER', 'TEAM_LEAD', 'RELATIONSHIP_MANAGER', 'MENTOR_TRAINER', 'TRAINEE', 'EMPLOYEE'];
+        $validRoles = ['SUPER_ADMIN', 'HR_MANAGER', 'MANAGER', 'OPERATIONS_MANAGER', 'PROCESS_OWNER', 'COMPLIANCE', 'DIGITAL_MARKETING', 'TEAM_LEAD', 'RELATIONSHIP_MANAGER', 'MENTOR_TRAINER', 'TRAINEE', 'EMPLOYEE'];
         if (!in_array($role, $validRoles)) $role = 'EMPLOYEE';
 
         $mgrId = trim($input['manager_id'] ?? '');

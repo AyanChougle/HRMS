@@ -160,7 +160,7 @@ const Forms = {
           </div>
 
           <div class="form-row">
-            <div class="col-6 form-group">
+            <div class="col-4 form-group">
               <label class="form-label required">Department</label>
               <select id="ef-dept" class="form-control">
                 ${departments.length === 0 ? `
@@ -172,16 +172,36 @@ const Forms = {
                 }).join('')}
               </select>
             </div>
-            <div class="col-6 form-group">
-              <label class="form-label required">Designation / Role</label>
-              <input type="text" id="ef-designation" list="desig-suggestions" class="form-control" value="${emp?.designation || 'Executive'}" placeholder="e.g. Relationship Manager" required />
+            <div class="col-4 form-group">
+              <label class="form-label required">Designation</label>
+              <input type="text" id="ef-designation" list="desig-suggestions" class="form-control" value="${emp?.designation || 'Executive'}" placeholder="e.g. Operations Manager" required />
               <datalist id="desig-suggestions">
-                <option value="Relationship Manager"></option>
-                <option value="Senior Relationship Manager"></option>
+                <option value="Operations Manager"></option>
+                <option value="Process Owner"></option>
+                <option value="Compliance Officer"></option>
+                <option value="Digital Marketing Executive"></option>
+                <option value="HR Manager"></option>
                 <option value="Team Leader"></option>
-                <option value="Operations Executive"></option>
-                <option value="Sales Executive"></option>
+                <option value="Relationship Manager"></option>
+                <option value="Executive"></option>
               </datalist>
+            </div>
+            <div class="col-4 form-group">
+              <label class="form-label required">System Role / Portal Access</label>
+              <select id="ef-role" class="form-control" style="font-weight: 600; color: var(--primary);">
+                <option value="EMPLOYEE" ${(emp?.roleId || 'EMPLOYEE') === 'EMPLOYEE' ? 'selected' : ''}>Employee (Self Service)</option>
+                <option value="OPERATIONS_MANAGER" ${emp?.roleId === 'OPERATIONS_MANAGER' ? 'selected' : ''}>Operations Manager (OPS)</option>
+                <option value="MANAGER" ${emp?.roleId === 'MANAGER' ? 'selected' : ''}>Manager</option>
+                <option value="PROCESS_OWNER" ${emp?.roleId === 'PROCESS_OWNER' ? 'selected' : ''}>Process Owner</option>
+                <option value="COMPLIANCE" ${emp?.roleId === 'COMPLIANCE' ? 'selected' : ''}>Compliance Officer</option>
+                <option value="DIGITAL_MARKETING" ${emp?.roleId === 'DIGITAL_MARKETING' ? 'selected' : ''}>Digital Marketing</option>
+                <option value="HR_MANAGER" ${(emp?.roleId === 'HR_MANAGER' || emp?.roleId === 'HR') ? 'selected' : ''}>HR Manager (HRS)</option>
+                <option value="TEAM_LEAD" ${emp?.roleId === 'TEAM_LEAD' ? 'selected' : ''}>Team Leader</option>
+                <option value="RELATIONSHIP_MANAGER" ${emp?.roleId === 'RELATIONSHIP_MANAGER' ? 'selected' : ''}>Relationship Manager</option>
+                <option value="MENTOR_TRAINER" ${emp?.roleId === 'MENTOR_TRAINER' ? 'selected' : ''}>Mentor / Trainer</option>
+                <option value="TRAINEE" ${emp?.roleId === 'TRAINEE' ? 'selected' : ''}>Trainee</option>
+                <option value="SUPER_ADMIN" ${emp?.roleId === 'SUPER_ADMIN' ? 'selected' : ''}>Super Admin</option>
+              </select>
             </div>
           </div>
 
@@ -292,6 +312,7 @@ const Forms = {
       employmentType: document.getElementById('ef-emp-type')?.value || 'Full Time',
       department: document.getElementById('ef-dept')?.value || 'General',
       designation: (document.getElementById('ef-designation')?.value || '').trim(),
+      roleId: document.getElementById('ef-role')?.value || 'EMPLOYEE',
       branchName: document.getElementById('ef-branch')?.value || 'Ghansoli - Navi Mumbai',
       location: document.getElementById('ef-branch')?.value || 'Ghansoli - Navi Mumbai',
       managerId: document.getElementById('ef-manager')?.value || '',
