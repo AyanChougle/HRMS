@@ -1,7 +1,3 @@
-/**
- * DIALLO HRMS — PERFORMANCE & APPRAISAL MANAGEMENT SERVICE (PHASE 8)
- * Goals & OKRs, KPIs, Competencies, Multi-Tier Reviews, 1-on-1s, Development Plans, PIPs, and Appraisal Recommendations
- */
 
 const performanceService = {
   // Built-in Default Competencies Registry

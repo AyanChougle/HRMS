@@ -1,7 +1,3 @@
-/**
- * DIALLO HRMS — PAYROLL SETTINGS & POLICY SERVICE (PHASE 7)
- * Manages currency, working-day calculation methods, overtime rules, and deduction policies
- */
 
 const payrollSettingsService = {
   DEFAULT_SETTINGS: {

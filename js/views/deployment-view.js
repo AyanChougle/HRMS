@@ -1,8 +1,3 @@
-/**
- * DIALLO HRMS — PRODUCTION DEPLOYMENT & HOSTINGER STORAGE VIEW (PHASE 20)
- * Live monitoring of official production architecture:
- * Firebase Authentication, Cloud Firestore, Cloud Functions, and Hostinger Storage.
- */
 
 const DeploymentView = {
   activeTab: "status",

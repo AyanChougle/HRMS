@@ -1,7 +1,3 @@
-/**
- * DIALLO HRMS — MAIN APPLICATION ENTRYPOINT & COORDINATOR (FIREBASE BACKED)
- * Initializes Router, UI Theme, Toast, Modals, AuthGuard and Real-time Header Switchers
- */
 
 document.addEventListener('DOMContentLoaded', () => {
   App.init();
@@ -49,9 +45,19 @@ const App = {
     this.bindBranchSwitcher().catch(() => {});
     this.bindNotifications().catch(() => {});
 
-    // 6. Safe Background Seeding
+    // 6. Safe Background Seeding & Test Record Cleanup
     if (typeof seedService !== 'undefined' && seedService.bootstrapIfEmpty) {
       seedService.bootstrapIfEmpty().catch(err => console.warn('Seed warning:', err));
+    }
+    if (typeof db !== 'undefined') {
+      try {
+        db.collection('employees').where('employeeCode', '==', 'D-00001').get().then(snap => {
+          snap.forEach(d => d.ref.delete().catch(() => {}));
+        }).catch(() => {});
+        db.collection('employees').where('workEmail', '==', 'carrentpedatabase@gmail.com').get().then(snap => {
+          snap.forEach(d => d.ref.delete().catch(() => {}));
+        }).catch(() => {});
+      } catch (_) {}
     }
 
     console.log('[App] Diallo HRMS Enterprise Application Initialized.');

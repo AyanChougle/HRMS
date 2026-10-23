@@ -1,7 +1,3 @@
-/**
- * DIALLO HRMS — COMPREHENSIVE REPORTING ENGINE (PHASE 12/23)
- * Data aggregation, statutory schedules, Excel/CSV compiler, print renderer, and audit logging.
- */
 
 const reportService = {
   // Export table or raw JSON array as CSV

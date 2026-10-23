@@ -1,7 +1,3 @@
-/**
- * DIALLO HRMS — USER ACCESS & ROLE MANAGEMENT (HOSTINGER MYSQL BACKED)
- * Full user census, role assignments, account lifecycle states, and credentials
- */
 
 const UsersView = {
   currentUsers: [],

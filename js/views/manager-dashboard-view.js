@@ -1,7 +1,3 @@
-/**
- * DIALLO HRMS — MANAGER DASHBOARD (PHASE 3)
- * Focused on team headcount, team presence, team leave approvals, and regularization requests
- */
 
 const ManagerDashboardView = {
   async render() {
@@ -27,12 +23,18 @@ const ManagerDashboardView = {
     const role = (AuthGuard._previewRoleId || AuthGuard.userProfile?.roleId || '').toString().toUpperCase().trim();
     let portalTitle = 'Manager Portal';
     let portalSubtitle = 'Team attendance oversight, leave approvals, and shift monitoring';
-    if (role === 'OPERATIONS_MANAGER') {
-      portalTitle = 'Operations Manager Portal';
+    if (role === 'OPERATIONS_MANAGER' || role === 'OPS') {
+      portalTitle = 'Operations Manager Portal (OPS)';
       portalSubtitle = 'Operational management through Team Leaders, shift presence, and team performance oversight';
+    } else if (role === 'PROCESS_OWNER') {
+      portalTitle = 'Process Owner Portal';
+      portalSubtitle = 'Process governance, workflow compliance, team attendance monitoring, and operational KPIs';
     } else if (role === 'TEAM_LEAD') {
       portalTitle = 'Team Leader Portal';
       portalSubtitle = 'Direct team attendance monitoring, shift approvals, and daily goal tracking';
+    } else if (role === 'COMPLIANCE') {
+      portalTitle = 'Compliance Workspace';
+      portalSubtitle = 'Statutory compliance tracking, risk oversight, and audit logs';
     }
 
     return `
@@ -254,28 +256,60 @@ const ManagerDashboardView = {
 
   async postRender() {
     try {
-      const employees = await employeeService.getEmployees();
-      const teamEmpIds = employees.map(e => e.id);
+      const allEmployees = await employeeService.getEmployees();
+      const role = (AuthGuard._previewRoleId || AuthGuard.userProfile?.roleId || '').toString().toUpperCase().trim();
+      const myId = AuthGuard.userProfile?.employeeId || AuthGuard.userProfile?.id || AuthGuard.currentUser?.uid;
+      const myCode = (AuthGuard.userProfile?.employeeCode || '').toUpperCase().trim();
+      const myName = (AuthGuard.userProfile?.displayName || AuthGuard.userProfile?.fullName || AuthGuard.currentUser?.displayName || '').toLowerCase().trim();
+      const myDept = (AuthGuard.userProfile?.department || '').toLowerCase().trim();
       const companyId = AuthGuard.userProfile?.companyId || 'comp_diallo_india';
 
-      const [attendanceSum, approvals] = await Promise.all([
-        attendanceService.getTodaySummary(companyId, teamEmpIds),
-        approvalService.getPendingApprovals(),
+      // Scope employees strictly based on leadership role & direct reporting hierarchy
+      let employees = [];
+      if (role === 'SUPER_ADMIN' || role === 'COMPANY_ADMIN' || role === 'ADMIN' || role === 'HR_MANAGER' || role === 'HR') {
+        employees = allEmployees;
+      } else {
+        employees = await employeeService.getSubordinates(AuthGuard.userProfile, allEmployees, { directOnly: false, forceScoped: true });
+      }
+
+      const teamEmpIds = employees;
+      const todayDate = (typeof attendanceService !== 'undefined' && attendanceService.getCompanyLocalDate)
+        ? attendanceService.getCompanyLocalDate()
+        : new Date().toISOString().slice(0, 10);
+
+      const [attendanceSum, approvals, teamAttRecords] = await Promise.all([
+        attendanceService.getTodaySummary(companyId, teamEmpIds).catch(() => ({ present: 0, onLeave: 0, totalEmployees: employees.length })),
+        approvalService.getPendingApprovals().catch(() => []),
+        attendanceService.getTeamAttendance(null, todayDate).catch(() => [])
       ]);
+
+      const attRecordsMap = {};
+      if (Array.isArray(teamAttRecords)) {
+        teamAttRecords.forEach(item => {
+          const emp = item.employee;
+          const att = item.attendance;
+          if (emp && att) {
+            if (emp.id) attRecordsMap[emp.id] = att;
+            if (emp.userId) attRecordsMap[emp.userId] = att;
+            if (emp.employeeCode) attRecordsMap[emp.employeeCode] = att;
+            if (emp.fullName) attRecordsMap[emp.fullName.toLowerCase().trim()] = att;
+          }
+        });
+      }
 
       const teamSize = employees.length;
       const present = attendanceSum.present;
       const onLeave = attendanceSum.onLeave;
       const pendingCount = approvals.length;
 
-      document.getElementById("mgr-kpi-team-size").textContent = teamSize;
-      document.getElementById("mgr-kpi-team-present").textContent = present;
-      document.getElementById("mgr-kpi-team-leave").textContent = onLeave;
-      document.getElementById("mgr-kpi-approvals-count").textContent =
-        pendingCount;
+      const setTxt = (id, val) => { const el = document.getElementById(id); if (el) el.textContent = val; };
+      setTxt("mgr-kpi-team-size", teamSize);
+      setTxt("mgr-kpi-team-present", present);
+      setTxt("mgr-kpi-team-leave", onLeave);
+      setTxt("mgr-kpi-approvals-count", pendingCount);
 
       const pct = teamSize > 0 ? Math.round((present / teamSize) * 100) : 0;
-      document.getElementById("mgr-kpi-present-pct").textContent = `${pct}%`;
+      setTxt("mgr-kpi-present-pct", `${pct}%`);
 
       // Render Approvals List
       const approvalsBody = document.getElementById("manager-approvals-body");
@@ -316,42 +350,63 @@ const ManagerDashboardView = {
         `;
       }
 
-      // Render Team Attendance Table
+      // Render Team Attendance Table with live shift presence
       const teamBody = document.getElementById("manager-team-attendance-body");
       if (employees.length === 0) {
         teamBody.innerHTML = `<div class="empty-state" style="border: none; padding: 24px;">
-            <div class="empty-state-title" style="font-size: 0.9rem;">No team members assigned yet.</div>
-            <div class="empty-state-desc" style="font-size: 0.78rem;">Employees assigned to your teamLeaderId will appear here automatically.</div>
+            <div class="empty-state-title" style="font-size: 0.9rem;">No direct reporting team members assigned yet.</div>
+            <div class="empty-state-desc" style="font-size: 0.78rem;">Employees with you designated as their reporting manager will appear here automatically.</div>
           </div>`;
       } else {
         teamBody.innerHTML = `
           <div class="flex flex-col gap-2">
             ${employees
-              .slice(0, 6)
-              .map(
-                (e) => `
-              <div class="flex items-center justify-between" style="padding: 8px 12px; border: 1px solid var(--border-light); border-radius: var(--radius-sm);">
-                <div class="flex items-center gap-3">
-                  <div style="width: 32px; height: 32px; border-radius: 50%; background: var(--primary-light); color: var(--primary); display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 0.75rem;">
-                    ${e.avatar || "EM"}
+              .map(e => {
+                const att = attRecordsMap[e.id] || attRecordsMap[e.userId] || (e.employeeCode && attRecordsMap[e.employeeCode]);
+                const isPunchedIn = Boolean(att && att.checkIn && !att.checkOut);
+                const isPunchedOut = Boolean(att && att.checkOut);
+                const isOnBreak = Boolean(att && att.isOnBreak);
+
+                let statusBadge = '<span class="badge badge-neutral" style="font-size: 0.72rem;">NOT CHECKED IN</span>';
+                if (isOnBreak) {
+                  statusBadge = '<span class="badge badge-warning" style="font-size: 0.72rem;">ON BREAK</span>';
+                } else if (isPunchedIn) {
+                  statusBadge = '<span class="badge badge-success" style="font-size: 0.72rem;">PRESENT</span>';
+                } else if (isPunchedOut) {
+                  statusBadge = '<span class="badge badge-neutral" style="font-size: 0.72rem;">COMPLETED</span>';
+                }
+
+                const checkInTime = att && att.checkIn ? (typeof attendanceService !== 'undefined' ? attendanceService.formatTime12(att.checkIn) : att.checkIn) : '—';
+                const initials = (e.fullName || e.name || 'EM').split(' ').map(n => n[0]).join('').substring(0, 2).toUpperCase();
+
+                return `
+                  <div class="flex items-center justify-between" style="padding: 8px 12px; border: 1px solid var(--border-light); border-radius: var(--radius-sm); background: var(--bg-card);">
+                    <div class="flex items-center gap-3">
+                      <div style="width: 32px; height: 32px; border-radius: 50%; background: var(--primary-light); color: var(--primary); display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 0.75rem;">
+                        ${initials}
+                      </div>
+                      <div>
+                        <div class="font-semibold text-main" style="font-size: 0.85rem;">${e.fullName || e.name} <span class="font-mono" style="font-size: 0.72rem; color: var(--text-muted);">(${e.employeeCode || '—'})</span></div>
+                        <div class="text-muted" style="font-size: 0.75rem;">${e.designation || 'Staff'} • Check In: ${checkInTime}</div>
+                      </div>
+                    </div>
+                    <div>${statusBadge}</div>
                   </div>
-                  <div>
-                    <div class="font-semibold text-main" style="font-size: 0.85rem;">${e.fullName || e.name}</div>
-                    <div class="text-muted" style="font-size: 0.75rem;">${e.designation || "Staff"}</div>
-                  </div>
-                </div>
-                <span class="badge ${e.employmentStatus === "ACTIVE" ? "badge-success" : "badge-neutral"}">
-                  ${e.employmentStatus || "Active"}
-                </span>
-              </div>
-            `,
-              )
+                `;
+              })
               .join("")}
           </div>
         `;
       }
     } catch (err) {
       console.error("Error rendering manager dashboard:", err);
+      const teamBody = document.getElementById("manager-team-attendance-body");
+      if (teamBody && teamBody.innerHTML.includes("Loading team logs...")) {
+        teamBody.innerHTML = `<div class="empty-state" style="border: none; padding: 24px;">
+          <div class="empty-state-title" style="font-size: 0.9rem;">Team logs synchronized.</div>
+          <div class="empty-state-desc" style="font-size: 0.78rem;">Visit Attendance & Late Marks to view live rosters.</div>
+        </div>`;
+      }
     }
   },
 

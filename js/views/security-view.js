@@ -1,8 +1,4 @@
-/**
- * DIALLO HRMS — CENTRALIZED SECURITY, AUDIT & MONITORING VIEW (PHASE 18)
- * Enterprise Security Operations Center (SOC) managing Audit Trails, Security Events,
- * Incident Lifecycles, Privileged Access Reviews, and Hardened Security Governance.
- */
+
 
 const SecurityView = {
   activeTab: "dashboard",

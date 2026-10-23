@@ -1,7 +1,3 @@
-/**
- * DIALLO HRMS — INDIAN STATUTORY & PAYROLL ENGINE (PHASE 3)
- * Full calculation engine for EPF, ESIC, State PT, Section 192 TDS, and Gratuity Act 1972
- */
 
 const StatutoryEngine = {
   // Statutory Wage Ceilings & Rates (Defaults)

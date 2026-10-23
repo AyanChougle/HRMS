@@ -1,8 +1,3 @@
-/**
- * DIALLO HRMS — RECRUITMENT & APPLICANT TRACKING SYSTEM (ATS) SERVICE (PHASE 9)
- * Manages Job Requisitions, Positions, Candidates, Applications, Kanban Stages,
- * Interviews, Feedbacks, Assessments, Job Offers, and Handoff to Employee Onboarding
- */
 
 const recruitmentService = {
   // ATS Pipeline Stages

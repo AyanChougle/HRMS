@@ -1,8 +1,3 @@
-/**
- * DIALLO HRMS — COMPANY & ORGANIZATION ADMINISTRATION VIEW (PHASE 15)
- * Centralized Suite managing Company Profiles, Branches, Departments, Designations,
- * Shifts, Holidays, Policies, Leave Types, Work Locations, and System Configuration.
- */
 
 const AdminView = {
   activeTab: 'company',

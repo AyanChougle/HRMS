@@ -1,8 +1,3 @@
-/**
- * DIALLO HRMS — COMPLIANCE, CERTIFICATIONS & TRAINING SERVICE (PHASE 16)
- * Real-time Compliance Audit, Employee Certifications, Training Assignment,
- * and Policy Acknowledgement Trackers.
- */
 
 const complianceService = {
   DEFAULT_COMPANY_ID: 'comp_diallo_india',

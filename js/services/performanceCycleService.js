@@ -1,7 +1,3 @@
-/**
- * DIALLO HRMS — PERFORMANCE CYCLE MANAGEMENT SERVICE (PHASE 8)
- * Manages appraisal cycle lifecycles, deadlines, and state transitions
- */
 
 const performanceCycleService = {
   // Built-in Default Annual Cycle

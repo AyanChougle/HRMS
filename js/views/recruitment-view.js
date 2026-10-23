@@ -1,7 +1,3 @@
-/**
- * DIALLO HRMS — RECRUITMENT & APPLICANT TRACKING SYSTEM (ATS) VIEW (PHASE 9)
- * Job Requisitions, Positions, 8-Stage Kanban Pipeline, Interviews, Assessments, Offers, and Onboarding Handoff
- */
 
 const RecruitmentView = {
   activeTab: 'pipeline',

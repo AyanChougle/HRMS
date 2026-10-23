@@ -1,7 +1,4 @@
-/**
- * DIALLO HRMS — EMPLOYEE ONBOARDING SERVICE (PHASE 4)
- * Manages new joiner checklists, task assignments, due dates, and milestone tracking
- */
+
 
 const onboardingService = {
   // Get all onboarding tasks

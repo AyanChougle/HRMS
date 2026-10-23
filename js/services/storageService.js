@@ -1,7 +1,3 @@
-/**
- * DIALLO HRMS — PRODUCTION FILE STORAGE SERVICE (PHASE 20)
- * Uses Hostinger Storage ONLY (Firebase Storage is disabled).
- */
 
 const storageService = {
   // Upload an employee document (Aadhaar, PAN, Resume, Contract) to Hostinger

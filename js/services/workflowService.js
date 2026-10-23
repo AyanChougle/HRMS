@@ -1,7 +1,3 @@
-/**
- * DIALLO HRMS — WORKFLOW & APPROVAL AUTOMATION ENGINE (PHASE 14)
- * Configurable multi-step approval pipelines, conditional routing, auto-escalation, delegations, and audit history
- */
 
 const workflowService = {
   // Supported Workflow Modules

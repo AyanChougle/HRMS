@@ -1,7 +1,3 @@
-/**
- * DIALLO HRMS — PRODUCTION EMPLOYEE SERVICE (PHASE 4)
- * Comprehensive Employee Management, Uniqueness Checks, Auto-Code Generator, and History Tracking
- */
 
 const employeeService = {
   // Check if employee code is already taken within company
@@ -215,23 +211,38 @@ const employeeService = {
           ...doc.data()
         }));
       } else if (loadedFromMySQL && typeof db !== 'undefined') {
-        // Also merge any Firestore-only records that might not be in MySQL yet
+        // Only merge legitimate Firestore-only records (strictly excluding test/dummy records)
         try {
           const snapshot = await db.collection('employees').get();
           const existingCodes = new Set(records.map(r => (r.employeeCode || '').toUpperCase().trim()));
           const existingIds = new Set(records.map(r => r.id));
           snapshot.docs.forEach(doc => {
-            const data = doc.data();
+            const data = doc.data() || {};
             const code = (data.employeeCode || '').toUpperCase().trim();
-            if (!existingIds.has(doc.id) && (!code || !existingCodes.has(code))) {
+            const email = (data.workEmail || data.email || '').toLowerCase().trim();
+            const name = (data.fullName || data.name || '').toLowerCase().trim();
+            const isTest = code.startsWith('D-000') || email.includes('carrentpedatabase') || name.includes('car database');
+            if (!isTest && !existingIds.has(doc.id) && (!code || !existingCodes.has(code))) {
               records.push({ id: doc.id, ...data });
+            } else if (isTest) {
+              // Opportunistically delete test record from Firestore in the background
+              doc.ref.delete().catch(() => {});
             }
           });
         } catch (_) {}
       }
 
-      // Filter out empty or corrupted records
-      records = records.filter(e => e && (e.fullName || e.name || e.employeeCode || e.workEmail || e.email));
+      // Filter out empty, corrupted, or obsolete test records
+      records = records.filter(e => {
+        if (!e || !(e.fullName || e.name || e.employeeCode || e.workEmail || e.email)) return false;
+        const c = (e.employeeCode || '').toUpperCase().trim();
+        const em = (e.workEmail || e.email || '').toLowerCase().trim();
+        const nm = (e.fullName || e.name || '').toLowerCase().trim();
+        if (c.startsWith('D-000') || em.includes('carrentpedatabase') || nm.includes('car database')) {
+          return false;
+        }
+        return true;
+      });
 
       // Client-side filtering for search & attributes
       if (filters.companyId) {
@@ -268,6 +279,105 @@ const employeeService = {
       return records;
     } catch (err) {
       console.error('Error fetching employees:', err);
+      return [];
+    }
+  },
+
+  // Dynamic Hierarchy Resolver: Resolve subordinates strictly reporting to the given user
+  async getSubordinates(userProfile = null, allEmployees = null, options = { directOnly: false, forceScoped: false }) {
+    try {
+      const user = userProfile || (typeof AuthGuard !== 'undefined' ? AuthGuard.userProfile : null);
+      if (!user) return [];
+
+      const role = (user.roleId || user.role || '').toString().toUpperCase().trim();
+      const isSuperAdminOrHR = ['SUPER_ADMIN', 'COMPANY_ADMIN', 'ADMIN', 'HR_MANAGER', 'HR'].includes(role);
+
+      const emps = (Array.isArray(allEmployees) && allEmployees.length > 0) 
+        ? allEmployees 
+        : await this.getEmployees({});
+
+      if (isSuperAdminOrHR && !options.forceScoped) {
+        return emps;
+      }
+
+      const myId = (user.employeeId || user.id || user.uid || '').toString().trim();
+      const myCode = (user.employeeCode || user.code || '').toString().toUpperCase().trim();
+      const myName = (user.fullName || user.name || user.displayName || '').toString().toLowerCase().trim();
+      const myEmail = (user.workEmail || user.email || '').toString().toLowerCase().trim();
+
+      // Cross-match self record to guarantee all identifiers (id, employeeCode, full name variations)
+      const matchedSelf = emps.find(e => 
+        (myId && (String(e.id) === myId || String(e.userId) === myId)) ||
+        (myCode && (e.employeeCode || '').toUpperCase() === myCode) ||
+        (myEmail && (e.workEmail || e.email || '').toLowerCase() === myEmail)
+      );
+
+      const resolvedCode = (myCode || matchedSelf?.employeeCode || '').toUpperCase().trim();
+      const resolvedId = (myId || matchedSelf?.id || matchedSelf?.userId || '').toString().trim();
+      const resolvedName = (myName || matchedSelf?.fullName || matchedSelf?.name || '').toLowerCase().trim();
+
+      function isDirect(child, pIds, pCodes, pNames) {
+        if (!child) return false;
+        const cId = (child.id || child.employeeId || '').toString().trim();
+        const cCode = (child.employeeCode || child.code || '').toString().toUpperCase().trim();
+        if (pIds.has(cId) || (cCode && pCodes.has(cCode))) return false;
+
+        const mId = (child.managerId || child.manager_id || '').toString().trim();
+        const mStr = (child.manager || child.reportingManager || '').toString().trim().toLowerCase();
+
+        if (mId && pIds.has(mId)) return true;
+        for (const code of pCodes) {
+          if (code && mStr.includes(code.toLowerCase())) return true;
+        }
+        for (const name of pNames) {
+          if (name && mStr.includes(name)) return true;
+          const parts = name.split(' ').filter(p => p.length > 2);
+          if (parts.length >= 2 && parts.every(p => mStr.includes(p))) return true;
+        }
+        return false;
+      }
+
+      let searchIds = new Set([myId, resolvedId].filter(Boolean));
+      let searchCodes = new Set([myCode, resolvedCode].filter(Boolean));
+      let searchNames = new Set([myName, resolvedName].filter(Boolean));
+      if (matchedSelf?.fullName) searchNames.add(matchedSelf.fullName.toLowerCase().trim());
+
+      const subordinates = [];
+      let remaining = [...emps];
+
+      while (true) {
+        const nextIds = new Set();
+        const nextCodes = new Set();
+        const nextNames = new Set();
+        const stillRemaining = [];
+
+        for (const emp of remaining) {
+          if (isDirect(emp, searchIds, searchCodes, searchNames)) {
+            subordinates.push(emp);
+            const empId = (emp.id || emp.employeeId || '').toString().trim();
+            const empCode = (emp.employeeCode || emp.code || '').toString().toUpperCase().trim();
+            const empName = (emp.fullName || emp.name || emp.displayName || '').toString().toLowerCase().trim();
+            if (empId) nextIds.add(empId);
+            if (empCode) nextCodes.add(empCode);
+            if (empName) nextNames.add(empName);
+          } else {
+            stillRemaining.push(emp);
+          }
+        }
+
+        if (options.directOnly || (nextIds.size === 0 && nextCodes.size === 0 && nextNames.size === 0)) {
+          break;
+        }
+
+        remaining = stillRemaining;
+        searchIds = nextIds;
+        searchCodes = nextCodes;
+        searchNames = nextNames;
+      }
+
+      return subordinates;
+    } catch (err) {
+      console.warn('[employeeService] getSubordinates error:', err);
       return [];
     }
   },

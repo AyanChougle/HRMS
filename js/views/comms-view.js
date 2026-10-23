@@ -1,7 +1,3 @@
-/**
- * DIALLO HRMS — CENTRAL COMMUNICATION & NOTIFICATION HUB (PHASE 13)
- * Interactive Bulletin Wall, Multi-Module Notification Center, HR Broadcast Manager, and User Preferences
- */
 
 const CommsView = {
   activeTab: 'wall', // 'wall', 'notifications', 'manage', 'preferences'

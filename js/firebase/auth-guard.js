@@ -202,10 +202,10 @@ const AuthGuard = {
     });
   },
 
-  // Load Firestore user profile, role, and permissions (with self-healing fallback)
+  // Load Firestore user profile, role, and permissions (with self-healing fallback & MySQL cross-hydration)
   async loadUserProfile(uid) {
     const userEmail = (this.currentUser?.email || '').toLowerCase().trim();
-    const isMasterAdmin = userEmail === 'ayanislight@gmail.com';
+    const isMasterAdmin = (userEmail === 'ayan@tradeforwealth.co.in' || userEmail === 'ayanislight@gmail.com');
     let userDoc = null;
 
     try {
@@ -217,60 +217,58 @@ const AuthGuard = {
     if (userDoc && userDoc.exists) {
       this.userProfile = userDoc.data() || {};
       this.userProfile.id = userDoc.id;
-
-      // Ensure essential tenancy and status defaults while strictly preserving assigned role
-      if (!this.userProfile.companyId) this.userProfile.companyId = 'comp_diallo_india';
-      if (!this.userProfile.companyName) this.userProfile.companyName = 'Diallo India Private Limited';
-      if (!this.userProfile.branchId) this.userProfile.branchId = 'branch_ghansoli';
-      if (!this.userProfile.branchName) this.userProfile.branchName = 'Ghansoli - Navi Mumbai';
-      if (!this.userProfile.status) this.userProfile.status = 'ACTIVE';
-      if (!this.userProfile.roleId) this.userProfile.roleId = isMasterAdmin ? 'SUPER_ADMIN' : 'EMPLOYEE';
-
-      // Auto-resolve canonical role from designation if user was imported/defaulted to EMPLOYEE
-      const resolvedRole = this.resolveCanonicalRole(this.userProfile.roleId, this.userProfile.designation, userEmail);
-      this.userProfile.roleId = resolvedRole;
-
-      // Load Role definition if present
-      let roleDocData = null;
-      if (this.userProfile.roleId) {
-        try {
-          const roleDoc = await db.collection('roles').doc(this.userProfile.roleId).get();
-          if (roleDoc.exists) {
-            roleDocData = roleDoc.data();
-            this.userRole = roleDocData;
-          }
-        } catch (e) {
-          console.warn('Could not fetch role doc:', e);
-        }
-      }
-
-      // Compute Active Permissions Set via PermissionService
-      const normalizedRoleId = (this.userProfile.roleId || 'EMPLOYEE').toString().toUpperCase().trim();
-      if (normalizedRoleId === 'SUPER_ADMIN' || normalizedRoleId === 'COMPANY_ADMIN' || normalizedRoleId === 'ADMIN') {
-        this.permissions = new Set(['*']);
-      } else if (window.PermissionService) {
-        this.permissions = PermissionService.getUserPermissions(this.userProfile, roleDocData);
-      } else {
-        this.permissions = new Set(['*']);
-      }
-
-      // Initialize userRole object if not already populated from Firestore roles collection
-      if (!this.userRole) {
-        this.userRole = { name: this.getRoleLabel(normalizedRoleId), id: normalizedRoleId };
-      }
     } else {
-      // Self-heal: user exists in Firebase Auth but has no Firestore profile document yet
-      let roleId = isMasterAdmin ? 'SUPER_ADMIN' : 'EMPLOYEE';
-      const displayName = this.currentUser?.displayName || (userEmail ? userEmail.split('@')[0] : 'User');
-      let employeeId = null;
-      let desig = 'Staff';
-      let dept = 'Operations';
-      let empCode = '';
+      this.userProfile = {
+        uid: uid,
+        id: uid,
+        email: userEmail,
+        displayName: this.currentUser?.displayName || (userEmail ? userEmail.split('@')[0] : 'User'),
+        roleId: isMasterAdmin ? 'SUPER_ADMIN' : 'EMPLOYEE',
+        status: 'ACTIVE'
+      };
+    }
 
-      // Link matching employee document by email if available (prioritize non-test records with leadership designations)
+    // -------------------------------------------------------------------------
+    // CRITICAL: Cross-hydrate official profile from Hostinger MySQL API &
+    // Firestore employees collection (ensures Managers, Ops, HR, TLs get
+    // their true assigned role, designation, department, and employeeCode)
+    // -------------------------------------------------------------------------
+    let mysqlData = null;
+    let employeeDocData = null;
+
+    // 1. Check Hostinger MySQL users or employees by email / code / uid
+    if (typeof apiClient !== 'undefined') {
       try {
+        const uRes = await apiClient.get('users.php');
+        if (uRes && uRes.success && Array.isArray(uRes.users)) {
+          mysqlData = uRes.users.find(u => 
+            (u.email && u.email.toLowerCase().trim() === userEmail) ||
+            (u.uid && u.uid === uid) ||
+            (this.userProfile.employeeCode && u.employee_code === this.userProfile.employeeCode) ||
+            (this.userProfile.displayName && u.display_name && u.display_name.toLowerCase().trim() === this.userProfile.displayName.toLowerCase().trim())
+          );
+        }
+        if (!mysqlData) {
+          const empRes = await apiClient.get('employees.php');
+          if (empRes && empRes.success && Array.isArray(empRes.employees)) {
+            mysqlData = empRes.employees.find(e => 
+              (e.work_email && e.work_email.toLowerCase().trim() === userEmail) ||
+              (e.email && e.email.toLowerCase().trim() === userEmail) ||
+              (e.id && e.id === uid) ||
+              (this.userProfile.employeeCode && e.employee_code === this.userProfile.employeeCode) ||
+              (this.userProfile.displayName && e.full_name && e.full_name.toLowerCase().trim() === this.userProfile.displayName.toLowerCase().trim())
+            );
+          }
+        }
+      } catch (sqlErr) {
+        console.warn('[AuthGuard] MySQL hydration notice:', sqlErr.message);
+      }
+    }
+
+    // 2. Check Firestore employees collection by email
+    try {
+      if (typeof db !== 'undefined' && userEmail) {
         const empSnap = await db.collection('employees').where('workEmail', '==', userEmail).get();
-        let matchedDoc = null;
         if (!empSnap.empty) {
           const sorted = [...empSnap.docs].sort((a, b) => {
             const ad = a.data() || {}, bd = b.data() || {};
@@ -280,76 +278,107 @@ const AuthGuard = {
             if (bIsMgr && !aIsMgr) return 1;
             return (bd.employeeCode || '').localeCompare(ad.employeeCode || '');
           });
-          matchedDoc = sorted[0];
+          employeeDocData = { id: sorted[0].id, ...sorted[0].data() };
         } else {
           const empSnap2 = await db.collection('employees').where('email', '==', userEmail).get();
-          if (!empSnap2.empty) matchedDoc = empSnap2.docs[0];
+          if (!empSnap2.empty) {
+            employeeDocData = { id: empSnap2.docs[0].id, ...empSnap2.docs[0].data() };
+          }
         }
-
-        if (matchedDoc) {
-          employeeId = matchedDoc.id;
-          const eData = matchedDoc.data() || {};
-          if (eData.designation) desig = eData.designation;
-          if (eData.department) dept = eData.department;
-          if (eData.employeeCode) empCode = eData.employeeCode;
-          roleId = this.resolveCanonicalRole(roleId, desig, userEmail);
-        }
-      } catch (empErr) {
-        // Non-fatal employee directory check
       }
+    } catch (fsErr) {
+      console.warn('[AuthGuard] Firestore employee fetch notice:', fsErr);
+    }
 
-      const selfProfile = {
-        uid: uid,
-        email: this.currentUser?.email || userEmail,
-        displayName: displayName,
-        roleId: roleId,
-        designation: desig,
-        department: dept,
-        employeeCode: empCode,
-        companyId: 'comp_diallo_india',
-        companyName: 'Diallo India Private Limited',
-        branchId: 'branch_ghansoli',
-        branchName: 'Ghansoli - Navi Mumbai',
-        employeeId: employeeId,
-        status: 'ACTIVE',
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString()
-      };
+    // 3. Populate missing/authoritative fields
+    const desig = mysqlData?.designation || employeeDocData?.designation || this.userProfile.designation || '';
+    const dept = mysqlData?.department || employeeDocData?.department || this.userProfile.department || 'Operations';
+    const empCode = mysqlData?.employee_code || employeeDocData?.employeeCode || this.userProfile.employeeCode || '';
+    const empId = employeeDocData?.id || mysqlData?.id || this.userProfile.employeeId || uid;
+    const dispName = mysqlData?.display_name || mysqlData?.full_name || employeeDocData?.fullName || this.userProfile.displayName || this.currentUser?.displayName;
 
-      // Persist self-healing profile into Firestore asynchronously
+    this.userProfile.designation = desig;
+    this.userProfile.department = dept;
+    this.userProfile.employeeCode = empCode;
+    this.userProfile.employeeId = empId;
+    if (dispName) this.userProfile.displayName = dispName;
+    if (!this.userProfile.companyId) this.userProfile.companyId = 'comp_diallo_india';
+    if (!this.userProfile.companyName) this.userProfile.companyName = 'Diallo India Private Limited';
+    if (!this.userProfile.branchId) this.userProfile.branchId = 'branch_ghansoli';
+    if (!this.userProfile.branchName) this.userProfile.branchName = 'Ghansoli - Navi Mumbai';
+    if (!this.userProfile.status) this.userProfile.status = mysqlData?.status || employeeDocData?.status || 'ACTIVE';
+
+    // 4. Resolve the TRUE canonical role:
+    let candidateRole = this.userProfile.roleId;
+    if (isMasterAdmin) {
+      candidateRole = 'SUPER_ADMIN';
+    } else {
+      // Prioritize explicit non-default role from MySQL or Employee record
+      const sqlRole = (mysqlData?.role_id || '').toUpperCase().trim();
+      const empRole = (employeeDocData?.roleId || '').toUpperCase().trim();
+      if (sqlRole && sqlRole !== 'EMPLOYEE') {
+        candidateRole = sqlRole;
+      } else if (empRole && empRole !== 'EMPLOYEE') {
+        candidateRole = empRole;
+      } else if (!candidateRole || candidateRole === 'EMPLOYEE') {
+        // Resolve canonical role from designation
+        candidateRole = this.resolveCanonicalRole(candidateRole, desig, userEmail);
+      }
+    }
+    this.userProfile.roleId = candidateRole;
+
+    // 5. Persist the healed/hydrated role & details into Firestore users collection
+    try {
+      if (typeof db !== 'undefined' && uid) {
+        await db.collection('users').doc(uid).set({
+          uid: uid,
+          email: userEmail,
+          displayName: this.userProfile.displayName,
+          roleId: this.userProfile.roleId,
+          designation: this.userProfile.designation,
+          department: this.userProfile.department,
+          employeeCode: this.userProfile.employeeCode,
+          employeeId: this.userProfile.employeeId,
+          companyId: this.userProfile.companyId,
+          companyName: this.userProfile.companyName,
+          status: this.userProfile.status,
+          updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+        }, { merge: true });
+      }
+    } catch (upErr) {
+      console.warn('[AuthGuard] Could not persist hydrated profile to Firestore:', upErr);
+    }
+
+    // Load Role definition if present
+    let roleDocData = null;
+    if (this.userProfile.roleId) {
       try {
-        await db.collection('users').doc(uid).set(selfProfile, { merge: true });
-      } catch (writeErr) {
-        console.warn('Could not write self-healed profile to Firestore:', writeErr);
-      }
-
-      this.userProfile = selfProfile;
-      this.userProfile.id = uid;
-
-      const normalizedRoleId = roleId.toUpperCase().trim();
-      if (normalizedRoleId === 'SUPER_ADMIN' || normalizedRoleId === 'COMPANY_ADMIN' || normalizedRoleId === 'ADMIN') {
-        this.permissions = new Set(['*']);
-        this.userRole = { name: normalizedRoleId === 'SUPER_ADMIN' ? 'Super Admin' : 'Company Admin', id: normalizedRoleId };
-      } else if (window.PermissionService) {
-        this.permissions = PermissionService.getUserPermissions(this.userProfile);
-        if (normalizedRoleId === 'TRAINER') {
-          this.userRole = { name: 'Corporate Trainer', id: 'TRAINER' };
-        } else if (normalizedRoleId === 'TRAINEE') {
-          this.userRole = { name: 'Graduate Trainee', id: 'TRAINEE' };
-        } else if (normalizedRoleId === 'HR_MANAGER') {
-          this.userRole = { name: 'HR Manager', id: 'HR_MANAGER' };
-        } else if (normalizedRoleId === 'MANAGER') {
-          this.userRole = { name: 'Line Manager', id: 'MANAGER' };
-        } else {
-          this.userRole = { name: 'Employee (ESS)', id: 'EMPLOYEE' };
+        const roleDoc = await db.collection('roles').doc(this.userProfile.roleId).get();
+        if (roleDoc.exists) {
+          roleDocData = roleDoc.data();
+          this.userRole = roleDocData;
         }
-      } else {
-        this.permissions = new Set(['*']);
-        this.userRole = { name: 'Employee (ESS)', id: 'EMPLOYEE' };
+      } catch (e) {
+        console.warn('Could not fetch role doc:', e);
       }
     }
 
-    // Ensure every user who logs in has a matching official employee record in employees collection
+    // Compute Active Permissions Set via PermissionService
+    const normalizedRoleId = (this.userProfile.roleId || 'EMPLOYEE').toString().toUpperCase().trim();
+    if (normalizedRoleId === 'SUPER_ADMIN' || normalizedRoleId === 'COMPANY_ADMIN' || normalizedRoleId === 'ADMIN') {
+      this.permissions = new Set(['*']);
+    } else if (window.PermissionService) {
+      this.permissions = PermissionService.getUserPermissions(this.userProfile, roleDocData);
+    } else {
+      this.permissions = new Set(['*']);
+    }
+
+    // Initialize userRole object if not already populated from Firestore roles collection
+    if (!this.userRole) {
+      this.userRole = { name: this.getRoleLabel(normalizedRoleId), id: normalizedRoleId };
+    }
+
+    // Ensure matching employee record in employees collection
     try {
       await this.ensureEmployeeProfile(uid, userEmail, this.userProfile);
     } catch (e) {
@@ -562,7 +591,7 @@ const AuthGuard = {
       this.permissions = window.PermissionService ? PermissionService.getUserPermissions({ roleId: 'TEAM_LEAD' }) : new Set(['people.view', 'team.view', 'performance.view', 'attendance.view', 'leave.view', 'ess.view']);
       this.userRole = { name: 'Team Leader', id: 'TEAM_LEAD' };
     } else if (normalizedRole === 'RELATIONSHIP_MANAGER' || normalizedRole === 'RM') {
-      this.permissions = window.PermissionService ? PermissionService.getUserPermissions({ roleId: 'RELATIONSHIP_MANAGER' }) : new Set(['people.view', 'team.view', 'performance.view', 'attendance.view', 'leave.view', 'expenses.view', 'ess.view']);
+      this.permissions = window.PermissionService ? PermissionService.getUserPermissions({ roleId: 'RELATIONSHIP_MANAGER' }) : new Set(['attendance.view', 'attendance.punch', 'leave.view', 'leave.create', 'performance.view', 'expenses.view', 'ess.view', 'communication.view', 'requests.view', 'own.profile']);
       this.userRole = { name: 'Relationship Manager', id: 'RELATIONSHIP_MANAGER' };
     } else if (normalizedRole === 'MENTOR_TRAINER') {
       this.permissions = window.PermissionService ? PermissionService.getUserPermissions({ roleId: 'MENTOR_TRAINER' }) : new Set(['training.*', 'performance.view', 'attendance.punch', 'attendance.view', 'leave.view', 'leave.create', 'own.profile']);

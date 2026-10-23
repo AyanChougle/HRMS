@@ -1,7 +1,3 @@
-/**
- * DIALLO HRMS — COMPLETE 360° EMPLOYEE SELF-SERVICE (ESS) PORTAL (PHASE 11)
- * Personal Dashboard, Profile Governance, Document Dossier, HR Helpdesk Requests, Payslips, Assets, and Timecard
- */
 
 const ESSView = {
   activeTab: "profile", // Default to clean profile dossier view

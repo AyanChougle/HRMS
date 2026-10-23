@@ -1,7 +1,3 @@
-/**
- * DIALLO HRMS — LEAVE POLICY & SCHEME SERVICE (PHASE 6)
- * Manages statutory leave schemes, annual quotas, carry forward rules, and policy configurations
- */
 
 const leavePolicyService = {
   // Built-in Single Official Paid Leave Scheme & Unpaid Leave

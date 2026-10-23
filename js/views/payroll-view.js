@@ -1,7 +1,3 @@
-/**
- * DIALLO HRMS — PAYROLL & COMPENSATION MODULE (PHASE 7)
- * Batch Salary Processing, Attendance/Leave Reconciliation, Review/Approval/Locking, and Form 16 Payslips
- */
 
 const PayrollView = {
   activeTab: 'cycles',

@@ -1,7 +1,3 @@
-/**
- * DIALLO HRMS — EMPLOYEE COMPENSATION & SALARY STRUCTURE SERVICE (PHASE 7)
- * Manages salary structures, employee CTC assignments, versioned compensation history, and bank profiles
- */
 
 const compensationService = {
   // 1. GET ACTIVE COMPENSATION FOR AN EMPLOYEE

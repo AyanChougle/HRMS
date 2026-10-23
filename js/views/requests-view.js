@@ -1,8 +1,3 @@
-/**
- * DIALLO HRMS — EMPLOYEE REQUESTS GOVERNANCE VIEW (PHASE 11)
- * HR / Admin Workflow Hub for Reviewing Profile Changes, Certificate Requests, and Helpdesk Tickets
- * + Employee Self-Service Helpdesk for Submitting & Tracking Requests
- */
 
 const RequestsView = {
   currentFilters: {
@@ -12,22 +7,43 @@ const RequestsView = {
   },
 
   async render() {
-    const role = AuthGuard.userProfile?.roleId || 'EMPLOYEE';
-    const isEmployee = role === 'EMPLOYEE';
+    const role = (AuthGuard._previewRoleId || AuthGuard.userProfile?.roleId || 'EMPLOYEE').toString().toUpperCase().trim();
+    const isSuperAdminOrHR = ['SUPER_ADMIN', 'COMPANY_ADMIN', 'ADMIN', 'HR_MANAGER', 'HR'].includes(role);
+    const isManager = ['MANAGER', 'OPERATIONS_MANAGER', 'PROCESS_OWNER', 'TEAM_LEAD'].includes(role);
+    const isEmployee = !isSuperAdminOrHR && !isManager;
     const currentEmpId = AuthGuard.userProfile?.employeeId || AuthGuard.currentUser?.uid;
-    const currentEmpName = AuthGuard.userProfile?.displayName || 'Employee';
+    const currentEmpCode = (AuthGuard.userProfile?.employeeCode || '').toUpperCase().trim();
+    const currentEmpName = (AuthGuard.userProfile?.displayName || AuthGuard.userProfile?.fullName || 'Employee').toLowerCase().trim();
 
-    // Fetch requests: scoped to employee if EMPLOYEE role, or all requests for HR/Admin
+    // Fetch requests: scoped strictly according to hierarchy
     let requests = [];
     try {
-      if (isEmployee) {
+      if (isSuperAdminOrHR) {
+        requests = await employeeRequestService.getRequests({});
+      } else if (isManager) {
+        const allRequests = await employeeRequestService.getRequests({});
+        const subordinates = await employeeService.getSubordinates(AuthGuard.userProfile, null, { directOnly: false });
+        const subIds = new Set(subordinates.map(e => e.id));
+        const subCodes = new Set(subordinates.map(e => (e.employeeCode || '').toUpperCase()));
+        const subNames = new Set(subordinates.map(e => (e.fullName || e.name || '').toLowerCase().trim()));
+
+        requests = allRequests.filter(r => {
+          if (!r) return false;
+          const rId = r.employeeId || '';
+          const rCode = (r.employeeCode || '').toUpperCase().trim();
+          const rName = (r.employeeName || '').toLowerCase().trim();
+          if (rId === currentEmpId || (currentEmpCode && rCode === currentEmpCode) || (currentEmpName && rName === currentEmpName)) return true;
+          if (rId && subIds.has(rId)) return true;
+          if (rCode && subCodes.has(rCode)) return true;
+          if (rName && subNames.has(rName)) return true;
+          return false;
+        });
+      } else {
         requests = await employeeRequestService.getRequests({ employeeId: currentEmpId });
         if (requests.length === 0) {
           const allDocs = await employeeRequestService.getRequests({});
-          requests = allDocs.filter(r => r.employeeId === currentEmpId || (r.employeeName && r.employeeName.toLowerCase() === currentEmpName.toLowerCase()));
+          requests = allDocs.filter(r => r.employeeId === currentEmpId || (r.employeeName && r.employeeName.toLowerCase() === currentEmpName));
         }
-      } else {
-        requests = await employeeRequestService.getRequests({});
       }
     } catch (e) {
       console.warn('Error fetching requests:', e);
@@ -454,17 +470,34 @@ const RequestsView = {
   // MODAL: CREATE / RAISE NEW REQUEST
   // ==========================================
   async openNewRequestModal(preselectedType = 'EMPLOYMENT_CERTIFICATE') {
-    const role = AuthGuard.userProfile?.roleId || 'EMPLOYEE';
-    const isEmployee = role === 'EMPLOYEE';
+    const role = (AuthGuard._previewRoleId || AuthGuard.userProfile?.roleId || 'EMPLOYEE').toString().toUpperCase().trim();
+    const isSuperAdminOrHR = ['SUPER_ADMIN', 'COMPANY_ADMIN', 'ADMIN', 'HR_MANAGER', 'HR'].includes(role);
+    const isManager = ['MANAGER', 'OPERATIONS_MANAGER', 'PROCESS_OWNER', 'TEAM_LEAD'].includes(role);
+    const isEmployee = !isSuperAdminOrHR && !isManager;
 
     let employeeSelectHtml = '';
     if (!isEmployee) {
-      const employees = await employeeService.getEmployees({});
+      let selectableEmployees = [];
+      if (isSuperAdminOrHR) {
+        selectableEmployees = await employeeService.getEmployees({});
+      } else {
+        const allEmps = await employeeService.getEmployees({});
+        const subordinates = await employeeService.getSubordinates(AuthGuard.userProfile, allEmps, { directOnly: false });
+        const myId = AuthGuard.userProfile?.employeeId || AuthGuard.userProfile?.id || AuthGuard.currentUser?.uid;
+        const myCode = (AuthGuard.userProfile?.employeeCode || '').toUpperCase().trim();
+        const selfEmp = allEmps.find(e => e.id === myId || (myCode && (e.employeeCode || '').toUpperCase() === myCode)) || {
+          id: myId,
+          fullName: AuthGuard.userProfile?.displayName || 'My Profile',
+          employeeCode: myCode || 'SELF'
+        };
+        selectableEmployees = [selfEmp, ...subordinates.filter(s => s.id !== selfEmp.id)];
+      }
+
       employeeSelectHtml = `
         <div class="form-group">
           <label class="form-label required">Select Employee</label>
           <select id="nr-emp" class="form-control" required>
-            ${employees.map(e => `<option value="${e.id}" data-name="${e.fullName || e.name}">${e.fullName || e.name} (${e.employeeCode || 'EMP'})</option>`).join('')}
+            ${selectableEmployees.map(e => `<option value="${e.id}" data-name="${e.fullName || e.name}">${e.fullName || e.name} (${e.employeeCode || 'EMP'})</option>`).join('')}
           </select>
         </div>
       `;

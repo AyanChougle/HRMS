@@ -1,16 +1,3 @@
-/**
- * DIALLO HRMS — COMPREHENSIVE QA, TEST SUITE & PERFORMANCE PROFILER (PHASE 19)
- * Automated End-to-End Test Engine covering Phases 1 to 18:
- * - Authentication & Session Integrity
- * - Multi-Tenant Company Isolation & Employee Ownership
- * - RBAC & Privilege Escalation Protection
- * - HR Lifecycle, Probations, Promotions, Transfers
- * - Statutory Payroll, Compensation, Expense Claims
- * - Attendance, Overnight Shifts, Leave Deductions
- * - Compliance, KYC Dossiers, Disciplinary Cases, Grievances
- * - Configurable Multi-Level Workflows & Notifications
- * - Performance Latency Profiling & Firestore Cost Optimization
- */
 
 const qaService = {
   DEFAULT_COMPANY_ID: 'comp_diallo_india',

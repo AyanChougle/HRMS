@@ -1,8 +1,3 @@
-/**
- * DIALLO HRMS — PAYSLIP TEMPLATE ENGINE & DESIGNER SERVICE
- * Multi-template generation (Classic, Canvas Standard, Compliance, Modern Executive, Minimalist)
- * Custom branding, live preview, print rendering, and PDF layout compilation.
- */
 
 const payslipTemplateService = {
   PRESET_TEMPLATES: [

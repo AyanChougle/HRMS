@@ -1,8 +1,3 @@
-/**
- * DIALLO HRMS — CENTRAL DOCUMENT MANAGEMENT VIEW (PHASE 11)
- * HR Governance for Employee Dossiers, Compliance Verification, Expiry Tracking, and Document Requests
- * + Employee Self-Service Dossier for Uploading & Accessing Personal Documents & Policies
- */
 
 const DocumentsView = {
   activeTab: "all", // 'all', 'requests', 'expiring', 'templates'

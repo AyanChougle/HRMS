@@ -1,7 +1,3 @@
-/**
- * DIALLO HRMS — COMPREHENSIVE EMPLOYEE SELF-SERVICE DASHBOARD
- * Focused on highlighted timecard/break station, fast action launchpad, leave balances, attendance overview, and notices
- */
 
 const EmployeeDashboardView = {
   async render() {

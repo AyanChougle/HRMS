@@ -1,8 +1,4 @@
-﻿/**
- * DIALLO HRMS — LIVE ATTENDANCE & DESKTOP PRESENCE VIEW
- * Real-time monitoring of desktop system presence, idle time, lock state, and web heartbeats
- */
-
+﻿
 const LivePresenceView = {
   staleMs: 90000,
 

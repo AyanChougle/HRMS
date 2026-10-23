@@ -1,7 +1,3 @@
-/**
- * DIALLO HRMS — ATTENDANCE SETTINGS & POLICY SERVICE (PHASE 5)
- * Manages company-wide attendance rules, shifts, grace periods, weekly offs, and holidays
- */
 
 const attendanceSettingsService = {
   // Default fallback settings (General Shift 10:00 AM – 07:00 PM IST)

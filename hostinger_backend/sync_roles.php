@@ -8,36 +8,28 @@ try {
     $updatedUsers = [];
     $removedDuplicates = [];
 
-    // 1. Remove obsolete test records if real census records exist
-    $testCodes = ['D-00001', 'D-00002', 'D-00003', 'D-00004'];
-    foreach ($testCodes as $tCode) {
-        $chkStmt = $pdo->prepare("SELECT id, email, work_email, employee_code, full_name FROM employees WHERE employee_code = :c LIMIT 1");
-        $chkStmt->execute([':c' => $tCode]);
-        $testEmp = $chkStmt->fetch();
-        if ($testEmp) {
-            $eMail = strtolower(trim($testEmp['work_email'] ?: $testEmp['email']));
-            // Check if another real employee record exists with this email
-            $realStmt = $pdo->prepare("SELECT id, employee_code, designation FROM employees WHERE (LOWER(work_email) = :e OR LOWER(email) = :e) AND employee_code != :c LIMIT 1");
-            $realStmt->execute([':e' => $eMail, ':c' => $tCode]);
-            $realEmp = $realStmt->fetch();
-            if ($realEmp) {
-                // Delete test record from employees
-                $pdo->prepare("DELETE FROM employees WHERE id = :id")->execute([':id' => $testEmp['id']]);
-                // Ensure users table points to the real employee code
-                $pdo->prepare("UPDATE users SET employee_code = :rc WHERE (LOWER(email) = :e) AND employee_code = :tc")->execute([
-                    ':rc' => $realEmp['employee_code'],
-                    ':e'  => $eMail,
-                    ':tc' => $tCode
-                ]);
-                $removedDuplicates[] = [
-                    'removed_test_code' => $tCode,
-                    'real_code'         => $realEmp['employee_code'],
-                    'name'              => $testEmp['full_name'],
-                    'email'             => $eMail
-                ];
-            }
-        }
+    // 1. Ensure ayanislight@gmail.com is linked to real employee record D08939 (Ayan Wasim Chougle)
+    $chkAyan = $pdo->prepare("SELECT id FROM users WHERE email = 'ayanislight@gmail.com' LIMIT 1");
+    $chkAyan->execute();
+    $ayanUser = $chkAyan->fetch();
+    if ($ayanUser) {
+        $pdo->prepare("UPDATE users SET employee_code = 'D08939', display_name = 'Ayan Wasim Chougle', first_name = 'Ayan', last_name = 'Wasim Chougle', designation = 'Software Developer', department = 'Digital', role_id = 'SUPER_ADMIN', company_name = 'Diallo India Private Limited', branch_name = 'Ghansoli - Navi Mumbai, Maharashtra', status = 'ACTIVE' WHERE id = :id")->execute([':id' => $ayanUser['id']]);
+    } else {
+        $pdo->prepare("INSERT INTO users (uid, employee_code, email, display_name, first_name, last_name, phone, role_id, company_name, branch_name, department, designation, status) VALUES ('super_admin_ayan', 'D08939', 'ayanislight@gmail.com', 'Ayan Wasim Chougle', 'Ayan', 'Wasim Chougle', '7208533219', 'SUPER_ADMIN', 'Diallo India Private Limited', 'Ghansoli - Navi Mumbai, Maharashtra', 'Digital', 'Software Developer', 'ACTIVE')")->execute();
     }
+
+    // 2. Remove obsolete test records (carrentpedatabase@gmail.com, D-00001..D-00004)
+    $pdo->exec("DELETE FROM employees WHERE email = 'carrentpedatabase@gmail.com' OR employee_code IN ('D-00001', 'D-00002', 'D-00003', 'D-00004')");
+    $pdo->exec("DELETE FROM users WHERE (email = 'carrentpedatabase@gmail.com' OR employee_code IN ('D-00001', 'D-00002', 'D-00003', 'D-00004')) AND email != 'ayanislight@gmail.com'");
+
+    // 3. Clear manager references that pointed to car database
+    $pdo->exec("UPDATE employees SET manager_id = NULL, manager = 'No Manager (Top Level)' WHERE manager_id = 'ZopE1oZcZPQL2rx6VvtGdh7HeOv1' OR manager LIKE '%car database%' OR manager LIKE '%D-00001%'");
+
+    // 4. Reset Relationship Managers & Designers to correct roles before processing
+    $pdo->exec("UPDATE employees SET role_id = 'RELATIONSHIP_MANAGER' WHERE LOWER(designation) LIKE '%relationship manager%'");
+    $pdo->exec("UPDATE users SET role_id = 'RELATIONSHIP_MANAGER' WHERE LOWER(designation) LIKE '%relationship manager%'");
+    $pdo->exec("UPDATE employees SET role_id = 'EMPLOYEE' WHERE LOWER(designation) LIKE '%graphic designer%' OR LOWER(designation) LIKE '%designer%'");
+    $pdo->exec("UPDATE users SET role_id = 'EMPLOYEE' WHERE LOWER(designation) LIKE '%graphic designer%' OR LOWER(designation) LIKE '%designer%'");
 
     // 2. Fetch all employees and resolve canonical role from designation
     $empStmt = $pdo->query("SELECT id, employee_code, full_name, email, work_email, department, designation, role_id FROM employees");
@@ -52,8 +44,8 @@ try {
 
         if ($email === 'ayan@tradeforwealth.co.in' || $email === 'ayanislight@gmail.com') {
             $newRole = 'SUPER_ADMIN';
-        } elseif ($currentRole !== 'EMPLOYEE' && in_array($currentRole, ['SUPER_ADMIN', 'HR_MANAGER', 'OPERATIONS_MANAGER', 'MANAGER', 'PROCESS_OWNER', 'COMPLIANCE', 'DIGITAL_MARKETING', 'TEAM_LEAD', 'RELATIONSHIP_MANAGER', 'MENTOR_TRAINER', 'TRAINEE'])) {
-            $newRole = $currentRole;
+        } elseif (strpos($desig, 'relationship manager') !== false) {
+            $newRole = 'RELATIONSHIP_MANAGER';
         } elseif (strpos($desig, 'operations manager') !== false || strpos($desig, 'ops manager') !== false || $desig === 'ops') {
             $newRole = 'OPERATIONS_MANAGER';
         } elseif (strpos($desig, 'compliance') !== false) {
@@ -66,8 +58,8 @@ try {
             $newRole = 'TEAM_LEAD';
         } elseif (strpos($desig, 'human resources') !== false || strpos($desig, 'hr lead') !== false || strpos($desig, 'hr manager') !== false || strpos($desig, 'recruiter') !== false || $desig === 'hr' || $desig === 'hrs') {
             $newRole = 'HR_MANAGER';
-        } elseif (strpos($desig, 'relationship manager') !== false) {
-            $newRole = 'RELATIONSHIP_MANAGER';
+        } elseif ($currentRole !== 'EMPLOYEE' && in_array($currentRole, ['SUPER_ADMIN', 'HR_MANAGER', 'OPERATIONS_MANAGER', 'MANAGER', 'PROCESS_OWNER', 'COMPLIANCE', 'DIGITAL_MARKETING', 'TEAM_LEAD', 'RELATIONSHIP_MANAGER', 'MENTOR_TRAINER', 'TRAINEE'])) {
+            $newRole = $currentRole;
         } elseif (strpos($desig, 'general manager') !== false || strpos($desig, 'branch manager') !== false || strpos($desig, 'manager') !== false) {
             $newRole = 'MANAGER';
         } elseif (strpos($desig, 'trainer') !== false || strpos($desig, 'mentor') !== false) {

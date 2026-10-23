@@ -1,7 +1,3 @@
-/**
- * DIALLO HRMS — ADMIN / HR EXECUTIVE DASHBOARD (PHASE 3)
- * Full organizational KPIs, attendance trend SVG, headcount donut, and action center
- */
 
 const AdminDashboardView = {
   async render() {

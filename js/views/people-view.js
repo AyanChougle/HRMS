@@ -1,7 +1,3 @@
-/**
- * DIALLO HRMS — PEOPLE & EMPLOYEE MANAGEMENT MODULE (PHASE 4)
- * Comprehensive People Dashboard, 8-Tab Employee Profile, Dynamic Org Chart, Org Masters, Onboarding & Exits
- */
 
 const PeopleView = {
   activeTab: 'directory',
@@ -34,6 +30,34 @@ const PeopleView = {
     // Exclude invalid or empty records
     employees = employees.filter(e => e && (e.fullName || e.name || e.employeeCode));
 
+    const userRole = (AuthGuard._previewRoleId || AuthGuard.userProfile?.roleId || AuthGuard.userProfile?.role || 'EMPLOYEE').toUpperCase().trim();
+    const user = AuthGuard.userProfile || {};
+    const myId = user.uid || user.id || '';
+    const myCode = (user.employeeCode || user.employee_code || '').toUpperCase().trim();
+    const myName = (user.displayName || user.display_name || user.fullName || '').toLowerCase().trim();
+
+    const isSuperAdminOrHR = ['SUPER_ADMIN', 'COMPANY_ADMIN', 'ADMIN', 'HR_MANAGER', 'HR'].includes(userRole);
+    const canOnboard = isSuperAdminOrHR;
+
+    // Apply strict team-level scoping for non-Admin/HR roles
+    if (!isSuperAdminOrHR) {
+      if (['TEAM_LEAD', 'MANAGER', 'OPERATIONS_MANAGER', 'OPS', 'PROCESS_OWNER'].includes(userRole)) {
+        employees = await employeeService.getSubordinates(user, employees, { directOnly: false, forceScoped: true });
+      } else if (userRole === 'DIGITAL_MARKETING' || userRole === 'DIGITAL') {
+        employees = employees.filter(e => (e.department || '').toLowerCase().trim() === 'digital');
+      } else if (userRole === 'COMPLIANCE') {
+        employees = employees.filter(e => (e.department || '').toLowerCase().trim() === 'compliance');
+      } else {
+        // Individual staff: only see colleagues under the same manager
+        const myManager = (user.manager || '').toLowerCase().trim();
+        if (myManager) {
+          employees = employees.filter(e => (e.manager || '').toLowerCase().trim() === myManager);
+        } else {
+          employees = [];
+        }
+      }
+    }
+
     const total = employees.length;
     const active = employees.filter(e => e.employmentStatus === 'ACTIVE').length;
     const onNotice = employees.filter(e => e.employmentStatus === 'ON_NOTICE').length;
@@ -41,49 +65,48 @@ const PeopleView = {
     const newJoiners = employees.filter(e => e.employmentType === 'Probation' || e.probationStatus === 'Active').length;
     const pendingOnboarding = onboardingTasks.filter(t => t.status === 'PENDING' || t.status === 'IN_PROGRESS').length;
     const pendingExits = exits.filter(x => x.status === 'NOTICE_PERIOD' || x.status === 'CLEARANCE').length;
-    const userRole = (AuthGuard._previewRoleId || AuthGuard.userProfile?.roleId || '').toUpperCase().trim();
-    const canOnboard = ['SUPER_ADMIN', 'COMPANY_ADMIN', 'ADMIN', 'HR_MANAGER', 'HR', 'MANAGER'].includes(userRole);
 
     return `
       <div class="page-header animate-fade-in">
         <div class="breadcrumb">
           <a href="#dashboard">Dashboard</a>
           <span class="breadcrumb-separator">/</span>
-          <span class="breadcrumb-current">People</span>
+          <span class="breadcrumb-current">${isSuperAdminOrHR ? 'People' : 'My Team'}</span>
         </div>
         <div class="page-title-row">
           <div>
-            <h1 class="page-title">People & Workforce Management</h1>
-            <p class="page-subtitle">Centralized employee records, organization structure, onboarding, and separation workflows</p>
+            <h1 class="page-title">${isSuperAdminOrHR ? 'People & Workforce Management' : 'My Team & Direct Reports'}</h1>
+            <p class="page-subtitle">${isSuperAdminOrHR ? 'Centralized employee records, organization structure, onboarding, and separation workflows' : 'Assigned team members reporting under your management'}</p>
           </div>
           <div class="page-actions">
-            <button class="btn btn-secondary btn-sm" onclick="PeopleView.syncDatabaseUsers()">
-              <svg width="15" height="15" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/>
-              </svg>
-              Sync Database Users
-            </button>
-            
-                          <button class="btn btn-soft btn-sm" onclick="PeopleView.pushAllToMySQL()" style="color: var(--primary);">
+            ${isSuperAdminOrHR ? `
+              <button class="btn btn-secondary btn-sm" onclick="PeopleView.syncDatabaseUsers()">
+                <svg width="15" height="15" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/>
+                </svg>
+                Sync Database Users
+              </button>
+              
+              <button class="btn btn-soft btn-sm" onclick="PeopleView.pushAllToMySQL()" style="color: var(--primary);">
                 <svg width="15" height="15" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16V4m0 0L3 8m4-4l4 4m6 0v12m0 0l4-4m-4 4l-4-4"/>
                 </svg>
                 Push to MySQL
               </button>
               <button class="btn btn-secondary btn-sm" onclick="PeopleView.importCSV()">
-              <svg width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1M16 8l-4-4m0 0L8 8m4-4v12"/>
-              </svg>
-              Import CSV
-            </button>
+                <svg width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1M16 8l-4-4m0 0L8 8m4-4v12"/>
+                </svg>
+                Import CSV
+              </button>
 
-            <button class="btn btn-secondary btn-sm" onclick="PeopleView.exportCSV()">
-              <svg width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/>
-              </svg>
-              Export CSV
-            </button>
-            ${canOnboard ? `
+              <button class="btn btn-secondary btn-sm" onclick="PeopleView.exportCSV()">
+                <svg width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/>
+                </svg>
+                Export CSV
+              </button>
+
               <button class="btn btn-primary btn-sm" onclick="Forms.openEmployeeModal()">
                 <svg width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/>
@@ -104,11 +127,11 @@ const PeopleView = {
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"/>
               </svg>
             </div>
-            <span class="kpi-trend neutral">Total</span>
+            <span class="kpi-trend neutral">${isSuperAdminOrHR ? 'Total' : 'Team'}</span>
           </div>
           <div class="kpi-value">${total}</div>
-          <div class="kpi-label">Total Headcount</div>
-          <div class="kpi-subtitle">${active} Active Staff</div>
+          <div class="kpi-label">${isSuperAdminOrHR ? 'Total Headcount' : 'My Team Size'}</div>
+          <div class="kpi-subtitle">${active} Active ${isSuperAdminOrHR ? 'Staff' : 'Members'}</div>
         </div>
 
         <div class="kpi-card">
@@ -191,8 +214,11 @@ const PeopleView = {
 
   // A. EMPLOYEE DIRECTORY TAB
   renderDirectoryTab(employees, departments) {
-    const userRole = (AuthGuard._previewRoleId || AuthGuard.userProfile?.roleId || AuthGuard.userProfile?.role || '').toUpperCase().trim();
-    const canOnboard = ['SUPER_ADMIN', 'COMPANY_ADMIN', 'ADMIN', 'HR_MANAGER', 'HR', 'MANAGER'].includes(userRole);
+    const userRole = (AuthGuard._previewRoleId || AuthGuard.userProfile?.roleId || AuthGuard.userProfile?.role || 'EMPLOYEE').toUpperCase().trim();
+    const isSuperAdminOrHR = ['SUPER_ADMIN', 'COMPANY_ADMIN', 'ADMIN', 'HR_MANAGER', 'HR'].includes(userRole);
+    const canOnboard = isSuperAdminOrHR;
+
+    let displayEmployees = employees;
 
     const distinctDepts = Array.from(new Set([
       ...departments.map(d => (d.name || '').trim()),
@@ -235,13 +261,13 @@ const PeopleView = {
       <div class="card">
         <div class="card-header">
           <div>
-            <div class="card-title">Employee Census (${employees.length})</div>
-            <div class="card-subtitle">Official records in Cloud Firestore</div>
+            <div class="card-title">${isSuperAdminOrHR ? 'Employee Census' : 'My Direct Team Roster'} (${displayEmployees.length})</div>
+            <div class="card-subtitle">${isSuperAdminOrHR ? 'Official company-wide records' : 'Direct reporting team members under your supervision'}</div>
           </div>
           ${canOnboard ? `<button class="btn btn-primary btn-sm" onclick="Forms.openEmployeeModal()">+ Onboard Employee</button>` : ''}
         </div>
         <div class="card-body" style="padding: 0;">
-          ${employees.length === 0 ? `
+          ${displayEmployees.length === 0 ? `
             <div class="empty-state">
               <div class="empty-state-icon">
                 <svg width="24" height="24" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -249,7 +275,7 @@ const PeopleView = {
                 </svg>
               </div>
               <div class="empty-state-title">No Employees Found</div>
-              <div class="empty-state-desc">No employee records match the active search or filter criteria.</div>
+              <div class="empty-state-desc">${isSuperAdminOrHR ? 'No employee records match the active search or filter criteria.' : 'No direct reporting team members found matching criteria.'}</div>
               <div class="empty-state-actions">
                 ${canOnboard ? `<button class="btn btn-primary btn-sm" onclick="Forms.openEmployeeModal()">+ Onboard New Employee</button>` : ''}
               </div>
@@ -270,7 +296,7 @@ const PeopleView = {
                 </tr>
               </thead>
               <tbody>
-                ${employees.map(emp => `
+                ${displayEmployees.map(emp => `
                   <tr>
                     <td class="font-bold text-main" style="font-family: monospace;">${emp.employeeCode || 'EMP-0000'}</td>
                     <td>
@@ -313,6 +339,7 @@ const PeopleView = {
 
   applyFilters() {
     this.currentFilters = {
+      ...(this.currentFilters || {}),
       search: document.getElementById('filter-emp-search')?.value.trim() || '',
       department: document.getElementById('filter-emp-dept')?.value || 'All Departments',
       employmentStatus: document.getElementById('filter-emp-status')?.value || 'All Status',
@@ -322,11 +349,16 @@ const PeopleView = {
   },
 
   clearFilters() {
-    this.currentFilters = {};
+    this.currentFilters = { teamOnly: false };
     const s = document.getElementById('filter-emp-search'); if (s) s.value = '';
     const d = document.getElementById('filter-emp-dept'); if (d) d.value = 'All Departments';
     const st = document.getElementById('filter-emp-status'); if (st) st.value = 'All Status';
     const b = document.getElementById('filter-emp-branch'); if (b) b.value = 'All Branches';
+    Router.navigate('employees');
+  },
+
+  toggleTeamOnly() {
+    this.currentFilters.teamOnly = !this.currentFilters.teamOnly;
     Router.navigate('employees');
   },
 
@@ -435,7 +467,6 @@ const PeopleView = {
                 <div><strong>Grade:</strong> ${emp.gradeId || 'G2'}</div>
                 <div><strong>Probation Status:</strong> ${emp.probationStatus || 'Completed'}</div>
                 <div><strong>Notice Period:</strong> ${emp.noticePeriodDays || 30} Days</div>
-                <div><strong>Salary / CTC:</strong> ${emp.salary || 'Γé╣65,000/mo'}</div>
                 <div><strong>UAN / PF No:</strong> ${emp.uan || '-'}</div>
               </div>
             </div>
@@ -683,6 +714,26 @@ const PeopleView = {
     if (this._orgDeptFilter && this._orgDeptFilter !== 'ALL') {
       const targetDept = this._orgDeptFilter.toLowerCase();
       cleanList = cleanList.filter(e => (e.department || '').toLowerCase() === targetDept || (e.designation || '').toLowerCase().includes(targetDept) || (e.manager || '').toLowerCase().includes(targetDept));
+    }
+
+    const isSuperAdminOrHR = ['SUPER_ADMIN', 'COMPANY_ADMIN', 'ADMIN', 'HR_MANAGER', 'HR'].includes(userRole);
+    if (!isSuperAdminOrHR) {
+      const myId = AuthGuard.userProfile?.employeeId || AuthGuard.userProfile?.id || AuthGuard.currentUser?.uid;
+      const myCode = (AuthGuard.userProfile?.employeeCode || '').toUpperCase().trim();
+      const hasSelf = cleanList.some(e => e.id === myId || (myCode && (e.employeeCode || '').toUpperCase() === myCode));
+      if (!hasSelf && AuthGuard.userProfile) {
+        cleanList.unshift({
+          id: myId,
+          employeeCode: myCode || 'MGR',
+          fullName: AuthGuard.userProfile.displayName || AuthGuard.userProfile.fullName || 'Manager',
+          designation: AuthGuard.userProfile.designation || 'Manager',
+          department: AuthGuard.userProfile.department || 'Operations',
+          roleId: userRole,
+          managerId: null,
+          manager: null,
+          profilePhotoUrl: AuthGuard.userProfile.photoURL || null
+        });
+      }
     }
 
     const tree = orgService.buildOrgTree(cleanList);

@@ -1,7 +1,3 @@
-/**
- * DIALLO HRMS — ROLE GUARD & ACCESS CONTROLLER (PHASE 3)
- * Protects view routing, enforces RBAC, and handles 403 access-denied fallbacks
- */
 
 const RoleGuard = {
   // Validate if active session has required roles

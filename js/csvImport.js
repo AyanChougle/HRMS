@@ -1,21 +1,4 @@
-/**
- * DIALLO HRMS — CSV IMPORT
- * Reusable "Import CSV" flow: pick file -> preview & validate -> import valid rows.
- *
- * Usage:
- *   CsvImport.open({
- *     title: 'Import Employees',
- *     templateName: 'Diallo_Employees_Template.csv',
- *     columns: [{ key, label, aliases: [], required: true }],
- *     prepare: async () => ctx,                    // optional, runs once after parse (load existing data)
- *     validate: (row, ctx, seen) => 'error' | null // optional extra validation per row
- *     importRow: async (row, ctx) => {},           // creates one record (throws to mark row failed)
- *     onDone: (result) => {}                       // optional, e.g. refresh the view
- *   });
- *
- * Files exported by the app's own "Export CSV" buttons can be re-imported as-is
- * because export headers are registered as aliases.
- */
+
 const CsvImport = {
   MAX_ROWS: 2000,
 

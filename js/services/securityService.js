@@ -1,8 +1,3 @@
-/**
- * DIALLO HRMS — CENTRALIZED SECURITY & MONITORING SERVICE (PHASE 18)
- * Real-time Security Dashboard, Security Events & Anomaly Tracking,
- * Access Review Matrix, User Suspension, and Hardened Security Governance.
- */
 
 const securityService = {
   DEFAULT_COMPANY_ID: 'comp_diallo_india',

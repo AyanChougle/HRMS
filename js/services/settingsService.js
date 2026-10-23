@@ -1,8 +1,4 @@
-/**
- * DIALLO HRMS — SETTINGS & CONFIGURATION SERVICE (PHASE 15)
- * Centralized Service managing Company Settings, Attendance Settings,
- * Leave Settings, Payroll Settings, Document Settings, and System Defaults.
- */
+
 
 const settingsService = {
   DEFAULT_COMPANY_ID: 'comp_diallo_india',

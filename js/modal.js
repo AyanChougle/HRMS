@@ -1,7 +1,3 @@
-/**
- * DIALLO HRMS — MODAL & DRAWER CONTROLLER
- * Accessible modal dialogs and slide-over drawers
- */
 
 const ModalManager = {
   activeModal: null,

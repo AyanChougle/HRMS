@@ -1,7 +1,4 @@
-/**
- * DIALLO HRMS — ORGANIZATION STRUCTURE & ORG CHART SERVICE (PHASE 4)
- * Manages Designations, Grades (G1-G5), Cost Centers, Branches, and Dynamic Org Chart Hierarchy
- */
+
 
 const orgService = {
   // 1. DESIGNATIONS

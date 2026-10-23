@@ -1,7 +1,3 @@
-/**
- * DIALLO HRMS — PRODUCTION LEAVE MANAGEMENT SERVICE (PHASE 6)
- * Leave Applications, Working-Day Deductions, Quota Ledgers, Anti-Self Approval, and Attendance Integration
- */
 
 const leaveService = {
   // 1. DYNAMIC WORKING-DAY CALCULATION
@@ -369,21 +365,48 @@ const leaveService = {
         updatedAt: firebase.firestore.FieldValue.serverTimestamp()
       };
 
-      const docRef = await db.collection('leaveApplications').add(payload);
-      payload.id = docRef.id;
+      // 1. Primary: Save directly to Hostinger MySQL leave_applications table
+      if (typeof apiClient !== 'undefined') {
+        try {
+          await apiClient.post('leaves.php', {
+            employee_id: employeeId,
+            employee_code: payload.employeeCode,
+            employee_name: payload.employeeName,
+            department: payload.department,
+            leave_type: payload.leaveTypeName,
+            start_date: payload.startDate,
+            end_date: payload.endDate,
+            days_count: payload.numberOfDays,
+            reason: payload.reason,
+            is_half_day: payload.halfDay ? 1 : 0
+          });
+        } catch (sqlErr) {
+          console.warn('[leaveService] Hostinger MySQL leave save notice:', sqlErr.message || sqlErr);
+        }
+      }
+
+      // 2. Secondary: Firestore backup
+      let docRefId = `leave_${Date.now()}`;
+      if (typeof db !== 'undefined') {
+        try {
+          const docRef = await db.collection('leaveApplications').add(payload);
+          docRefId = docRef.id;
+        } catch (_) {}
+      }
+      payload.id = docRefId;
 
       // Register in approvalRequests queue
       await approvalService.createApprovalRequest({
         employee: payload.employeeName,
-        referenceId: docRef.id,
+        referenceId: docRefId,
         type: `${payload.leaveTypeName} (${numberOfDays} Days)`,
         detail: `${payload.startDate} to ${payload.endDate}: ${payload.reason}`,
         status: 'PENDING',
         companyId: payload.companyId,
-        metadata: { leaveId: docRef.id, employeeId, numberOfDays, leaveCode }
-      });
+        metadata: { leaveId: docRefId, employeeId, numberOfDays, leaveCode }
+      }).catch(() => {});
 
-      await auditService.log('LEAVE_REQUESTED', 'LEAVE', 'leaveApplications', docRef.id, payload);
+      await auditService.log('LEAVE_REQUESTED', 'LEAVE', 'leaveApplications', docRefId, payload).catch(() => {});
       return payload;
     } catch (err) {
       console.error('Error applying for leave:', err);
@@ -529,26 +552,60 @@ const leaveService = {
   // 8. GET LEAVE REQUESTS WITH MULTI-FILTERS
   async getLeaveRequests(filters = {}) {
     try {
-      let query = db.collection('leaveApplications');
+      let records = [];
+      let loadedFromMySQL = false;
 
-      if (filters.companyId) query = query.where('companyId', '==', filters.companyId);
-      if (filters.employeeId) query = query.where('employeeId', '==', filters.employeeId);
-      if (filters.managerId) query = query.where('managerId', '==', filters.managerId);
-      if (filters.status && filters.status !== 'All Status') query = query.where('status', '==', filters.status);
-      if (filters.leaveTypeCode && filters.leaveTypeCode !== 'All Types') query = query.where('leaveTypeCode', '==', filters.leaveTypeCode);
+      // 1. Primary: Fetch from Hostinger MySQL
+      if (typeof apiClient !== 'undefined') {
+        try {
+          const sqlRes = await apiClient.get('leaves.php', {
+            employee_id: filters.employeeId || '',
+            status: (filters.status && filters.status !== 'All Status') ? filters.status : ''
+          });
+          if (sqlRes && sqlRes.success && Array.isArray(sqlRes.leaves) && sqlRes.leaves.length > 0) {
+            records = sqlRes.leaves.map(l => ({
+              id: String(l.id),
+              employeeId: l.employee_id,
+              employeeCode: l.employee_code,
+              employeeName: l.employee_name,
+              department: l.department,
+              leaveTypeName: l.leave_type,
+              leaveTypeCode: this.normalizeLeaveCode(l.leave_type),
+              startDate: l.start_date,
+              endDate: l.end_date,
+              numberOfDays: Number(l.days_count || 1),
+              reason: l.reason,
+              status: l.status,
+              createdAt: l.created_at
+            }));
+            loadedFromMySQL = true;
+          }
+        } catch (sqlErr) {
+          console.warn('[leaveService] Hostinger MySQL fetch notice:', sqlErr.message || sqlErr);
+        }
+      }
 
-      const snapshot = await query.get();
-      return snapshot.docs.map(doc => {
-        const d = doc.data();
-        const code = this.normalizeLeaveCode(d.leaveTypeCode || d.type || d.leaveTypeName);
-        const name = code === 'LWP' ? 'Unpaid Leave (LWP)' : 'Paid Leave (PL)';
-        return {
-          id: doc.id,
-          ...d,
-          leaveTypeCode: d.leaveTypeCode || code,
-          leaveTypeName: (d.leaveTypeName && d.leaveTypeName !== 'Leave') ? d.leaveTypeName : name
-        };
-      });
+      // 2. Secondary fallback: Firestore
+      if (!loadedFromMySQL && typeof db !== 'undefined') {
+        let query = db.collection('leaveApplications');
+        if (filters.companyId) query = query.where('companyId', '==', filters.companyId);
+        if (filters.employeeId) query = query.where('employeeId', '==', filters.employeeId);
+        if (filters.status && filters.status !== 'All Status') query = query.where('status', '==', filters.status);
+
+        const snapshot = await query.get();
+        records = snapshot.docs.map(doc => {
+          const d = doc.data();
+          const code = this.normalizeLeaveCode(d.leaveTypeCode || d.type || d.leaveTypeName);
+          return {
+            id: doc.id,
+            ...d,
+            leaveTypeCode: d.leaveTypeCode || code,
+            leaveTypeName: (d.leaveTypeName && d.leaveTypeName !== 'Leave') ? d.leaveTypeName : (code === 'LWP' ? 'Unpaid Leave (LWP)' : 'Paid Leave (PL)')
+          };
+        });
+      }
+
+      return records;
     } catch (err) {
       console.error('Error getting leave requests:', err);
       return [];

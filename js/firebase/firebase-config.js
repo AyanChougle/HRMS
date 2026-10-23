@@ -1,7 +1,3 @@
-/**
- * DIALLO HRMS — FIREBASE CONFIGURATION & INITIALIZATION
- * Centralized Firebase App, Auth, Firestore, and Storage initialization
- */
 
 const firebaseConfig = {
   apiKey: "AIzaSyCiVmXa3LEf9VP9rvNoQtN2fVJTOPqDVws",

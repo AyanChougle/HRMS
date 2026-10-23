@@ -1,7 +1,3 @@
-/**
- * DIALLO HRMS — UNIFIED NOTIFICATION ENGINE (PHASE 13)
- * In-App Alerts, Multi-Channel Routing (Push & Email), Preferences, Real-time Listeners, and Deep Linking
- */
 
 const notificationService = {
   activeListenerUnsubscribe: null,

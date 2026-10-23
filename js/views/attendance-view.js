@@ -16,25 +16,40 @@ const AttendanceView = {
     let todayRecord = null;
     const employeeId = AuthGuard.userProfile?.employeeId || AuthGuard.currentUser?.uid;
 
-    try {
-      [summary, departments, todayRecord] = await Promise.all([
-        attendanceService.getTodaySummary(),
-        departmentService.getDepartments(),
-        attendanceService.getTodayRecord(employeeId)
-      ]);
-    } catch (e) {
-      console.warn('Attendance Hub data load warning:', e);
-    }
     const rawRole = (AuthGuard._previewRoleId || AuthGuard.userProfile?.roleId || 'EMPLOYEE').toString().toUpperCase().trim();
     const isSuperAdmin = rawRole === 'SUPER_ADMIN';
     const isCompanyAdmin = rawRole === 'COMPANY_ADMIN' || rawRole === 'ADMIN';
     const isHR = rawRole === 'HR' || rawRole === 'HR_MANAGER';
-    const isManager = ['MANAGER', 'OPERATIONS_MANAGER', 'TEAM_LEAD'].includes(rawRole);
+    const isManager = ['MANAGER', 'OPERATIONS_MANAGER', 'PROCESS_OWNER', 'TEAM_LEAD'].includes(rawRole);
     const canManageAttendance = isSuperAdmin || isCompanyAdmin || isHR;
     const canApproveRegularization = canManageAttendance || isManager;
     const isStaffOnly = !canManageAttendance && !isManager;
     const isEmployeeOnly = isStaffOnly;
     const role = rawRole;
+
+    let teamIds = null;
+    let myTeamEmps = [];
+    if (!canManageAttendance && isManager) {
+      try {
+        myTeamEmps = await employeeService.getSubordinates(AuthGuard.userProfile, null, { directOnly: false, forceScoped: true });
+        teamIds = myTeamEmps;
+      } catch (err) {
+        console.warn('Error loading team for attendance summary:', err);
+      }
+    }
+
+    try {
+      [summary, departments, todayRecord] = await Promise.all([
+        attendanceService.getTodaySummary(null, teamIds),
+        departmentService.getDepartments(),
+        attendanceService.getTodayRecord(employeeId)
+      ]);
+      if (!canManageAttendance && isManager && myTeamEmps.length > 0) {
+        summary.totalEmployees = myTeamEmps.length;
+      }
+    } catch (e) {
+      console.warn('Attendance Hub data load warning:', e);
+    }
 
     if (typeof ESSView !== 'undefined') {
       try {
@@ -44,8 +59,12 @@ const AttendanceView = {
       }
     }
 
-    if (isStaffOnly && (this.activeTab === 'daily' || this.activeTab === 'team' || this.activeTab === 'presence' || this.activeTab === 'settings')) {
-      this.activeTab = 'my';
+    if (!canManageAttendance) {
+      if (isManager && (this.activeTab === 'daily' || this.activeTab === 'presence' || this.activeTab === 'settings')) {
+        this.activeTab = 'team';
+      } else if (isStaffOnly && (this.activeTab === 'daily' || this.activeTab === 'team' || this.activeTab === 'presence' || this.activeTab === 'settings')) {
+        this.activeTab = 'my';
+      }
     }
 
     return `
@@ -145,11 +164,11 @@ const AttendanceView = {
                   <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"/>
                 </svg>
               </div>
-              <span class="kpi-trend neutral">Roster</span>
+              <span class="kpi-trend neutral">${canManageAttendance ? 'Roster' : 'Team'}</span>
             </div>
             <div class="kpi-value">${summary.totalEmployees}</div>
-            <div class="kpi-label">Total Staff</div>
-            <div class="kpi-subtitle">Active workforce</div>
+            <div class="kpi-label">${canManageAttendance ? 'Total Staff' : 'My Team Size'}</div>
+            <div class="kpi-subtitle">${canManageAttendance ? 'Active workforce' : 'Assigned direct reports'}</div>
           </div>
 
           <div class="kpi-card" onclick="AttendanceView.setFilterStatus('PRESENT')" style="cursor: pointer;">
@@ -246,8 +265,14 @@ const AttendanceView = {
 
   setFilterStatus(status) {
     this.currentFilters.status = status;
-    this.activeTab = 'daily';
-    Router.navigate('attendance');
+    const rawRole = (AuthGuard._previewRoleId || AuthGuard.userProfile?.roleId || 'EMPLOYEE').toString().toUpperCase().trim();
+    const canManageAttendance = ['SUPER_ADMIN', 'COMPANY_ADMIN', 'HR', 'HR_MANAGER'].includes(rawRole);
+    if (!canManageAttendance && ['MANAGER', 'OPERATIONS_MANAGER', 'TEAM_LEAD', 'PROCESS_OWNER'].includes(rawRole)) {
+      this.activeTab = 'team';
+    } else if (canManageAttendance) {
+      this.activeTab = 'daily';
+    }
+    Router.mountView('attendance');
   },
 
   // 1. DAILY ATTENDANCE ROSTER TAB (ADMIN / HR)
@@ -258,6 +283,9 @@ const AttendanceView = {
       date: this.currentDate,
       ...this.currentFilters
     };
+    if (!canManageAttendance) {
+      filters.scopedToUser = AuthGuard.userProfile;
+    }
     const records = await attendanceService.getAttendanceRecords(filters);
 
     return `
@@ -731,14 +759,45 @@ const AttendanceView = {
   // 3. TEAM ATTENDANCE TAB (FOR MANAGERS)
   async renderTeamAttendanceTab() {
     const managerId = AuthGuard.userProfile?.employeeId || AuthGuard.currentUser?.uid;
-    const team = await attendanceService.getTeamAttendance(managerId, this.currentDate);
+    const rawTeam = await attendanceService.getTeamAttendance(managerId, this.currentDate);
+
+    // Apply active status filter if set via KPI card clicks or toolbar
+    const activeFilter = (this.currentFilters.status || '').toUpperCase().trim();
+    const isFiltered = Boolean(activeFilter && activeFilter !== 'ALL' && activeFilter !== 'ALL STATUS');
+    const team = !isFiltered
+      ? rawTeam
+      : rawTeam.filter(t => {
+          const st = (t.attendance?.status || 'ABSENT').toUpperCase().trim();
+          if (activeFilter === 'PRESENT') {
+            return st === 'PRESENT' || st === 'LATE' || st === 'REGULARIZED' || Boolean(t.attendance?.checkIn && t.attendance.checkIn !== '—');
+          }
+          if (activeFilter === 'LATE') {
+            return st === 'LATE';
+          }
+          if (activeFilter === 'ABSENT') {
+            return st === 'ABSENT' || (!t.attendance?.checkIn && st !== 'ON_LEAVE');
+          }
+          if (activeFilter === 'LEAVE' || activeFilter === 'ON_LEAVE') {
+            return st === 'ON_LEAVE' || st === 'LEAVE';
+          }
+          return st === activeFilter;
+        });
 
     return `
       <div class="card">
-        <div class="card-header">
+        <div class="card-header" style="display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 8px;">
           <div>
-            <div class="card-title">My Team Attendance (${this.currentDate})</div>
-            <div class="card-subtitle">Real-time shift presence for your direct reports</div>
+            <div class="card-title" style="display: flex; align-items: center; gap: 8px;">
+              <span>My Team Attendance (${this.currentDate})</span>
+              ${isFiltered ? `
+                <span class="badge badge-warning" style="font-size: 0.72rem;">Showing: ${activeFilter} (${team.length})</span>
+                <button class="btn btn-secondary btn-sm" onclick="AttendanceView.setFilterStatus('All Status')" style="font-size: 0.7rem; padding: 2px 8px; height: auto;">Clear Filter</button>
+              ` : ''}
+            </div>
+            <div class="card-subtitle">Real-time shift presence for your direct and operational hierarchy</div>
+          </div>
+          <div style="font-size: 0.8rem; color: var(--text-muted);">
+            Total Personnel: <strong>${team.length}</strong>
           </div>
         </div>
         <div class="card-body" style="padding: 0;">
@@ -749,8 +808,8 @@ const AttendanceView = {
                   <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"/>
                 </svg>
               </div>
-              <div class="empty-state-title">No Direct Reporting Staff Found</div>
-              <div class="empty-state-desc">Employees assigned with you as reporting manager will appear here for shift monitoring.</div>
+              <div class="empty-state-title">${isFiltered ? `No ${activeFilter} records found in team.` : 'No Reporting Staff Found'}</div>
+              <div class="empty-state-desc">${isFiltered ? 'Click "Clear Filter" above to view all team members.' : 'Employees assigned under you in the organizational hierarchy will appear here for shift monitoring.'}</div>
             </div>
           ` : `
             <table class="data-table">

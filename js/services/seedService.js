@@ -1,8 +1,3 @@
-/**
- * DIALLO HRMS — PRODUCTION SYSTEM INITIALIZATION & CORE STRUCTURE SERVICE
- * Strictly maintains official corporate structure for Diallo % (HQ - Mumbai).
- * Zero mock/demo datasets. Includes automated and on-demand legacy demo purge.
- */
 
 const seedService = {
   COMPANY_ID: 'comp_diallo_india',

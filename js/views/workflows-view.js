@@ -1,7 +1,3 @@
-/**
- * DIALLO HRMS — WORKFLOW & APPROVAL AUTOMATION HUB (PHASE 14)
- * Multi-level Approvals, Workflow Visual Builder, Live State Machine, and SLA Monitoring
- */
 
 const WorkflowsView = {
   activeTab: 'inbox', // 'inbox', 'instances', 'builder', 'delegations', 'performance'

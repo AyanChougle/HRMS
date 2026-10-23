@@ -1,7 +1,3 @@
-/**
- * DIALLO HRMS — SMART DASHBOARD DISPATCHER (PHASE 3)
- * Dynamically routes to AdminDashboardView, ManagerDashboardView, or EmployeeDashboardView based on authenticated role
- */
 
 const DashboardView = {
   getRoleView() {

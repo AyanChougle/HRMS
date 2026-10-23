@@ -1,7 +1,3 @@
-/**
- * DIALLO HRMS — ROLE-AWARE SPA ROUTER (PHASE 3)
- * Dynamic role-based navigation sidebar & route-level permission guards
- */
 
 const Router = {
   currentRoute: 'dashboard',

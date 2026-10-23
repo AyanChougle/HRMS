@@ -1,8 +1,3 @@
-/**
- * DIALLO HRMS — ADVANCED HR & LIFECYCLE SERVICE (PHASE 16)
- * Handles Employment Records, Probation Reviews, Promotions, Transfers,
- * Confidential Salary Revisions, HR Cases, Warnings, and Grievances.
- */
 
 const hrService = {
   DEFAULT_COMPANY_ID: 'comp_diallo_india',

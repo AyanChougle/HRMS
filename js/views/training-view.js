@@ -1,7 +1,3 @@
-/**
- * DIALLO HRMS — TRAINING, TRAINEES & TRAINERS MODULE VIEW (L&D)
- * Comprehensive Trainee Cohorts, Mentor Directory, Curriculum Programs, and Employee Learning Track
- */
 
 const TrainingView = {
   activeTab: 'trainees', // 'trainees', 'trainers', 'programs', 'my_learning'

@@ -1,7 +1,3 @@
-/**
- * DIALLO HRMS — ASSET MANAGEMENT & LIFECYCLE SERVICE (PHASE 10)
- * Manages Company Hardware/Software Registry, Custodian Checkouts, Returns, Maintenance, and Exit Clearances
- */
 
 const assetService = {
   // Default Asset Categories

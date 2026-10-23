@@ -1,7 +1,3 @@
-/**
- * DIALLO HRMS — TRAINING, TRAINEES & TRAINERS SERVICE (L&D)
- * Manages Intern/Trainee Cohorts, Trainer Directory, Training Programs, Mentorship 1-on-1s, and Certifications
- */
 
 const trainingService = {
   // Official 7-Day Training Modules Framework

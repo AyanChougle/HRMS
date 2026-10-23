@@ -1,8 +1,3 @@
-/**
- * DIALLO HRMS — FULL QA, AUTOMATED TEST RUNNER & PERFORMANCE VIEW (PHASE 19)
- * Comprehensive QA Control Center executing 10 automated test suites,
- * release readiness audits, defect tracking, and Firestore query profiling.
- */
 
 const QAView = {
   activeTab: 'suite-runner',

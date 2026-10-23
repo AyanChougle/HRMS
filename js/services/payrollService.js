@@ -1,7 +1,3 @@
-/**
- * DIALLO HRMS — PRODUCTION PAYROLL & SALARY PROCESSING ENGINE (PHASE 7)
- * Batch Calculation Engine, Attendance & Leave Integration, Approval & Locking, Immutable Records, and Payslips
- */
 
 const payrollService = {
   // 1. GET ALL PAYROLL PERIODS

@@ -1,7 +1,3 @@
-/**
- * DIALLO HRMS — ORGANIZATION STRUCTURE SERVICE
- * Manages Departments, Designations, Grades, and Cost Centers in Firestore
- */
 
 const departmentService = {
   // --- Departments ---

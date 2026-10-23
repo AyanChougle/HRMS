@@ -1,7 +1,3 @@
-/**
- * DIALLO HRMS — ANNOUNCEMENT & BROADCAST SERVICE (PHASE 13)
- * Organization-wide broadcast notices, audience filtering, attachments, and automated push fan-out
- */
 
 const announcementService = {
   ANNOUNCEMENT_CATEGORIES: [

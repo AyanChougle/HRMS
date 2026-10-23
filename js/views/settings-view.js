@@ -1,8 +1,3 @@
-/**
- * DIALLO HRMS — SETTINGS & PREFERENCES MODULE
- * Employee Self-Service: Account Security, User Interface Themes, Density, & Alert Notifications
- * Admin / HR Hub: System Configuration, Code Series, SMTP & PDF Templates
- */
 
 const SettingsView = {
   activeEmployeeTab: 'ui', // 'ui', 'account', 'notifications'

@@ -1,13 +1,8 @@
-/**
- * DIALLO HRMS — ROLE & PAGE ACCESS CONFIGURATION SERVICE
- * Enables Super Admin to configure and enforce visible navigation pages per role.
- * Fallbacks cleanly to official Diallo HR policy defaults.
- */
 
 const roleAccessService = {
   COLLECTION: 'systemConfig',
   DOC_ID: 'role_page_permissions',
-  STORAGE_KEY: 'diallo_role_page_permissions_v6',
+  STORAGE_KEY: 'diallo_role_page_permissions_v7',
 
   // Master Registry of all system views and navigation pages
   PAGES: [
@@ -71,8 +66,8 @@ const roleAccessService = {
       'requests', 'communication', 'reports', 'ess'
     ],
     RELATIONSHIP_MANAGER: [
-      'dashboard', 'people', 'attendance', 'leave', 'performance', 'compliance',
-      'requests', 'communication', 'reports', 'ess'
+      'dashboard', 'ess', 'attendance', 'leave', 'performance', 'compliance',
+      'requests', 'communication'
     ],
     MENTOR_TRAINER: [
       'dashboard', 'training', 'attendance', 'leave', 'performance', 'compliance',
@@ -98,6 +93,7 @@ const roleAccessService = {
       localStorage.removeItem('diallo_role_page_permissions_v3');
       localStorage.removeItem('diallo_role_page_permissions_v4');
       localStorage.removeItem('diallo_role_page_permissions_v5');
+      localStorage.removeItem('diallo_role_page_permissions_v6');
       const local = localStorage.getItem(this.STORAGE_KEY);
       if (local) {
         this.cachedConfig = JSON.parse(local);

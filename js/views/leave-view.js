@@ -1,7 +1,3 @@
-/**
- * DIALLO HRMS — LEAVE MANAGEMENT MODULE (PHASE 6)
- * Leave Dashboard, Quota Ledgers, Dynamic Working-Day Apply Wizard, Multi-Role Approvals, and Calendars
- */
 
 const LeaveView = {
   activeTab: "my",
@@ -17,14 +13,12 @@ const LeaveView = {
     const canViewTeam =
       ["SUPER_ADMIN", "COMPANY_ADMIN", "ADMIN", "HR", "HR_MANAGER", "MANAGER", "OPERATIONS_MANAGER", "TEAM_LEAD"].includes(role);
 
-    if (!canManageSchemes && this.activeTab === "types") {
-      this.activeTab = "my";
-    }
-    if (
-      isEmployeeOnly &&
-      (this.activeTab === "all" || this.activeTab === "team")
-    ) {
-      this.activeTab = "my";
+    if (!canManageSchemes) {
+      if (canViewTeam && (this.activeTab === "all" || this.activeTab === "types")) {
+        this.activeTab = "team";
+      } else if (isEmployeeOnly && (this.activeTab === "all" || this.activeTab === "team" || this.activeTab === "types")) {
+        this.activeTab = "my";
+      }
     }
 
     let summary = {
@@ -193,7 +187,7 @@ const LeaveView = {
       <!-- Navigation Sub-Tabs -->
       <div class="tabs-nav" style="margin-bottom: 20px;">
         ${
-          !isEmployeeOnly
+          canManageSchemes
             ? `
           <button class="tab-btn ${this.activeTab === "all" ? "active" : ""}" onclick="LeaveView.switchTab('all')">All Leave Requests</button>
         `
@@ -537,9 +531,16 @@ const LeaveView = {
 
   // 3. TEAM LEAVE TAB (MANAGER PORTAL)
   async renderTeamLeaveTab() {
-    const managerId =
-      AuthGuard.userProfile?.employeeId || AuthGuard.currentUser?.uid;
-    const teamRequests = await leaveService.getLeaveRequests({ managerId });
+    const subordinates = await employeeService.getSubordinates(AuthGuard.userProfile, null, { directOnly: false, forceScoped: true });
+    const subIds = new Set(subordinates.map(e => e.id));
+    const subCodes = new Set(subordinates.map(e => (e.employeeCode || '').toUpperCase()));
+    const subNames = new Set(subordinates.map(e => (e.fullName || e.name || '').toLowerCase().trim()));
+    const allRequests = await leaveService.getLeaveRequests({});
+    const teamRequests = allRequests.filter(r => 
+      (r.employeeId && subIds.has(r.employeeId)) ||
+      (r.employeeCode && subCodes.has(r.employeeCode.toUpperCase())) ||
+      (r.employeeName && subNames.has(r.employeeName.toLowerCase().trim()))
+    );
 
     return `
       <div class="card">

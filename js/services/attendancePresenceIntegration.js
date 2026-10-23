@@ -1,7 +1,4 @@
 
-/**
- * Adds typed breaks without replacing the existing attendanceService.
- */
 (() => {
   const BREAKS = [
     ['LUNCH', 'Lunch Break (1h Quota)'],

@@ -1,8 +1,3 @@
-/**
- * DIALLO HRMS — ENTERPRISE EMAIL & SMTP GATEWAY CONFIGURATION
- * Multi-provider presets (Custom SMTP, Gmail/Google Workspace, M365, SendGrid, Amazon SES, Mailgun)
- * Encryption protocols, sender identities, and live interactive test sandbox.
- */
 
 const EmailConfigView = {
   activeTab: "config",

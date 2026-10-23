@@ -1,7 +1,3 @@
-/**
- * DIALLO HRMS — THEME MANAGER
- * Controls Light / Dark Mode toggling with localStorage persistence
- */
 
 const ThemeManager = {
   STORAGE_KEY: 'diallo_theme_preference',

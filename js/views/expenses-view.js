@@ -1,7 +1,4 @@
-/**
- * DIALLO HRMS — EXPENSE MANAGEMENT & REIMBURSEMENTS VIEW (PHASE 10)
- * Handles Claims Roster, Employee ESS Drafts, Approval Workflows, Policy Limits, and Settlement Tracking
- */
+
 
 const ExpensesView = {
   activeTab: "all", // 'all', 'my', 'approvals', 'categories'

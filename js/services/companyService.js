@@ -1,7 +1,3 @@
-/**
- * DIALLO HRMS — COMPANY & BRANCH MANAGEMENT SERVICE
- * Handles multi-tenant company legal entities and branch locations in Firestore
- */
 
 const companyService = {
   // Get all registered companies

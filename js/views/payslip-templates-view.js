@@ -1,7 +1,3 @@
-/**
- * DIALLO HRMS — PAYSLIP TEMPLATES GALLERY & DESIGNER VIEW
- * Interactive template selection, real-time preview, template customization, duplication, and default activation.
- */
 
 const PayslipTemplatesView = {
   currentFilter: 'ALL',

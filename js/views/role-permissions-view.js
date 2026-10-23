@@ -1,7 +1,4 @@
-/**
- * DIALLO HRMS — SUPER ADMIN ROLE & PAGE VISIBILITY MANAGER VIEW
- * Allows Super Admin to configure exactly which navigation pages are visible and accessible per role.
- */
+
 
 const RolePermissionsView = {
   selectedRole: 'HR',

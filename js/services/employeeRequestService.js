@@ -1,7 +1,3 @@
-/**
- * DIALLO HRMS — EMPLOYEE REQUESTS SERVICE (PHASE 11)
- * Handles Employee Helpdesk Tickets, Profile/Bank Updates, Certificate Requests, and HR Approvals
- */
 
 const employeeRequestService = {
   REQUEST_TYPES: [

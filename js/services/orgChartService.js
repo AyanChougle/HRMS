@@ -1,7 +1,3 @@
-/**
- * DIALLO HRMS — ORG CHART & HIERARCHY ENGINE (PHASE 15)
- * Dynamic hierarchical organization trees, manager teams, and circular hierarchy validation.
- */
 
 const orgChartService = {
   // Build dynamic organization tree from employees list

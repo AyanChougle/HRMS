@@ -1,8 +1,3 @@
-/**
- * DIALLO HRMS — HR LETTERS & OFFICIAL ISSUANCE SERVICE (PHASE 16)
- * Generates and archives Offer, Appointment, Confirmation, Promotion,
- * Transfer, Relieving, Experience, and Warning Letters with Dynamic Variable Interpolation.
- */
 
 const letterService = {
   DEFAULT_COMPANY_ID: 'comp_diallo_india',

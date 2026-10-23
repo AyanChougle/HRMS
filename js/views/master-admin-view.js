@@ -1,8 +1,3 @@
-/**
- * DIALLO HRMS — MASTER ADMIN CONSOLE VIEW (PHASE 23)
- * Categorized Master Hub matching /master with live filter pills (All, User Related, Settings, Favourites),
- * quick search, bookmarks, and enterprise system access.
- */
 
 const MasterAdminView = {
   activeFilter: "ALL", // 'ALL', 'USER', 'SETTINGS', 'FAVOURITES'

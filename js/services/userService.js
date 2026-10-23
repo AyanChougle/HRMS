@@ -1,7 +1,3 @@
-/**
- * DIALLO HRMS — USER & ROLE MANAGEMENT SERVICE
- * Manages Firestore user profiles, credentials, custom roles, and cross-sync with employees
- */
 
 const userService = {
   // Master 8 Official Roles Hierarchy

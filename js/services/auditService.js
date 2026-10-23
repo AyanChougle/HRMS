@@ -1,8 +1,3 @@
-/**
- * DIALLO HRMS — CENTRALIZED AUDIT SERVICE (PHASE 18)
- * Enterprise-grade append-only audit trail logging for all sensitive,
- * administrative, compensation, and security actions.
- */
 
 const auditService = {
   DEFAULT_COMPANY_ID: 'comp_diallo_india',

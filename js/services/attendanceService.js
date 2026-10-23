@@ -1,7 +1,3 @@
-/**
- * DIALLO HRMS — PRODUCTION ATTENDANCE SERVICE (PHASE 5)
- * Daily Attendance Records, Check-In/Check-Out, Working Hours, Late/Overtime Engine, Regularizations
- */
 
 const attendanceService = {
   // Get query-friendly local date string in company timezone (e.g. '2026-08-31')
@@ -160,23 +156,50 @@ const attendanceService = {
     try {
       const attendanceDate = date || this.getCompanyLocalDate();
       const recordId = `${employeeId}_${attendanceDate}`;
-      const doc = await db.collection('attendanceRecords').doc(recordId).get();
-      if (doc.exists) {
-        const sanitized = this.sanitizeRecord({ id: doc.id, ...doc.data() });
-        // Self-heal Firestore if doc had corrupt multi-day gross numbers or invalid status
-        const raw = doc.data();
-        if (raw.grossMinutes > 1440 || (raw.checkOut && raw.status === 'ON_BREAK')) {
-          db.collection('attendanceRecords').doc(recordId).update({
-            grossMinutes: sanitized.grossMinutes,
-            grossHoursFormatted: sanitized.grossHoursFormatted,
-            workedMinutes: sanitized.workedMinutes,
-            workedHoursFormatted: sanitized.workedHoursFormatted,
-            overtimeMinutes: sanitized.overtimeMinutes,
-            status: sanitized.status,
-            isOnBreak: false
-          }).catch(err => console.warn('Self-heal warning:', err));
+
+      // 1. Primary: Check Hostinger MySQL
+      if (typeof apiClient !== 'undefined') {
+        try {
+          const sqlRes = await apiClient.get('attendance.php?action=today', { employee_id: employeeId, date: attendanceDate });
+          if (sqlRes && sqlRes.success && sqlRes.record) {
+            const r = sqlRes.record;
+            return this.sanitizeRecord({
+              id: recordId,
+              recordKey: r.record_key || recordId,
+              employeeId: r.employee_id || employeeId,
+              employeeCode: r.employee_code || '',
+              employeeName: r.employee_name || '',
+              department: r.department || 'Operations',
+              managerId: r.manager_id || '',
+              manager: r.manager || '',
+              date: r.date || attendanceDate,
+              checkIn: r.check_in || null,
+              checkOut: r.check_out || null,
+              status: r.status || 'PRESENT',
+              lateMinutes: Number(r.late_minutes || 0),
+              grossMinutes: Number(r.gross_minutes || 0),
+              grossHoursFormatted: r.gross_hours_formatted || '0h 00m',
+              totalBreakSeconds: Number(r.total_break_seconds || 0),
+              totalBreakMinutes: Number(r.total_break_minutes || 0),
+              breakFormatted: r.break_formatted || '0m',
+              isOnBreak: Boolean(r.is_on_break)
+            });
+          }
+        } catch (sqlErr) {
+          console.warn('[attendanceService] MySQL today check notice:', sqlErr.message || sqlErr);
         }
-        return sanitized;
+      }
+
+      // 2. Secondary fallback: Cloud Firestore
+      if (typeof db !== 'undefined') {
+        const doc = await db.collection('attendanceRecords').doc(recordId).get();
+        if (doc.exists) {
+          const sanitized = this.sanitizeRecord({ id: doc.id, ...doc.data() });
+          if (typeof apiClient !== 'undefined') {
+            apiClient.post('attendance.php?action=save_record', sanitized).catch(() => {});
+          }
+          return sanitized;
+        }
       }
       return null;
     } catch (e) {
@@ -286,20 +309,41 @@ const attendanceService = {
         updatedAt: firebase.firestore.FieldValue.serverTimestamp()
       };
 
-      await recordRef.set(payload);
+      // 1. Primary: Save directly to Hostinger MySQL attendance_records table
+      if (typeof apiClient !== 'undefined') {
+        try {
+          await apiClient.post('attendance.php?action=save_record', {
+            ...payload,
+            employee_id: employeeId,
+            employee_code: payload.employeeCode,
+            employee_name: payload.employeeName,
+            manager_id: payload.managerId,
+            manager: payload.manager,
+            check_in: payload.checkIn,
+            status: payload.status,
+            late_minutes: payload.lateMinutes,
+            record_key: recordId
+          });
+        } catch (sqlErr) {
+          console.warn('[attendanceService] Hostinger MySQL check-in notice:', sqlErr.message || sqlErr);
+        }
+      }
 
-      // Log punch in legacy feed for live logs widget
-      await db.collection('punchLogs').add({
-        employeeId,
-        name: payload.employeeName,
-        punchType: 'In',
-        time: checkInTimeStr,
-        date: attendanceDate,
-        location: punchData.location || 'HQ - Mumbai',
-        device: 'Web Attendance Terminal',
-        status: status === 'LATE' ? 'Late Arrival' : 'On Time',
-        timestamp: firebase.firestore.FieldValue.serverTimestamp()
-      });
+      // 2. Secondary: Firestore backup
+      if (typeof db !== 'undefined') {
+        await recordRef.set(payload).catch(() => {});
+        await db.collection('punchLogs').add({
+          employeeId,
+          name: payload.employeeName,
+          punchType: 'In',
+          time: checkInTimeStr,
+          date: attendanceDate,
+          location: punchData.location || 'HQ - Mumbai',
+          device: 'Web Attendance Terminal',
+          status: status === 'LATE' ? 'Late Arrival' : 'On Time',
+          timestamp: firebase.firestore.FieldValue.serverTimestamp()
+        }).catch(() => {});
+      }
 
       await auditService.log('ATTENDANCE_CHECK_IN', 'ATTENDANCE', 'attendanceRecords', recordId, payload);
       return { id: recordId, ...payload };
@@ -418,19 +462,48 @@ const attendanceService = {
         updatedAt: firebase.firestore.FieldValue.serverTimestamp()
       };
 
-      await recordRef.update(updates);
+      // 1. Primary: Save directly to Hostinger MySQL
+      if (typeof apiClient !== 'undefined') {
+        try {
+          await apiClient.post('attendance.php?action=save_record', {
+            employee_id: employeeId,
+            employee_code: rec.employeeCode || '',
+            employee_name: rec.employeeName || '',
+            department: rec.department || 'Operations',
+            manager_id: rec.managerId || '',
+            manager: rec.manager || '',
+            date: attendanceDate,
+            check_in: rec.checkIn || '',
+            check_out: checkOutTimeStr,
+            status: updates.status,
+            late_minutes: rec.lateMinutes || 0,
+            gross_minutes: updates.grossMinutes,
+            gross_hours_formatted: updates.grossHoursFormatted,
+            total_break_seconds: updates.totalBreakSeconds,
+            total_break_minutes: updates.totalBreakMinutes,
+            break_formatted: updates.breakFormatted,
+            is_on_break: 0,
+            record_key: recordId
+          });
+        } catch (sqlErr) {
+          console.warn('[attendanceService] Hostinger MySQL check-out notice:', sqlErr.message || sqlErr);
+        }
+      }
 
-      // Log punch out in legacy feed
-      await db.collection('punchLogs').add({
-        employeeId,
-        name: rec.employeeName,
-        punchType: 'Out',
-        time: checkOutTimeStr,
-        date: attendanceDate,
-        device: 'Web Attendance Terminal',
-        status: 'Completed',
-        timestamp: firebase.firestore.FieldValue.serverTimestamp()
-      });
+      // 2. Secondary: Firestore backup
+      if (typeof db !== 'undefined') {
+        await recordRef.update(updates).catch(() => {});
+        await db.collection('punchLogs').add({
+          employeeId,
+          name: rec.employeeName,
+          punchType: 'Out',
+          time: checkOutTimeStr,
+          date: attendanceDate,
+          device: 'Web Attendance Terminal',
+          status: 'Completed',
+          timestamp: firebase.firestore.FieldValue.serverTimestamp()
+        }).catch(() => {});
+      }
 
       await auditService.log('ATTENDANCE_CHECK_OUT', 'ATTENDANCE', 'attendanceRecords', recordId, updates);
       return { id: recordId, ...rec, ...updates };
@@ -481,18 +554,35 @@ const attendanceService = {
           source: 'WEB'
         });
       } else if (punchType === 'Break In') {
+        if (typeof apiClient !== 'undefined') {
+          apiClient.post('attendance.php', {
+            employee_id: employeeId,
+            punch_type: 'Break In',
+            time: timeStr,
+            date: attendanceDate
+          }).catch(() => {});
+        }
         if (doc.exists) {
           await recordRef.update({
             isOnBreak: true,
             lastBreakStartIso: now.toISOString(),
             status: 'ON_BREAK',
             updatedAt: firebase.firestore.FieldValue.serverTimestamp()
-          });
+          }).catch(() => {});
         }
       } else if (punchType === 'Break Out') {
+        const breakSec = Number(punchData.breakDuration) || 0;
+        if (typeof apiClient !== 'undefined') {
+          apiClient.post('attendance.php', {
+            employee_id: employeeId,
+            punch_type: 'Break Out',
+            time: timeStr,
+            date: attendanceDate,
+            break_duration: breakSec
+          }).catch(() => {});
+        }
         if (doc.exists) {
-          const rec = doc.data();
-          const breakSec = Number(punchData.breakDuration) || 0;
+          const rec = doc.data() || {};
           const totalBreakSec = (punchData.totalBreakSeconds !== undefined && punchData.totalBreakSeconds !== null)
             ? Number(punchData.totalBreakSeconds)
             : ((rec.totalBreakSeconds || 0) + breakSec);
@@ -507,7 +597,7 @@ const attendanceService = {
             breakFormatted,
             status: rec.checkIn ? (rec.lateMinutes > 0 ? 'LATE' : 'PRESENT') : 'PRESENT',
             updatedAt: firebase.firestore.FieldValue.serverTimestamp()
-          });
+          }).catch(() => {});
         }
       } else if (punchType === 'Out') {
         if (doc.exists) {
@@ -533,41 +623,136 @@ const attendanceService = {
   // 4. GET ATTENDANCE RECORDS WITH ADVANCED FILTERS
   async getAttendanceRecords(filters = {}) {
     try {
-      let query = db.collection('attendanceRecords');
-
-      if (filters.companyId) query = query.where('companyId', '==', filters.companyId);
-      if (filters.date) query = query.where('date', '==', filters.date);
-      if (filters.employeeId) query = query.where('employeeId', '==', filters.employeeId);
-      if (filters.department && filters.department !== 'All Departments') query = query.where('department', '==', filters.department);
-      if (filters.status && filters.status !== 'All Status') query = query.where('status', '==', filters.status);
-      if (filters.branchId && filters.branchId !== 'All Branches') query = query.where('branchId', '==', filters.branchId);
-
-      const snapshot = await query.get();
-      let records = snapshot.docs.map(doc => {
-        const raw = doc.data();
-        const sanitized = this.sanitizeRecord({ id: doc.id, ...raw });
-        const isCorrupt = (raw.grossMinutes && raw.grossMinutes >= 1440) ||
-                          (raw.workedMinutes && raw.workedMinutes >= 1440) ||
-                          (raw.overtimeMinutes && raw.overtimeMinutes >= 480) ||
-                          (raw.grossHoursFormatted && raw.grossHoursFormatted.startsWith('24h')) ||
-                          (raw.checkOut && raw.status === 'ON_BREAK');
-        if (isCorrupt) {
-          db.collection('attendanceRecords').doc(doc.id).update({
-            grossMinutes: sanitized.grossMinutes,
-            grossHoursFormatted: sanitized.grossHoursFormatted,
-            totalBreakMinutes: sanitized.totalBreakMinutes,
-            totalBreakSeconds: sanitized.totalBreakSeconds,
-            breakFormatted: sanitized.breakFormatted,
-            workedMinutes: sanitized.workedMinutes,
-            workedHoursFormatted: sanitized.workedHoursFormatted,
-            overtimeMinutes: sanitized.overtimeMinutes,
-            status: sanitized.status,
-            isOnBreak: false,
-            updatedAt: firebase.firestore.FieldValue.serverTimestamp()
-          }).catch(err => console.warn('Self-heal warning:', err));
-        }
-        return sanitized;
+      const allEmps = await employeeService.getEmployees().catch(() => []);
+      const empLookupById = {};
+      const empLookupByName = {};
+      allEmps.forEach(e => {
+        if (e.id) empLookupById[e.id] = e;
+        if (e.fullName) empLookupByName[e.fullName.toLowerCase().trim()] = e;
+        if (e.name) empLookupByName[e.name.toLowerCase().trim()] = e;
       });
+
+      let records = [];
+      let loadedFromMySQL = false;
+
+      // 1. Primary: Fetch from Hostinger MySQL
+      if (typeof apiClient !== 'undefined') {
+        try {
+          const sqlParams = {};
+          if (filters.date) sqlParams.date = filters.date;
+          if (filters.employeeId) sqlParams.employee_id = filters.employeeId;
+          const sqlRes = await apiClient.get('attendance.php', sqlParams);
+          if (sqlRes && sqlRes.success && Array.isArray(sqlRes.records) && sqlRes.records.length > 0) {
+            records = sqlRes.records.map(r => this.sanitizeRecord({
+              id: r.record_key || `${r.employee_id}_${r.date}`,
+              recordKey: r.record_key,
+              employeeId: r.employee_id,
+              employeeCode: r.employee_code,
+              employeeName: r.employee_name,
+              department: r.department,
+              managerId: r.manager_id,
+              manager: r.manager,
+              date: r.date,
+              checkIn: r.check_in,
+              checkOut: r.check_out,
+              status: r.status,
+              lateMinutes: Number(r.late_minutes || 0),
+              grossMinutes: Number(r.gross_minutes || 0),
+              grossHoursFormatted: r.gross_hours_formatted || '0h 00m',
+              totalBreakSeconds: Number(r.total_break_seconds || 0),
+              totalBreakMinutes: Number(r.total_break_minutes || 0),
+              breakFormatted: r.break_formatted || '0m',
+              isOnBreak: Boolean(r.is_on_break)
+            }));
+            loadedFromMySQL = true;
+          }
+        } catch (sqlErr) {
+          console.warn('[attendanceService] Hostinger MySQL fetch notice:', sqlErr.message || sqlErr);
+        }
+      }
+
+      // 2. Secondary: If MySQL had no records for this query, fetch from Firestore
+      if (!loadedFromMySQL && typeof db !== 'undefined') {
+        let query = db.collection('attendanceRecords');
+        if (filters.companyId) query = query.where('companyId', '==', filters.companyId);
+        if (filters.date) query = query.where('date', '==', filters.date);
+        if (filters.employeeId) query = query.where('employeeId', '==', filters.employeeId);
+        if (filters.department && filters.department !== 'All Departments') query = query.where('department', '==', filters.department);
+        if (filters.status && filters.status !== 'All Status') query = query.where('status', '==', filters.status);
+        if (filters.branchId && filters.branchId !== 'All Branches') query = query.where('branchId', '==', filters.branchId);
+
+        const snapshot = await query.get();
+        records = snapshot.docs.map(doc => {
+          const raw = doc.data() || {};
+          const sanitized = this.sanitizeRecord({ id: doc.id, ...raw });
+
+          // Auto-heal employeeCode & employeeName from real MySQL employees census
+          let matchedEmp = null;
+          if (raw.employeeId && empLookupById[raw.employeeId]) matchedEmp = empLookupById[raw.employeeId];
+          if (!matchedEmp && raw.employeeName && empLookupByName[raw.employeeName.toLowerCase().trim()]) {
+            matchedEmp = empLookupByName[raw.employeeName.toLowerCase().trim()];
+          }
+          if (matchedEmp) {
+            if (matchedEmp.employeeCode && (sanitized.employeeCode !== matchedEmp.employeeCode || (sanitized.employeeCode && sanitized.employeeCode.startsWith('D-000')))) {
+              sanitized.employeeCode = matchedEmp.employeeCode;
+              db.collection('attendanceRecords').doc(doc.id).update({
+                employeeCode: matchedEmp.employeeCode,
+                employeeName: matchedEmp.fullName || matchedEmp.name
+              }).catch(() => {});
+            }
+            if (matchedEmp.fullName) sanitized.employeeName = matchedEmp.fullName;
+          }
+
+          const isCorrupt = (raw.grossMinutes && raw.grossMinutes >= 1440) ||
+                            (raw.workedMinutes && raw.workedMinutes >= 1440) ||
+                            (raw.overtimeMinutes && raw.overtimeMinutes >= 480) ||
+                            (raw.grossHoursFormatted && raw.grossHoursFormatted.startsWith('24h')) ||
+                            (raw.checkOut && raw.status === 'ON_BREAK');
+          if (isCorrupt) {
+            db.collection('attendanceRecords').doc(doc.id).update({
+              grossMinutes: sanitized.grossMinutes,
+              grossHoursFormatted: sanitized.grossHoursFormatted,
+              totalBreakMinutes: sanitized.totalBreakMinutes,
+              totalBreakSeconds: sanitized.totalBreakSeconds,
+              breakFormatted: sanitized.breakFormatted,
+              workedMinutes: sanitized.workedMinutes,
+              workedHoursFormatted: sanitized.workedHoursFormatted,
+              overtimeMinutes: sanitized.overtimeMinutes,
+              status: sanitized.status,
+              isOnBreak: false,
+              updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+            }).catch(err => console.warn('Self-heal warning:', err));
+          }
+          return sanitized;
+        });
+
+        // Sync to Hostinger MySQL in the background so MySQL is permanently populated
+        if (records.length > 0 && typeof apiClient !== 'undefined') {
+          apiClient.post('attendance.php?action=bulk_sync', { records: records.slice(0, 50) }).catch(() => {});
+        }
+      }
+
+      if (filters.scopedToUser) {
+        const user = filters.scopedToUser;
+        const uRole = (user.roleId || user.role || '').toString().toUpperCase().trim();
+        const isSuperAdminOrHR = ['SUPER_ADMIN', 'COMPANY_ADMIN', 'ADMIN', 'HR_MANAGER', 'HR'].includes(uRole);
+        if (!isSuperAdminOrHR) {
+          const subordinates = await employeeService.getSubordinates(user, allEmps, { directOnly: false });
+          const allowedCodes = new Set(subordinates.map(e => (e.employeeCode || '').toUpperCase()));
+          const allowedIds = new Set(subordinates.map(e => e.id));
+          const allowedNames = new Set(subordinates.map(e => (e.fullName || e.name || '').toLowerCase().trim()));
+
+          if (user.employeeCode) allowedCodes.add(user.employeeCode.toUpperCase());
+          if (user.employeeId) allowedIds.add(user.employeeId);
+          if (user.id) allowedIds.add(user.id);
+
+          records = records.filter(r => 
+            (r.employeeCode && allowedCodes.has(r.employeeCode.toUpperCase())) ||
+            (r.employeeId && allowedIds.has(r.employeeId)) ||
+            (r.employeeName && allowedNames.has(r.employeeName.toLowerCase().trim()))
+          );
+        }
+      }
 
       if (filters.search && filters.search.trim() !== '') {
         const term = filters.search.toLowerCase().trim();
@@ -595,30 +780,84 @@ const attendanceService = {
   async getTeamAttendance(managerId, date = null) {
     try {
       const attendanceDate = date || this.getCompanyLocalDate();
-      const teamEmployees = await employeeService.getEmployees({ managerId });
+      const allEmps = await employeeService.getEmployees();
+
+      const myId = managerId || AuthGuard.userProfile?.employeeId || AuthGuard.userProfile?.id || AuthGuard.currentUser?.uid;
+      const myCode = (AuthGuard.userProfile?.employeeCode || '').toUpperCase().trim();
+      const myName = (AuthGuard.userProfile?.displayName || AuthGuard.userProfile?.fullName || '').toLowerCase().trim();
+      const role = (AuthGuard._previewRoleId || AuthGuard.userProfile?.roleId || '').toString().toUpperCase().trim();
+
+      let teamEmployees = [];
+      if (role === 'SUPER_ADMIN' || role === 'COMPANY_ADMIN' || role === 'ADMIN' || role === 'HR_MANAGER' || role === 'HR') {
+        teamEmployees = allEmps;
+      } else {
+        // Leadership roles (OPERATIONS_MANAGER, MANAGER, PROCESS_OWNER, TEAM_LEAD):
+        // dynamic hierarchy scoping (includes all subordinates under them in the organizational tree)
+        teamEmployees = await employeeService.getSubordinates(AuthGuard.userProfile, allEmps, { directOnly: false, forceScoped: true });
+      }
+
       if (teamEmployees.length === 0) return [];
 
-      const empIds = teamEmployees.map(e => e.id);
-      const snapshot = await db.collection('attendanceRecords')
-        .where('date', '==', attendanceDate)
-        .get();
+      // 1. Primary: Fetch today's records from Hostinger MySQL API
+      let mysqlRecords = [];
+      if (typeof apiClient !== 'undefined') {
+        try {
+          const resp = await apiClient.get(`attendance.php?action=get_records&date=${attendanceDate}`);
+          if (resp && resp.success && Array.isArray(resp.records)) {
+            mysqlRecords = resp.records;
+          }
+        } catch (_) {}
+      }
 
+      // 2. Secondary: Fetch from Firestore
+      let fsRecords = [];
+      try {
+        if (typeof db !== 'undefined') {
+          const snapshot = await db.collection('attendanceRecords')
+            .where('date', '==', attendanceDate)
+            .get();
+          fsRecords = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+        }
+      } catch (_) {}
+
+      // 3. Build unified recordsMap indexed across all identifiers
       const recordsMap = {};
-      snapshot.docs.forEach(doc => {
-        const d = doc.data();
-        recordsMap[d.employeeId] = d;
+      [...fsRecords, ...mysqlRecords].forEach(d => {
+        if (!d) return;
+        const eId = d.employeeId || d.employee_id;
+        const uId = d.userId || d.user_id;
+        const eCode = d.employeeCode || d.employee_code;
+        const eName = d.employeeName || d.employee_name;
+
+        if (eId) recordsMap[String(eId).trim()] = d;
+        if (uId) recordsMap[String(uId).trim()] = d;
+        if (eCode) recordsMap[String(eCode).toUpperCase().trim()] = d;
+        if (eName) recordsMap[String(eName).toLowerCase().trim()] = d;
       });
 
-      return teamEmployees.map(emp => ({
-        employee: emp,
-        attendance: recordsMap[emp.id] || {
+      return teamEmployees.map(emp => {
+        const empId = emp.id ? String(emp.id).trim() : '';
+        const empUserId = emp.userId ? String(emp.userId).trim() : '';
+        const empCode = emp.employeeCode ? String(emp.employeeCode).toUpperCase().trim() : '';
+        const empName = (emp.fullName || emp.name || '').toLowerCase().trim();
+
+        const rawAtt = recordsMap[empId] || (empUserId && recordsMap[empUserId]) || (empCode && recordsMap[empCode]) || (empName && recordsMap[empName]);
+
+        const att = rawAtt ? (typeof this.sanitizeRecord === 'function' ? this.sanitizeRecord(rawAtt) : rawAtt) : {
           date: attendanceDate,
           checkIn: null,
           checkOut: null,
           status: 'ABSENT',
-          workedHoursFormatted: '0h 00m'
-        }
-      }));
+          workedHoursFormatted: '0h 00m',
+          totalBreakMinutes: 0,
+          breakFormatted: '0m'
+        };
+
+        return {
+          employee: emp,
+          attendance: att
+        };
+      });
     } catch (e) {
       console.warn('Error fetching team attendance:', e);
       return [];
@@ -750,23 +989,80 @@ const attendanceService = {
   async getTodaySummary(companyId = null, employeeIds = null) {
     try {
       const todayStr = this.getCompanyLocalDate();
-      let query = db.collection('attendanceRecords').where('date', '==', todayStr);
-      if (companyId) query = query.where('companyId', '==', companyId);
 
-      const snapshot = await query.get();
-      let docs = snapshot.docs.map(doc => doc.data());
+      // 1. Fetch from Hostinger MySQL API
+      let mysqlRecords = [];
+      if (typeof apiClient !== 'undefined') {
+        try {
+          const resp = await apiClient.get(`attendance.php?action=get_records&date=${todayStr}`);
+          if (resp && resp.success && Array.isArray(resp.records)) {
+            mysqlRecords = resp.records;
+          }
+        } catch (_) {}
+      }
 
-      if (Array.isArray(employeeIds)) {
-        const idSet = new Set(employeeIds);
-        docs = docs.filter(d => idSet.has(d.employeeId) || idSet.has(d.uid));
+      // 2. Fetch from Firestore
+      let fsDocs = [];
+      try {
+        if (typeof db !== 'undefined') {
+          let query = db.collection('attendanceRecords').where('date', '==', todayStr);
+          if (companyId) query = query.where('companyId', '==', companyId);
+          const snapshot = await query.get();
+          fsDocs = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+        }
+      } catch (_) {}
+
+      // Deduplicate records by employeeCode / employeeId / id
+      const combinedMap = {};
+      [...fsDocs, ...mysqlRecords].forEach(r => {
+        if (!r) return;
+        const key = (r.employeeCode || r.employee_code || r.employeeId || r.employee_id || r.id || '').toString().trim();
+        if (key) combinedMap[key] = r;
+      });
+      let docs = Object.values(combinedMap);
+
+      if (Array.isArray(employeeIds) && employeeIds.length > 0) {
+        const idSet = new Set();
+        const nameSet = new Set();
+
+        employeeIds.forEach(item => {
+          if (typeof item === 'object' && item !== null) {
+            if (item.id) idSet.add(String(item.id).trim());
+            if (item.userId) idSet.add(String(item.userId).trim());
+            if (item.employeeId) idSet.add(String(item.employeeId).trim());
+            if (item.employeeCode) idSet.add(String(item.employeeCode).toUpperCase().trim());
+            if (item.code) idSet.add(String(item.code).toUpperCase().trim());
+            const nm = (item.fullName || item.name || item.displayName || '').toLowerCase().trim();
+            if (nm) nameSet.add(nm);
+          } else if (typeof item === 'string' && item.trim()) {
+            const s = item.trim();
+            idSet.add(s);
+            idSet.add(s.toUpperCase());
+            nameSet.add(s.toLowerCase());
+          }
+        });
+
+        docs = docs.filter(d => {
+          const eId = d.employeeId ? String(d.employeeId).trim() : (d.employee_id ? String(d.employee_id).trim() : '');
+          const uId = d.uid ? String(d.uid).trim() : '';
+          const usrId = d.userId ? String(d.userId).trim() : (d.user_id ? String(d.user_id).trim() : '');
+          const eCode = d.employeeCode ? String(d.employeeCode).toUpperCase().trim() : (d.employee_code ? String(d.employee_code).toUpperCase().trim() : '');
+          const eName = d.employeeName ? String(d.employeeName).toLowerCase().trim() : (d.employee_name ? String(d.employee_name).toLowerCase().trim() : '');
+
+          return (eId && (idSet.has(eId) || idSet.has(eId.toUpperCase()))) ||
+                 (uId && idSet.has(uId)) ||
+                 (usrId && idSet.has(usrId)) ||
+                 (eCode && idSet.has(eCode)) ||
+                 (eName && nameSet.has(eName));
+        });
       }
 
       let totalEmployees = 0;
       if (Array.isArray(employeeIds)) {
         totalEmployees = employeeIds.length;
       } else {
-        const totalEmpSnap = await db.collection('employees').where('employmentStatus', '==', 'ACTIVE').get();
-        totalEmployees = totalEmpSnap.size;
+        const allEmps = await employeeService.getEmployees();
+        totalEmployees = Array.isArray(allEmps) ? allEmps.length : 0;
       }
 
       let present = 0;
@@ -775,10 +1071,19 @@ const attendanceService = {
       let wfh = 0;
 
       docs.forEach(d => {
-        if (d.status === 'PRESENT' || d.status === 'REGULARIZED') present++;
-        else if (d.status === 'LATE') { present++; late++; }
-        else if (d.status === 'ON_LEAVE') onLeave++;
-        else if (d.status === 'WFH') wfh++;
+        const st = (d.status || '').toString().toUpperCase().trim();
+        const hasPunchIn = Boolean(d.checkIn && d.checkIn !== '—' && d.checkIn !== '-');
+        if (st === 'LATE') {
+          present++;
+          late++;
+        } else if (st === 'PRESENT' || st === 'REGULARIZED' || st === 'ON_BREAK' || hasPunchIn) {
+          present++;
+        } else if (st === 'ON_LEAVE' || st === 'LEAVE') {
+          onLeave++;
+        } else if (st === 'WFH') {
+          wfh++;
+          present++;
+        }
       });
 
       return {

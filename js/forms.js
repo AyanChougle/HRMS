@@ -1,7 +1,3 @@
-/**
- * DIALLO HRMS — MODAL FORMS WIZARDS (PHASE 4)
- * Multi-Tab Add/Edit Employee Modal, Leave Application, and Verification Engines
- */
 
 const Forms = {
   // 1. ADD / EDIT EMPLOYEE MODAL WIZARD

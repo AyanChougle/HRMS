@@ -1,7 +1,3 @@
-/**
- * DIALLO HRMS — EMPLOYEE EXIT & SEPARATION SERVICE (PHASE 4)
- * Manages resignation, termination, notice period tracking, and department clearances
- */
 
 const exitService = {
   // Get all exit records

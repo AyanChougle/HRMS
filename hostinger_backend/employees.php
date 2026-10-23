@@ -106,23 +106,34 @@ try {
         $empDeleted = 0;
         $userDeleted = 0;
 
-        // If specific ID or employee_code provided, delete only that specific record
-        if (!empty($id) || !empty($code)) {
-            $delEmp = $pdo->prepare("DELETE FROM employees WHERE id = :id OR (employee_code = :c AND :c != '')");
-            $delEmp->execute([':id' => $id, ':c' => $code]);
-            $empDeleted = $delEmp->rowCount();
+        $pdo->exec("SET FOREIGN_KEY_CHECKS = 0;");
+        try {
+            // If specific ID or employee_code provided, delete only that specific record
+            if (!empty($id) || !empty($code)) {
+                $delEmp = $pdo->prepare("DELETE FROM employees WHERE id = :id OR (employee_code = :c AND :c != '')");
+                $delEmp->execute([':id' => $id, ':c' => $code]);
+                $empDeleted = $delEmp->rowCount();
 
-            $delUser = $pdo->prepare("DELETE FROM users WHERE uid = :id OR (employee_code = :c AND :c != '')");
-            $delUser->execute([':id' => $id, ':c' => $code]);
-            $userDeleted = $delUser->rowCount();
-        } elseif (!empty($email)) {
-            $delEmp = $pdo->prepare("DELETE FROM employees WHERE LOWER(work_email) = :e OR LOWER(email) = :e");
-            $delEmp->execute([':e' => $email]);
-            $empDeleted = $delEmp->rowCount();
+                $delUser = $pdo->prepare("DELETE FROM users WHERE uid = :id OR (employee_code = :c AND :c != '')");
+                $delUser->execute([':id' => $id, ':c' => $code]);
+                $userDeleted = $delUser->rowCount();
 
-            $delUser = $pdo->prepare("DELETE FROM users WHERE LOWER(email) = :e");
-            $delUser->execute([':e' => $email]);
-            $userDeleted = $delUser->rowCount();
+                // Clean child tables
+                $pdo->prepare("DELETE FROM attendance_records WHERE employee_id = :id OR (employee_code = :c AND :c != '')")->execute([':id' => $id, ':c' => $code]);
+                $pdo->prepare("DELETE FROM leave_applications WHERE employee_id = :id OR (employee_code = :c AND :c != '')")->execute([':id' => $id, ':c' => $code]);
+                $pdo->prepare("DELETE FROM leave_balances WHERE employee_id = :id")->execute([':id' => $id]);
+                $pdo->prepare("DELETE FROM punch_logs WHERE employee_id = :id")->execute([':id' => $id]);
+            } elseif (!empty($email)) {
+                $delEmp = $pdo->prepare("DELETE FROM employees WHERE LOWER(work_email) = :e OR LOWER(email) = :e");
+                $delEmp->execute([':e' => $email]);
+                $empDeleted = $delEmp->rowCount();
+
+                $delUser = $pdo->prepare("DELETE FROM users WHERE LOWER(email) = :e");
+                $delUser->execute([':e' => $email]);
+                $userDeleted = $delUser->rowCount();
+            }
+        } finally {
+            $pdo->exec("SET FOREIGN_KEY_CHECKS = 1;");
         }
 
         log_audit($pdo, 'admin', 'system', 'EMPLOYEE_DELETED', 'employees', $id ?: $code, [
@@ -153,6 +164,21 @@ try {
         $role = strtoupper(trim($input['role_id'] ?? $input['role'] ?? 'EMPLOYEE'));
         $validRoles = ['SUPER_ADMIN', 'HR_MANAGER', 'MANAGER', 'OPERATIONS_MANAGER', 'PROCESS_OWNER', 'COMPLIANCE', 'DIGITAL_MARKETING', 'TEAM_LEAD', 'RELATIONSHIP_MANAGER', 'MENTOR_TRAINER', 'TRAINEE', 'EMPLOYEE'];
         if (!in_array($role, $validRoles)) $role = 'EMPLOYEE';
+
+        // Auto-safeguard roles based on canonical designation
+        if (stripos($desig, 'relationship manager') !== false && ($role === 'MANAGER' || $role === 'EMPLOYEE')) {
+            $role = 'RELATIONSHIP_MANAGER';
+        } elseif (stripos($desig, 'operations manager') !== false || stripos($desig, 'ops manager') !== false) {
+            $role = 'OPERATIONS_MANAGER';
+        } elseif (stripos($desig, 'process owner') !== false) {
+            $role = 'PROCESS_OWNER';
+        } elseif (stripos($desig, 'compliance') !== false) {
+            $role = 'COMPLIANCE';
+        } elseif (stripos($desig, 'digital marketing') !== false || stripos($desig, 'seo') !== false) {
+            $role = 'DIGITAL_MARKETING';
+        } elseif ((stripos($desig, 'team lead') !== false || stripos($desig, 'team leader') !== false) && $role === 'EMPLOYEE') {
+            $role = 'TEAM_LEAD';
+        }
 
         $mgrId = trim($input['manager_id'] ?? '');
         $mgrName = trim($input['manager'] ?? '');

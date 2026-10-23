@@ -1,11 +1,3 @@
-/**
- * DIALLO HRMS — MASTER HR POLICIES & COMPLIANCE VIEW
- * Core suite featuring:
- * 1. Master HR Policies & Rules (Company Timings, Shift Rules, 25 Compliance Requirements)
- * 2. Deductions List (UL, Sandwich Leave, Late Marks, Break Deductions explained simply)
- * 3. Employee Grievance Helpdesk & Resolution
- * Strictly 0 emojis. Uses simple, polished English throughout.
- */
 
 const ComplianceView = {
   activeTab: 'policies',

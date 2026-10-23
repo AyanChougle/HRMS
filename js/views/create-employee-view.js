@@ -1,8 +1,4 @@
-/**
- * DIALLO HRMS — CREATE EMPLOYEE LOGIN & ONBOARDING VIEW
- * Accessible to Super Admin, HR Managers, and Training Mentors.
- * Provisions real accounts into Firebase Auth & Firestore using a non-disruptive secondary app instance.
- */
+
 
 const CreateEmployeeView = {
   async render() {

@@ -1,22 +1,64 @@
-/**
- * DIALLO HRMS — AUTHENTICATION SERVICE (FIREBASE BACKED)
- * Firebase Auth wrapper for sign-in, registration, password recovery and session management
- */
 
 const authService = {
-  // Email & Password Sign In (Hybrid: Firebase Auth with MySQL Failover)
+  // Email & Password Sign In (Hostinger MySQL Primary with Firebase Auth Fallback)
   async signIn(email, password) {
     const cleanEmail = (email || '').toLowerCase().trim();
+
+    // 1. Primary Authentication: Hostinger MySQL Backend (auth.php?action=login)
+    try {
+      if (typeof apiClient !== 'undefined' && apiClient.post) {
+        const mySqlResp = await apiClient.post('auth.php?action=login', { email: cleanEmail, password });
+        if (mySqlResp && mySqlResp.success && mySqlResp.user) {
+          const mUser = mySqlResp.user;
+          const sessionPayload = {
+            uid: mUser.uid || `mysql_${mUser.id}`,
+            id: mUser.id,
+            email: cleanEmail,
+            displayName: mUser.display_name || cleanEmail.split('@')[0],
+            roleId: mUser.role_id || 'EMPLOYEE',
+            role: mUser.role_id || 'EMPLOYEE',
+            employeeCode: mUser.employee_code || '',
+            department: mUser.department || 'Operations',
+            designation: mUser.designation || 'Staff',
+            companyId: mUser.company_id || 'comp_diallo_india',
+            companyName: mUser.company_name || 'Diallo India Private Limited',
+            branchName: mUser.branch_name || 'Ghansoli - Navi Mumbai',
+            status: mUser.status || 'ACTIVE'
+          };
+          sessionStorage.setItem('dh_user_session', JSON.stringify(sessionPayload));
+          localStorage.setItem('dh_user_session', JSON.stringify(sessionPayload));
+
+          if (window.AuthGuard) {
+            AuthGuard.currentUser = {
+              uid: sessionPayload.uid,
+              email: sessionPayload.email,
+              displayName: sessionPayload.displayName,
+              getIdToken: async () => 'mysql-session-token'
+            };
+            AuthGuard.userProfile = sessionPayload;
+          }
+
+          if (typeof auditService !== 'undefined' && auditService.log) {
+            auditService.log('USER_LOGIN', 'AUTH', 'users', sessionPayload.uid, { email: cleanEmail, method: 'MYSQL' }).catch(() => {});
+          }
+
+          return { success: true, user: sessionPayload };
+        }
+      }
+    } catch (mysqlErr) {
+      console.warn('Hostinger MySQL primary auth notice, attempting fallback:', mysqlErr.message || mysqlErr);
+    }
+
     let firebaseUser = null;
     let fbErr = null;
 
-    // 1. Attempt Primary Authentication via Firebase Auth
+    // 2. Secondary: Fallback to Firebase Auth
     try {
       const userCredential = await auth.signInWithEmailAndPassword(cleanEmail, password);
       firebaseUser = userCredential.user;
     } catch (err) {
       fbErr = err;
-      console.warn('Firebase Auth signIn failed, attempting Hostinger MySQL fallback:', err.code || err.message);
+      console.warn('Firebase Auth signIn failed:', err.code || err.message);
     }
 
     // If Firebase succeeded, sync profile & clean up any fallback session
@@ -102,19 +144,29 @@ const authService = {
           const desigLower = (mUser.designation || '').toLowerCase().trim();
           if (cleanEmail === 'ayan@tradeforwealth.co.in' || cleanEmail === 'ayanislight@gmail.com') {
             resolvedRole = 'SUPER_ADMIN';
-          } else if (resolvedRole === 'EMPLOYEE' || !resolvedRole) {
-            if (desigLower.includes('operations manager') || desigLower.includes('ops manager')) {
+          } else if (window.AuthGuard && typeof AuthGuard.resolveCanonicalRole === 'function') {
+            resolvedRole = AuthGuard.resolveCanonicalRole(resolvedRole, desigLower, cleanEmail);
+          } else {
+            if (desigLower.includes('operations manager') || desigLower.includes('ops manager') || desigLower === 'ops') {
               resolvedRole = 'OPERATIONS_MANAGER';
-            } else if (desigLower.includes('team lead') || desigLower.includes('team leader') || desigLower.includes('assistant team leader')) {
+            } else if (desigLower.includes('compliance')) {
+              resolvedRole = 'COMPLIANCE';
+            } else if (desigLower.includes('process owner')) {
+              resolvedRole = 'PROCESS_OWNER';
+            } else if (desigLower.includes('digital marketing') || desigLower.includes('digital') || desigLower.includes('seo')) {
+              resolvedRole = 'DIGITAL_MARKETING';
+            } else if (desigLower.includes('team lead') || desigLower.includes('team leader') || desigLower.includes('assistant team leader') || desigLower.includes('atl')) {
               resolvedRole = 'TEAM_LEAD';
-            } else if (desigLower.includes('hr lead') || desigLower.includes('human resources') || desigLower.includes('recruiter')) {
+            } else if (desigLower.includes('human resources') || desigLower.includes('hr lead') || desigLower.includes('hr manager') || desigLower.includes('recruiter') || desigLower === 'hr') {
               resolvedRole = 'HR_MANAGER';
-            } else if (desigLower.includes('process owner') || desigLower.includes('manager')) {
+            } else if (desigLower.includes('relationship manager') || desigLower.includes('rm')) {
+              resolvedRole = 'RELATIONSHIP_MANAGER';
+            } else if (desigLower.includes('manager')) {
               resolvedRole = 'MANAGER';
             } else if (desigLower.includes('trainer') || desigLower.includes('mentor')) {
               resolvedRole = 'MENTOR_TRAINER';
-            } else if (desigLower.includes('relationship manager')) {
-              resolvedRole = 'RELATIONSHIP_MANAGER';
+            } else if (desigLower.includes('trainee') || desigLower.includes('intern')) {
+              resolvedRole = 'TRAINEE';
             }
           }
 
@@ -161,7 +213,7 @@ const authService = {
     let message = 'Failed to sign in. Please verify your email and password.';
     if (fbErr) {
       if (fbErr.code === 'auth/user-not-found' || fbErr.code === 'auth/wrong-password' || fbErr.code === 'auth/invalid-credential' || fbErr.code === 'auth/invalid-login-credentials') {
-        message = 'Invalid email or password. For first-time user login, please use default password Diallo@2026 or Diallo@123, or contact HR.';
+        message = 'Invalid email or password. Please verify your credentials or contact HR administrator.';
       } else if (fbErr.code === 'auth/too-many-requests') {
         message = 'Access temporarily disabled due to many failed login attempts. Please try again later.';
       } else if (fbErr.code === 'auth/user-disabled') {

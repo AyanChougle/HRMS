@@ -1,8 +1,3 @@
-/**
- * DIALLO HRMS — COMPREHENSIVE ENTERPRISE REPORTS CATALOG & STUDIO
- * Complete 20-Report Catalog matching RadeNext system, live drill-down analytics,
- * dynamic search & filter pills, bookmarks, Excel export, and statutory generation.
- */
 
 const ReportsView = {
   activeView: 'catalog', // 'catalog' or reportId (e.g. 'employee-master', 'daily-attendance', etc.)
@@ -316,7 +311,12 @@ const ReportsView = {
   // 2. INTERACTIVE REPORT STUDIO DRILL-DOWN VIEW
   async renderReportStudio(reportId) {
     const report = this.REPORTS.find(r => r.id === reportId) || this.REPORTS[0];
-    const employees = await employeeService.getEmployees({});
+    let employees = await employeeService.getEmployees({});
+    const role = (AuthGuard._previewRoleId || AuthGuard.userProfile?.roleId || 'EMPLOYEE').toString().toUpperCase().trim();
+    const isSuperAdminOrHR = ['SUPER_ADMIN', 'COMPANY_ADMIN', 'ADMIN', 'HR_MANAGER', 'HR'].includes(role);
+    if (!isSuperAdminOrHR) {
+      employees = await employeeService.getSubordinates(AuthGuard.userProfile, employees, { directOnly: false, forceScoped: true });
+    }
     
     // Generate realistic data rows based on report type
     const dataRows = this.generateReportData(report.id, employees);
@@ -506,7 +506,6 @@ const ReportsView = {
       'Department': e.department,
       'Designation': e.designation,
       'Location': e.location,
-      'Monthly CTC': e.salary || '₹65,000',
       'Status': 'ACTIVE',
       'PAN': 'ABCDE1234F',
       'Bank': 'HDFC Bank (••••4892)'

@@ -1,8 +1,3 @@
-/**
- * DIALLO HRMS — CENTRAL HOSTINGER REST API CLIENT
- * Handles all dynamic communication with Hostinger MySQL backend endpoints.
- * Automatically falls back to offline/local mode if network unavailable.
- */
 
 const apiClient = {
   // Production Hostinger API Base URL

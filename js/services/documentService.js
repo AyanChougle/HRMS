@@ -1,7 +1,3 @@
-/**
- * DIALLO HRMS — DOCUMENT MANAGEMENT SERVICE (PHASE 11)
- * Manages Employee Dossiers, Document Verification, Versioning, Expiry Tracking, and Request Workflows
- */
 
 const documentService = {
   // Document Categories

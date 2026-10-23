@@ -1,7 +1,3 @@
-/**
- * DIALLO HRMS — LIGHTWEIGHT VANILLA SVG CHARTS
- * Handles data visualization with graceful empty states when no records exist.
- */
 
 const Charts = {
   // Renders a smooth trend line chart

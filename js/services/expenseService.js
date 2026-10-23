@@ -1,7 +1,3 @@
-/**
- * DIALLO HRMS — EXPENSE & REIMBURSEMENT SERVICE (PHASE 10)
- * Manages Employee Expense Claims, Receipts, Policy Limits, Multi-Level Approvals, and Settlements
- */
 
 const expenseService = {
   // Default Expense Categories

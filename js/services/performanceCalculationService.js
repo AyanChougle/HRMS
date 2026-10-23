@@ -1,7 +1,3 @@
-/**
- * DIALLO HRMS — PERFORMANCE CALCULATION & SCORING SERVICE (PHASE 8)
- * Central mathematical engine for weighted Goal achievements, Competency evaluations, and Overall Ratings
- */
 
 const performanceCalculationService = {
   // Standard 5-Point Rating Scale Definitions

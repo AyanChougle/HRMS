@@ -1,7 +1,3 @@
-/**
- * DIALLO HRMS — EMPLOYEE TIMELINE & HISTORY SERVICE (PHASE 4)
- * Tracks career milestones, department transfers, promotions, status changes, and manager updates
- */
 
 const historyService = {
   // Record a career or employment event

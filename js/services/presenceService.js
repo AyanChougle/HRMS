@@ -1,8 +1,4 @@
 
-/**
- * HRMS Live Presence v3
- * Browser presence only. The desktop agent owns system presence.
- */
 const presenceService = {
   heartbeatTimer: null,
   staleAfterMs: 90000,

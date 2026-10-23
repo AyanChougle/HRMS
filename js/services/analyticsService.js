@@ -1,7 +1,3 @@
-/**
- * DIALLO HRMS — CROSS-MODULE ANALYTICS SERVICE (PHASE 12)
- * Calculates real-time executive KPIs, period-over-period comparisons, and department distributions
- */
 
 const analyticsService = {
   // 1. GET FULL EXECUTIVE DASHBOARD METRICS

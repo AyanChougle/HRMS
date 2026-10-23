@@ -1,7 +1,3 @@
-/**
- * DIALLO HRMS — PERFORMANCE & APPRAISAL MODULE (PHASE 8)
- * OKRs & Goals, Multi-Tier Reviews (Self/Manager/HR), 1-on-1s, Development Plans, PIPs, and Appraisal Handoff
- */
 
 const PerformanceView = {
   activeTab: 'goals',
@@ -607,8 +603,7 @@ const PerformanceView = {
 
   // 3. TEAM PERFORMANCE TAB (MANAGER PORTAL)
   async renderTeamTab() {
-    const managerId = AuthGuard.userProfile?.employeeId || AuthGuard.currentUser?.uid;
-    const team = await employeeService.getEmployees({ managerId });
+    const team = await employeeService.getSubordinates(AuthGuard.userProfile, null, { directOnly: false, forceScoped: true });
 
     return `
       <div class="card">

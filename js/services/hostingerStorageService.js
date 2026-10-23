@@ -1,12 +1,3 @@
-/**
- * DIALLO HRMS — HOSTINGER PRODUCTION FILE STORAGE SERVICE (PHASE 20)
- * Official and ONLY File Storage Engine for Diallo HRMS.
- * (Firebase Storage is NOT used).
- * 
- * Storage Domain: https://storage.diallo.com
- * Manages secure file uploads, controlled downloads, MIME validation,
- * safe filename generation, and Firestore metadata registration.
- */
 
 const hostingerStorageService = {
   // Production Hostinger Storage Configuration

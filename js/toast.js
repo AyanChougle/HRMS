@@ -1,7 +1,3 @@
-/**
- * DIALLO HRMS — TOAST NOTIFICATION SYSTEM
- * Reusable toast alerts (Success, Warning, Danger, Info)
- */
 
 const Toast = {
   container: null,

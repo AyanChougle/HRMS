@@ -1,9 +1,3 @@
-/**
- * DIALLO HRMS — ORGANIZATION & COMPANY ADMINISTRATION SERVICE (PHASE 15)
- * Centralized Enterprise Master managing Company Profiles, Multi-Company Isolation,
- * Branches, Departments, Designations, Shifts, Holidays, Leave Types, Policies,
- * Work Locations, and Organization Change History.
- */
 
 const organizationService = {
   DEFAULT_COMPANY_ID: 'comp_diallo_india',

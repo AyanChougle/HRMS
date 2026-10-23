@@ -1,7 +1,3 @@
-/**
- * DIALLO HRMS — ASSET MANAGEMENT & HARDWARE LIFECYCLE VIEW (PHASE 10)
- * Manages Company Hardware Inventory, Custodian Checkouts, Returns, Maintenance, and Exit Clearances
- */
 
 const AssetsView = {
   activeTab: 'register', // 'register', 'assignments', 'maintenance', 'returns', 'vendors'
@@ -639,7 +635,12 @@ const AssetsView = {
 
   // MODAL 2: ASSIGN ASSET TO EMPLOYEE
   async openAssignModal(assetId, assetTag, assetName) {
-    const employees = await employeeService.getEmployees({});
+    let employees = await employeeService.getEmployees({});
+    const role = (AuthGuard._previewRoleId || AuthGuard.userProfile?.roleId || 'EMPLOYEE').toString().toUpperCase().trim();
+    const isSuperAdminOrHR = ['SUPER_ADMIN', 'COMPANY_ADMIN', 'ADMIN', 'HR_MANAGER', 'HR'].includes(role);
+    if (!isSuperAdminOrHR) {
+      employees = await employeeService.getSubordinates(AuthGuard.userProfile, employees, { directOnly: false, forceScoped: true });
+    }
 
     ModalManager.openModal({
       id: 'assign-asset-modal',

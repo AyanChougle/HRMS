@@ -1,7 +1,3 @@
-/**
- * DIALLO HRMS — REUSABLE TABLE ENGINE
- * Manages search, filtering, sorting, pagination, and bulk/row actions.
- */
 
 class DataTable {
   constructor(config) {

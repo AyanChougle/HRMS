@@ -1,7 +1,3 @@
-/**
- * DIALLO HRMS — APPROVALS & WORKFLOW EXECUTION SERVICE (PHASE 14)
- * Unified Approval Inbox, Decision Action Handlers, Resubmissions, Delegations, and Audit Logging
- */
 
 const approvalService = {
   // 1. GET PENDING APPROVALS FOR LOGGED IN ACTOR / ROLE

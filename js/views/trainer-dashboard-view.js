@@ -1,9 +1,3 @@
-/**
- * DIALLO HRMS — CORPORATE TRAINER DASHBOARD VIEW
- * Specialized command hub for instructional leads, mentors, and batch facilitators
- * Provides cohort progression metrics, assigned trainee roster, batch milestones,
- * and personal shift timecard.
- */
 
 const TrainerDashboardView = {
   async render() {
