@@ -1176,7 +1176,7 @@ const ESSView = {
     this.shiftDate = today;
 
     if (!todayRecord || !todayRecord.checkIn) {
-      // Fresh shift day - no check-in exists in Firestore
+      // Fresh shift day - no check-in exists
       this.isPunchedIn = false;
       this.isOnBreak = false;
       this.isShiftCompletedToday = false;
@@ -1189,7 +1189,7 @@ const ESSView = {
       this.stopTimer();
       this.stopBreakTimer();
     } else if (todayRecord.checkOut) {
-      // Shift already completed and checked out in Firestore
+      // Shift already completed and checked out
       this.isPunchedIn = false;
       this.isOnBreak = false;
       this.isShiftCompletedToday = true;
@@ -1205,39 +1205,73 @@ const ESSView = {
     } else {
       // Currently checked in and shift is active
       this.isPunchedIn = true;
-      this.isOnBreak =
-        todayRecord.status === "ON_BREAK" || !!todayRecord.isOnBreak;
       this.isShiftCompletedToday = false;
+
+      // Determine true break state
+      let resolvedOnBreak = Boolean(
+        (todayRecord.isOnBreak === true || todayRecord.is_on_break == 1) &&
+        todayRecord.status === "ON_BREAK"
+      );
+
+      // If lastBreakEndIso is equal to or after lastBreakStartIso, break is ended
+      if (todayRecord.lastBreakEndIso && todayRecord.lastBreakStartIso) {
+        try {
+          const endT = new Date(todayRecord.lastBreakEndIso).getTime();
+          const startT = new Date(todayRecord.lastBreakStartIso).getTime();
+          if (endT >= startT) {
+            resolvedOnBreak = false;
+          }
+        } catch (_) {}
+      } else if (todayRecord.lastBreakEndIso && !todayRecord.lastBreakStartIso) {
+        resolvedOnBreak = false;
+      }
+
+      // Check local persisted state for today
+      try {
+        const rawLocal = localStorage.getItem("diallo_timecard_state");
+        if (rawLocal) {
+          const localState = JSON.parse(rawLocal);
+          if (localState.shiftDate === today && localState.isOnBreak === false) {
+            resolvedOnBreak = false;
+          }
+        }
+      } catch (_) {}
+
+      this.isOnBreak = resolvedOnBreak;
       this.totalBreakSeconds =
         todayRecord.totalBreakSeconds !== undefined &&
         todayRecord.totalBreakSeconds !== null
           ? Number(todayRecord.totalBreakSeconds)
           : (todayRecord.totalBreakMinutes || 0) * 60;
 
-      if (todayRecord.currentCheckInDateIso || todayRecord.checkInDateIso) {
+      if (todayRecord.currentCheckInDateIso || todayRecord.checkInDateIso || todayRecord.checkInIso) {
         const inDate = new Date(
-          todayRecord.currentCheckInDateIso || todayRecord.checkInDateIso,
+          todayRecord.currentCheckInDateIso || todayRecord.checkInDateIso || todayRecord.checkInIso,
         );
-        this.punchInTimestamp = inDate.getTime();
-        const now = Date.now();
-        const totalElapsed = Math.floor((now - this.punchInTimestamp) / 1000);
-        this.workSeconds = Math.max(0, (totalElapsed || 0) - (this.totalBreakSeconds || 0));
-      } else if (todayRecord.checkIn && typeof todayRecord.checkIn === 'string') {
-        const match = todayRecord.checkIn.match(/(\d+):(\d+)\s*(AM|PM)/i);
+        if (!isNaN(inDate.getTime())) {
+          this.punchInTimestamp = inDate.getTime();
+        }
+      }
+      
+      if (!this.punchInTimestamp && todayRecord.checkIn && typeof todayRecord.checkIn === 'string') {
+        const match = todayRecord.checkIn.match(/(\d+):(\d+)(?::(\d+))?\s*(AM|PM)?/i);
         if (match) {
           let h = parseInt(match[1], 10);
           const m = parseInt(match[2], 10);
-          const ampm = match[3].toUpperCase();
+          const ampm = match[4] ? match[4].toUpperCase() : null;
           if (ampm === 'PM' && h < 12) h += 12;
           if (ampm === 'AM' && h === 12) h = 0;
           
           const inDate = new Date();
           inDate.setHours(h, m, 0, 0);
           this.punchInTimestamp = inDate.getTime();
-          const now = Date.now();
-          const totalElapsed = Math.floor((now - this.punchInTimestamp) / 1000);
-          this.workSeconds = Math.max(0, totalElapsed - this.totalBreakSeconds);
         }
+      }
+
+      if (this.punchInTimestamp) {
+        const now = Date.now();
+        const totalElapsed = Math.floor((now - this.punchInTimestamp) / 1000);
+        this.workSeconds = Math.max(0, totalElapsed - this.totalBreakSeconds);
       }
 
       if (this.isOnBreak) {
@@ -1245,13 +1279,18 @@ const ESSView = {
           this.breakStartTimestamp = new Date(
             todayRecord.lastBreakStartIso,
           ).getTime();
-          this.breakSeconds = Math.max(
-            0,
-            Math.floor((Date.now() - this.breakStartTimestamp) / 1000),
-          );
+          const rawElapsed = Math.floor((Date.now() - this.breakStartTimestamp) / 1000);
+          this.breakSeconds = Math.min(7200, Math.max(0, rawElapsed));
+        } else if (!this.breakStartTimestamp) {
+          this.breakStartTimestamp = Date.now();
+          this.breakSeconds = 0;
         }
         this.startBreakTimer();
+        this.stopTimer();
       } else {
+        this.breakSeconds = 0;
+        this.breakStartTimestamp = null;
+        this.stopBreakTimer();
         this.startTimer();
       }
     }
@@ -2093,6 +2132,7 @@ const ESSView = {
       this.breakStartTimestamp = null;
 
       this.stopBreakTimer();
+      this.startTimer();
       this.savePersistedState();
       this.updateTimecardUI();
 

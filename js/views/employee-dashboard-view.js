@@ -3,9 +3,13 @@ const EmployeeDashboardView = {
   async render() {
     const employeeId =
       AuthGuard.userProfile?.employeeId || AuthGuard.currentUser?.uid;
+    const myEmpCode = AuthGuard.userProfile?.employeeCode || '';
     if (typeof ESSView !== "undefined") {
       try {
-        const todayRecord = await attendanceService.getTodayRecord(employeeId);
+        let todayRecord = await attendanceService.getTodayRecord(employeeId);
+        if (!todayRecord && myEmpCode) {
+          todayRecord = await attendanceService.getTodayRecord(myEmpCode);
+        }
         await ESSView.syncWithFirestore(todayRecord);
       } catch (e) {
         console.warn("Dashboard ESSView sync warning:", e);

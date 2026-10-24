@@ -10,50 +10,39 @@ const AuthGuard = {
   permissions: new Set(),
   isInitialized: false,
 
-  // Canonical Role Resolver (infers management/leadership roles from designation if defaulted to EMPLOYEE)
+  // Canonical 7-Role Resolver: Maps any legacy role string to one of the 7 canonical roles.
+  // Designation and Department are NEVER used to infer or elevate permissions.
   resolveCanonicalRole(roleId, designation, email) {
-    const cleanEmail = (email || '').toLowerCase().trim();
-    if (cleanEmail === 'ayan@tradeforwealth.co.in' || cleanEmail === 'ayanislight@gmail.com') return 'SUPER_ADMIN';
-
     const cleanRole = (roleId || '').toString().toUpperCase().trim();
-    if (['SUPER_ADMIN', 'COMPANY_ADMIN', 'ADMIN'].includes(cleanRole)) return cleanRole;
-    if (['OPERATIONS_MANAGER', 'MANAGER', 'TEAM_LEAD', 'HR_MANAGER', 'RELATIONSHIP_MANAGER', 'MENTOR_TRAINER', 'TRAINEE', 'COMPLIANCE', 'PROCESS_OWNER', 'DIGITAL_MARKETING'].includes(cleanRole)) {
-      return cleanRole;
-    }
+    if (['ADMIN', 'SUPER_ADMIN', 'COMPANY_ADMIN'].includes(cleanRole)) return 'ADMIN';
+    if (['HR', 'HR_MANAGER'].includes(cleanRole)) return 'HR';
+    if (['OPS', 'OPERATIONS_MANAGER', 'PROCESS_OWNER'].includes(cleanRole)) return 'OPS';
+    if (cleanRole === 'COMPLIANCE') return 'COMPLIANCE';
+    if (cleanRole === 'MANAGER') return 'MANAGER';
+    if (['TL', 'TEAM_LEAD'].includes(cleanRole)) return 'TL';
 
-    const desig = (designation || '').toString().toLowerCase().trim();
-    if (desig.includes('operations manager') || desig.includes('ops manager') || desig === 'ops') return 'OPERATIONS_MANAGER';
-    if (desig.includes('compliance')) return 'COMPLIANCE';
-    if (desig.includes('process owner')) return 'PROCESS_OWNER';
-    if (desig.includes('digital marketing') || desig.includes('digital') || desig.includes('seo') || desig.includes('social media')) return 'DIGITAL_MARKETING';
-    if (desig.includes('team lead') || desig.includes('team leader') || desig.includes('assistant team leader') || desig.includes('atl') || desig.includes('tl')) return 'TEAM_LEAD';
-    if (desig.includes('human resources') || desig.includes('hr lead') || desig.includes('hr manager') || desig.includes('recruiter') || desig === 'hr' || desig === 'hrs') return 'HR_MANAGER';
-    if (desig.includes('relationship manager') || desig.includes('rm')) return 'RELATIONSHIP_MANAGER';
-    if (desig.includes('general manager') || desig.includes('branch manager') || desig.includes('manager')) return 'MANAGER';
-    if (desig.includes('trainer') || desig.includes('mentor')) return 'MENTOR_TRAINER';
-    if (desig.includes('trainee') || desig.includes('intern')) return 'TRAINEE';
-
-    return cleanRole || 'EMPLOYEE';
+    // All employee designations (Relationship Manager, Digital Marketing, Sales Executive, Trainee, etc.) are strictly EMPLOYEE
+    return 'EMPLOYEE';
   },
 
   getRoleLabel(roleId) {
+    const r = (roleId || '').toString().toUpperCase().trim();
     const map = {
-      SUPER_ADMIN: 'Super Admin',
-      COMPANY_ADMIN: 'Company Admin',
-      ADMIN: 'Administrator',
-      HR_MANAGER: 'HR Manager (HRS)',
-      OPERATIONS_MANAGER: 'Operations Manager (OPS)',
+      ADMIN: 'Admin',
+      SUPER_ADMIN: 'Admin',
+      COMPANY_ADMIN: 'Admin',
+      HR: 'HR',
+      HR_MANAGER: 'HR',
+      OPS: 'OPS',
+      OPERATIONS_MANAGER: 'OPS',
+      PROCESS_OWNER: 'OPS',
+      COMPLIANCE: 'Compliance',
       MANAGER: 'Manager',
-      PROCESS_OWNER: 'Process Owner',
-      COMPLIANCE: 'Compliance Officer',
-      DIGITAL_MARKETING: 'Digital Marketing',
-      TEAM_LEAD: 'Team Leader',
-      RELATIONSHIP_MANAGER: 'Relationship Manager',
-      MENTOR_TRAINER: 'Mentor / Trainer',
-      TRAINEE: 'Trainee',
+      TL: 'TL',
+      TEAM_LEAD: 'TL',
       EMPLOYEE: 'Employee'
     };
-    return map[roleId] || roleId || 'Employee';
+    return map[r] || 'Employee';
   },
 
   // Initialize Auth Guard on page load
@@ -294,7 +283,8 @@ const AuthGuard = {
     const desig = mysqlData?.designation || employeeDocData?.designation || this.userProfile.designation || '';
     const dept = mysqlData?.department || employeeDocData?.department || this.userProfile.department || 'Operations';
     const empCode = mysqlData?.employee_code || employeeDocData?.employeeCode || this.userProfile.employeeCode || '';
-    const empId = employeeDocData?.id || mysqlData?.id || this.userProfile.employeeId || uid;
+    const resolvedUid = mysqlData?.uid || this.currentUser?.uid || uid;
+    const empId = employeeDocData?.id || (mysqlData?.uid ? mysqlData.uid : (typeof mysqlData?.id === 'string' && !/^\d+$/.test(mysqlData.id) ? mysqlData.id : (this.userProfile.employeeId || resolvedUid)));
     const dispName = mysqlData?.display_name || mysqlData?.full_name || employeeDocData?.fullName || this.userProfile.displayName || this.currentUser?.displayName;
 
     this.userProfile.designation = desig;
@@ -552,74 +542,51 @@ const AuthGuard = {
     if (!this.userProfile) return;
 
     if (!this._actualRoleId) {
-      this._actualRoleId = (this.userProfile.roleId || 'EMPLOYEE').toString().toUpperCase().trim();
+      this._actualRoleId = this.resolveCanonicalRole(this.userProfile.roleId, this.userProfile.designation, this.userProfile.email);
     }
     const isMasterAdmin = this.currentUser?.email === 'ayanislight@gmail.com';
-    const canPreview = isMasterAdmin || this._actualRoleId === 'SUPER_ADMIN' || (this.userProfile?.roleId || '').toString().toUpperCase() === 'SUPER_ADMIN';
+    const canPreview = isMasterAdmin || this._actualRoleId === 'ADMIN' || this._actualRoleId === 'SUPER_ADMIN';
     if (!canPreview) {
       if (typeof Toast !== 'undefined') {
-        Toast.error('Only the Super Administrator can preview different role views.');
+        Toast.error('Only the Administrator can preview different role views.');
       }
       return;
     }
 
-    // In-memory only — intentionally NOT written to Firestore or the auth token's custom
-    // claims, so it can never grant real elevated access; it only changes what this tab
-    // renders/gates via hasPermission() for the remainder of the session.
-    this._previewRoleId = roleId;
-    const normalizedRole = (roleId || 'EMPLOYEE').toString().toUpperCase().trim();
-    this.userProfile.roleId = normalizedRole;
+    // In-memory only preview
+    const canonical = this.resolveCanonicalRole(roleId);
+    this._previewRoleId = canonical;
+    this.userProfile.roleId = canonical;
 
     const headerSwitcher = document.getElementById('header-role-switcher');
-    if (headerSwitcher) headerSwitcher.value = normalizedRole;
+    if (headerSwitcher) headerSwitcher.value = canonical;
     const popoverSwitcher = document.getElementById('popover-role-switcher');
-    if (popoverSwitcher) popoverSwitcher.value = normalizedRole;
+    if (popoverSwitcher) popoverSwitcher.value = canonical;
 
-    if (normalizedRole === 'SUPER_ADMIN') {
+    if (canonical === 'ADMIN') {
       this.permissions = new Set(['*']);
-      this.userRole = { name: 'Super Admin', id: 'SUPER_ADMIN' };
-    } else if (normalizedRole === 'COMPANY_ADMIN' || normalizedRole === 'ADMIN') {
-      this.permissions = new Set(['*']);
-      this.userRole = { name: 'Company Admin', id: 'COMPANY_ADMIN' };
-    } else if (normalizedRole === 'HR' || normalizedRole === 'HR_MANAGER') {
+      this.userRole = { name: 'Admin', id: 'ADMIN' };
+    } else if (canonical === 'HR') {
       this.permissions = window.PermissionService ? PermissionService.getUserPermissions({ roleId: 'HR' }) : new Set(['*']);
-      this.userRole = { name: 'HR Manager', id: 'HR_MANAGER' };
-    } else if (normalizedRole === 'MANAGER') {
-      this.permissions = window.PermissionService ? PermissionService.getUserPermissions({ roleId: 'MANAGER' }) : new Set(['team.*', 'performance.view', 'attendance.view', 'leave.view', 'ess.view']);
-      this.userRole = { name: 'Manager', id: 'MANAGER' };
-    } else if (normalizedRole === 'TEAM_LEAD' || normalizedRole === 'TL') {
-      this.permissions = window.PermissionService ? PermissionService.getUserPermissions({ roleId: 'TEAM_LEAD' }) : new Set(['people.view', 'team.view', 'performance.view', 'attendance.view', 'leave.view', 'ess.view']);
-      this.userRole = { name: 'Team Leader', id: 'TEAM_LEAD' };
-    } else if (normalizedRole === 'RELATIONSHIP_MANAGER' || normalizedRole === 'RM') {
-      this.permissions = window.PermissionService ? PermissionService.getUserPermissions({ roleId: 'RELATIONSHIP_MANAGER' }) : new Set(['attendance.view', 'attendance.punch', 'leave.view', 'leave.create', 'performance.view', 'expenses.view', 'ess.view', 'communication.view', 'requests.view', 'own.profile']);
-      this.userRole = { name: 'Relationship Manager', id: 'RELATIONSHIP_MANAGER' };
-    } else if (normalizedRole === 'MENTOR_TRAINER') {
-      this.permissions = window.PermissionService ? PermissionService.getUserPermissions({ roleId: 'MENTOR_TRAINER' }) : new Set(['training.*', 'performance.view', 'attendance.punch', 'attendance.view', 'leave.view', 'leave.create', 'own.profile']);
-      this.userRole = { name: 'Mentor / Trainer', id: 'MENTOR_TRAINER' };
-    } else if (normalizedRole === 'OPERATIONS_MANAGER') {
-      this.permissions = window.PermissionService ? PermissionService.getUserPermissions({ roleId: 'OPERATIONS_MANAGER' }) : new Set(['people.view', 'team.view', 'performance.view', 'attendance.view', 'leave.view', 'ess.view', 'approvals.view', 'approvals.approve']);
-      this.userRole = { name: 'Operations Manager (OPS)', id: 'OPERATIONS_MANAGER' };
-    } else if (normalizedRole === 'PROCESS_OWNER') {
-      this.permissions = window.PermissionService ? PermissionService.getUserPermissions({ roleId: 'PROCESS_OWNER' }) : new Set(['people.view', 'team.view', 'performance.view', 'attendance.view', 'leave.view', 'ess.view', 'approvals.view', 'approvals.approve']);
-      this.userRole = { name: 'Process Owner', id: 'PROCESS_OWNER' };
-    } else if (normalizedRole === 'COMPLIANCE') {
+      this.userRole = { name: 'HR', id: 'HR' };
+    } else if (canonical === 'OPS') {
+      this.permissions = window.PermissionService ? PermissionService.getUserPermissions({ roleId: 'OPS' }) : new Set(['people.view', 'team.*', 'attendance.view', 'leave.view', 'performance.view', 'compliance.view', 'ess.view', 'approvals.view', 'approvals.approve']);
+      this.userRole = { name: 'OPS', id: 'OPS' };
+    } else if (canonical === 'COMPLIANCE') {
       this.permissions = window.PermissionService ? PermissionService.getUserPermissions({ roleId: 'COMPLIANCE' }) : new Set(['compliance.*', 'documents.view', 'reports.view', 'attendance.view', 'leave.view', 'ess.view']);
-      this.userRole = { name: 'Compliance Officer', id: 'COMPLIANCE' };
-    } else if (normalizedRole === 'DIGITAL_MARKETING') {
-      this.permissions = window.PermissionService ? PermissionService.getUserPermissions({ roleId: 'DIGITAL_MARKETING' }) : new Set(['performance.view', 'assets.view', 'documents.view', 'attendance.view', 'leave.view', 'ess.view']);
-      this.userRole = { name: 'Digital Marketing', id: 'DIGITAL_MARKETING' };
-    } else if (normalizedRole === 'MANAGER') {
-      this.permissions = window.PermissionService ? PermissionService.getUserPermissions({ roleId: 'MANAGER' }) : new Set(['people.view', 'team.view', 'performance.view', 'attendance.view', 'leave.view', 'ess.view', 'approvals.view', 'approvals.approve']);
+      this.userRole = { name: 'Compliance', id: 'COMPLIANCE' };
+    } else if (canonical === 'MANAGER') {
+      this.permissions = window.PermissionService ? PermissionService.getUserPermissions({ roleId: 'MANAGER' }) : new Set(['people.view', 'team.*', 'performance.view', 'attendance.view', 'leave.view', 'ess.view', 'approvals.view', 'approvals.approve']);
       this.userRole = { name: 'Manager', id: 'MANAGER' };
-    } else if (normalizedRole === 'TRAINEE') {
-      this.permissions = window.PermissionService ? PermissionService.getUserPermissions({ roleId: 'TRAINEE' }) : new Set(['training.view', 'training.submit', 'attendance.punch', 'attendance.view', 'leave.view', 'leave.create', 'own.profile']);
-      this.userRole = { name: 'Trainee', id: 'TRAINEE' };
+    } else if (canonical === 'TL') {
+      this.permissions = window.PermissionService ? PermissionService.getUserPermissions({ roleId: 'TL' }) : new Set(['people.view', 'team.view', 'performance.view', 'attendance.view', 'leave.view', 'ess.view']);
+      this.userRole = { name: 'TL', id: 'TL' };
     } else {
       this.userRole = { name: 'Employee', id: 'EMPLOYEE' };
       this.permissions = window.PermissionService ? PermissionService.getUserPermissions({ roleId: 'EMPLOYEE' }) : new Set([
         'own.profile', 'attendance.view', 'attendance.punch', 'leave.view', 'leave.create',
         'performance.view', 'expenses.view', 'expenses.create', 'assets.view',
-        'documents.view', 'requests.view', 'requests.create', 'communication.view', 'reports.view', 'training.view'
+        'documents.view', 'requests.view', 'requests.create', 'communication.view', 'reports.view'
       ]);
     }
 
@@ -685,18 +652,18 @@ const AuthGuard = {
       // Hide or show admin-only actions in the profile popover
       const rawRole = (this.userProfile.roleId || 'EMPLOYEE').toString().toUpperCase().trim();
       const actualRole = (this._actualRoleId || rawRole).toString().toUpperCase().trim();
-      const isSuperAdmin = actualRole === 'SUPER_ADMIN';
       const isMasterAdmin = this.currentUser?.email === 'ayanislight@gmail.com';
+      const isSuperAdmin = actualRole === 'ADMIN' || actualRole === 'SUPER_ADMIN' || isMasterAdmin;
       const canSwitchRoles = isSuperAdmin;
 
       const permItem = document.getElementById('dropdown-permissions-item');
       if (permItem) {
-        permItem.style.display = (rawRole === 'SUPER_ADMIN') ? 'flex' : 'none';
+        permItem.style.display = (rawRole === 'ADMIN' || rawRole === 'SUPER_ADMIN') ? 'flex' : 'none';
       }
 
       const settingsItem = document.getElementById('dropdown-settings-item');
       if (settingsItem) {
-        settingsItem.style.display = (rawRole === 'SUPER_ADMIN' || rawRole === 'COMPANY_ADMIN') ? 'flex' : 'none';
+        settingsItem.style.display = (rawRole === 'ADMIN' || rawRole === 'SUPER_ADMIN' || rawRole === 'COMPANY_ADMIN') ? 'flex' : 'none';
       }
 
       const headerRoleWrapper = document.getElementById('header-role-wrapper');

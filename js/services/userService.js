@@ -1,16 +1,14 @@
 
 const userService = {
-  // Master 8 Official Roles Hierarchy
+  // Canonical 7 Official Roles Hierarchy
   ROLES: [
-    { id: 'SUPER_ADMIN', name: 'Super Administrator', badge: 'badge-primary', color: '#7c3aed', desc: 'Full root access to all system functions & settings' },
-    { id: 'HR_MANAGER', name: 'HR Manager', badge: 'badge-success', color: '#059669', desc: 'Full HR ops, recruitment, onboarding, leave & timecards' },
-    { id: 'MANAGER', name: 'Line Manager', badge: 'badge-info', color: '#2563eb', desc: 'Team oversight, approvals, performance & attendance' },
-    { id: 'OPERATIONS_MANAGER', name: 'Operations Manager', badge: 'badge-info', color: '#0284c7', desc: 'Operational workflow oversight, teams & shift management' },
-    { id: 'TEAM_LEAD', name: 'Team Leader', badge: 'badge-info', color: '#4f46e5', desc: 'Shift leadership, daily roster, team reviews & sign-offs' },
-    { id: 'RELATIONSHIP_MANAGER', name: 'Relationship Manager', badge: 'badge-info', color: '#0891b2', desc: 'Client relations, accounts, portfolio & operations management' },
-    { id: 'MENTOR_TRAINER', name: 'Mentor / Trainer', badge: 'badge-warning', color: '#d97706', desc: 'Training curriculum, module evaluations & trainee guidance' },
-    { id: 'TRAINEE', name: 'Graduate Trainee', badge: 'badge-warning', color: '#ea580c', desc: 'Restricted access strictly to 7-day training & punch-in' },
-    { id: 'EMPLOYEE', name: 'Employee (Self Service)', badge: 'badge-neutral', color: '#475569', desc: 'Standard self-service profile, timecard, leaves & requests' }
+    { id: 'ADMIN', name: 'Admin', badge: 'badge-primary', color: '#7c3aed', desc: 'Full administrative access to all system functions & settings' },
+    { id: 'HR', name: 'HR', badge: 'badge-success', color: '#059669', desc: 'HR operations, workforce management, leave & timecards' },
+    { id: 'OPS', name: 'OPS', badge: 'badge-info', color: '#0284c7', desc: 'Operational workflow oversight, teams & shift management' },
+    { id: 'COMPLIANCE', name: 'Compliance', badge: 'badge-info', color: '#10b981', desc: 'Statutory compliance, legal audits & documents oversight' },
+    { id: 'MANAGER', name: 'Manager', badge: 'badge-info', color: '#2563eb', desc: 'Department oversight, approvals, performance & attendance' },
+    { id: 'TL', name: 'TL', badge: 'badge-info', color: '#4f46e5', desc: 'Team leadership, shift presence, daily roster & sign-offs' },
+    { id: 'EMPLOYEE', name: 'Employee', badge: 'badge-neutral', color: '#475569', desc: 'Standard self-service profile, timecard, leaves & requests' }
   ],
 
   // Get user profile by UID

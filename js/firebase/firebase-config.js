@@ -14,15 +14,88 @@ if (!firebase.apps.length) {
   firebase.initializeApp(firebaseConfig);
 }
 
-// Global Firebase Service Instances
+// -----------------------------------------------------------------------------
+// STRICT SYSTEM ARCHITECTURE:
+// Firebase is used EXCLUSIVELY for Authentication (Identity, Passwords, Session).
+// All database collections, business data, and storage reside on Hostinger MySQL.
+// -----------------------------------------------------------------------------
 const auth = firebase.auth();
-const db = firebase.firestore();
-// NOTE: Firebase Storage is NOT used. All file storage is on Hostinger (storage.diallo.com).
-const storage = (typeof firebase.storage === 'function') ? firebase.storage() : null;
+
+// Safe Offline/No-op Firestore Stub so legacy calls never query Google Firestore
+// and never trigger "FirebaseError: Missing or insufficient permissions"
+function createFirestoreStub() {
+  const emptyQuerySnapshot = {
+    empty: true,
+    size: 0,
+    docs: [],
+    forEach: () => {},
+    map: () => []
+  };
+
+  const emptyDocSnapshot = {
+    exists: false,
+    id: '',
+    data: () => null
+  };
+
+  const queryStub = {
+    where: () => queryStub,
+    orderBy: () => queryStub,
+    limit: () => queryStub,
+    startAfter: () => queryStub,
+    get: async () => emptyQuerySnapshot,
+    onSnapshot: (callback) => {
+      if (typeof callback === 'function') {
+        try { callback(emptyQuerySnapshot); } catch (_) {}
+      }
+      return () => {}; // Unsubscribe function
+    },
+    doc: (docId) => ({
+      id: docId || '',
+      get: async () => ({ ...emptyDocSnapshot, id: docId }),
+      set: async () => {},
+      update: async () => {},
+      delete: async () => {}
+    }),
+    add: async () => ({ id: 'doc_' + Date.now() })
+  };
+
+  return {
+    collection: () => queryStub,
+    doc: (docPath) => queryStub.doc(docPath),
+    batch: () => ({
+      set: () => {},
+      update: () => {},
+      delete: () => {},
+      commit: async () => {}
+    }),
+    runTransaction: async (fn) => fn({
+      get: async () => emptyDocSnapshot,
+      set: () => {},
+      update: () => {},
+      delete: () => {}
+    })
+  };
+}
+
+const db = createFirestoreStub();
+const storage = null;
 
 // Helper for server timestamps
-const serverTimestamp = firebase.firestore.FieldValue.serverTimestamp;
-const FieldValue = firebase.firestore.FieldValue;
+const serverTimestamp = () => new Date().toISOString();
+const FieldValue = {
+  serverTimestamp: () => new Date().toISOString(),
+  delete: () => null,
+  increment: (n) => n,
+  arrayUnion: (...items) => items,
+  arrayRemove: (...items) => items
+};
+
+if (typeof firebase !== 'undefined' && firebase.firestore) {
+  try {
+    firebase.firestore.FieldValue = FieldValue;
+  } catch (_) {}
+}
 
 window.FirebaseApp = {
   config: firebaseConfig,

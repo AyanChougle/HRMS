@@ -29,53 +29,33 @@ const roleAccessService = {
     { key: 'settings', label: 'System Settings', category: 'Administration', icon: 'M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z' }
   ],
 
-  // Official Policy Defaults Per Role (Strict 8 Roles Hierarchy)
+  // Official Policy Defaults Per Role (Strict 7 Canonical Roles Hierarchy)
   DEFAULT_ROLE_PAGES: {
-    SUPER_ADMIN: [
+    ADMIN: [
       'dashboard', 'people', 'create-employee', 'training', 'attendance', 'leave',
       'compliance', 'recruitment', 'expenses', 'assets', 'performance',
       'documents', 'requests', 'communication', 'reports', 'users', 'role-permissions',
       'settings', 'ess'
     ],
-    HR_MANAGER: [
+    HR: [
       'dashboard', 'people', 'create-employee', 'training', 'attendance', 'leave', 'recruitment', 'compliance', 'expenses', 'assets', 'performance',
       'documents', 'requests', 'communication', 'reports', 'users', 'ess'
     ],
-    OPERATIONS_MANAGER: [
+    OPS: [
       'dashboard', 'people', 'attendance', 'leave', 'performance', 'compliance',
       'assets', 'documents', 'requests', 'communication', 'reports', 'ess'
-    ],
-    MANAGER: [
-      'dashboard', 'people', 'attendance', 'leave', 'performance', 'compliance',
-      'documents', 'requests', 'communication', 'reports', 'ess'
-    ],
-    PROCESS_OWNER: [
-      'dashboard', 'people', 'attendance', 'leave', 'performance', 'compliance',
-      'documents', 'requests', 'communication', 'reports', 'ess'
     ],
     COMPLIANCE: [
       'dashboard', 'compliance', 'documents', 'reports', 'attendance', 'leave',
       'communication', 'requests', 'ess'
     ],
-    DIGITAL_MARKETING: [
-      'dashboard', 'attendance', 'leave', 'performance', 'compliance',
-      'assets', 'documents', 'requests', 'communication', 'reports', 'ess'
+    MANAGER: [
+      'dashboard', 'people', 'attendance', 'leave', 'performance', 'compliance',
+      'documents', 'requests', 'communication', 'reports', 'ess'
     ],
-    TEAM_LEAD: [
+    TL: [
       'dashboard', 'people', 'attendance', 'leave', 'performance', 'compliance',
       'requests', 'communication', 'reports', 'ess'
-    ],
-    RELATIONSHIP_MANAGER: [
-      'dashboard', 'ess', 'attendance', 'leave', 'performance', 'compliance',
-      'requests', 'communication'
-    ],
-    MENTOR_TRAINER: [
-      'dashboard', 'training', 'attendance', 'leave', 'performance', 'compliance',
-      'documents', 'communication', 'ess'
-    ],
-    TRAINEE: [
-      'dashboard', 'training', 'attendance', 'leave', 'compliance',
-      'documents', 'communication', 'ess'
     ],
     EMPLOYEE: [
       'dashboard', 'ess', 'attendance', 'leave', 'performance', 'compliance',
@@ -132,7 +112,12 @@ const roleAccessService = {
   },
 
   getVisiblePagesForRole(roleId) {
-    const r = (roleId || 'EMPLOYEE').toUpperCase().trim();
+    let r = (roleId || 'EMPLOYEE').toUpperCase().trim();
+    if (['SUPER_ADMIN', 'COMPANY_ADMIN'].includes(r)) r = 'ADMIN';
+    if (r === 'HR_MANAGER') r = 'HR';
+    if (['OPERATIONS_MANAGER', 'PROCESS_OWNER'].includes(r)) r = 'OPS';
+    if (r === 'TEAM_LEAD') r = 'TL';
+    if (['RELATIONSHIP_MANAGER', 'DIGITAL_MARKETING', 'MENTOR_TRAINER', 'TRAINEE'].includes(r)) r = 'EMPLOYEE';
     
     let pages = null;
     // Check custom configuration first
@@ -140,43 +125,14 @@ const roleAccessService = {
       pages = [...this.cachedConfig[r]];
     } else if (this.DEFAULT_ROLE_PAGES[r]) {
       pages = [...this.DEFAULT_ROLE_PAGES[r]];
-    } else if (r.includes('SUPER_ADMIN')) {
-      pages = [...this.DEFAULT_ROLE_PAGES.SUPER_ADMIN];
-    } else if (r.includes('HR')) {
-      pages = [...this.DEFAULT_ROLE_PAGES.HR_MANAGER];
-    } else if (r === 'OPERATIONS_MANAGER' || r === 'OPS') {
-      pages = [...this.DEFAULT_ROLE_PAGES.OPERATIONS_MANAGER];
-    } else if (r === 'PROCESS_OWNER' || r.includes('PROCESS')) {
-      pages = [...this.DEFAULT_ROLE_PAGES.PROCESS_OWNER];
-    } else if (r === 'COMPLIANCE' || r.includes('COMPLIANCE')) {
-      pages = [...this.DEFAULT_ROLE_PAGES.COMPLIANCE];
-    } else if (r === 'DIGITAL_MARKETING' || r.includes('DIGITAL')) {
-      pages = [...this.DEFAULT_ROLE_PAGES.DIGITAL_MARKETING];
-    } else if (r.includes('MANAGER')) {
-      pages = [...this.DEFAULT_ROLE_PAGES.MANAGER];
-    } else if (r.includes('LEAD') || r.includes('TL')) {
-      pages = [...this.DEFAULT_ROLE_PAGES.TEAM_LEAD];
-    } else if (r.includes('MENTOR') || (r.includes('TRAIN') && !r.includes('TRAINEE'))) {
-      pages = [...this.DEFAULT_ROLE_PAGES.MENTOR_TRAINER];
-    } else if (r.includes('TRAINEE') || r.includes('INTERN')) {
-      pages = [...this.DEFAULT_ROLE_PAGES.TRAINEE];
     } else {
       pages = [...this.DEFAULT_ROLE_PAGES.EMPLOYEE];
     }
 
-    const isHrOrAdmin = ['SUPER_ADMIN', 'HR_MANAGER'].includes(r);
+    const isHrOrAdmin = ['ADMIN', 'SUPER_ADMIN', 'HR', 'HR_MANAGER'].includes(r);
     // Unconditional security: Non-admin/HR roles NEVER see payroll or payslip-templates
     if (!isHrOrAdmin) {
       pages = pages.filter(p => p !== 'payroll' && p !== 'payslip-templates');
-    }
-
-    // Trainees never have access to performance & appraisals
-    if (r === 'TRAINEE' || r.includes('TRAINEE')) {
-      pages = pages.filter(p => p !== 'performance');
-    } else if (['EMPLOYEE', 'MENTOR_TRAINER', 'TEAM_LEAD', 'OPERATIONS_MANAGER', 'MANAGER'].includes(r)) {
-      if (!pages.includes('performance')) {
-        pages.push('performance');
-      }
     }
 
     return pages;

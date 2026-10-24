@@ -51,9 +51,66 @@ try {
         // 2. Single employee details
         $id = $_GET['id'] ?? '';
         if (!empty($id)) {
-            $stmt = $pdo->prepare("SELECT * FROM employees WHERE id = :id OR employee_code = :code LIMIT 1");
-            $stmt->execute([':id' => $id, ':code' => $id]);
+            $stmt = $pdo->prepare("SELECT * FROM employees WHERE id = :id OR employee_code = :code OR user_id = :uid LIMIT 1");
+            $stmt->execute([':id' => $id, ':code' => $id, ':uid' => $id]);
             $emp = $stmt->fetch();
+
+            if (!$emp) {
+                // Check if user exists in users table and auto-sync into employees table
+                $uStmt = $pdo->prepare("SELECT * FROM users WHERE uid = :id OR employee_code = :code OR id = :uid OR email = :email LIMIT 1");
+                $uStmt->execute([':id' => $id, ':code' => $id, ':uid' => is_numeric($id) ? intval($id) : 0, ':email' => $id]);
+                $u = $uStmt->fetch();
+
+                if ($u) {
+                    $newEmpId = !empty($u['uid']) ? $u['uid'] : ('emp_' . $u['id']);
+                    $empCode = !empty($u['employee_code']) ? $u['employee_code'] : ('D' . str_pad($u['id'], 5, '0', STR_PAD_LEFT));
+                    $name = !empty($u['display_name']) ? $u['display_name'] : trim(($u['first_name'] ?? '') . ' ' . ($u['last_name'] ?? ''));
+                    if (empty($name)) $name = 'Employee';
+
+                    $insStmt = $pdo->prepare("
+                        INSERT INTO employees (
+                            id, user_id, employee_code, full_name, first_name, last_name,
+                            email, work_email, phone, department, designation, role_id,
+                            company_id, company_name, branch_name, employment_status, status
+                        ) VALUES (
+                            :eid, :uid, :code, :name, :fname, :lname,
+                            :email, :wemail, :phone, :dept, :desig, :role,
+                            'comp_diallo_india', 'Diallo India Private Limited', 'Ghansoli - Navi Mumbai, Maharashtra', 'ACTIVE', 'ACTIVE'
+                        ) ON DUPLICATE KEY UPDATE full_name = VALUES(full_name), updated_at = CURRENT_TIMESTAMP
+                    ");
+                    $insStmt->execute([
+                        ':eid' => $newEmpId,
+                        ':uid' => $u['uid'] ?: $newEmpId,
+                        ':code' => $empCode,
+                        ':name' => $name,
+                        ':fname' => $u['first_name'] ?: 'Employee',
+                        ':lname' => $u['last_name'] ?: '',
+                        ':email' => $u['email'] ?: '',
+                        ':wemail' => $u['email'] ?: '',
+                        ':phone' => $u['phone'] ?: '',
+                        ':dept' => $u['department'] ?: 'Operations',
+                        ':desig' => $u['designation'] ?: 'Associate',
+                        ':role' => $u['role_id'] ?: 'EMPLOYEE'
+                    ]);
+
+                    // Initialize leave balances safely (matches leave_balances schema in leaves.php)
+                    try {
+                        $currYear = intval(date('Y'));
+                        $types = ['Casual Leave' => 12, 'Sick Leave' => 12, 'Earned Leave' => 15];
+                        foreach ($types as $t => $days) {
+                            $pdo->prepare("
+                                INSERT IGNORE INTO leave_balances (employee_id, leave_type, year, total_credited, used, available)
+                                VALUES (:eid, :t, :y, :c, 0, :c)
+                            ")->execute([':eid' => $newEmpId, ':t' => $t, ':y' => $currYear, ':c' => $days]);
+                        }
+                    } catch (\Throwable $ignored) {}
+
+                    $stmt = $pdo->prepare("SELECT * FROM employees WHERE id = :id OR employee_code = :code LIMIT 1");
+                    $stmt->execute([':id' => $newEmpId, ':code' => $empCode]);
+                    $emp = $stmt->fetch();
+                }
+            }
+
             if (!$emp) json_out(["success" => false, "error" => "Employee not found"], 404);
             json_out(["success" => true, "employee" => $emp]);
         }

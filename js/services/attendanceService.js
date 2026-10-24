@@ -32,6 +32,29 @@ const attendanceService = {
     return dateObj.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true });
   },
 
+  // Safe 12-hour formatter accepting String, Date, or null
+  formatTime12(time) {
+    if (!time) return '—';
+    if (typeof time === 'string') {
+      const clean = time.trim();
+      if (!clean || clean === '—' || clean === '-') return '—';
+      if (/AM|PM/i.test(clean)) return clean;
+      const parts = clean.split(':');
+      if (parts.length >= 2) {
+        let h = parseInt(parts[0], 10);
+        const m = parts[1].padStart(2, '0');
+        const ampm = h >= 12 ? 'PM' : 'AM';
+        h = h % 12 || 12;
+        return `${String(h).padStart(2, '0')}:${m} ${ampm}`;
+      }
+      return clean;
+    }
+    if (time instanceof Date) {
+      return this.formatTime(time);
+    }
+    return String(time);
+  },
+
   // Convert "09:30" string to minutes from midnight
   timeStringToMinutes(timeStr) {
     if (!timeStr) return 0;
@@ -88,6 +111,14 @@ const attendanceService = {
     if (!rec) return rec;
     const r = { ...rec };
 
+    // Normalize field names from MySQL snake_case
+    if (!r.checkIn && r.check_in) r.checkIn = r.check_in;
+    if (!r.checkOut && r.check_out) r.checkOut = r.check_out;
+    if (r.late_minutes !== undefined && r.lateMinutes === undefined) r.lateMinutes = Number(r.late_minutes || 0);
+    if (r.employee_code && !r.employeeCode) r.employeeCode = r.employee_code;
+    if (r.employee_name && !r.employeeName) r.employeeName = r.employee_name;
+    if (r.is_on_break !== undefined && r.isOnBreak === undefined) r.isOnBreak = Boolean(r.is_on_break);
+
     // Clean break durations
     const breakSec = (r.totalBreakSeconds !== undefined && r.totalBreakSeconds !== null)
       ? Number(r.totalBreakSeconds)
@@ -95,6 +126,17 @@ const attendanceService = {
     r.totalBreakSeconds = Math.max(0, breakSec);
     r.totalBreakMinutes = Math.round(r.totalBreakSeconds / 60);
     r.breakFormatted = this.formatBreakDuration(r.totalBreakSeconds);
+
+    // Calculate lateMinutes if checkIn exists
+    if (r.checkIn && (r.lateMinutes === undefined || r.lateMinutes === null || r.lateMinutes === 0)) {
+      const inMins = this.time12ToMinutes(r.checkIn);
+      // Shift starts at 10:00 AM (600 mins) + 10 mins grace = 610 mins
+      if (inMins > 610) {
+        r.lateMinutes = inMins - 600;
+      } else {
+        r.lateMinutes = 0;
+      }
+    }
 
     if (r.checkIn && r.checkOut && r.checkOut !== '-') {
       const inMins = this.time12ToMinutes(r.checkIn);
@@ -142,7 +184,9 @@ const attendanceService = {
         r.status = workedMinutes < halfDayCutoff ? 'HALF_DAY' : (r.lateMinutes > 0 ? 'LATE' : 'PRESENT');
       }
     } else if (r.checkIn && (!r.checkOut || r.checkOut === '-')) {
-      if (!r.status) r.status = (r.lateMinutes > 0 ? 'LATE' : 'PRESENT');
+      if (!r.status || r.status === 'PRESENT') {
+        r.status = (r.lateMinutes > 0 ? 'LATE' : 'PRESENT');
+      }
       r.grossHoursFormatted = '0h 00m';
       r.workedHoursFormatted = '0h 00m';
       r.overtimeMinutes = 0;
@@ -153,14 +197,15 @@ const attendanceService = {
 
   // 1. GET TODAY'S ATTENDANCE RECORD FOR AN EMPLOYEE
   async getTodayRecord(employeeId, date = null) {
+    if (!employeeId) return null;
     try {
       const attendanceDate = date || this.getCompanyLocalDate();
       const recordId = `${employeeId}_${attendanceDate}`;
 
-      // 1. Primary: Check Hostinger MySQL
+      // 1. Primary & Authoritative: Check Hostinger MySQL
       if (typeof apiClient !== 'undefined') {
         try {
-          const sqlRes = await apiClient.get('attendance.php?action=today', { employee_id: employeeId, date: attendanceDate });
+          const sqlRes = await apiClient.get('attendance.php', { action: 'today', employee_id: employeeId, date: attendanceDate });
           if (sqlRes && sqlRes.success && sqlRes.record) {
             const r = sqlRes.record;
             return this.sanitizeRecord({
@@ -175,6 +220,10 @@ const attendanceService = {
               date: r.date || attendanceDate,
               checkIn: r.check_in || null,
               checkOut: r.check_out || null,
+              checkInIso: r.check_in_iso || null,
+              checkOutIso: r.check_out_iso || null,
+              lastBreakStartIso: r.last_break_start_iso || null,
+              lastBreakEndIso: r.last_break_end_iso || null,
               status: r.status || 'PRESENT',
               lateMinutes: Number(r.late_minutes || 0),
               grossMinutes: Number(r.gross_minutes || 0),
@@ -190,17 +239,6 @@ const attendanceService = {
         }
       }
 
-      // 2. Secondary fallback: Cloud Firestore
-      if (typeof db !== 'undefined') {
-        const doc = await db.collection('attendanceRecords').doc(recordId).get();
-        if (doc.exists) {
-          const sanitized = this.sanitizeRecord({ id: doc.id, ...doc.data() });
-          if (typeof apiClient !== 'undefined') {
-            apiClient.post('attendance.php?action=save_record', sanitized).catch(() => {});
-          }
-          return sanitized;
-        }
-      }
       return null;
     } catch (e) {
       console.warn('Could not check today attendance record:', e);
@@ -555,14 +593,20 @@ const attendanceService = {
         });
       } else if (punchType === 'Break In') {
         if (typeof apiClient !== 'undefined') {
-          apiClient.post('attendance.php', {
-            employee_id: employeeId,
-            punch_type: 'Break In',
-            time: timeStr,
-            date: attendanceDate
-          }).catch(() => {});
+          try {
+            await apiClient.post('attendance.php', {
+              employee_id: employeeId,
+              employee_code: AuthGuard.userProfile?.employeeCode || punchData.employeeCode || '',
+              name: punchData.name || AuthGuard.userProfile?.displayName || 'Employee',
+              punch_type: 'Break In',
+              time: timeStr,
+              date: attendanceDate
+            });
+          } catch (e) {
+            console.warn('[attendanceService] Break In sync notice:', e);
+          }
         }
-        if (doc.exists) {
+        if (doc && doc.exists) {
           await recordRef.update({
             isOnBreak: true,
             lastBreakStartIso: now.toISOString(),
@@ -572,32 +616,54 @@ const attendanceService = {
         }
       } else if (punchType === 'Break Out') {
         const breakSec = Number(punchData.breakDuration) || 0;
-        if (typeof apiClient !== 'undefined') {
-          apiClient.post('attendance.php', {
-            employee_id: employeeId,
-            punch_type: 'Break Out',
-            time: timeStr,
-            date: attendanceDate,
-            break_duration: breakSec
-          }).catch(() => {});
-        }
-        if (doc.exists) {
-          const rec = doc.data() || {};
-          const totalBreakSec = (punchData.totalBreakSeconds !== undefined && punchData.totalBreakSeconds !== null)
-            ? Number(punchData.totalBreakSeconds)
-            : ((rec.totalBreakSeconds || 0) + breakSec);
-          const totalBreakMins = Math.round(totalBreakSec / 60);
-          const breakFormatted = this.formatBreakDuration(totalBreakSec);
+        const totalBreakSec = (punchData.totalBreakSeconds !== undefined && punchData.totalBreakSeconds !== null)
+          ? Number(punchData.totalBreakSeconds)
+          : null;
 
-          await recordRef.update({
-            isOnBreak: false,
-            lastBreakEndIso: now.toISOString(),
-            totalBreakMinutes: totalBreakMins,
-            totalBreakSeconds: totalBreakSec,
-            breakFormatted,
-            status: rec.checkIn ? (rec.lateMinutes > 0 ? 'LATE' : 'PRESENT') : 'PRESENT',
-            updatedAt: firebase.firestore.FieldValue.serverTimestamp()
-          }).catch(() => {});
+        if (typeof apiClient !== 'undefined') {
+          try {
+            await apiClient.post('attendance.php', {
+              employee_id: employeeId,
+              employee_code: AuthGuard.userProfile?.employeeCode || punchData.employeeCode || '',
+              name: punchData.name || AuthGuard.userProfile?.displayName || 'Employee',
+              punch_type: 'Break Out',
+              time: timeStr,
+              date: attendanceDate,
+              break_duration: breakSec,
+              total_break_seconds: totalBreakSec
+            });
+          } catch (e) {
+            console.warn('[attendanceService] Break Out sync notice:', e);
+          }
+        }
+
+        const altDocKey = AuthGuard.userProfile?.employeeCode ? `${AuthGuard.userProfile.employeeCode}_${attendanceDate}` : null;
+        const targetRefs = [recordRef];
+        if (altDocKey && altDocKey !== recordId && typeof db !== 'undefined') {
+          targetRefs.push(db.collection('attendanceRecords').doc(altDocKey));
+        }
+
+        for (const ref of targetRefs) {
+          try {
+            const dSnap = await ref.get();
+            if (dSnap.exists) {
+              const rec = dSnap.data() || {};
+              const computedTotal = totalBreakSec !== null ? totalBreakSec : ((rec.totalBreakSeconds || 0) + breakSec);
+              const computedMins = Math.round(computedTotal / 60);
+              const breakFormatted = this.formatBreakDuration(computedTotal);
+              const resolvedStatus = rec.checkIn ? (rec.lateMinutes > 0 ? 'LATE' : 'PRESENT') : 'PRESENT';
+
+              await ref.update({
+                isOnBreak: false,
+                lastBreakEndIso: now.toISOString(),
+                totalBreakMinutes: computedMins,
+                totalBreakSeconds: computedTotal,
+                breakFormatted,
+                status: resolvedStatus,
+                updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+              }).catch(() => {});
+            }
+          } catch (_) {}
         }
       } else if (punchType === 'Out') {
         if (doc.exists) {
@@ -671,64 +737,29 @@ const attendanceService = {
         }
       }
 
-      // 2. Secondary: If MySQL had no records for this query, fetch from Firestore
-      if (!loadedFromMySQL && typeof db !== 'undefined') {
-        let query = db.collection('attendanceRecords');
-        if (filters.companyId) query = query.where('companyId', '==', filters.companyId);
-        if (filters.date) query = query.where('date', '==', filters.date);
-        if (filters.employeeId) query = query.where('employeeId', '==', filters.employeeId);
-        if (filters.department && filters.department !== 'All Departments') query = query.where('department', '==', filters.department);
-        if (filters.status && filters.status !== 'All Status') query = query.where('status', '==', filters.status);
-        if (filters.branchId && filters.branchId !== 'All Branches') query = query.where('branchId', '==', filters.branchId);
+      // 2. Migration Check: If Firestore is available, find any pending records from Firestore that are not in MySQL yet
+      if (typeof db !== 'undefined') {
+        try {
+          let fsQuery = db.collection('attendanceRecords');
+          if (filters.date) fsQuery = fsQuery.where('date', '==', filters.date);
+          if (filters.employeeId) fsQuery = fsQuery.where('employeeId', '==', filters.employeeId);
+          if (filters.department && filters.department !== 'All Departments') fsQuery = fsQuery.where('department', '==', filters.department);
 
-        const snapshot = await query.get();
-        records = snapshot.docs.map(doc => {
-          const raw = doc.data() || {};
-          const sanitized = this.sanitizeRecord({ id: doc.id, ...raw });
+          const fsSnap = await fsQuery.limit(100).get();
+          if (!fsSnap.empty) {
+            const fsRecords = fsSnap.docs.map(doc => this.sanitizeRecord({ id: doc.id, ...doc.data() }));
+            const mysqlKeys = new Set(records.map(r => r.recordKey || `${r.employeeId}_${r.date}`));
+            const missingInMySQL = fsRecords.filter(r => !mysqlKeys.has(r.id) && !mysqlKeys.has(r.recordKey) && !mysqlKeys.has(`${r.employeeId}_${r.date}`));
 
-          // Auto-heal employeeCode & employeeName from real MySQL employees census
-          let matchedEmp = null;
-          if (raw.employeeId && empLookupById[raw.employeeId]) matchedEmp = empLookupById[raw.employeeId];
-          if (!matchedEmp && raw.employeeName && empLookupByName[raw.employeeName.toLowerCase().trim()]) {
-            matchedEmp = empLookupByName[raw.employeeName.toLowerCase().trim()];
-          }
-          if (matchedEmp) {
-            if (matchedEmp.employeeCode && (sanitized.employeeCode !== matchedEmp.employeeCode || (sanitized.employeeCode && sanitized.employeeCode.startsWith('D-000')))) {
-              sanitized.employeeCode = matchedEmp.employeeCode;
-              db.collection('attendanceRecords').doc(doc.id).update({
-                employeeCode: matchedEmp.employeeCode,
-                employeeName: matchedEmp.fullName || matchedEmp.name
-              }).catch(() => {});
+            if (missingInMySQL.length > 0) {
+              records.push(...missingInMySQL);
+              if (typeof apiClient !== 'undefined') {
+                apiClient.post('attendance.php?action=bulk_sync', { records: missingInMySQL }).catch(() => {});
+              }
             }
-            if (matchedEmp.fullName) sanitized.employeeName = matchedEmp.fullName;
           }
-
-          const isCorrupt = (raw.grossMinutes && raw.grossMinutes >= 1440) ||
-                            (raw.workedMinutes && raw.workedMinutes >= 1440) ||
-                            (raw.overtimeMinutes && raw.overtimeMinutes >= 480) ||
-                            (raw.grossHoursFormatted && raw.grossHoursFormatted.startsWith('24h')) ||
-                            (raw.checkOut && raw.status === 'ON_BREAK');
-          if (isCorrupt) {
-            db.collection('attendanceRecords').doc(doc.id).update({
-              grossMinutes: sanitized.grossMinutes,
-              grossHoursFormatted: sanitized.grossHoursFormatted,
-              totalBreakMinutes: sanitized.totalBreakMinutes,
-              totalBreakSeconds: sanitized.totalBreakSeconds,
-              breakFormatted: sanitized.breakFormatted,
-              workedMinutes: sanitized.workedMinutes,
-              workedHoursFormatted: sanitized.workedHoursFormatted,
-              overtimeMinutes: sanitized.overtimeMinutes,
-              status: sanitized.status,
-              isOnBreak: false,
-              updatedAt: firebase.firestore.FieldValue.serverTimestamp()
-            }).catch(err => console.warn('Self-heal warning:', err));
-          }
-          return sanitized;
-        });
-
-        // Sync to Hostinger MySQL in the background so MySQL is permanently populated
-        if (records.length > 0 && typeof apiClient !== 'undefined') {
-          apiClient.post('attendance.php?action=bulk_sync', { records: records.slice(0, 50) }).catch(() => {});
+        } catch (fsErr) {
+          console.warn('[attendanceService] Firestore cross-sync check notice:', fsErr);
         }
       }
 
@@ -1072,8 +1103,11 @@ const attendanceService = {
 
       docs.forEach(d => {
         const st = (d.status || '').toString().toUpperCase().trim();
-        const hasPunchIn = Boolean(d.checkIn && d.checkIn !== '—' && d.checkIn !== '-');
-        if (st === 'LATE') {
+        const checkInVal = d.checkIn || d.check_in;
+        const hasPunchIn = Boolean(checkInVal && checkInVal !== '—' && checkInVal !== '-');
+        const isLate = st === 'LATE' || Number(d.lateMinutes || d.late_minutes || 0) > 0;
+
+        if (isLate) {
           present++;
           late++;
         } else if (st === 'PRESENT' || st === 'REGULARIZED' || st === 'ON_BREAK' || hasPunchIn) {
@@ -1128,6 +1162,36 @@ const attendanceService = {
         labels: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Today'],
         data: [0, 0, 0, 0, 0, 0, 0]
       };
+    }
+  },
+
+  // One-time bulk migration utility: Pushes all historical attendance records from Firestore to Hostinger MySQL
+  async syncAllFirestoreToMySQL() {
+    if (typeof db === 'undefined' || typeof apiClient === 'undefined') {
+      return { success: false, error: 'Database or apiClient unavailable' };
+    }
+    try {
+      console.log('[attendanceService] Starting complete attendance migration from Firestore to Hostinger MySQL...');
+      const snap = await db.collection('attendanceRecords').get();
+      if (snap.empty) {
+        return { success: true, count: 0, message: 'No attendance records found in Firestore.' };
+      }
+
+      const records = snap.docs.map(d => this.sanitizeRecord({ id: d.id, ...d.data() }));
+      let totalSaved = 0;
+
+      // Send in batches of 50 to avoid payload limits
+      for (let i = 0; i < records.length; i += 50) {
+        const batch = records.slice(i, i + 50);
+        const res = await apiClient.post('attendance.php?action=bulk_sync', { records: batch });
+        if (res && res.count) totalSaved += res.count;
+      }
+
+      console.log(`[attendanceService] Successfully migrated ${totalSaved} attendance records to Hostinger MySQL.`);
+      return { success: true, count: totalSaved, message: `Successfully synced ${totalSaved} records to MySQL.` };
+    } catch (err) {
+      console.error('[attendanceService] Migration error:', err);
+      return { success: false, error: err.message };
     }
   }
 };

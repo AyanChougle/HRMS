@@ -172,8 +172,37 @@ function log_audit($pdo, $actor_id, $actor_email, $action, $resource_type, $reso
             ':ua' => substr($_SERVER['HTTP_USER_AGENT'] ?? 'Unknown', 0, 255),
             ':ip' => $_SERVER['REMOTE_ADDR'] ?? 'Unknown'
         ]);
-    } catch (\Exception $e) {
+    } catch (\Throwable $e) {
         // Non-blocking audit failure
+    }
+}
+
+/**
+ * Canonical Role Normalization (Strict 7 Roles: ADMIN, HR, OPS, COMPLIANCE, MANAGER, TL, EMPLOYEE)
+ */
+if (!function_exists('canonical_role')) {
+    function canonical_role($r) {
+        $clean = strtoupper(trim($r ?? 'EMPLOYEE'));
+        $map = [
+            'SUPER_ADMIN' => 'ADMIN',
+            'COMPANY_ADMIN' => 'ADMIN',
+            'ADMIN' => 'ADMIN',
+            'HR_MANAGER' => 'HR',
+            'HR' => 'HR',
+            'OPERATIONS_MANAGER' => 'OPS',
+            'PROCESS_OWNER' => 'OPS',
+            'OPS' => 'OPS',
+            'COMPLIANCE' => 'COMPLIANCE',
+            'MANAGER' => 'MANAGER',
+            'TEAM_LEAD' => 'TL',
+            'TL' => 'TL',
+            'EMPLOYEE' => 'EMPLOYEE',
+            'RELATIONSHIP_MANAGER' => 'EMPLOYEE',
+            'DIGITAL_MARKETING' => 'EMPLOYEE',
+            'MENTOR_TRAINER' => 'EMPLOYEE',
+            'TRAINEE' => 'EMPLOYEE'
+        ];
+        return $map[$clean] ?? 'EMPLOYEE';
     }
 }
 ?>

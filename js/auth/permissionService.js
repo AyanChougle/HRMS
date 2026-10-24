@@ -165,6 +165,33 @@ const PermissionService = {
       'ess.view'
     ],
 
+    OPS: [
+      'people.view',
+      'team.*',
+      'team.view',
+      'team.attendance',
+      'team.leave',
+      'team.approve',
+      'attendance.team',
+      'attendance.view',
+      'leave.view',
+      'leave.approve',
+      'approvals.*',
+      'approvals.process',
+      'performance.view',
+      'requests.view',
+      'workflows.view',
+      'communication.view',
+      'reports.view',
+      'own.profile',
+      'own.attendance',
+      'own.leave',
+      'own.documents',
+      'own.requests',
+      'own.expenses',
+      'ess.view'
+    ],
+
     OPERATIONS_MANAGER: [
       'people.view',
       'team.*',
@@ -250,6 +277,27 @@ const PermissionService = {
       'own.attendance',
       'own.leave',
       'own.documents',
+      'ess.view'
+    ],
+
+    TL: [
+      'people.view',
+      'team.view',
+      'team.attendance',
+      'team.leave',
+      'attendance.team',
+      'attendance.view',
+      'leave.view',
+      'performance.view',
+      'requests.view',
+      'workflows.view',
+      'communication.view',
+      'reports.view',
+      'own.profile',
+      'own.attendance',
+      'own.leave',
+      'own.documents',
+      'own.requests',
       'ess.view'
     ],
 
@@ -377,11 +425,15 @@ const PermissionService = {
   // Get active permissions set for a user profile
   getUserPermissions(userProfile, roleDoc = null) {
     const rawRoleId = userProfile?.roleId || 'EMPLOYEE';
-    const roleId = rawRoleId.toString().toUpperCase().trim();
+    let roleId = rawRoleId.toString().toUpperCase().trim();
     
-    if (roleId === 'SUPER_ADMIN' || roleId === 'COMPANY_ADMIN' || roleId === 'ADMIN') {
+    if (['SUPER_ADMIN', 'COMPANY_ADMIN', 'ADMIN'].includes(roleId)) {
       return new Set(['*']);
     }
+    if (roleId === 'HR_MANAGER') roleId = 'HR';
+    if (roleId === 'OPERATIONS_MANAGER' || roleId === 'PROCESS_OWNER') roleId = 'OPS';
+    if (roleId === 'TEAM_LEAD') roleId = 'TL';
+    if (['RELATIONSHIP_MANAGER', 'DIGITAL_MARKETING', 'MENTOR_TRAINER', 'TRAINEE'].includes(roleId)) roleId = 'EMPLOYEE';
 
     // Resolve built-in permissions
     const defaultPerms = this.ROLE_PERMISSIONS[roleId] 

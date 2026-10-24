@@ -13,6 +13,7 @@ const authService = {
           const sessionPayload = {
             uid: mUser.uid || `mysql_${mUser.id}`,
             id: mUser.id,
+            employeeId: mUser.uid || mUser.id,
             email: cleanEmail,
             displayName: mUser.display_name || cleanEmail.split('@')[0],
             roleId: mUser.role_id || 'EMPLOYEE',
@@ -123,9 +124,9 @@ const authService = {
       return { success: true, user: firebaseUser };
     }
 
-    // 2. Fallback: Authenticate via Hostinger MySQL Backend (auth.php?action=login)
+    // 2. Fallback: Authenticate via Hostinger MySQL Backend if not already checked
     try {
-      if (typeof apiClient !== 'undefined' && apiClient.post) {
+      if (!mysqlFirstErr && typeof apiClient !== 'undefined' && apiClient.post) {
         const mySqlResp = await apiClient.post('auth.php?action=login', { email: cleanEmail, password });
         if (mySqlResp && mySqlResp.success && mySqlResp.user) {
           const mUser = mySqlResp.user;

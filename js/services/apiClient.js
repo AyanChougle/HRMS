@@ -41,7 +41,8 @@ const apiClient = {
 
   async get(endpoint, params = {}) {
     const query = new URLSearchParams(params).toString();
-    const fullEndpoint = query ? `${endpoint}?${query}` : endpoint;
+    const separator = endpoint.includes('?') ? '&' : '?';
+    const fullEndpoint = query ? `${endpoint}${separator}${query}` : endpoint;
     return this.request(fullEndpoint, { method: 'GET' });
   },
 
@@ -61,7 +62,8 @@ const apiClient = {
 
   async delete(endpoint, params = {}) {
     const query = new URLSearchParams(params).toString();
-    const fullEndpoint = query ? `${endpoint}?${query}` : endpoint;
+    const separator = endpoint.includes('?') ? '&' : '?';
+    const fullEndpoint = query ? `${endpoint}${separator}${query}` : endpoint;
     return this.request(fullEndpoint, { method: 'DELETE' });
   }
 };

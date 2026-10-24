@@ -325,6 +325,10 @@ const AttendanceView = {
 
           <button class="btn btn-primary btn-sm" onclick="AttendanceView.applyFilters()">Apply</button>
           <button class="btn btn-secondary btn-sm" onclick="AttendanceView.clearFilters()">Clear</button>
+          <button class="btn btn-secondary btn-sm" onclick="AttendanceView.syncAllRecords()" title="Sync all Firestore records into Hostinger MySQL" style="display: inline-flex; align-items: center; gap: 4px;">
+            <svg width="13" height="13" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>
+            Sync MySQL
+          </button>
         </div>
       </div>
 
@@ -333,7 +337,7 @@ const AttendanceView = {
         <div class="card-header">
           <div>
             <div class="card-title">Daily Attendance Logs (${this.currentDate})</div>
-            <div class="card-subtitle">${records.length} records verified in Cloud Firestore</div>
+            <div class="card-subtitle">${records.length} records synchronized in Hostinger MySQL</div>
           </div>
         </div>
         <div class="card-body" style="padding: 0;">
@@ -476,6 +480,19 @@ const AttendanceView = {
     const d = document.getElementById('att-filter-dept'); if (d) d.value = 'All Departments';
     const st = document.getElementById('att-filter-status'); if (st) st.value = 'All Status';
     Router.navigate('attendance');
+  },
+
+  async syncAllRecords() {
+    if (typeof Toast !== 'undefined') Toast.info('Synchronizing attendance records with Hostinger MySQL...');
+    if (typeof attendanceService !== 'undefined' && typeof attendanceService.syncAllFirestoreToMySQL === 'function') {
+      const res = await attendanceService.syncAllFirestoreToMySQL();
+      if (res.success) {
+        if (typeof Toast !== 'undefined') Toast.success(`Synchronized ${res.count} attendance records to Hostinger MySQL.`);
+        Router.navigate('attendance');
+      } else {
+        if (typeof Toast !== 'undefined') Toast.error(`Sync error: ${res.error}`);
+      }
+    }
   },
 
   // 2. MY ATTENDANCE TAB (EMPLOYEE SELF-SERVICE)
@@ -783,25 +800,23 @@ const AttendanceView = {
           return st === activeFilter;
         });
 
-    return `
-      <div class="card">
-        <div class="card-header" style="display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 8px;">
-          <div>
-            <div class="card-title" style="display: flex; align-items: center; gap: 8px;">
-              <span>My Team Attendance (${this.currentDate})</span>
-              ${isFiltered ? `
-                <span class="badge badge-warning" style="font-size: 0.72rem;">Showing: ${activeFilter} (${team.length})</span>
-                <button class="btn btn-secondary btn-sm" onclick="AttendanceView.setFilterStatus('All Status')" style="font-size: 0.7rem; padding: 2px 8px; height: auto;">Clear Filter</button>
-              ` : ''}
+    if (team.length === 0) {
+      return `
+        <div class="card">
+          <div class="card-header" style="display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 8px;">
+            <div>
+              <div class="card-title" style="display: flex; align-items: center; gap: 8px;">
+                <span>My Team Attendance (${this.currentDate})</span>
+                ${isFiltered ? `
+                  <span class="badge badge-warning" style="font-size: 0.72rem;">Showing: ${activeFilter} (0)</span>
+                  <button class="btn btn-secondary btn-sm" onclick="AttendanceView.setFilterStatus('All Status')" style="font-size: 0.7rem; padding: 2px 8px; height: auto;">Clear Filter</button>
+                ` : ''}
+              </div>
+              <div class="card-subtitle">Real-time shift presence for your direct and operational hierarchy</div>
             </div>
-            <div class="card-subtitle">Real-time shift presence for your direct and operational hierarchy</div>
+            <div style="font-size: 0.8rem; color: var(--text-muted);">Total Personnel: <strong>0</strong></div>
           </div>
-          <div style="font-size: 0.8rem; color: var(--text-muted);">
-            Total Personnel: <strong>${team.length}</strong>
-          </div>
-        </div>
-        <div class="card-body" style="padding: 0;">
-          ${team.length === 0 ? `
+          <div class="card-body" style="padding: 0;">
             <div class="empty-state">
               <div class="empty-state-icon">
                 <svg width="24" height="24" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -811,49 +826,149 @@ const AttendanceView = {
               <div class="empty-state-title">${isFiltered ? `No ${activeFilter} records found in team.` : 'No Reporting Staff Found'}</div>
               <div class="empty-state-desc">${isFiltered ? 'Click "Clear Filter" above to view all team members.' : 'Employees assigned under you in the organizational hierarchy will appear here for shift monitoring.'}</div>
             </div>
-          ` : `
-            <table class="data-table">
-              <thead>
-                <tr>
-                  <th>Team Member</th>
-                  <th>Designation</th>
-                  <th>Check In</th>
-                  <th>Break Time</th>
-                  <th>Check Out</th>
-                  <th>Net Worked Time</th>
-                  <th>Status</th>
-                </tr>
-              </thead>
-              <tbody>
-                ${team.map(t => `
-                  <tr>
-                    <td>
-                      <div class="user-cell">
-                        <div class="user-cell-avatar">${(t.employee.fullName || t.employee.name).substring(0, 2).toUpperCase()}</div>
-                        <div class="user-cell-info">
-                          <span class="user-cell-name font-semibold">${t.employee.fullName || t.employee.name}</span>
-                          <span class="user-cell-code font-bold" style="color: var(--primary);">${t.employee.employeeCode || 'EMP'}</span>
-                        </div>
-                      </div>
-                    </td>
-                    <td>${t.employee.designation || 'Staff'}</td>
-                    <td><span class="font-semibold text-main">${t.attendance.checkIn || '—'}</span></td>
-                    <td><span class="badge ${t.attendance.totalBreakMinutes > 0 ? 'badge-warning' : 'badge-neutral'}">${t.attendance.breakFormatted || (t.attendance.totalBreakMinutes ? t.attendance.totalBreakMinutes + 'm' : '0m')}</span></td>
-                    <td><span class="font-semibold text-main">${t.attendance.checkOut || '—'}</span></td>
-                    <td><strong style="color: var(--primary);">${t.attendance.workedHoursFormatted || '0h 00m'}</strong></td>
-                    <td>
-                      <span class="badge ${t.attendance.status === 'PRESENT' ? 'badge-success' : (t.attendance.status === 'LATE' ? 'badge-warning' : (t.attendance.status === 'ON_BREAK' ? 'badge-warning' : 'badge-neutral'))}">
-                        ${t.attendance.status}
-                      </span>
-                    </td>
-                  </tr>
-                `).join('')}
-              </tbody>
-            </table>
-          `}
+          </div>
         </div>
+      `;
+    }
+
+    // Group team members by their Team Leader / Reporting Manager
+    const teamGroups = {};
+    team.forEach(t => {
+      const leaderName = (t.employee.manager || t.employee.managerName || 'Direct Team').trim();
+      if (!teamGroups[leaderName]) {
+        teamGroups[leaderName] = [];
+      }
+      teamGroups[leaderName].push(t);
+    });
+
+    const groupKeys = Object.keys(teamGroups);
+    const hasMultipleGroups = groupKeys.length > 1;
+
+    return `
+      <div class="flex flex-col gap-4">
+        <div class="card" style="margin-bottom: 0;">
+          <div class="card-header" style="display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 8px;">
+            <div>
+              <div class="card-title" style="display: flex; align-items: center; gap: 8px;">
+                <span>My Team Attendance (${this.currentDate})</span>
+                ${isFiltered ? `
+                  <span class="badge badge-warning" style="font-size: 0.72rem;">Showing: ${activeFilter} (${team.length})</span>
+                  <button class="btn btn-secondary btn-sm" onclick="AttendanceView.setFilterStatus('All Status')" style="font-size: 0.7rem; padding: 2px 8px; height: auto;">Clear Filter</button>
+                ` : ''}
+              </div>
+              <div class="card-subtitle">Real-time shift presence for your operational hierarchy (${groupKeys.length} Team${groupKeys.length > 1 ? 's' : ''})</div>
+            </div>
+            <div style="display: flex; align-items: center; gap: 10px;">
+              ${hasMultipleGroups ? `
+                <button class="btn btn-secondary btn-sm" onclick="AttendanceView.expandAllGroups()" style="font-size: 0.75rem; padding: 3px 10px;">
+                  Expand All
+                </button>
+                <button class="btn btn-secondary btn-sm" onclick="AttendanceView.collapseAllGroups()" style="font-size: 0.75rem; padding: 3px 10px;">
+                  Collapse All
+                </button>
+              ` : ''}
+              <div style="font-size: 0.8rem; color: var(--text-muted);">
+                Total Personnel: <strong>${team.length}</strong>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        ${groupKeys.map((groupName, idx) => {
+          const members = teamGroups[groupName];
+          const presCount = members.filter(m => (m.attendance?.status === 'PRESENT' || m.attendance?.status === 'LATE' || m.attendance?.status === 'REGULARIZED' || Boolean(m.attendance?.checkIn && m.attendance.checkIn !== '—'))).length;
+          const lateCount = members.filter(m => m.attendance?.status === 'LATE' || Number(m.attendance?.lateMinutes || 0) > 0).length;
+          const absCount = members.filter(m => !m.attendance?.checkIn && m.attendance?.status !== 'ON_LEAVE').length;
+
+          return `
+            <div class="card" style="margin-bottom: 0; overflow: hidden; border: 1px solid var(--border-color, #e2e8f0);">
+              <div
+                class="card-header"
+                style="display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 10px; cursor: pointer; user-select: none; background: var(--bg-hover, rgba(0,0,0,0.02)); padding: 12px 18px;"
+                onclick="AttendanceView.toggleTeamGroup(${idx})"
+              >
+                <div style="display: flex; align-items: center; gap: 10px;">
+                  <svg id="team-group-chevron-${idx}" width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor" style="transition: transform 0.2s ease; transform: rotate(180deg); color: var(--text-muted);">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
+                  </svg>
+                  <div>
+                    <span style="font-weight: 700; font-size: 0.95rem; color: var(--text-main);">Team: ${groupName}</span>
+                    <span class="badge badge-neutral" style="font-size: 0.72rem; margin-left: 6px;">${members.length} Member${members.length > 1 ? 's' : ''}</span>
+                  </div>
+                </div>
+                <div style="display: flex; align-items: center; gap: 8px;">
+                  <span class="badge badge-success" style="font-size: 0.72rem;">${presCount} Present</span>
+                  ${lateCount > 0 ? `<span class="badge badge-warning" style="font-size: 0.72rem;">${lateCount} Late</span>` : ''}
+                  <span class="badge badge-neutral" style="font-size: 0.72rem;">${absCount} Absent</span>
+                </div>
+              </div>
+              <div id="team-group-body-${idx}" class="card-body" style="padding: 0; display: block;">
+                <table class="data-table">
+                  <thead>
+                    <tr>
+                      <th>Team Member</th>
+                      <th>Designation</th>
+                      <th>Check In</th>
+                      <th>Break Time</th>
+                      <th>Check Out</th>
+                      <th>Net Worked Time</th>
+                      <th>Status</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    ${members.map(t => `
+                      <tr>
+                        <td>
+                          <div class="user-cell">
+                            <div class="user-cell-avatar">${(t.employee.fullName || t.employee.name).substring(0, 2).toUpperCase()}</div>
+                            <div class="user-cell-info">
+                              <span class="user-cell-name font-semibold">${t.employee.fullName || t.employee.name}</span>
+                              <span class="user-cell-code font-bold" style="color: var(--primary);">${t.employee.employeeCode || 'EMP'}</span>
+                            </div>
+                          </div>
+                        </td>
+                        <td>${t.employee.designation || 'Staff'}</td>
+                        <td><span class="font-semibold text-main">${t.attendance.checkIn || '—'}</span></td>
+                        <td><span class="badge ${t.attendance.totalBreakMinutes > 0 ? 'badge-warning' : 'badge-neutral'}">${t.attendance.breakFormatted || (t.attendance.totalBreakMinutes ? t.attendance.totalBreakMinutes + 'm' : '0m')}</span></td>
+                        <td><span class="font-semibold text-main">${t.attendance.checkOut || '—'}</span></td>
+                        <td><strong style="color: var(--primary);">${t.attendance.workedHoursFormatted || '0h 00m'}</strong></td>
+                        <td>
+                          <span class="badge ${t.attendance.status === 'PRESENT' ? 'badge-success' : (t.attendance.status === 'LATE' ? 'badge-warning' : (t.attendance.status === 'ON_BREAK' ? 'badge-warning' : 'badge-neutral'))}">
+                            ${t.attendance.status}
+                          </span>
+                        </td>
+                      </tr>
+                    `).join('')}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          `;
+        }).join('')}
       </div>
     `;
+  },
+
+  toggleTeamGroup(idx) {
+    const body = document.getElementById(`team-group-body-${idx}`);
+    const chevron = document.getElementById(`team-group-chevron-${idx}`);
+    if (body) {
+      const isHidden = body.style.display === 'none';
+      body.style.display = isHidden ? 'block' : 'none';
+      if (chevron) {
+        chevron.style.transform = isHidden ? 'rotate(180deg)' : 'rotate(0deg)';
+      }
+    }
+  },
+
+  expandAllGroups() {
+    document.querySelectorAll('[id^="team-group-body-"]').forEach(el => el.style.display = 'block');
+    document.querySelectorAll('[id^="team-group-chevron-"]').forEach(el => el.style.transform = 'rotate(180deg)');
+  },
+
+  collapseAllGroups() {
+    document.querySelectorAll('[id^="team-group-body-"]').forEach(el => el.style.display = 'none');
+    document.querySelectorAll('[id^="team-group-chevron-"]').forEach(el => el.style.transform = 'rotate(0deg)');
   },
 
   // 4. REGULARIZATION QUEUE TAB

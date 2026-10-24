@@ -1,11 +1,55 @@
 
+
+function formatTime12Safe(time) {
+  if (!time) return '—';
+  if (typeof time === 'string') {
+    const clean = time.trim();
+    if (!clean || clean === '—' || clean === '-') return '—';
+    if (/AM|PM/i.test(clean)) return clean;
+    const parts = clean.split(':');
+    if (parts.length >= 2) {
+      let h = parseInt(parts[0], 10);
+      const m = parts[1].padStart(2, '0');
+      if (!isNaN(h)) {
+        const ampm = h >= 12 ? 'PM' : 'AM';
+        h = h % 12;
+        if (h === 0) h = 12;
+        return `${h}:${m} ${ampm}`;
+      }
+    }
+    return clean;
+  }
+  if (time instanceof Date && !isNaN(time.getTime())) {
+    let h = time.getHours();
+    const m = String(time.getMinutes()).padStart(2, '0');
+    const ampm = h >= 12 ? 'PM' : 'AM';
+    h = h % 12;
+    if (h === 0) h = 12;
+    return `${h}:${m} ${ampm}`;
+  }
+  return String(time);
+}
+
+if (typeof window !== 'undefined') {
+  if (!window.formatTime12) window.formatTime12 = formatTime12Safe;
+  if (window.attendanceService && typeof window.attendanceService.formatTime12 !== 'function') {
+    window.attendanceService.formatTime12 = formatTime12Safe;
+  }
+}
+
 const ManagerDashboardView = {
   async render() {
     const employeeId = AuthGuard.userProfile?.employeeId || AuthGuard.currentUser?.uid;
-    if (typeof ESSView !== "undefined" && window.attendanceService) {
+    const employeeCode = AuthGuard.userProfile?.employeeCode || '';
+    if (employeeId && typeof ESSView !== "undefined" && window.attendanceService) {
       try {
-        const todayRecord = await attendanceService.getTodayRecord(employeeId);
-        await ESSView.syncWithFirestore(todayRecord);
+        let todayRecord = await attendanceService.getTodayRecord(employeeId);
+        if (!todayRecord && employeeCode) {
+          todayRecord = await attendanceService.getTodayRecord(employeeCode);
+        }
+        if (todayRecord) {
+          await ESSView.syncWithFirestore(todayRecord);
+        }
       } catch (e) {
         console.warn("Dashboard ESSView sync warning:", e);
       }
@@ -242,9 +286,12 @@ const ManagerDashboardView = {
 
         <!-- Team Attendance Roster -->
         <div class="col-span-6 card">
-          <div class="card-header">
+          <div class="card-header" style="display: flex; justify-content: space-between; align-items: center;">
             <div class="card-title">Today's Team Attendance</div>
-            <span class="badge badge-primary">Live Roster</span>
+            <div style="display: flex; gap: 8px; align-items: center;">
+              <button class="btn btn-soft btn-xs" onclick="ManagerDashboardView.refreshTeamRoster(event)" id="btn-refresh-team-roster" style="font-size: 0.72rem; padding: 4px 8px; cursor: pointer;">↻ Refresh</button>
+              <span class="badge badge-primary">Live Roster</span>
+            </div>
           </div>
           <div class="card-body" id="manager-team-attendance-body">
             <div style="padding: 24px; text-align: center; color: var(--text-muted);">Loading team logs...</div>
@@ -352,7 +399,9 @@ const ManagerDashboardView = {
 
       // Render Team Attendance Table with live shift presence
       const teamBody = document.getElementById("manager-team-attendance-body");
-      if (employees.length === 0) {
+      if (!teamBody) return;
+
+      if (!employees || employees.length === 0) {
         teamBody.innerHTML = `<div class="empty-state" style="border: none; padding: 24px;">
             <div class="empty-state-title" style="font-size: 0.9rem;">No direct reporting team members assigned yet.</div>
             <div class="empty-state-desc" style="font-size: 0.78rem;">Employees with you designated as their reporting manager will appear here automatically.</div>
@@ -362,10 +411,10 @@ const ManagerDashboardView = {
           <div class="flex flex-col gap-2">
             ${employees
               .map(e => {
-                const att = attRecordsMap[e.id] || attRecordsMap[e.userId] || (e.employeeCode && attRecordsMap[e.employeeCode]);
+                const att = attRecordsMap[e.id] || attRecordsMap[e.userId] || (e.employeeCode && attRecordsMap[e.employeeCode]) || (e.fullName && attRecordsMap[e.fullName.toLowerCase().trim()]);
                 const isPunchedIn = Boolean(att && att.checkIn && !att.checkOut);
                 const isPunchedOut = Boolean(att && att.checkOut);
-                const isOnBreak = Boolean(att && att.isOnBreak);
+                const isOnBreak = Boolean(att && (att.isOnBreak || att.is_on_break == 1));
 
                 let statusBadge = '<span class="badge badge-neutral" style="font-size: 0.72rem;">NOT CHECKED IN</span>';
                 if (isOnBreak) {
@@ -376,18 +425,18 @@ const ManagerDashboardView = {
                   statusBadge = '<span class="badge badge-neutral" style="font-size: 0.72rem;">COMPLETED</span>';
                 }
 
-                const checkInTime = att && att.checkIn ? (typeof attendanceService !== 'undefined' ? attendanceService.formatTime12(att.checkIn) : att.checkIn) : '—';
+                const checkInTime = att && att.checkIn ? formatTime12Safe(att.checkIn) : '—';
                 const initials = (e.fullName || e.name || 'EM').split(' ').map(n => n[0]).join('').substring(0, 2).toUpperCase();
 
                 return `
-                  <div class="flex items-center justify-between" style="padding: 8px 12px; border: 1px solid var(--border-light); border-radius: var(--radius-sm); background: var(--bg-card);">
+                  <div class="flex items-center justify-between" style="padding: 10px 14px; border: 1px solid var(--border-light); border-radius: var(--radius-sm); background: var(--bg-card); transition: all 0.2s ease;">
                     <div class="flex items-center gap-3">
-                      <div style="width: 32px; height: 32px; border-radius: 50%; background: var(--primary-light); color: var(--primary); display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 0.75rem;">
+                      <div style="width: 36px; height: 36px; border-radius: 50%; background: var(--primary-light); color: var(--primary); display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 0.8rem;">
                         ${initials}
                       </div>
                       <div>
-                        <div class="font-semibold text-main" style="font-size: 0.85rem;">${e.fullName || e.name} <span class="font-mono" style="font-size: 0.72rem; color: var(--text-muted);">(${e.employeeCode || '—'})</span></div>
-                        <div class="text-muted" style="font-size: 0.75rem;">${e.designation || 'Staff'} • Check In: ${checkInTime}</div>
+                        <div class="font-semibold text-main" style="font-size: 0.88rem;">${e.fullName || e.name} <span class="font-mono" style="font-size: 0.75rem; color: var(--text-muted);">(${e.employeeCode || '—'})</span></div>
+                        <div class="text-muted" style="font-size: 0.76rem;">${e.designation || 'Staff'} • Check In: <strong>${checkInTime}</strong></div>
                       </div>
                     </div>
                     <div>${statusBadge}</div>
@@ -407,6 +456,20 @@ const ManagerDashboardView = {
           <div class="empty-state-desc" style="font-size: 0.78rem;">Visit Attendance & Late Marks to view live rosters.</div>
         </div>`;
       }
+    }
+  },
+
+  async refreshTeamRoster(event) {
+    if (event) event.preventDefault();
+    const btn = document.getElementById('btn-refresh-team-roster');
+    if (btn) btn.textContent = '↻ Refreshing...';
+    try {
+      await this.postRender();
+      if (typeof Toast !== 'undefined') Toast.success('Team roster refreshed!');
+    } catch (e) {
+      console.warn('Roster refresh notice:', e);
+    } finally {
+      if (btn) btn.textContent = '↻ Refresh';
     }
   },
 

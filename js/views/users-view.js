@@ -43,11 +43,11 @@ const UsersView = {
 
     const roleCounts = {
       total: users.length,
-      superAdmin: users.filter(u => u.roleId === 'SUPER_ADMIN').length,
-      hr: users.filter(u => u.roleId === 'HR_MANAGER').length,
-      management: users.filter(u => ['MANAGER', 'OPERATIONS_MANAGER', 'TEAM_LEAD'].includes(u.roleId)).length,
-      trainee: users.filter(u => u.roleId === 'TRAINEE').length,
-      employee: users.filter(u => u.roleId === 'EMPLOYEE' || !u.roleId).length,
+      admin: users.filter(u => u.roleId === 'ADMIN' || u.roleId === 'SUPER_ADMIN').length,
+      hr: users.filter(u => u.roleId === 'HR' || u.roleId === 'HR_MANAGER').length,
+      management: users.filter(u => ['MANAGER', 'OPS', 'OPERATIONS_MANAGER', 'TL', 'TEAM_LEAD'].includes(u.roleId)).length,
+      compliance: users.filter(u => u.roleId === 'COMPLIANCE').length,
+      employee: users.filter(u => u.roleId === 'EMPLOYEE' || !u.roleId || ['RELATIONSHIP_MANAGER', 'DIGITAL_MARKETING', 'MENTOR_TRAINER', 'TRAINEE'].includes(u.roleId)).length,
       active: users.filter(u => u.status === 'ACTIVE').length
     };
 
@@ -144,18 +144,13 @@ const UsersView = {
           <div class="flex items-center gap-2">
             <select id="user-role-filter" class="form-control form-control-sm" style="width: 180px;" onchange="UsersView.handleRoleFilter(this.value)">
               <option value="All">All Roles</option>
-              <option value="SUPER_ADMIN">Super Administrator</option>
-              <option value="HR_MANAGER">HR Manager (HRS)</option>
-              <option value="OPERATIONS_MANAGER">Operations Manager (OPS)</option>
+              <option value="ADMIN">Admin</option>
+              <option value="HR">HR</option>
+              <option value="OPS">OPS</option>
+              <option value="COMPLIANCE">Compliance</option>
               <option value="MANAGER">Manager</option>
-              <option value="PROCESS_OWNER">Process Owner</option>
-              <option value="COMPLIANCE">Compliance Officer</option>
-              <option value="DIGITAL_MARKETING">Digital Marketing</option>
-              <option value="TEAM_LEAD">Team Leader</option>
-              <option value="RELATIONSHIP_MANAGER">Relationship Manager</option>
-              <option value="MENTOR_TRAINER">Mentor / Trainer</option>
-              <option value="TRAINEE">Graduate Trainee</option>
-              <option value="EMPLOYEE">Employee (Self Service)</option>
+              <option value="TL">TL</option>
+              <option value="EMPLOYEE">Employee</option>
             </select>
 
             <select id="user-status-filter" class="form-control form-control-sm" style="width: 130px;" onchange="UsersView.handleStatusFilter(this.value)">
@@ -199,21 +194,23 @@ const UsersView = {
   },
 
   getRoleBadge(roleId) {
+    const rKey = (roleId || 'EMPLOYEE').toString().toUpperCase().trim();
     const map = {
-      SUPER_ADMIN: { label: 'Super Admin', style: 'background: rgba(124, 58, 237, 0.12); color: #7c3aed; border: 1px solid rgba(124, 58, 237, 0.3);' },
-      HR_MANAGER: { label: 'HR Manager', style: 'background: rgba(5, 150, 105, 0.12); color: #059669; border: 1px solid rgba(5, 150, 105, 0.3);' },
+      ADMIN: { label: 'Admin', style: 'background: rgba(124, 58, 237, 0.12); color: #7c3aed; border: 1px solid rgba(124, 58, 237, 0.3);' },
+      SUPER_ADMIN: { label: 'Admin', style: 'background: rgba(124, 58, 237, 0.12); color: #7c3aed; border: 1px solid rgba(124, 58, 237, 0.3);' },
+      COMPANY_ADMIN: { label: 'Admin', style: 'background: rgba(124, 58, 237, 0.12); color: #7c3aed; border: 1px solid rgba(124, 58, 237, 0.3);' },
+      HR: { label: 'HR', style: 'background: rgba(5, 150, 105, 0.12); color: #059669; border: 1px solid rgba(5, 150, 105, 0.3);' },
+      HR_MANAGER: { label: 'HR', style: 'background: rgba(5, 150, 105, 0.12); color: #059669; border: 1px solid rgba(5, 150, 105, 0.3);' },
+      OPS: { label: 'OPS', style: 'background: rgba(2, 132, 199, 0.12); color: #0284c7; border: 1px solid rgba(2, 132, 199, 0.3);' },
+      OPERATIONS_MANAGER: { label: 'OPS', style: 'background: rgba(2, 132, 199, 0.12); color: #0284c7; border: 1px solid rgba(2, 132, 199, 0.3);' },
+      PROCESS_OWNER: { label: 'OPS', style: 'background: rgba(2, 132, 199, 0.12); color: #0284c7; border: 1px solid rgba(2, 132, 199, 0.3);' },
+      COMPLIANCE: { label: 'Compliance', style: 'background: rgba(16, 185, 129, 0.12); color: #10b981; border: 1px solid rgba(16, 185, 129, 0.3);' },
       MANAGER: { label: 'Manager', style: 'background: rgba(37, 99, 235, 0.12); color: #2563eb; border: 1px solid rgba(37, 99, 235, 0.3);' },
-      OPERATIONS_MANAGER: { label: 'Ops Manager', style: 'background: rgba(2, 132, 199, 0.12); color: #0284c7; border: 1px solid rgba(2, 132, 199, 0.3);' },
-      PROCESS_OWNER: { label: 'Process Owner', style: 'background: rgba(147, 51, 234, 0.12); color: #9333ea; border: 1px solid rgba(147, 51, 234, 0.3);' },
-      COMPLIANCE: { label: 'Compliance Officer', style: 'background: rgba(16, 185, 129, 0.12); color: #10b981; border: 1px solid rgba(16, 185, 129, 0.3);' },
-      DIGITAL_MARKETING: { label: 'Digital Marketing', style: 'background: rgba(236, 72, 153, 0.12); color: #ec4899; border: 1px solid rgba(236, 72, 153, 0.3);' },
-      TEAM_LEAD: { label: 'Team Leader', style: 'background: rgba(79, 70, 229, 0.12); color: #4f46e5; border: 1px solid rgba(79, 70, 229, 0.3);' },
-      RELATIONSHIP_MANAGER: { label: 'Relationship Manager', style: 'background: rgba(8, 145, 178, 0.12); color: #0891b2; border: 1px solid rgba(8, 145, 178, 0.3);' },
-      MENTOR_TRAINER: { label: 'Mentor / Trainer', style: 'background: rgba(217, 119, 6, 0.12); color: #d97706; border: 1px solid rgba(217, 119, 6, 0.3);' },
-      TRAINEE: { label: 'Graduate Trainee', style: 'background: rgba(234, 88, 12, 0.12); color: #ea580c; border: 1px solid rgba(234, 88, 12, 0.3);' },
+      TL: { label: 'TL', style: 'background: rgba(79, 70, 229, 0.12); color: #4f46e5; border: 1px solid rgba(79, 70, 229, 0.3);' },
+      TEAM_LEAD: { label: 'TL', style: 'background: rgba(79, 70, 229, 0.12); color: #4f46e5; border: 1px solid rgba(79, 70, 229, 0.3);' },
       EMPLOYEE: { label: 'Employee', style: 'background: rgba(100, 116, 139, 0.12); color: #475569; border: 1px solid rgba(100, 116, 139, 0.3);' }
     };
-    const r = map[roleId] || { label: roleId || 'Employee', style: 'background: #f1f5f9; color: #475569;' };
+    const r = map[rKey] || { label: 'Employee', style: 'background: rgba(100, 116, 139, 0.12); color: #475569; border: 1px solid rgba(100, 116, 139, 0.3);' };
     return `<span class="badge" style="font-weight: 700; font-size: 0.74rem; padding: 3px 8px; border-radius: 6px; ${r.style}">${r.label}</span>`;
   },
 
@@ -335,18 +332,13 @@ const UsersView = {
     if (!user) { Toast.error('User profile not found.'); return; }
 
     const roles = [
-      { id: 'SUPER_ADMIN', name: 'Super Administrator' },
-      { id: 'HR_MANAGER', name: 'HR Manager (HRS)' },
-      { id: 'OPERATIONS_MANAGER', name: 'Operations Manager (OPS)' },
+      { id: 'ADMIN', name: 'Admin' },
+      { id: 'HR', name: 'HR' },
+      { id: 'OPS', name: 'OPS' },
+      { id: 'COMPLIANCE', name: 'Compliance' },
       { id: 'MANAGER', name: 'Manager' },
-      { id: 'PROCESS_OWNER', name: 'Process Owner' },
-      { id: 'COMPLIANCE', name: 'Compliance Officer' },
-      { id: 'DIGITAL_MARKETING', name: 'Digital Marketing' },
-      { id: 'TEAM_LEAD', name: 'Team Leader' },
-      { id: 'RELATIONSHIP_MANAGER', name: 'Relationship Manager' },
-      { id: 'MENTOR_TRAINER', name: 'Mentor / Trainer' },
-      { id: 'TRAINEE', name: 'Graduate Trainee' },
-      { id: 'EMPLOYEE', name: 'Employee (Self Service)' }
+      { id: 'TL', name: 'TL' },
+      { id: 'EMPLOYEE', name: 'Employee' }
     ];
 
     const departments = [

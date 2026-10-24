@@ -2,30 +2,13 @@
 const seedService = {
   COMPANY_ID: 'comp_diallo_india',
 
-  // Ensure core corporate structure is set up without dumping any demo/mock data
+  // Core corporate datasets are maintained directly on Hostinger MySQL
   async bootstrapIfEmpty() {
-    try {
-      console.log('[Seed] Verifying system datasets across collections...');
-      // 1. Ensure official roles exist in Firestore
-      await this.checkAndSeedModule('roles', () => this.seedRoles());
-      await this.checkAndSeedModule('companies', () => this.seedCoreStructure());
-      console.log('[Seed] System dataset verification complete.');
-    } catch (err) {
-      console.warn('[Seed] Bootstrap check warning:', err);
-    }
+    return;
   },
 
-  async checkAndSeedModule(collectionName, seedFn) {
-    try {
-      const snap = await db.collection(collectionName).limit(1).get();
-      if (snap.empty) {
-        console.log(`[Seed] Collection '${collectionName}' is empty. Initializing core structure...`);
-        await seedFn();
-        console.log(`[Seed] Collection '${collectionName}' initialized successfully.`);
-      }
-    } catch (e) {
-      console.warn(`[Seed] Could not check '${collectionName}':`, e);
-    }
+  async checkAndSeedModule() {
+    return;
   },
 
   // System Initialization — ensures official Diallo facilities & 8 standardized departments

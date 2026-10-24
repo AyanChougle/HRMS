@@ -222,17 +222,14 @@ const Router = {
     if (!sidebarSection) return;
 
     const rawRole = (AuthGuard._previewRoleId || AuthGuard.userProfile?.roleId || 'EMPLOYEE').toString().toUpperCase().trim();
-    const role = rawRole;
+    const role = (typeof AuthGuard !== 'undefined' && typeof AuthGuard.resolveCanonicalRole === 'function')
+      ? AuthGuard.resolveCanonicalRole(rawRole)
+      : rawRole;
 
-    // Fetch allowed pages configured by Super Admin (falls back to official policy defaults)
+    // Fetch allowed pages configured by Admin (falls back to official policy defaults)
     let allowedKeys = (typeof roleAccessService !== 'undefined')
       ? roleAccessService.getVisiblePagesForRole(role)
       : ['dashboard', 'attendance', 'leave', 'compliance', 'ess'];
-
-    // Performance & Appraisals tab is strictly excluded for Trainee
-    if (role === 'TRAINEE' || role.includes('TRAINEE')) {
-      allowedKeys = allowedKeys.filter(k => k !== 'performance');
-    }
 
     const allPages = (typeof roleAccessService !== 'undefined') ? roleAccessService.PAGES : [];
 
@@ -250,19 +247,14 @@ const Router = {
       }
     });
 
-    let roleBadgeTitle = 'My Workspace';
-    if (role === 'SUPER_ADMIN' || role === 'COMPANY_ADMIN' || role === 'ADMIN') roleBadgeTitle = 'Super Admin Console';
-    else if (role === 'HR_MANAGER' || role === 'HR' || role.includes('HR')) roleBadgeTitle = 'HR Management (HRS)';
-    else if (role === 'OPERATIONS_MANAGER' || role === 'OPS') roleBadgeTitle = 'Operations Portal (OPS)';
+    let roleBadgeTitle = 'Employee Workspace (ESS)';
+    if (role === 'ADMIN') roleBadgeTitle = 'Admin Console';
+    else if (role === 'HR') roleBadgeTitle = 'HR Management';
+    else if (role === 'OPS') roleBadgeTitle = 'Operations Portal (OPS)';
+    else if (role === 'COMPLIANCE') roleBadgeTitle = 'Compliance Workspace';
     else if (role === 'MANAGER') roleBadgeTitle = 'Manager Portal';
-    else if (role === 'PROCESS_OWNER') roleBadgeTitle = 'Process Owner Portal';
-    else if (role === 'COMPLIANCE' || role === 'COMPLIANCE_OFFICER') roleBadgeTitle = 'Compliance Workspace';
-    else if (role === 'DIGITAL_MARKETING' || role === 'DIGITAL') roleBadgeTitle = 'Digital Marketing Workspace';
-    else if (role === 'TEAM_LEAD') roleBadgeTitle = 'Team Leader Portal';
-    else if (role === 'RELATIONSHIP_MANAGER') roleBadgeTitle = 'Relationship Manager';
-    else if (role === 'MENTOR_TRAINER' || role === 'TRAINER' || role === 'MENTOR') roleBadgeTitle = 'Trainer Workspace';
-    else if (role === 'TRAINEE') roleBadgeTitle = 'Trainee Learning Track';
-    else roleBadgeTitle = 'Employee Workspace';
+    else if (role === 'TL') roleBadgeTitle = 'Team Leader Portal (TL)';
+    else roleBadgeTitle = 'Employee Workspace (ESS)';
 
     const renderItems = (items) => items.map(item => `
       <a href="#${item.route}" class="nav-link ${this.currentRoute === item.route ? 'active' : ''}" data-route="${item.route}">
