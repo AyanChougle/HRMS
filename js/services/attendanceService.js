@@ -117,7 +117,7 @@ const attendanceService = {
     if (r.late_minutes !== undefined && r.lateMinutes === undefined) r.lateMinutes = Number(r.late_minutes || 0);
     if (r.employee_code && !r.employeeCode) r.employeeCode = r.employee_code;
     if (r.employee_name && !r.employeeName) r.employeeName = r.employee_name;
-    if (r.is_on_break !== undefined && r.isOnBreak === undefined) r.isOnBreak = Boolean(r.is_on_break);
+    if (r.is_on_break !== undefined && r.isOnBreak === undefined) r.isOnBreak = (r.is_on_break == 1);
 
     // Clean break durations
     const breakSec = (r.totalBreakSeconds !== undefined && r.totalBreakSeconds !== null)
@@ -231,7 +231,7 @@ const attendanceService = {
               totalBreakSeconds: Number(r.total_break_seconds || 0),
               totalBreakMinutes: Number(r.total_break_minutes || 0),
               breakFormatted: r.break_formatted || '0m',
-              isOnBreak: Boolean(r.is_on_break)
+              isOnBreak: (r.is_on_break == 1)
             });
           }
         } catch (sqlErr) {
@@ -246,443 +246,137 @@ const attendanceService = {
     }
   },
 
-  // 2. CHECK-IN / RESUME SHIFT
-  async checkIn(punchData) {
-    try {
-      const employeeId = punchData.employeeId || AuthGuard.userProfile?.employeeId || AuthGuard.currentUser?.uid;
-      const companyId = punchData.companyId || AuthGuard.userProfile?.companyId || 'comp_diallo_india';
-      const settings = await attendanceSettingsService.getSettings(companyId);
-      const attendanceDate = punchData.date || this.getCompanyLocalDate(settings.timezone);
+  // 2. CHECK-IN / PUNCH IN (100% Hostinger MySQL Backend)
+  async checkIn(punchData = {}) {
+    const employeeId = punchData.employeeId || AuthGuard.userProfile?.employeeId || AuthGuard.userProfile?.employeeCode || AuthGuard.currentUser?.uid;
+    const employeeCode = punchData.employeeCode || AuthGuard.userProfile?.employeeCode || '';
+    const employeeName = punchData.employeeName || punchData.name || AuthGuard.userProfile?.displayName || 'Employee';
+    const department = punchData.department || AuthGuard.userProfile?.department || 'Operations';
+    const now = new Date();
+    const checkInTimeStr = punchData.time || this.formatTime(now);
+    const attendanceDate = punchData.date || this.getCompanyLocalDate();
 
-      // Verify active employee status
-      const emp = await employeeService.getEmployee(employeeId);
-      if (emp && emp.employmentStatus !== 'ACTIVE' && emp.employmentStatus !== 'ON_NOTICE') {
-        throw new Error(`Cannot check in. Employee account status is '${emp.employmentStatus}'.`);
-      }
+    const res = await apiClient.post('attendance.php?action=punch_in', {
+      employee_id: employeeId,
+      employee_code: employeeCode,
+      employee_name: employeeName,
+      department: department,
+      punch_type: 'In',
+      time: checkInTimeStr,
+      check_in: checkInTimeStr,
+      work_mode: punchData.workMode || 'OFFICE',
+      location: punchData.location || 'HQ - Mumbai',
+      latitude: punchData.latitude || null,
+      longitude: punchData.longitude || null,
+      date: attendanceDate
+    });
 
-      const recordId = `${employeeId}_${attendanceDate}`;
-      const recordRef = db.collection('attendanceRecords').doc(recordId);
-      const existingDoc = await recordRef.get();
-
-      const now = new Date();
-      const checkInTimeStr = punchData.time || this.formatTime(now);
-
-      // 1. Check if already checked out today — Lock until tomorrow 09:30 AM
-      if (existingDoc.exists && existingDoc.data().checkIn) {
-        const rec = existingDoc.data();
-        if (rec.checkOut) {
-          throw new Error('Shift completed and punched out for today. The timecard station is locked until tomorrow at 09:30 AM.');
-        }
-        return { id: recordId, ...rec };
-      }
-
-      // 2. Morning Lockout: Punch-in window opens at 09:30 AM for 10:00 AM – 07:00 PM shift
-      const currentMinutes = now.getHours() * 60 + now.getMinutes();
-      const openMinutes = 9 * 60 + 30; // 09:30 AM
-      if (currentMinutes < openMinutes && !punchData.forcePunch) {
-        throw new Error('Shift check-in window opens at 09:30 AM (General Shift: 10:00 AM – 07:00 PM).');
-      }
-
-      // 3. Geofence logging (record distance without blocking punch-in)
-      const officeLat = 19.075975;
-      const officeLng = 72.87738;
-      const userLat = Number(punchData.latitude);
-      const userLng = Number(punchData.longitude);
-      let distMeters = null;
-
-      if (!isNaN(userLat) && !isNaN(userLng)) {
-        distMeters = this.calculateDistanceMeters(userLat, userLng, officeLat, officeLng);
-      }
-
-      const shiftStartMinutes = this.timeStringToMinutes(settings.defaultStartTime || '10:00');
-      const graceLimit = shiftStartMinutes + (settings.graceMinutes !== undefined ? settings.graceMinutes : 10);
-      const halfDayThreshold = shiftStartMinutes + (settings.halfDayAfterMinutes || 70); // Reporting after 11:10 AM is Half Day
-
-      let status = 'PRESENT';
-      let lateMinutes = 0;
-
-      if (currentMinutes > halfDayThreshold) {
-        status = 'HALF_DAY';
-        lateMinutes = Math.min(720, Math.max(0, currentMinutes - shiftStartMinutes));
-      } else if (currentMinutes > graceLimit) {
-        status = 'LATE';
-        lateMinutes = Math.min(720, Math.max(0, currentMinutes - shiftStartMinutes));
-      }
-
-      const payload = {
-        employeeId,
-        employeeCode: emp?.employeeCode || punchData.employeeCode || 'EMP-0001',
-        employeeName: emp?.fullName || emp?.name || punchData.name || 'Staff',
-        companyId,
-        branchId: emp?.branchId || punchData.branchId || 'branch_mumbai',
-        latitude: !isNaN(userLat) ? userLat : null,
-        longitude: !isNaN(userLng) ? userLng : null,
-        geofenceVerified: true,
-        branchName: emp?.branchName || emp?.location || 'HQ - Mumbai',
-        departmentId: emp?.departmentId || '',
-        department: emp?.department || 'General',
-        managerId: emp?.managerId || '',
-        manager: emp?.manager || '',
-        date: attendanceDate,
-        checkIn: checkInTimeStr,
-        currentCheckInTime: checkInTimeStr,
-        checkInDateIso: now.toISOString(),
-        currentCheckInDateIso: now.toISOString(),
-        checkOut: null,
-        grossMinutes: 0,
-        grossHoursFormatted: '0h 00m',
-        totalBreakMinutes: 0,
-        totalBreakSeconds: 0,
-        breakFormatted: '0m',
-        workedMinutes: 0,
-        workedHoursFormatted: '0h 00m',
-        sessions: [],
-        status,
-        lateMinutes,
-        earlyCheckoutMinutes: 0,
-        overtimeMinutes: 0,
-        source: punchData.source || 'WEB',
-        notes: punchData.notes || '',
-        createdAt: firebase.firestore.FieldValue.serverTimestamp(),
-        updatedAt: firebase.firestore.FieldValue.serverTimestamp()
-      };
-
-      // 1. Primary: Save directly to Hostinger MySQL attendance_records table
-      if (typeof apiClient !== 'undefined') {
-        try {
-          await apiClient.post('attendance.php?action=save_record', {
-            ...payload,
-            employee_id: employeeId,
-            employee_code: payload.employeeCode,
-            employee_name: payload.employeeName,
-            manager_id: payload.managerId,
-            manager: payload.manager,
-            check_in: payload.checkIn,
-            status: payload.status,
-            late_minutes: payload.lateMinutes,
-            record_key: recordId
-          });
-        } catch (sqlErr) {
-          console.warn('[attendanceService] Hostinger MySQL check-in notice:', sqlErr.message || sqlErr);
-        }
-      }
-
-      // 2. Secondary: Firestore backup
-      if (typeof db !== 'undefined') {
-        await recordRef.set(payload).catch(() => {});
-        await db.collection('punchLogs').add({
-          employeeId,
-          name: payload.employeeName,
-          punchType: 'In',
-          time: checkInTimeStr,
-          date: attendanceDate,
-          location: punchData.location || 'HQ - Mumbai',
-          device: 'Web Attendance Terminal',
-          status: status === 'LATE' ? 'Late Arrival' : 'On Time',
-          timestamp: firebase.firestore.FieldValue.serverTimestamp()
-        }).catch(() => {});
-      }
-
-      await auditService.log('ATTENDANCE_CHECK_IN', 'ATTENDANCE', 'attendanceRecords', recordId, payload);
-      return { id: recordId, ...payload };
-    } catch (err) {
-      console.error('Error during check-in:', err);
-      throw err;
+    if (!res || !res.success) {
+      throw new Error(res?.error || 'Failed to punch in on attendance server.');
     }
+
+    const record = res.record || {};
+    return this.sanitizeRecord({
+      id: `${employeeId}_${attendanceDate}`,
+      recordKey: `${employeeId}_${attendanceDate}`,
+      employeeId: employeeId,
+      employeeCode: employeeCode,
+      employeeName: employeeName,
+      department: department,
+      date: attendanceDate,
+      checkIn: record.check_in || checkInTimeStr,
+      checkInIso: record.check_in_iso || now.toISOString(),
+      status: record.status || 'PRESENT',
+      isOnBreak: false,
+      totalBreakSeconds: 0,
+      totalBreakMinutes: 0
+    });
   },
 
-  // 3. CHECK-OUT
+  // 3. CHECK-OUT / PUNCH OUT (100% Hostinger MySQL Backend)
   async checkOut(employeeId, checkoutData = {}) {
-    try {
-      const companyId = checkoutData.companyId || AuthGuard.userProfile?.companyId || 'comp_diallo_india';
-      const settings = await attendanceSettingsService.getSettings(companyId);
-      const attendanceDate = checkoutData.date || this.getCompanyLocalDate(settings.timezone);
-      const recordId = `${employeeId}_${attendanceDate}`;
-      const recordRef = db.collection('attendanceRecords').doc(recordId);
+    const targetEmpId = employeeId || AuthGuard.userProfile?.employeeId || AuthGuard.userProfile?.employeeCode || AuthGuard.currentUser?.uid;
+    const employeeCode = checkoutData.employeeCode || AuthGuard.userProfile?.employeeCode || '';
+    const now = new Date();
+    const checkOutTimeStr = checkoutData.time || this.formatTime(now);
+    const attendanceDate = checkoutData.date || this.getCompanyLocalDate();
 
-      const doc = await recordRef.get();
-      if (!doc.exists || !doc.data().checkIn) {
-        throw new Error('No check-in record found for today. You must check in before checking out.');
-      }
+    const res = await apiClient.post('attendance.php?action=punch_out', {
+      employee_id: targetEmpId,
+      employee_code: employeeCode,
+      punch_type: 'Out',
+      time: checkOutTimeStr,
+      check_out: checkOutTimeStr,
+      date: attendanceDate,
+      latitude: checkoutData.latitude || null,
+      longitude: checkoutData.longitude || null
+    });
 
-      const rec = doc.data();
-      if (rec.checkOut && !rec.currentCheckInDateIso) {
-        throw new Error(`You have already checked out for today at ${rec.checkOut}.`);
-      }
-
-      // Geofence logging for Check-Out (record distance without blocking punch-out)
-      const officeLat = 19.075975;
-      const officeLng = 72.87738;
-      const userLat = Number(checkoutData.latitude);
-      const userLng = Number(checkoutData.longitude);
-      let distMeters = null;
-
-      if (!isNaN(userLat) && !isNaN(userLng)) {
-        distMeters = this.calculateDistanceMeters(userLat, userLng, officeLat, officeLng);
-      }
-
-      const now = new Date();
-      const checkOutTimeStr = checkoutData.time || this.formatTime(now);
-      
-      // Calculate session minutes cleanly
-      let sessionMinutes = 0;
-      if (checkoutData.totalWorkSeconds !== undefined && checkoutData.totalWorkSeconds !== null && Number(checkoutData.totalWorkSeconds) > 0) {
-        sessionMinutes = Math.round(Number(checkoutData.totalWorkSeconds) / 60);
-      } else {
-        const inMins = this.time12ToMinutes(rec.currentCheckInTime || rec.checkIn);
-        const outMins = this.time12ToMinutes(checkOutTimeStr);
-        if (outMins > inMins) {
-          sessionMinutes = outMins - inMins;
-        } else if (rec.currentCheckInDateIso) {
-          const checkInDate = new Date(rec.currentCheckInDateIso);
-          const diffMs = Math.max(0, now.getTime() - checkInDate.getTime());
-          sessionMinutes = Math.round(diffMs / 60000);
-        }
-      }
-      
-      // Session minutes cannot exceed single 24-hour calendar day (1440m)
-      sessionMinutes = Math.min(Math.max(0, sessionMinutes), 1440);
-
-      // Sum gross minutes from prior sessions if any
-      let priorGrossMinutes = 0;
-      if (rec.sessions && Array.isArray(rec.sessions)) {
-        rec.sessions.forEach(s => {
-          priorGrossMinutes += (s.grossMinutes || 0);
-        });
-      }
-
-      const totalGrossMinutes = Math.min(1440, priorGrossMinutes + sessionMinutes);
-      const totalBreakSeconds = (checkoutData.totalBreakSeconds !== undefined && checkoutData.totalBreakSeconds !== null)
-        ? Number(checkoutData.totalBreakSeconds)
-        : (rec.totalBreakSeconds || (rec.totalBreakMinutes ? rec.totalBreakMinutes * 60 : 0));
-      const totalBreakMinutes = Math.round(totalBreakSeconds / 60);
-      const workedMinutes = Math.max(0, Math.min(totalGrossMinutes - totalBreakMinutes, totalGrossMinutes));
-
-      const hours = Math.floor(workedMinutes / 60);
-      const mins = workedMinutes % 60;
-      const workedHoursFormatted = `${hours}h ${String(mins).padStart(2, '0')}m`;
-
-      const grossHours = Math.floor(totalGrossMinutes / 60);
-      const grossMins = totalGrossMinutes % 60;
-      const grossHoursFormatted = `${grossHours}h ${String(grossMins).padStart(2, '0')}m`;
-
-      const breakFormatted = this.formatBreakDuration(totalBreakSeconds);
-
-      const isSat = now.getDay() === 6;
-      const defaultEndTime = isSat ? '16:00' : '19:00';
-      const shiftEndMinutes = this.timeStringToMinutes(settings.defaultEndTime || defaultEndTime);
-      const currentMinutes = now.getHours() * 60 + now.getMinutes();
-      const earlyCheckoutMinutes = currentMinutes < shiftEndMinutes ? shiftEndMinutes - currentMinutes : 0;
-      const shiftStandardMinutes = isSat ? 360 : (settings.overtimeAfterMinutes || 540);
-      const overtimeMinutes = workedMinutes > shiftStandardMinutes ? workedMinutes - shiftStandardMinutes : 0;
-
-      let status = rec.status;
-      const halfDayCutoff = isSat ? 180 : (settings.minimumHalfDayMinutes || 240);
-      if (workedMinutes < halfDayCutoff) {
-        status = 'HALF_DAY';
-      }
-
-      const updates = {
-        checkOut: checkOutTimeStr,
-        checkOutDateIso: now.toISOString(),
-        currentCheckInDateIso: null,
-        grossMinutes: totalGrossMinutes,
-        grossHoursFormatted,
-        totalBreakMinutes,
-        totalBreakSeconds,
-        breakFormatted,
-        workedMinutes,
-        workedHoursFormatted,
-        earlyCheckoutMinutes,
-        overtimeMinutes,
-        status,
-        isOnBreak: false,
-        updatedAt: firebase.firestore.FieldValue.serverTimestamp()
-      };
-
-      // 1. Primary: Save directly to Hostinger MySQL
-      if (typeof apiClient !== 'undefined') {
-        try {
-          await apiClient.post('attendance.php?action=save_record', {
-            employee_id: employeeId,
-            employee_code: rec.employeeCode || '',
-            employee_name: rec.employeeName || '',
-            department: rec.department || 'Operations',
-            manager_id: rec.managerId || '',
-            manager: rec.manager || '',
-            date: attendanceDate,
-            check_in: rec.checkIn || '',
-            check_out: checkOutTimeStr,
-            status: updates.status,
-            late_minutes: rec.lateMinutes || 0,
-            gross_minutes: updates.grossMinutes,
-            gross_hours_formatted: updates.grossHoursFormatted,
-            total_break_seconds: updates.totalBreakSeconds,
-            total_break_minutes: updates.totalBreakMinutes,
-            break_formatted: updates.breakFormatted,
-            is_on_break: 0,
-            record_key: recordId
-          });
-        } catch (sqlErr) {
-          console.warn('[attendanceService] Hostinger MySQL check-out notice:', sqlErr.message || sqlErr);
-        }
-      }
-
-      // 2. Secondary: Firestore backup
-      if (typeof db !== 'undefined') {
-        await recordRef.update(updates).catch(() => {});
-        await db.collection('punchLogs').add({
-          employeeId,
-          name: rec.employeeName,
-          punchType: 'Out',
-          time: checkOutTimeStr,
-          date: attendanceDate,
-          device: 'Web Attendance Terminal',
-          status: 'Completed',
-          timestamp: firebase.firestore.FieldValue.serverTimestamp()
-        }).catch(() => {});
-      }
-
-      await auditService.log('ATTENDANCE_CHECK_OUT', 'ATTENDANCE', 'attendanceRecords', recordId, updates);
-      return { id: recordId, ...rec, ...updates };
-    } catch (err) {
-      console.error('Error during check-out:', err);
-      throw err;
+    if (!res || !res.success) {
+      throw new Error(res?.error || 'Failed to punch out on attendance server.');
     }
+
+    const record = res.record || {};
+    return this.sanitizeRecord({
+      id: `${targetEmpId}_${attendanceDate}`,
+      recordKey: `${targetEmpId}_${attendanceDate}`,
+      employeeId: targetEmpId,
+      employeeCode: employeeCode,
+      date: attendanceDate,
+      checkIn: record.check_in || null,
+      checkOut: record.check_out || checkOutTimeStr,
+      status: record.status || 'PRESENT',
+      isOnBreak: false,
+      durationSeconds: record.duration_seconds || 0,
+      totalBreakSeconds: record.total_break_seconds || 0
+    });
   },
 
-  // 3b. RECORD PUNCH & BREAKS (FOR LIVE ESS & WEBCARD)
-  async recordPunch(punchData) {
+  // 4. RECORD PUNCH (Dispatcher for In, Out, Break In, Break Out)
+  async recordPunch(punchData = {}) {
     try {
-      const employeeId = punchData.employeeId || AuthGuard.userProfile?.employeeId || AuthGuard.currentUser?.uid;
-      const companyId = punchData.companyId || AuthGuard.userProfile?.companyId || 'comp_diallo_india';
-      const settings = await attendanceSettingsService.getSettings(companyId);
-      const attendanceDate = punchData.date || this.getCompanyLocalDate(settings.timezone);
-      const recordId = `${employeeId}_${attendanceDate}`;
-      const recordRef = db.collection('attendanceRecords').doc(recordId);
-
+      const punchType = (punchData.punchType || '').trim();
+      const employeeId = punchData.employeeId || AuthGuard.userProfile?.employeeId || AuthGuard.userProfile?.employeeCode || AuthGuard.currentUser?.uid;
+      const employeeCode = punchData.employeeCode || AuthGuard.userProfile?.employeeCode || '';
+      const attendanceDate = punchData.date || this.getCompanyLocalDate();
       const now = new Date();
       const timeStr = punchData.time || this.formatTime(now);
-      const punchType = punchData.punchType;
 
-      // Log in punchLogs collection
-      await db.collection('punchLogs').add({
-        employeeId,
-        name: punchData.name || AuthGuard.userProfile?.displayName || 'Employee',
-        punchType,
-        time: timeStr,
-        date: attendanceDate,
-        location: punchData.location || 'HQ - Mumbai',
-        device: punchData.device || 'Web Attendance Terminal',
-        status: punchData.status || 'Logged',
-        breakDuration: punchData.breakDuration || 0,
-        timestamp: firebase.firestore.FieldValue.serverTimestamp()
-      });
-
-      const doc = await recordRef.get();
       if (punchType === 'In' || punchType === 'In (Resume)') {
-        await this.checkIn({
-          employeeId,
-          companyId,
-          time: timeStr,
-          location: punchData.location,
-          latitude: punchData.latitude,
-          longitude: punchData.longitude,
-          distanceMeters: punchData.distanceMeters,
-          source: 'WEB'
-        });
-      } else if (punchType === 'Break In') {
-        if (typeof apiClient !== 'undefined') {
-          try {
-            await apiClient.post('attendance.php', {
-              employee_id: employeeId,
-              employee_code: AuthGuard.userProfile?.employeeCode || punchData.employeeCode || '',
-              name: punchData.name || AuthGuard.userProfile?.displayName || 'Employee',
-              punch_type: 'Break In',
-              time: timeStr,
-              date: attendanceDate
-            });
-          } catch (e) {
-            console.warn('[attendanceService] Break In sync notice:', e);
-          }
-        }
-        if (doc && doc.exists) {
-          await recordRef.update({
-            isOnBreak: true,
-            lastBreakStartIso: now.toISOString(),
-            status: 'ON_BREAK',
-            updatedAt: firebase.firestore.FieldValue.serverTimestamp()
-          }).catch(() => {});
-        }
-      } else if (punchType === 'Break Out') {
-        const breakSec = Number(punchData.breakDuration) || 0;
-        const totalBreakSec = (punchData.totalBreakSeconds !== undefined && punchData.totalBreakSeconds !== null)
-          ? Number(punchData.totalBreakSeconds)
-          : null;
-
-        if (typeof apiClient !== 'undefined') {
-          try {
-            await apiClient.post('attendance.php', {
-              employee_id: employeeId,
-              employee_code: AuthGuard.userProfile?.employeeCode || punchData.employeeCode || '',
-              name: punchData.name || AuthGuard.userProfile?.displayName || 'Employee',
-              punch_type: 'Break Out',
-              time: timeStr,
-              date: attendanceDate,
-              break_duration: breakSec,
-              total_break_seconds: totalBreakSec
-            });
-          } catch (e) {
-            console.warn('[attendanceService] Break Out sync notice:', e);
-          }
-        }
-
-        const altDocKey = AuthGuard.userProfile?.employeeCode ? `${AuthGuard.userProfile.employeeCode}_${attendanceDate}` : null;
-        const targetRefs = [recordRef];
-        if (altDocKey && altDocKey !== recordId && typeof db !== 'undefined') {
-          targetRefs.push(db.collection('attendanceRecords').doc(altDocKey));
-        }
-
-        for (const ref of targetRefs) {
-          try {
-            const dSnap = await ref.get();
-            if (dSnap.exists) {
-              const rec = dSnap.data() || {};
-              const computedTotal = totalBreakSec !== null ? totalBreakSec : ((rec.totalBreakSeconds || 0) + breakSec);
-              const computedMins = Math.round(computedTotal / 60);
-              const breakFormatted = this.formatBreakDuration(computedTotal);
-              const resolvedStatus = rec.checkIn ? (rec.lateMinutes > 0 ? 'LATE' : 'PRESENT') : 'PRESENT';
-
-              await ref.update({
-                isOnBreak: false,
-                lastBreakEndIso: now.toISOString(),
-                totalBreakMinutes: computedMins,
-                totalBreakSeconds: computedTotal,
-                breakFormatted,
-                status: resolvedStatus,
-                updatedAt: firebase.firestore.FieldValue.serverTimestamp()
-              }).catch(() => {});
-            }
-          } catch (_) {}
-        }
+        return await this.checkIn(punchData);
       } else if (punchType === 'Out') {
-        if (doc.exists) {
-          await this.checkOut(employeeId, {
-            companyId,
-            time: timeStr,
-            latitude: punchData.latitude,
-            longitude: punchData.longitude,
-            distanceMeters: punchData.distanceMeters,
-            totalBreakSeconds: punchData.totalBreakSeconds,
-            totalWorkSeconds: punchData.totalWorkSeconds
-          });
+        return await this.checkOut(employeeId, punchData);
+      } else if (punchType === 'Break In') {
+        const res = await apiClient.post('attendance.php?action=break_in', {
+          employee_id: employeeId,
+          employee_code: employeeCode,
+          punch_type: 'Break In',
+          time: timeStr,
+          date: attendanceDate
+        });
+        if (!res || !res.success) {
+          throw new Error(res?.error || 'Failed to start break on server.');
         }
+        return true;
+      } else if (punchType === 'Break Out') {
+        const res = await apiClient.post('attendance.php?action=break_out', {
+          employee_id: employeeId,
+          employee_code: employeeCode,
+          punch_type: 'Break Out',
+          time: timeStr,
+          date: attendanceDate,
+          break_duration: punchData.breakDuration || 0,
+          total_break_seconds: punchData.totalBreakSeconds || null
+        });
+        if (!res || !res.success) {
+          throw new Error(res?.error || 'Failed to end break on server.');
+        }
+        return true;
       }
-
-      return true;
-    } catch (e) {
-      console.warn('recordPunch error:', e);
       return false;
+    } catch (e) {
+      console.warn('[attendanceService] recordPunch notice:', e.message);
+      throw e;
     }
   },
 
@@ -728,7 +422,7 @@ const attendanceService = {
               totalBreakSeconds: Number(r.total_break_seconds || 0),
               totalBreakMinutes: Number(r.total_break_minutes || 0),
               breakFormatted: r.break_formatted || '0m',
-              isOnBreak: Boolean(r.is_on_break)
+              isOnBreak: (r.is_on_break == 1)
             }));
             loadedFromMySQL = true;
           }
@@ -737,31 +431,7 @@ const attendanceService = {
         }
       }
 
-      // 2. Migration Check: If Firestore is available, find any pending records from Firestore that are not in MySQL yet
-      if (typeof db !== 'undefined') {
-        try {
-          let fsQuery = db.collection('attendanceRecords');
-          if (filters.date) fsQuery = fsQuery.where('date', '==', filters.date);
-          if (filters.employeeId) fsQuery = fsQuery.where('employeeId', '==', filters.employeeId);
-          if (filters.department && filters.department !== 'All Departments') fsQuery = fsQuery.where('department', '==', filters.department);
-
-          const fsSnap = await fsQuery.limit(100).get();
-          if (!fsSnap.empty) {
-            const fsRecords = fsSnap.docs.map(doc => this.sanitizeRecord({ id: doc.id, ...doc.data() }));
-            const mysqlKeys = new Set(records.map(r => r.recordKey || `${r.employeeId}_${r.date}`));
-            const missingInMySQL = fsRecords.filter(r => !mysqlKeys.has(r.id) && !mysqlKeys.has(r.recordKey) && !mysqlKeys.has(`${r.employeeId}_${r.date}`));
-
-            if (missingInMySQL.length > 0) {
-              records.push(...missingInMySQL);
-              if (typeof apiClient !== 'undefined') {
-                apiClient.post('attendance.php?action=bulk_sync', { records: missingInMySQL }).catch(() => {});
-              }
-            }
-          }
-        } catch (fsErr) {
-          console.warn('[attendanceService] Firestore cross-sync check notice:', fsErr);
-        }
-      }
+      // MySQL is authoritative source of truth
 
       if (filters.scopedToUser) {
         const user = filters.scopedToUser;

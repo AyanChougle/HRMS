@@ -84,31 +84,8 @@ const roleAccessService = {
   },
 
   async fetchFromFirestore() {
-    try {
-      if (typeof db === 'undefined') return;
-      const snap = await db.collection(this.COLLECTION).doc(this.DOC_ID).get();
-      if (snap.exists) {
-        const data = snap.data() || {};
-        const sanitized = { ...data };
-        // Strictly sanitize: Remove payroll from non-admin/HR roles and ensure performance is present for full-time staff
-        ['EMPLOYEE', 'MENTOR_TRAINER', 'TEAM_LEAD', 'OPERATIONS_MANAGER', 'MANAGER'].forEach(role => {
-          if (Array.isArray(sanitized[role])) {
-            sanitized[role] = sanitized[role].filter(p => p !== 'payroll' && p !== 'payslip-templates');
-            if (!sanitized[role].includes('performance')) {
-              sanitized[role].push('performance');
-            }
-          }
-        });
-        // Performance is strictly not for Trainee
-        if (Array.isArray(sanitized.TRAINEE)) {
-          sanitized.TRAINEE = sanitized.TRAINEE.filter(p => p !== 'payroll' && p !== 'payslip-templates' && p !== 'performance');
-        }
-        this.cachedConfig = sanitized;
-        localStorage.setItem(this.STORAGE_KEY, JSON.stringify(this.cachedConfig));
-      }
-    } catch (e) {
-      console.warn('[RoleAccess] Could not fetch Firestore configuration:', e);
-    }
+    // Role access configuration is maintained statically and in MySQL
+    return;
   },
 
   getVisiblePagesForRole(roleId) {

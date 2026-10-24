@@ -204,7 +204,7 @@ const PayrollView = {
         <div class="card-header">
           <div>
             <div class="card-title">Monthly Payroll Batches & Disbursements</div>
-            <div class="card-subtitle">Verified calculation runs in Cloud Firestore with attendance & leave reconciliations</div>
+            <div class="card-subtitle">Verified calculation runs in MySQL Database with attendance & leave reconciliations</div>
           </div>
           <button class="btn btn-primary btn-sm" onclick="PayrollView.openRunPayrollWizard()">+ Run New Batch</button>
         </div>

@@ -30,7 +30,7 @@ const AdminDashboardView = {
       <div class="welcome-banner animate-fade-in">
         <div class="welcome-text">
           <h1>Good day, ${userDisplayName}</h1>
-          <p>Real-time workforce & HR operational metrics synced from Cloud Firestore.</p>
+          <p>Real-time workforce & HR operational metrics synced from Hostinger MySQL Database.</p>
         </div>
         <div class="welcome-date-badge">
           <svg width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -41,7 +41,7 @@ const AdminDashboardView = {
       </div>
 
             <!-- HIGHLIGHTED TIMECARD & BREAK STATION HERO -->
-      <div class="card animate-fade-in" style="margin-bottom: 24px; border: 2px solid ${ESSView.isPunchedIn && ESSView.isOnBreak ? "var(--warning)" : "var(--primary-light)"}; box-shadow: ${ESSView.isPunchedIn && ESSView.isOnBreak ? "0 0 16px rgba(245, 158, 11, 0.15)" : "var(--shadow-sm)"};" id="emp-timecard-hero-card">
+      <div class="card animate-fade-in" style="margin-bottom: 24px; border: ${ESSView.isPunchedIn && ESSView.isOnBreak ? "1.5px solid var(--warning)" : "1px solid var(--border-main)"}; box-shadow: ${ESSView.isPunchedIn && ESSView.isOnBreak ? "0 4px 14px rgba(245, 158, 11, 0.12)" : "var(--shadow-xs)"};" id="emp-timecard-hero-card">
         <div class="card-header timecard-header">
           <div class="timecard-header-main">
             <div class="card-title" style="display: flex; align-items: center; gap: 8px; flex-wrap: wrap;">
@@ -83,7 +83,7 @@ const AdminDashboardView = {
             </div>
 
             <!-- Center: Break Time Tracker (Minimal Clean Timer) -->
-            <div class="timecard-timer-card" style="display: block; background: ${ESSView.isOnBreak ? "rgba(245, 158, 11, 0.08)" : "var(--bg-card, #ffffff)"}; border: 1px solid ${ESSView.isOnBreak ? "#d97706" : "var(--border-color, #e2e8f0)"};" id="emp-break-highlight-box">
+            <div class="timecard-timer-card" style="display: flex; flex-direction: column; justify-content: space-between; background: ${ESSView.isOnBreak ? "rgba(245, 158, 11, 0.08)" : "var(--bg-card, #ffffff)"}; border: 1px solid ${ESSView.isOnBreak ? "#d97706" : "var(--border-main)"};" id="emp-break-highlight-box">
               <div class="flex items-center justify-between" style="margin-bottom: 6px;">
                 <div class="flex items-center gap-2">
                   <div style="width: 22px; height: 22px; border-radius: 6px; background: rgba(217, 119, 6, 0.12); color: #d97706; display: flex; align-items: center; justify-content: center;">
@@ -169,7 +169,7 @@ const AdminDashboardView = {
           </div>
           <div class="kpi-value" id="kpi-total-employees">-</div>
           <div class="kpi-label">Active Employees</div>
-          <div class="kpi-subtitle">Registered in Firestore</div>
+          <div class="kpi-subtitle">Registered in MySQL</div>
         </div>
 
         <div class="kpi-card" onclick="Router.navigate('employees')" style="cursor: pointer;">
@@ -386,7 +386,7 @@ const AdminDashboardView = {
             <button class="btn btn-ghost btn-sm" onclick="Router.navigate('communication')">Communication Hub</button>
           </div>
           <div class="card-body" id="dashboard-announcements-body">
-            <div style="padding: 20px; text-align: center; color: var(--text-muted);">Loading announcements from Firestore...</div>
+            <div style="padding: 20px; text-align: center; color: var(--text-muted);">Loading announcements from database...</div>
           </div>
         </div>
       </div>

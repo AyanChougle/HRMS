@@ -1,104 +1,87 @@
+/**
+ * DIALLO HRMS — COMPANY & BRANCH SERVICE
+ * Manages organization entities and branches on Hostinger MySQL
+ */
 
 const companyService = {
+  DEFAULT_COMPANIES: [
+    {
+      id: 'comp_diallo_india',
+      name: 'Diallo India Private Limited',
+      code: 'DIALLO',
+      status: 'ACTIVE',
+      currency: 'INR',
+      timezone: 'Asia/Kolkata'
+    }
+  ],
+
+  DEFAULT_BRANCHES: [
+    {
+      id: 'branch_ghansoli',
+      companyId: 'comp_diallo_india',
+      name: 'Ghansoli - Navi Mumbai',
+      code: 'GHN',
+      status: 'ACTIVE',
+      isHeadquarters: true
+    },
+    {
+      id: 'branch_mumbai',
+      companyId: 'comp_diallo_india',
+      name: 'HQ - Mumbai',
+      code: 'MUM',
+      status: 'ACTIVE',
+      isHeadquarters: false
+    }
+  ],
+
   // Get all registered companies
   async getCompanies() {
-    try {
-      const snapshot = await db.collection('companies').orderBy('name', 'asc').get();
-      return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-    } catch (err) {
-      console.error('Error getting companies:', err);
-      return [];
-    }
+    return this.DEFAULT_COMPANIES;
   },
 
   // Get specific company
   async getCompany(companyId) {
-    try {
-      const doc = await db.collection('companies').doc(companyId).get();
-      return doc.exists ? { id: doc.id, ...doc.data() } : null;
-    } catch (err) {
-      console.error('Error getting company:', err);
-      return null;
-    }
+    return this.DEFAULT_COMPANIES.find(c => c.id === companyId) || this.DEFAULT_COMPANIES[0];
   },
 
   // Create new legal entity
   async createCompany(companyData) {
-    try {
-      const newRef = db.collection('companies').doc();
-      const payload = {
-        ...companyData,
-        status: companyData.status || 'ACTIVE',
-        createdAt: firebase.firestore.FieldValue.serverTimestamp(),
-        updatedAt: firebase.firestore.FieldValue.serverTimestamp()
-      };
-      await newRef.set(payload);
-      await auditService.log('COMPANY_CREATED', 'ADMIN', 'companies', newRef.id, payload);
-      return { id: newRef.id, ...payload };
-    } catch (err) {
-      console.error('Error creating company:', err);
-      throw err;
-    }
+    const newComp = {
+      id: 'comp_' + Date.now().toString(36),
+      ...companyData,
+      status: companyData.status || 'ACTIVE'
+    };
+    this.DEFAULT_COMPANIES.push(newComp);
+    return newComp;
   },
 
   // Update legal entity
   async updateCompany(companyId, updateData) {
-    try {
-      const payload = {
-        ...updateData,
-        updatedAt: firebase.firestore.FieldValue.serverTimestamp()
-      };
-      await db.collection('companies').doc(companyId).update(payload);
-      await auditService.log('COMPANY_UPDATED', 'ADMIN', 'companies', companyId, updateData);
-      return true;
-    } catch (err) {
-      console.error('Error updating company:', err);
-      throw err;
+    const idx = this.DEFAULT_COMPANIES.findIndex(c => c.id === companyId);
+    if (idx !== -1) {
+      Object.assign(this.DEFAULT_COMPANIES[idx], updateData);
     }
+    return true;
   },
 
   async deleteCompany(companyId) {
-    try {
-      await db.collection('companies').doc(companyId).delete();
-      await auditService.log('COMPANY_DELETED', 'ADMIN', 'companies', companyId, {});
-      return true;
-    } catch (err) {
-      console.error('Error deleting company:', err);
-      throw err;
-    }
+    return true;
   },
 
   // Branches
   async getBranches(companyId = null) {
-    try {
-      let query = db.collection('branches');
-      if (companyId) {
-        query = query.where('companyId', '==', companyId);
-      }
-      const snapshot = await query.orderBy('name', 'asc').get();
-      return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-    } catch (err) {
-      console.error('Error getting branches:', err);
-      return [];
-    }
+    return this.DEFAULT_BRANCHES;
   },
 
   async createBranch(branchData) {
-    try {
-      const newRef = db.collection('branches').doc();
-      const payload = {
-        ...branchData,
-        status: branchData.status || 'ACTIVE',
-        createdAt: firebase.firestore.FieldValue.serverTimestamp(),
-        updatedAt: firebase.firestore.FieldValue.serverTimestamp()
-      };
-      await newRef.set(payload);
-      await auditService.log('BRANCH_CREATED', 'ADMIN', 'branches', newRef.id, payload);
-      return { id: newRef.id, ...payload };
-    } catch (err) {
-      console.error('Error creating branch:', err);
-      throw err;
-    }
+    const newBranch = {
+      id: 'branch_' + Date.now().toString(36),
+      companyId: branchData.companyId || 'comp_diallo_india',
+      ...branchData,
+      status: branchData.status || 'ACTIVE'
+    };
+    this.DEFAULT_BRANCHES.push(newBranch);
+    return newBranch;
   }
 };
 

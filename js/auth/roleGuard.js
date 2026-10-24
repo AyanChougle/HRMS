@@ -1,16 +1,21 @@
+/**
+ * DIALLO HRMS — ROLE GUARD & ROUTE ENFORCER
+ * Enforces canonical 7 roles and permission policies
+ */
 
 const RoleGuard = {
   // Validate if active session has required roles
   requireRole(allowedRoles) {
-    const userRole = AuthGuard.userProfile?.roleId || 'EMPLOYEE';
+    const rawRole = AuthGuard._previewRoleId || AuthGuard.userProfile?.roleId || 'EMPLOYEE';
+    const canonical = AuthGuard.resolveCanonicalRole(rawRole);
     
-    if (userRole === 'SUPER_ADMIN') return true;
+    if (canonical === 'ADMIN') return true;
 
-    const rolesList = Array.isArray(allowedRoles) ? allowedRoles : [allowedRoles];
-    const isPermitted = rolesList.includes(userRole);
+    const rolesList = (Array.isArray(allowedRoles) ? allowedRoles : [allowedRoles]).map(r => AuthGuard.resolveCanonicalRole(r));
+    const isPermitted = rolesList.includes(canonical);
 
     if (!isPermitted) {
-      console.warn(`[RoleGuard] Access denied for role '${userRole}'. Required:`, rolesList);
+      console.warn(`[RoleGuard] Access denied for role '${canonical}'. Required:`, rolesList);
       this.handleAccessDenied();
       return false;
     }

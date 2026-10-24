@@ -346,9 +346,12 @@ const ReportsView = {
               <svg width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z"/></svg>
               Print
             </button>
-            <button class="btn btn-primary btn-sm" onclick="ReportsView.exportActiveReport('${report.id}')">
+            <button class="btn btn-secondary btn-sm" onclick="ReportsView.exportActiveReport('${report.id}', 'csv')">
+              <span>Export CSV</span>
+            </button>
+            <button class="btn btn-primary btn-sm" onclick="ReportsView.exportActiveReport('${report.id}', 'xlsx')">
               <svg width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/></svg>
-              Export to Excel (CSV)
+              <span>Export Excel (.xlsx)</span>
             </button>
           </div>
         </div>
@@ -439,76 +442,75 @@ const ReportsView = {
     `;
   },
 
-  // Generate dynamic production dataset for report
+  // Generate dynamic production dataset for report from real database employees
   generateReportData(reportId, employees) {
     const list = Array.isArray(employees) ? employees : [];
     if (list.length === 0) return [];
 
-    if (reportId === 'daily-attendance') {
-      return list.map(e => ({
-        'Employee Code': e.id || e.employeeCode,
-        'Employee Name': e.name || e.fullName,
-        'Department': e.department || 'Operations',
-        'Date': new Date().toISOString().slice(0, 10),
-        'Punch In': '09:12 AM',
-        'Punch Out': '06:18 PM',
-        'Status': 'PRESENT',
-        'Late Mins': '12 mins'
-      }));
-    }
+    const now = new Date();
+    const curMonthStr = now.toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
+    const curYear = now.getFullYear();
 
     if (reportId === 'monthly-attendance') {
+      // Exact RadeNextHR 18-Column Attendance Summary Specification
       return list.map(e => ({
-        'Employee Code': e.id,
-        'Employee Name': e.name,
-        'Working Days': '26',
-        'Present Days': '24',
-        'Paid Leaves': '2',
-        'LWP': '0',
-        'Overtime Hrs': '6.5 hrs',
-        'Payable Days': '26'
+        'Emp Code': e.employeeCode || e.id || 'EMP001',
+        'Employee Name': e.fullName || e.name || 'Employee',
+        'Department': e.department || 'Operations',
+        'Designation': e.designation || 'Executive',
+        'Month': curMonthStr,
+        'Year': curYear,
+        'Working Days': 23,
+        'Present': 0,
+        'Absent': 17,
+        'Half Days': 0,
+        'Paid Leave': 0,
+        'LWP': 0,
+        'OT Hours': 0,
+        'Holidays': 8,
+        'Week Off': 0,
+        'Worked H/WO': 0,
+        'Payable Days': 0,
+        'Finalized': 'No'
       }));
     }
 
-    if (reportId === 'pf-contribution' || reportId === 'statutory-summary') {
+    if (reportId === 'daily-attendance' || reportId === 'absenteeism') {
+      const todayIso = now.toISOString().slice(0, 10);
       return list.map(e => ({
-        'Employee Code': e.id,
-        'Employee Name': e.name,
-        'UAN': '100987654321',
-        'Monthly Gross': e.salary || '₹65,000',
-        'EPF Wages (Basic)': '₹32,500',
-        'EPF Employee (12%)': '₹1,800',
-        'EPF Employer (3.67%)': '₹550',
-        'EPS Employer (8.33%)': '₹1,250',
-        'Total PF Remittance': '₹3,600'
+        'Employee Code': e.employeeCode || e.id || 'EMP001',
+        'Employee Name': e.fullName || e.name || 'Employee',
+        'Department': e.department || 'Operations',
+        'Date': todayIso,
+        'Punch In': '—',
+        'Punch Out': '—',
+        'Status': 'ABSENT',
+        'Late Mins': '0 mins'
       }));
     }
 
-    if (reportId === 'gross-to-net' || reportId === 'salary-register') {
+    if (reportId.includes('leave')) {
       return list.map(e => ({
-        'Employee Code': e.id,
-        'Employee Name': e.name,
-        'Gross Wages': e.salary || '₹65,000',
-        'Basic (50%)': '₹32,500',
-        'HRA (25%)': '₹16,250',
-        'Allowances': '₹16,250',
-        'EPF Deduct': '-₹1,800',
-        'State PT': '-₹200',
-        'TDS Tax': '-₹1,777',
-        'Net Take-Home': '₹61,223'
+        'Employee Code': e.employeeCode || e.id || 'EMP001',
+        'Employee Name': e.fullName || e.name || 'Employee',
+        'Department': e.department || 'Operations',
+        'Leave Type': 'Casual Leave',
+        'Total Credited': '12',
+        'Used': '0',
+        'Available Balance': '12',
+        'Status': 'ACTIVE'
       }));
     }
 
     // Default Master Report
     return list.map(e => ({
-      'Employee Code': e.id,
-      'Full Name': e.name,
-      'Department': e.department,
-      'Designation': e.designation,
-      'Location': e.location,
-      'Status': 'ACTIVE',
-      'PAN': 'ABCDE1234F',
-      'Bank': 'HDFC Bank (••••4892)'
+      'Employee Code': e.employeeCode || e.id || 'EMP001',
+      'Full Name': e.fullName || e.name || 'Employee',
+      'Department': e.department || 'Operations',
+      'Designation': e.designation || 'Staff',
+      'Work Email': e.workEmail || e.email || '—',
+      'Phone': e.phone || '—',
+      'Status': e.employmentStatus || 'ACTIVE'
     }));
   },
 
@@ -547,10 +549,17 @@ const ReportsView = {
     Router.mountView('reports');
   },
 
-  exportActiveReport(reportId) {
-    const report = this.REPORTS.find(r => r.id === reportId) || this.REPORTS[0];
-    const rows = this.generateReportData(reportId, []);
-    reportService.exportToCsv(report.id, rows);
+  // Authoritative Server-Side Export (RadeNextHR XLSX & CSV)
+  exportActiveReport(reportId, format = 'xlsx') {
+    if (['monthly-attendance', 'daily-attendance', 'absenteeism', 'leave-trends'].includes(reportId)) {
+      reportService.downloadBackendExport('attendance', format);
+    } else if (reportId === 'employee-master') {
+      reportService.downloadBackendExport('employees', format);
+    } else if (reportId.includes('leave')) {
+      reportService.downloadBackendExport('leaves', format);
+    } else {
+      reportService.downloadBackendExport('attendance', format);
+    }
   },
 
   filterStudioTable(term) {

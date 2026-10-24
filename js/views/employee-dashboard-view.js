@@ -112,7 +112,7 @@ const EmployeeDashboardView = {
       </div>
 
       <!-- HIGHLIGHTED TIMECARD & BREAK STATION HERO -->
-      <div class="card animate-fade-in" style="margin-bottom: 24px; border: 2px solid ${ESSView.isPunchedIn && ESSView.isOnBreak ? "var(--warning)" : "var(--primary-light)"}; box-shadow: ${ESSView.isPunchedIn && ESSView.isOnBreak ? "0 0 16px rgba(245, 158, 11, 0.15)" : "var(--shadow-sm)"};" id="emp-timecard-hero-card">
+      <div class="card animate-fade-in" style="margin-bottom: 24px; border: ${ESSView.isPunchedIn && ESSView.isOnBreak ? "1.5px solid var(--warning)" : "1px solid var(--border-main)"}; box-shadow: ${ESSView.isPunchedIn && ESSView.isOnBreak ? "0 4px 14px rgba(245, 158, 11, 0.12)" : "var(--shadow-xs)"};" id="emp-timecard-hero-card">
         <div class="card-header timecard-header">
           <div class="timecard-header-main">
             <div class="card-title" style="display: flex; align-items: center; gap: 8px; flex-wrap: wrap;">
@@ -131,56 +131,69 @@ const EmployeeDashboardView = {
         <div class="card-body" style="padding: 18px 20px;">
           <div class="timecard-station-grid">
             
-            <!-- Left: Work Time Display (Minimal Clean Timer) -->
-            <div class="timecard-timer-card">
-              <div style="width: 44px; height: 44px; border-radius: 10px; background: rgba(59, 130, 246, 0.08); color: var(--primary); display: flex; align-items: center; justify-content: center; flex-shrink: 0;">
-                <svg width="22" height="22" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/>
-                </svg>
+            <!-- Left: Work Time Display (Symmetric Enterprise Timer Card) -->
+            <div class="timecard-timer-card" style="display: flex; flex-direction: column; justify-content: space-between; padding: 14px 18px; min-height: 108px; border: 1px solid var(--border-main); background: var(--bg-card, #ffffff); border-radius: var(--radius-lg, 12px);">
+              <div class="flex items-center justify-between" style="margin-bottom: 4px;">
+                <div class="flex items-center gap-2">
+                  <div style="width: 22px; height: 22px; border-radius: 6px; background: rgba(59, 130, 246, 0.12); color: var(--primary); display: flex; align-items: center; justify-content: center;">
+                    <svg width="13" height="13" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                    </svg>
+                  </div>
+                  <span style="font-size: 0.72rem; font-weight: 700; color: var(--primary); text-transform: uppercase; letter-spacing: 0.05em;">Work Duration</span>
+                </div>
+                <span class="badge badge-neutral" style="font-size: 0.7rem; font-weight: 600;">8h Target</span>
               </div>
-              <div style="min-width: 0; flex: 1;">
-                <div style="display: flex; align-items: center; justify-content: space-between; gap: 8px;">
-                  <span style="font-size: 0.72rem; color: var(--text-muted); text-transform: uppercase; font-weight: 700; letter-spacing: 0.05em;">Work Duration</span>
-                  <span style="font-size: 0.7rem; font-weight: 600; color: var(--text-muted); background: var(--bg-hover, #f1f5f9); padding: 2px 6px; border-radius: 4px; letter-spacing: 0.02em;">8h Target</span>
-                </div>
-                <div style="margin-top: 3px; display: flex; align-items: baseline; gap: 6px;">
-                  <span id="emp-live-timer" style="font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Inter', 'Segoe UI', system-ui, sans-serif; font-variant-numeric: tabular-nums; font-feature-settings: 'tnum'; font-size: 1.85rem; font-weight: 700; color: var(--text-main, #0f172a); letter-spacing: 0.03em; line-height: 1.1;">
+              
+              <div class="flex items-baseline justify-between" style="gap: 12px; margin-top: 2px;">
+                <div>
+                  <div id="emp-live-timer" style="font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Inter', 'Segoe UI', system-ui, sans-serif; font-variant-numeric: tabular-nums; font-feature-settings: 'tnum'; font-size: 1.65rem; font-weight: 700; color: var(--text-main, #0f172a); letter-spacing: 0.02em; line-height: 1.1;">
                     00:00:00
-                  </span>
+                  </div>
                 </div>
-                <div style="font-size: 0.76rem; color: var(--text-secondary); margin-top: 5px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
-                  Status: <strong id="emp-timer-substatus">${ESSView.isShiftCompletedToday ? "Shift completed & punched out" : !ESSView.isPunchedIn ? "Ready to Check In (Opens 09:30 AM)" : ESSView.isOnBreak ? "Paused for Break" : "Active On Duty"}</strong>
+                <div style="text-align: right;">
+                  <span style="font-size: 0.72rem; color: var(--text-muted); font-weight: 600;">Duty</span>
+                  <div style="font-size: 0.78rem; font-weight: 700; color: ${ESSView.isShiftCompletedToday ? "var(--text-muted)" : !ESSView.isPunchedIn ? "var(--text-secondary)" : ESSView.isOnBreak ? "var(--warning)" : "var(--success)"};">
+                    ${ESSView.isShiftCompletedToday ? "Ended" : !ESSView.isPunchedIn ? "Offline" : ESSView.isOnBreak ? "On Break" : "Active"}
+                  </div>
                 </div>
+              </div>
+
+              <div style="font-size: 0.74rem; color: var(--text-muted); margin-top: 4px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
+                Status: <strong id="emp-timer-substatus" style="color: var(--text-secondary);">${ESSView.isShiftCompletedToday ? "Shift completed & punched out" : !ESSView.isPunchedIn ? "Ready to Check In" : ESSView.isOnBreak ? "Paused for Break" : "Active On Duty"}</strong>
               </div>
             </div>
 
-            <!-- Center: Break Time Tracker (Minimal Clean Timer) -->
-            <div class="timecard-timer-card" style="display: block; background: ${ESSView.isOnBreak ? "rgba(245, 158, 11, 0.08)" : "var(--bg-card, #ffffff)"}; border: 1px solid ${ESSView.isOnBreak ? "#d97706" : "var(--border-color, #e2e8f0)"};" id="emp-break-highlight-box">
-              <div class="flex items-center justify-between" style="margin-bottom: 6px;">
+            <!-- Center: Break Time Tracker (Symmetric Enterprise Timer Card) -->
+            <div class="timecard-timer-card" style="display: flex; flex-direction: column; justify-content: space-between; padding: 14px 18px; min-height: 108px; border: 1px solid ${ESSView.isOnBreak ? "#d97706" : "var(--border-main)"}; background: ${ESSView.isOnBreak ? "rgba(245, 158, 11, 0.08)" : "var(--bg-card, #ffffff)"}; border-radius: var(--radius-lg, 12px);" id="emp-break-highlight-box">
+              <div class="flex items-center justify-between" style="margin-bottom: 4px;">
                 <div class="flex items-center gap-2">
                   <div style="width: 22px; height: 22px; border-radius: 6px; background: rgba(217, 119, 6, 0.12); color: #d97706; display: flex; align-items: center; justify-content: center;">
                     <svg width="13" height="13" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M18 8h1a4 4 0 010 8h-1M2 8h16v9a4 4 0 01-4 4H6a4 4 0 01-4-4V8z M6 1v3M10 1v3M14 1v3"/></svg>
                   </div>
                   <span style="font-size: 0.72rem; font-weight: 700; color: #d97706; text-transform: uppercase; letter-spacing: 0.05em;">Break Tracker</span>
                 </div>
-                <span class="badge ${ESSView.isOnBreak ? "badge-warning" : "badge-neutral"}" style="font-size: 0.7rem;" id="emp-break-badge-status">
+                <span class="badge ${ESSView.isOnBreak ? "badge-warning" : "badge-neutral"}" style="font-size: 0.7rem; font-weight: 600;" id="emp-break-badge-status">
                   ${ESSView.isShiftCompletedToday ? "Shift Ended" : ESSView.isOnBreak ? (ESSView.currentBreakLabel ? "Break: " + ESSView.currentBreakLabel : "On Break") : "1h Quota"}
                 </span>
               </div>
               
-              <div class="flex items-baseline justify-between" style="gap: 12px; margin-top: 4px;">
+              <div class="flex items-baseline justify-between" style="gap: 12px; margin-top: 2px;">
                 <div>
-                  <div style="font-size: 0.7rem; color: var(--text-muted); font-weight: 600; text-transform: uppercase; letter-spacing: 0.03em;">Current</div>
-                  <div style="font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Inter', 'Segoe UI', system-ui, sans-serif; font-variant-numeric: tabular-nums; font-feature-settings: 'tnum'; font-size: 1.45rem; font-weight: 700; color: ${ESSView.isOnBreak ? "var(--warning)" : "var(--text-secondary)"}; letter-spacing: 0.03em; line-height: 1.1; margin-top: 3px;" id="emp-break-timer">
+                  <div style="font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Inter', 'Segoe UI', system-ui, sans-serif; font-variant-numeric: tabular-nums; font-feature-settings: 'tnum'; font-size: 1.65rem; font-weight: 700; color: ${ESSView.isOnBreak ? "var(--warning)" : "var(--text-secondary)"}; letter-spacing: 0.02em; line-height: 1.1;" id="emp-break-timer">
                     00:00
                   </div>
                 </div>
                 <div style="text-align: right;">
-                  <div style="font-size: 0.7rem; color: var(--text-muted); font-weight: 600; text-transform: uppercase; letter-spacing: 0.03em;">Used / Quota</div>
-                  <div style="font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Inter', 'Segoe UI', system-ui, sans-serif; font-variant-numeric: tabular-nums; font-feature-settings: 'tnum'; font-size: 1.45rem; font-weight: 700; color: #d97706; letter-spacing: 0.03em; line-height: 1.1; margin-top: 3px;" id="emp-total-break">
-                    ${typeof attendanceService !== "undefined" && attendanceService.formatBreakDuration ? attendanceService.formatBreakDuration(ESSView.totalBreakSeconds) : Math.floor(ESSView.totalBreakSeconds / 60) + "m"}
+                  <span style="font-size: 0.72rem; color: var(--text-muted); font-weight: 600;">Used / Quota</span>
+                  <div style="font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Inter', 'Segoe UI', system-ui, sans-serif; font-variant-numeric: tabular-nums; font-feature-settings: 'tnum'; font-size: 0.88rem; font-weight: 700; color: #d97706;" id="emp-total-break">
+                    ${typeof attendanceService !== "undefined" && attendanceService.formatBreakDuration ? attendanceService.formatBreakDuration(ESSView.totalBreakSeconds) : Math.floor(ESSView.totalBreakSeconds / 60) + "m"} / 60m
                   </div>
                 </div>
+              </div>
+
+              <div style="font-size: 0.74rem; color: var(--text-muted); margin-top: 4px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
+                <span>Daily Policy: <strong>1 hour max break</strong></span>
               </div>
             </div>
 

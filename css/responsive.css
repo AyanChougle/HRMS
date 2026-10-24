@@ -688,19 +688,25 @@ body, input, button, select, textarea, table, th, td {
 
 .timecard-station-grid {
   display: grid;
-  grid-template-columns: minmax(260px, 1fr) minmax(230px, 1fr) minmax(260px, 1.15fr);
+  grid-template-columns: minmax(260px, 1fr) minmax(230px, 1fr) minmax(270px, 1.15fr);
   gap: 16px;
   align-items: stretch;
 }
 
-.timecard-timer-card {
+.timecard-timer-card,
+.timecard-actions-panel {
   background: var(--bg-card, #ffffff);
-  border: 1px solid var(--border-color, #e2e8f0);
-  border-radius: var(--radius-md);
+  border: 1px solid var(--border-main, #e2e8f0);
+  border-radius: var(--radius-lg, 12px);
   padding: 14px 18px;
+  min-height: 104px;
+  box-sizing: border-box;
+}
+
+.timecard-timer-card {
   display: flex;
-  align-items: center;
-  gap: 14px;
+  flex-direction: column;
+  justify-content: space-between;
   min-width: 0;
   transition: all 0.2s ease;
 }
@@ -708,7 +714,7 @@ body, input, button, select, textarea, table, th, td {
 .timecard-actions-panel {
   display: flex;
   align-items: center;
-  justify-content: flex-end;
+  justify-content: center;
   min-width: 0;
   width: 100%;
 }
@@ -766,7 +772,7 @@ body, input, button, select, textarea, table, th, td {
 /* Quick Self-Service Actions Launchpad */
 .emp-quick-launchpad {
   display: grid;
-  grid-template-columns: repeat(6, 1fr);
+  grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
   gap: 12px;
 }
 
@@ -824,14 +830,14 @@ body, input, button, select, textarea, table, th, td {
    -------------------------------------------------------------------------- */
 @media (min-width: 1025px) and (max-width: 1199px) {
   .timecard-station-grid {
-    grid-template-columns: 1fr 1fr;
-    gap: 14px;
+    grid-template-columns: minmax(240px, 1fr) minmax(210px, 1fr) minmax(240px, 1fr);
+    gap: 12px;
   }
   .timecard-actions-panel {
-    grid-column: span 2;
+    grid-column: span 1;
   }
   .emp-quick-launchpad {
-    grid-template-columns: repeat(4, 1fr);
+    grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
   }
   .ess-terminal-actions {
     flex: 1 1 100%;

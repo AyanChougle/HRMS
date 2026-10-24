@@ -5,6 +5,10 @@ $method = $_SERVER['REQUEST_METHOD'];
 $action = $_GET['action'] ?? '';
 $input = get_json_input();
 
+if (empty($action) && isset($input['action'])) {
+    $action = $input['action'];
+}
+
 // -----------------------------------------------------------------------------
 // GET: Fetch all users or single user
 // -----------------------------------------------------------------------------
@@ -18,7 +22,10 @@ if ($method === 'GET') {
         $stmt = $pdo->prepare("SELECT * FROM users WHERE uid = :uid OR id = :id LIMIT 1");
         $stmt->execute([':uid' => $uid, ':id' => $uid]);
         $user = $stmt->fetch();
-        if ($user) unset($user['password_hash']);
+        if ($user) {
+            unset($user['password_hash']);
+            $user['role_id'] = canonical_role($user['role_id']);
+        }
         json_out(["success" => true, "user" => $user]);
     }
 
@@ -31,18 +38,22 @@ if ($method === 'GET') {
     }
     if (!empty($role) && $role !== 'All') {
         $sql .= " AND role_id = :r";
-        $params[':r'] = $role;
+        $params[':r'] = canonical_role($role);
     }
     if (!empty($status) && $status !== 'All') {
         $sql .= " AND status = :st";
         $params[':st'] = $status;
     }
 
-    $sql .= " ORDER BY (role_id = 'SUPER_ADMIN') DESC, display_name ASC";
+    $sql .= " ORDER BY (role_id = 'ADMIN') DESC, display_name ASC";
 
     $stmt = $pdo->prepare($sql);
     $stmt->execute($params);
     $users = $stmt->fetchAll();
+
+    foreach ($users as &$u) {
+        $u['role_id'] = canonical_role($u['role_id']);
+    }
 
     json_out([
         "success" => true,
@@ -52,14 +63,117 @@ if ($method === 'GET') {
 }
 
 // -----------------------------------------------------------------------------
-// POST / PUT: Update User & Role
+// POST / PUT: Create or Update User & Role
 // -----------------------------------------------------------------------------
 if ($method === 'POST') {
     $uid = trim($input['uid'] ?? $input['id'] ?? '');
-    if (empty($uid)) {
-        json_out(["success" => false, "error" => "User UID is required."], 400);
+
+    // 1. CREATE USER
+    if ($action === 'create' || empty($uid)) {
+        $email = strtolower(trim($input['email'] ?? ''));
+        $password = $input['password'] ?? 'Diallo@2026';
+        $displayName = trim($input['display_name'] ?? '');
+        $firstName = trim($input['first_name'] ?? '');
+        $lastName = trim($input['last_name'] ?? '');
+        $roleId = canonical_role($input['role_id'] ?? 'EMPLOYEE');
+        $department = trim($input['department'] ?? 'Operations');
+        $designation = trim($input['designation'] ?? 'Staff');
+        $phone = trim($input['phone'] ?? '');
+        $employeeCode = strtoupper(trim($input['employee_code'] ?? ''));
+        $status = strtoupper(trim($input['status'] ?? 'ACTIVE'));
+
+        if (empty($email) || !filter_var($email, FILTER_VALIDATE_EMAIL)) {
+            json_out(["success" => false, "error" => "Valid email is required."], 400);
+        }
+
+        // Check duplicate email
+        $chkStmt = $pdo->prepare("SELECT id FROM users WHERE LOWER(email) = :email LIMIT 1");
+        $chkStmt->execute([':email' => $email]);
+        if ($chkStmt->fetch()) {
+            json_out(["success" => false, "error" => "A user with this email address already exists."], 409);
+        }
+
+        if (empty($displayName)) {
+            $displayName = trim("$firstName $lastName") ?: explode('@', $email)[0];
+        }
+
+        $newUid = 'usr_' . ($employeeCode ? strtolower($employeeCode) : bin2hex(random_bytes(6)));
+        $hash = password_hash($password, PASSWORD_BCRYPT);
+
+        $insStmt = $pdo->prepare("
+            INSERT INTO users (
+                uid, employee_code, email, password_hash, display_name, first_name, last_name,
+                phone, role_id, department, designation, status, company_id
+            ) VALUES (
+                :uid, :code, :email, :hash, :name, :first, :last,
+                :phone, :role, :dept, :desig, :status, 'comp_diallo_india'
+            )
+        ");
+        $insStmt->execute([
+            ':uid' => $newUid,
+            ':code' => $employeeCode,
+            ':email' => $email,
+            ':hash' => $hash,
+            ':name' => $displayName,
+            ':first' => $firstName,
+            ':last' => $lastName,
+            ':phone' => $phone,
+            ':role' => $roleId,
+            ':dept' => $department,
+            ':desig' => $designation,
+            ':status' => $status
+        ]);
+
+        $newId = $pdo->lastInsertId();
+
+        // Cross-sync into employees table
+        $empStmt = $pdo->prepare("
+            INSERT INTO employees (
+                id, user_id, employee_code, first_name, last_name, full_name,
+                work_email, phone, role_id, department, designation, employment_status, company_id
+            ) VALUES (
+                :id, :uid, :code, :first, :last, :full,
+                :email, :phone, :role, :dept, :desig, :status, 'comp_diallo_india'
+            )
+            ON DUPLICATE KEY UPDATE
+                full_name = VALUES(full_name),
+                role_id = VALUES(role_id),
+                department = VALUES(department),
+                designation = VALUES(designation),
+                employment_status = VALUES(employment_status)
+        ");
+        $empStmt->execute([
+            ':id' => 'emp_' . ($employeeCode ? strtolower($employeeCode) : bin2hex(random_bytes(6))),
+            ':uid' => $newUid,
+            ':code' => $employeeCode,
+            ':first' => $firstName,
+            ':last' => $lastName,
+            ':full' => $displayName,
+            ':email' => $email,
+            ':phone' => $phone,
+            ':role' => $roleId,
+            ':dept' => $department,
+            ':desig' => $designation,
+            ':status' => $status
+        ]);
+
+        json_out([
+            "success" => true,
+            "message" => "User {$displayName} created successfully.",
+            "user" => [
+                "id" => $newId,
+                "uid" => $newUid,
+                "email" => $email,
+                "display_name" => $displayName,
+                "role_id" => $roleId,
+                "department" => $department,
+                "designation" => $designation,
+                "status" => $status
+            ]
+        ], 201);
     }
 
+    // 2. UPDATE USER
     $stmt = $pdo->prepare("SELECT * FROM users WHERE uid = :uid OR id = :uid LIMIT 1");
     $stmt->execute([':uid' => $uid]);
     $user = $stmt->fetch();
@@ -69,20 +183,16 @@ if ($method === 'POST') {
     }
 
     $displayName = trim($input['display_name'] ?? $user['display_name']);
-    $roleId = trim($input['role_id'] ?? $user['role_id']);
+    $roleId = canonical_role($input['role_id'] ?? $user['role_id']);
     $department = trim($input['department'] ?? $user['department']);
     $designation = trim($input['designation'] ?? $user['designation']);
     $phone = trim($input['phone'] ?? $user['phone']);
     $status = trim($input['status'] ?? $user['status']);
-    $employeeCode = trim($input['employee_code'] ?? $user['employee_code']);
+    $employeeCode = strtoupper(trim($input['employee_code'] ?? $user['employee_code']));
 
-    // 1. Update users table
-    $upStmt = $pdo->prepare("
-        UPDATE users 
-        SET display_name = :name, role_id = :role, department = :dept, designation = :desig, phone = :phone, status = :status, employee_code = :code
-        WHERE id = :id
-    ");
-    $upStmt->execute([
+    // Optional password update
+    $passwordSql = "";
+    $updateParams = [
         ':name' => $displayName,
         ':role' => $roleId,
         ':dept' => $department,
@@ -91,7 +201,20 @@ if ($method === 'POST') {
         ':status' => $status,
         ':code' => $employeeCode,
         ':id' => $user['id']
-    ]);
+    ];
+
+    if (!empty($input['password'])) {
+        $passwordSql = ", password_hash = :hash";
+        $updateParams[':hash'] = password_hash($input['password'], PASSWORD_BCRYPT);
+    }
+
+    // 1. Update users table
+    $upStmt = $pdo->prepare("
+        UPDATE users 
+        SET display_name = :name, role_id = :role, department = :dept, designation = :desig, phone = :phone, status = :status, employee_code = :code $passwordSql
+        WHERE id = :id
+    ");
+    $upStmt->execute($updateParams);
 
     // 2. Cross-sync to employees table
     $empStmt = $pdo->prepare("

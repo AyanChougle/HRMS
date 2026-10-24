@@ -1,4 +1,9 @@
 <?php
+// ==============================================================================
+// DIALLO HRMS — SECURE SERVER-SIDE AUTHENTICATION & SESSION ENGINE
+// 100% Hostinger MySQL & PHP — Zero Firebase Dependencies
+// ==============================================================================
+
 require_once 'db.php';
 
 $action = $_GET['action'] ?? $_POST['action'] ?? '';
@@ -9,501 +14,428 @@ if (empty($action) && isset($input['action'])) {
 }
 
 try {
-    // -----------------------------------------------------------------------------
+    // -------------------------------------------------------------------------
     // 1. SIGN IN (AUTHENTICATION)
-    // -----------------------------------------------------------------------------
+    // -------------------------------------------------------------------------
     if ($action === 'login') {
         $loginId = strtolower(trim($input['email'] ?? $input['username'] ?? $input['employee_code'] ?? ''));
-        $password = $input['password'] ?? '';
+        $password = (string)($input['password'] ?? '');
 
         if (empty($loginId) || empty($password)) {
             json_out(["success" => false, "error" => "Email/Employee ID and password are required."], 400);
         }
 
-        // Extract username prefix if an email was typed (e.g. 'ganesh' from 'ganesh@tradeforwealth.co.in')
-        $usernamePrefix = (strpos($loginId, '@') !== false) ? explode('@', $loginId)[0] : $loginId;
-
-        // 1. Search users table by email, employee_code, or username pattern
+        // 1. Find user in users table by Email or Employee Code
         $stmt = $pdo->prepare("
             SELECT * FROM users 
-            WHERE LOWER(email) = :id 
-               OR UPPER(employee_code) = UPPER(:id)
-               OR LOWER(email) LIKE :prefixPattern
-               OR LOWER(email) LIKE :exactPrefix
+            WHERE LOWER(email) = :login1 
+               OR UPPER(employee_code) = UPPER(:login2)
             LIMIT 1
         ");
         $stmt->execute([
-            ':id' => $loginId,
-            ':prefixPattern' => $usernamePrefix . '@tr%eforwealth.co.in',
-            ':exactPrefix' => $usernamePrefix . '@tradeforwealth.co.in'
+            ':login1' => $loginId,
+            ':login2' => $loginId
         ]);
         $user = $stmt->fetch();
 
-        // 2. If not found in users, check employees table
+        // 2. Fallback check in employees table if user record was not pre-created
         if (!$user) {
             $empStmt = $pdo->prepare("
                 SELECT * FROM employees 
-                WHERE LOWER(work_email) = :id 
-                   OR LOWER(email) = :id 
-                   OR UPPER(employee_code) = UPPER(:id)
-                   OR LOWER(work_email) LIKE :prefixPattern
-                   OR LOWER(email) LIKE :prefixPattern
-                   OR LOWER(work_email) LIKE :exactPrefix
+                WHERE LOWER(work_email) = :login1 
+                   OR LOWER(email) = :login2 
+                   OR UPPER(employee_code) = UPPER(:login3)
                 LIMIT 1
             ");
             $empStmt->execute([
-                ':id' => $loginId,
-                ':prefixPattern' => $usernamePrefix . '@tr%eforwealth.co.in',
-                ':exactPrefix' => $usernamePrefix . '@tradeforwealth.co.in'
+                ':login1' => $loginId,
+                ':login2' => $loginId,
+                ':login3' => $loginId
             ]);
             $emp = $empStmt->fetch();
 
             if ($emp) {
-                if (!empty($emp['employee_code'])) {
-                    $uCheck = $pdo->prepare("SELECT * FROM users WHERE UPPER(employee_code) = UPPER(:c) LIMIT 1");
-                    $uCheck->execute([':c' => $emp['employee_code']]);
-                    $user = $uCheck->fetch();
-                }
+                $newUid = !empty($emp['id']) ? $emp['id'] : ('usr_' . bin2hex(random_bytes(8)));
+                $passHash = password_hash($password, PASSWORD_DEFAULT);
+                $role = canonical_role($emp['role_id'] ?? 'EMPLOYEE');
+                $userEmail = !empty($emp['work_email']) ? $emp['work_email'] : (!empty($emp['email']) ? $emp['email'] : $loginId);
 
-                if (!$user) {
-                    $newUid = !empty($emp['id']) ? $emp['id'] : ('usr_' . bin2hex(random_bytes(8)));
-                    $passHash = password_hash($password, PASSWORD_DEFAULT);
-                    $role = !empty($emp['role_id']) ? canonical_role($emp['role_id']) : 'EMPLOYEE';
-                    $userEmail = !empty($emp['work_email']) ? $emp['work_email'] : (!empty($emp['email']) ? $emp['email'] : $loginId);
+                $insStmt = $pdo->prepare("
+                    INSERT INTO users (uid, employee_code, email, password_hash, display_name, first_name, last_name, role_id, department, designation, status)
+                    VALUES (:uid, :code, :email, :pass, :name, :fname, :lname, :role, :dept, :desig, 'ACTIVE')
+                ");
+                $insStmt->execute([
+                    ':uid' => $newUid,
+                    ':code' => $emp['employee_code'],
+                    ':email' => $userEmail,
+                    ':pass' => $passHash,
+                    ':name' => $emp['full_name'],
+                    ':fname' => $emp['first_name'],
+                    ':lname' => $emp['last_name'],
+                    ':role' => $role,
+                    ':dept' => $emp['department'],
+                    ':desig' => $emp['designation']
+                ]);
 
-                    $insStmt = $pdo->prepare("
-                        INSERT INTO users (uid, employee_code, email, password_hash, display_name, first_name, last_name, role_id, department, designation, status)
-                        VALUES (:uid, :code, :email, :pass, :name, :fname, :lname, :role, :dept, :desig, 'ACTIVE')
-                    ");
-                    $insStmt->execute([
-                        ':uid' => $newUid,
-                        ':code' => $emp['employee_code'],
-                        ':email' => $userEmail,
-                        ':pass' => $passHash,
-                        ':name' => $emp['full_name'],
-                        ':fname' => $emp['first_name'],
-                        ':lname' => $emp['last_name'],
-                        ':role' => $role,
-                        ':dept' => $emp['department'],
-                        ':desig' => $emp['designation']
-                    ]);
-                    $stmt->execute([
-                        ':id' => $userEmail,
-                        ':prefixPattern' => $usernamePrefix . '@tr%eforwealth.co.in',
-                        ':exactPrefix' => $usernamePrefix . '@tradeforwealth.co.in'
-                    ]);
-                    $user = $stmt->fetch();
-                }
+                $stmt->execute([
+                    ':login1' => $userEmail,
+                    ':login2' => $emp['employee_code']
+                ]);
+                $user = $stmt->fetch();
             } else {
                 json_out(["success" => false, "error" => "No account found matching this email address or Employee ID."], 404);
             }
         }
 
-        if (isset($user['status']) && $user['status'] === 'SUSPENDED') {
-            json_out(["success" => false, "error" => "This account is suspended. Contact HR Administration."], 403);
+        // Account status check
+        if (isset($user['status']) && strtoupper($user['status']) === 'SUSPENDED') {
+            json_out(["success" => false, "error" => "This account is suspended. Please contact HR Administration."], 403);
         }
 
-        // Verify Password strictly via secure password hash
+        // Rate limiting: Check if account is temporarily locked
+        if (!empty($user['locked_until']) && strtotime($user['locked_until']) > time()) {
+            $remaining = ceil((strtotime($user['locked_until']) - time()) / 60);
+            json_out([
+                "success" => false, 
+                "error" => "Account temporarily locked due to multiple failed login attempts. Please wait {$remaining} minute(s) before trying again."
+            ], 429);
+        }
+
+        // Verify password against authoritative database hash
         $passwordValid = false;
         if (!empty($user['password_hash'])) {
-            $passwordValid = password_verify($password, $user['password_hash']);
-        }
-
-        // Case-insensitive check for initial company default passwords, employee name patterns, code, or phone
-        if (!$passwordValid) {
-            $cleanPw = strtolower(trim($password));
-            $validDefaults = [
-                'diallo@2026',
-                'diallo@123',
-                'diallo',
-                'tradeforwealth',
-                'tradeforwealth@2026',
-                'tradeforwealth@123',
-                'password@123',
-                'welcome@123',
-                'admin@123',
-                'hrms@123',
-                '123456',
-                'password'
-            ];
-
-            $firstName = !empty($user['first_name']) ? strtolower(trim($user['first_name'])) : '';
-            $lastName = !empty($user['last_name']) ? strtolower(trim($user['last_name'])) : '';
-            $userPrefix = strtolower($usernamePrefix);
-
-            // Pattern checks for employee-specific passwords like Ganesh@123, Ganesh@2026, ganesh, etc.
-            $isNameMatch = false;
-            if (!empty($firstName) && (
-                $cleanPw === $firstName ||
-                $cleanPw === $firstName . '@123' ||
-                $cleanPw === $firstName . '@2026' ||
-                $cleanPw === $firstName . '@2025' ||
-                $cleanPw === $firstName . '123' ||
-                strpos($cleanPw, $firstName) === 0
-            )) {
-                $isNameMatch = true;
-            }
-            if (!empty($userPrefix) && (
-                $cleanPw === $userPrefix ||
-                $cleanPw === $userPrefix . '@123' ||
-                $cleanPw === $userPrefix . '@2026' ||
-                $cleanPw === $userPrefix . '123' ||
-                strpos($cleanPw, $userPrefix) === 0
-            )) {
-                $isNameMatch = true;
-            }
-
-            $isDefaultMatch = in_array($cleanPw, $validDefaults);
-            $isCodeMatch = !empty($user['employee_code']) && (
-                strtoupper(trim($password)) === strtoupper(trim($user['employee_code'])) ||
-                $cleanPw === strtolower($user['employee_code']) . '@123' ||
-                $cleanPw === strtolower($user['employee_code']) . '@2026'
-            );
-            $isPhoneMatch = !empty($user['phone']) && trim($password) === trim($user['phone']);
-
-            if ($isDefaultMatch || $isNameMatch || $isCodeMatch || $isPhoneMatch) {
+            if (password_verify($password, $user['password_hash'])) {
                 $passwordValid = true;
-                // Establish the entered password hash so subsequent logins verify directly
+            } elseif ($user['password_hash'] === $password || $user['password_hash'] === md5($password) || $user['password_hash'] === sha1($password)) {
+                // Seamlessly upgrade legacy plaintext or md5 to secure password_hash
+                $passwordValid = true;
+                $newHash = password_hash($password, PASSWORD_DEFAULT);
                 $pdo->prepare("UPDATE users SET password_hash = :p WHERE id = :id")->execute([
-                    ':p' => password_hash($password, PASSWORD_DEFAULT),
+                    ':p' => $newHash,
                     ':id' => $user['id']
                 ]);
             }
-        } elseif (strlen($password) >= 6 && empty($user['password_hash'])) {
-            $passwordValid = true;
-            $pdo->prepare("UPDATE users SET password_hash = :p WHERE id = :id")->execute([
-                ':p' => password_hash($password, PASSWORD_DEFAULT),
-                ':id' => $user['id']
-            ]);
         }
 
         if (!$passwordValid) {
+            // Increment failed attempts and trigger lockout after 5 failures
+            $newAttempts = intval($user['failed_attempts'] ?? 0) + 1;
+            $lockSql = ($newAttempts >= 5) ? ", locked_until = DATE_ADD(NOW(), INTERVAL 5 MINUTE)" : "";
+            try {
+                $pdo->prepare("UPDATE users SET failed_attempts = :att $lockSql WHERE id = :id")->execute([
+                    ':att' => $newAttempts,
+                    ':id' => $user['id']
+                ]);
+            } catch (\Throwable $e) {}
+
+            log_audit($pdo, $user['uid'] ?? 'unknown', $user['email'] ?? $loginId, 'LOGIN_FAILED', 'users', $user['id'] ?? 0, [
+                'attempts' => $newAttempts
+            ]);
+
             json_out(["success" => false, "error" => "Invalid email or password. Please verify your credentials."], 401);
         }
 
-        // Update last login timestamp safely
+        // Successful authentication: Reset failed attempts & update last login
         try {
-            $pdo->prepare("UPDATE users SET last_login_at = NOW() WHERE id = :id")->execute([':id' => $user['id']]);
+            $pdo->prepare("UPDATE users SET failed_attempts = 0, locked_until = NULL, last_login_at = NOW() WHERE id = :id")->execute([
+                ':id' => $user['id']
+            ]);
         } catch (\Throwable $e) {}
 
-        // Auto-heal domain typo if user logged in with clean tradeforwealth domain
-        if (strpos($loginId, '@tradeforwealth.co.in') !== false && !empty($user['email']) && strpos($user['email'], '@tradeforwealth.co.in') === false) {
-            try {
-                $cleanOfficialEmail = $usernamePrefix . '@tradeforwealth.co.in';
-                $pdo->prepare("UPDATE users SET email = :e WHERE id = :id")->execute([':e' => $cleanOfficialEmail, ':id' => $user['id']]);
-                $pdo->prepare("UPDATE employees SET email = :e, work_email = :e WHERE (LOWER(work_email) = :old OR LOWER(email) = :old OR employee_code = :c)")->execute([
-                    ':e' => $cleanOfficialEmail,
-                    ':old' => $user['email'],
-                    ':c' => $user['employee_code']
-                ]);
-                $user['email'] = $cleanOfficialEmail;
-            } catch (\Throwable $e) {}
-        }
+        // Regenerate PHP session ID securely
+        session_regenerate_id(true);
 
-        // Strip password from returned user object
-        unset($user['password_hash']);
+        // Generate cryptographically random Bearer Auth Token
+        $token = bin2hex(random_bytes(32));
+        $tokenExpires = date('Y-m-d H:i:s', time() + (30 * 86400)); // 30 Days
 
-        // Sync official employee metadata without inferring role from designation text
+        // Save token in auth_tokens table
+        try {
+            $tokStmt = $pdo->prepare("
+                INSERT INTO auth_tokens (token, user_id, user_uid, user_email, role_id, ip_address, user_agent, expires_at)
+                VALUES (:token, :uid, :uuid, :email, :role, :ip, :ua, :exp)
+            ");
+            $tokStmt->execute([
+                ':token' => $token,
+                ':uid' => $user['id'],
+                ':uuid' => $user['uid'] ?: ('usr_' . $user['id']),
+                ':email' => $user['email'],
+                ':role' => canonical_role($user['role_id']),
+                ':ip' => $_SERVER['REMOTE_ADDR'] ?? '127.0.0.1',
+                ':ua' => substr($_SERVER['HTTP_USER_AGENT'] ?? 'Web', 0, 255),
+                ':exp' => $tokenExpires
+            ]);
+        } catch (\Throwable $e) {}
+
+        // Hydrate employee data (team, department, designation, employee_code)
         $empStmt = $pdo->prepare("
-            SELECT employee_code, department, designation, role_id 
+            SELECT id as emp_id, employee_code, department, team_id, team_name, designation, role_id, manager_id, manager, team_lead_id, team_lead 
             FROM employees 
-            WHERE (LOWER(work_email) = :email OR LOWER(email) = :email) 
+            WHERE (LOWER(work_email) = :email OR LOWER(email) = :email OR user_id = :uid OR id = :uid)
             LIMIT 1
         ");
-        $empStmt->execute([':email' => $email]);
-        $matchedEmp = $empStmt->fetch();
+        $empStmt->execute([
+            ':email' => strtolower($user['email']),
+            ':uid' => $user['uid'] ?: $user['id']
+        ]);
+        $emp = $empStmt->fetch();
 
-        if ($matchedEmp) {
-            if (!empty($matchedEmp['employee_code'])) {
-                $user['employee_code'] = $matchedEmp['employee_code'];
-            }
-            if (!empty($matchedEmp['department'])) {
-                $user['department'] = $matchedEmp['department'];
-            }
-            if (!empty($matchedEmp['designation'])) {
-                $user['designation'] = $matchedEmp['designation'];
-            }
+        $canonical = canonical_role($emp['role_id'] ?? $user['role_id'] ?? 'EMPLOYEE');
+        $user['role_id'] = $canonical;
+        $user['employee_id'] = $emp['emp_id'] ?? ($user['uid'] ?: $user['id']);
+        $user['employee_code'] = $emp['employee_code'] ?? ($user['employee_code'] ?? '');
+        $user['department'] = $emp['department'] ?? ($user['department'] ?? 'Operations');
+        $user['team_id'] = $emp['team_id'] ?? null;
+        $user['team_name'] = $emp['team_name'] ?? null;
+        $user['team_lead_id'] = $emp['team_lead_id'] ?? null;
+        $user['team_lead'] = $emp['team_lead'] ?? null;
+        $user['manager_id'] = $emp['manager_id'] ?? null;
+        $user['manager'] = $emp['manager'] ?? null;
+        $user['designation'] = $emp['designation'] ?? ($user['designation'] ?? 'Associate');
 
-            // Authoritative role comes strictly from administrative assignment, never title words
-            $assignedRole = !empty($matchedEmp['role_id']) ? $matchedEmp['role_id'] : ($user['role_id'] ?? 'EMPLOYEE');
-            $resolvedRole = canonical_role($assignedRole);
+        // Remove sensitive fields
+        unset($user['password_hash']);
 
-            if ($resolvedRole !== $user['role_id'] || $user['employee_code'] !== ($matchedEmp['employee_code'] ?? '')) {
-                $user['role_id'] = $resolvedRole;
-                try {
-                    $pdo->prepare("UPDATE users SET role_id = :r, designation = :d, department = :dept, employee_code = :c WHERE id = :id")->execute([
-                        ':r'    => $resolvedRole,
-                        ':d'    => $user['designation'],
-                        ':dept' => $user['department'],
-                        ':c'    => $user['employee_code'],
-                        ':id'   => $user['id']
-                    ]);
-                    $pdo->prepare("UPDATE employees SET role_id = :r WHERE (LOWER(work_email) = :email OR LOWER(email) = :email)")->execute([
-                        ':r'     => $resolvedRole,
-                        ':email' => $email
-                    ]);
-                } catch (\Throwable $e) {}
-            }
-        } else {
-            $user['role_id'] = canonical_role($user['role_id'] ?? 'EMPLOYEE');
-        }
+        // Save into server session
+        $_SESSION['user'] = $user;
+        $_SESSION['auth_token'] = $token;
 
-        log_audit($pdo, $user['uid'] ?? 'usr', $user['email'], 'USER_LOGIN', 'users', $user['id'] ?? 0, [
-            'device' => substr($_SERVER['HTTP_USER_AGENT'] ?? 'Unknown', 0, 100)
+        log_audit($pdo, $user['employee_id'], $user['email'], 'USER_LOGIN_SUCCESS', 'users', $user['id'], [
+            'role' => $user['role_id']
         ]);
 
         json_out([
             "success" => true,
             "message" => "Login successful",
+            "user" => $user,
+            "token" => $token
+        ]);
+    }
+
+    // -------------------------------------------------------------------------
+    // 2. CHECK SESSION / VERIFY CURRENT USER
+    // -------------------------------------------------------------------------
+    if ($action === 'check' || $action === 'me') {
+        $user = get_current_user_or_null($pdo);
+        if (!$user) {
+            json_out([
+                "success" => true,
+                "authenticated" => false,
+                "user" => null,
+                "message" => "No active session."
+            ]);
+        }
+
+        json_out([
+            "success" => true,
+            "authenticated" => true,
             "user" => $user
         ]);
     }
 
-// -----------------------------------------------------------------------------
-// 2. SIGN UP / REGISTER
-// -----------------------------------------------------------------------------
-if ($action === 'register') {
-    $email = strtolower(trim($input['email'] ?? ''));
-    $password = $input['password'] ?? 'Diallo@2026';
-    $fullName = trim($input['display_name'] ?? $input['full_name'] ?? '');
-    $roleId = $input['role_id'] ?? 'EMPLOYEE';
-    $department = $input['department'] ?? 'Operations';
-    $designation = $input['designation'] ?? 'Associate';
-    $phone = trim($input['phone'] ?? '');
-
-    if (empty($email) || empty($fullName)) {
-        json_out(["success" => false, "error" => "Full Name and Official Email are required."], 400);
-    }
-
-    // Check duplicate
-    $chk = $pdo->prepare("SELECT id FROM users WHERE LOWER(email) = :email");
-    $chk->execute([':email' => $email]);
-    if ($chk->fetch()) {
-        json_out(["success" => false, "error" => "An account with this email already exists."], 409);
-    }
-
-    $uid = 'usr_' . bin2hex(random_bytes(8));
-    $empCode = $input['employee_code'] ?? ('D' . str_pad(rand(100, 9999), 5, '0', STR_PAD_LEFT));
-    $passHash = password_hash($password, PASSWORD_DEFAULT);
-
-    $parts = explode(' ', $fullName);
-    $firstName = $parts[0] ?? $fullName;
-    $lastName = count($parts) > 1 ? end($parts) : '';
-
-    $stmt = $pdo->prepare("
-        INSERT INTO users (uid, employee_code, email, password_hash, display_name, first_name, last_name, phone, role_id, department, designation, status)
-        VALUES (:uid, :code, :email, :pass, :name, :fname, :lname, :phone, :role, :dept, :desig, 'ACTIVE')
-    ");
-    $stmt->execute([
-        ':uid' => $uid,
-        ':code' => $empCode,
-        ':email' => $email,
-        ':pass' => $passHash,
-        ':name' => $fullName,
-        ':fname' => $firstName,
-        ':lname' => $lastName,
-        ':phone' => $phone,
-        ':role' => $roleId,
-        ':dept' => $department,
-        ':desig' => $designation
-    ]);
-
-    // Also auto-provision or link employees table
-    $empStmt = $pdo->prepare("
-        INSERT INTO employees (id, user_id, employee_code, first_name, last_name, full_name, email, work_email, phone, department, designation, role_id, employment_status)
-        VALUES (:id, :uid, :code, :fname, :lname, :name, :email, :wemail, :phone, :dept, :desig, :role, 'ACTIVE')
-        ON DUPLICATE KEY UPDATE full_name = :name, role_id = :role, department = :dept, designation = :desig
-    ");
-    $empStmt->execute([
-        ':id' => $uid,
-        ':uid' => $uid,
-        ':code' => $empCode,
-        ':fname' => $firstName,
-        ':lname' => $lastName,
-        ':name' => $fullName,
-        ':email' => $email,
-        ':wemail' => $email,
-        ':phone' => $phone,
-        ':dept' => $department,
-        ':desig' => $designation,
-        ':role' => $roleId
-    ]);
-
-    json_out([
-        "success" => true,
-        "message" => "User account created successfully",
-        "user" => [
-            "uid" => $uid,
-            "employee_code" => $empCode,
-            "email" => $email,
-            "display_name" => $fullName,
-            "role_id" => $roleId
-        ]
-    ]);
-}
-
-// -----------------------------------------------------------------------------
-// 3. FORGOT PASSWORD — SEND BEAUTIFUL BRANDED HTML EMAIL WITH RESET LINK
-// -----------------------------------------------------------------------------
-if ($action === 'forgot_password' || $action === 'send_reset_link') {
-    $email = strtolower(trim($input['email'] ?? ''));
-    if (empty($email)) json_out(["success" => false, "error" => "Email address is required."], 400);
-
-    // Check if user exists in database
-    $stmt = $pdo->prepare("SELECT id, display_name, email FROM users WHERE LOWER(email) = :e LIMIT 1");
-    $stmt->execute([':e' => $email]);
-    $user = $stmt->fetch();
-
-    $name = !empty($user['display_name']) ? htmlspecialchars($user['display_name']) : 'Team Member';
-    $token = bin2hex(random_bytes(24));
-
-    // Store reset token in system_config with 1 hour expiration
-    $tokenKey = 'reset_token_' . md5($email);
-    $tokenData = json_encode([
-        'token' => $token,
-        'email' => $email,
-        'expires_at' => time() + 3600 // 1 hour
-    ]);
-
-    $stmt = $pdo->prepare("
-        INSERT INTO system_config (config_key, config_value) 
-        VALUES (:k, :v) 
-        ON DUPLICATE KEY UPDATE config_value = :v
-    ");
-    $stmt->execute([':k' => $tokenKey, ':v' => $tokenData]);
-
-    $resetUrl = "https://hrmstfw.com/reset-password.html?email=" . urlencode($email) . "&token=" . $token;
-
-    // Build Beautiful Branded HTML Email Template
-    $subject = "Reset Your Diallo HRMS Password";
-    $headers = "MIME-Version: 1.0\r\n";
-    $headers .= "Content-Type: text/html; charset=UTF-8\r\n";
-    $headers .= "From: Diallo HRMS Security <noreply@hrmstfw.com>\r\n";
-    $headers .= "Reply-To: support@diallo.in\r\n";
-    $headers .= "X-Mailer: Diallo HRMS Enterprise\r\n";
-
-    $htmlBody = '
-    <!DOCTYPE html>
-    <html>
-    <head>
-      <meta charset="utf-8">
-      <title>Reset Your Password — Diallo HRMS</title>
-      <style>
-        body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif; background-color: #0f172a; margin: 0; padding: 30px 15px; color: #e2e8f0; }
-        .email-container { max-width: 540px; margin: 0 auto; background: #1e293b; border-radius: 12px; border: 1px solid #334155; overflow: hidden; box-shadow: 0 10px 25px rgba(0,0,0,0.4); }
-        .email-header { background: linear-gradient(135deg, #1e3a8a 0%, #2563eb 100%); padding: 32px 24px; text-align: center; }
-        .logo-box { display: inline-block; width: 44px; height: 44px; line-height: 44px; background: #ffffff; color: #2563eb; font-size: 22px; font-weight: 800; border-radius: 8px; margin-bottom: 10px; }
-        .brand-title { color: #ffffff; font-size: 20px; font-weight: 700; margin: 0; letter-spacing: 0.5px; }
-        .brand-tag { font-size: 11px; background: rgba(255,255,255,0.2); padding: 2px 8px; border-radius: 4px; vertical-align: middle; }
-        .email-body { padding: 32px 28px; line-height: 1.6; }
-        .greeting { font-size: 18px; font-weight: 600; color: #f8fafc; margin-top: 0; margin-bottom: 14px; }
-        .text { color: #cbd5e1; font-size: 14px; margin-bottom: 22px; }
-        .btn-wrapper { text-align: center; margin: 30px 0; }
-        .btn { display: inline-block; background: #2563eb; color: #ffffff !important; padding: 14px 32px; font-size: 15px; font-weight: 600; text-decoration: none; border-radius: 8px; box-shadow: 0 4px 14px rgba(37,99,235,0.4); }
-        .btn:hover { background: #1d4ed8; }
-        .alt-link { font-size: 12px; color: #94a3b8; word-break: break-all; margin-top: 24px; padding-top: 18px; border-top: 1px solid #334155; }
-        .email-footer { background: #0f172a; padding: 20px 24px; text-align: center; font-size: 12px; color: #64748b; border-top: 1px solid #1e293b; }
-      </style>
-    </head>
-    <body>
-      <div class="email-container">
-        <div class="email-header">
-          <div class="logo-box">D</div>
-          <h1 class="brand-title">Diallo <span class="brand-tag">HRMS</span></h1>
-        </div>
-        <div class="email-body">
-          <h2 class="greeting">Hello ' . $name . ',</h2>
-          <p class="text">We received a request to reset your password for your Diallo HRMS official account (<strong>' . htmlspecialchars($email) . '</strong>).</p>
-          <p class="text">Click the button below to choose a strong new password. This security link will remain active for <strong>60 minutes</strong>.</p>
-          <div class="btn-wrapper">
-            <a href="' . $resetUrl . '" class="btn" target="_blank">Reset My Password</a>
-          </div>
-          <p class="text" style="font-size: 13px; color: #94a3b8;">If you did not request a password reset, you can safely ignore this email. Your current password remains secure.</p>
-          <div class="alt-link">
-            If the button above does not work, copy and paste this URL into your browser:<br>
-            <a href="' . $resetUrl . '" style="color: #60a5fa; text-decoration: underline;">' . $resetUrl . '</a>
-          </div>
-        </div>
-        <div class="email-footer">
-          Diallo India Private Limited • Navi Mumbai, Maharashtra<br>
-          Enterprise Human Resource Management System
-        </div>
-      </div>
-    </body>
-    </html>';
-
-    @mail($email, $subject, $htmlBody, $headers);
-
-    json_out([
-        "success" => true,
-        "message" => "A secure password reset link has been dispatched to {$email}.",
-        "reset_url" => $resetUrl
-    ]);
-}
-
-// -----------------------------------------------------------------------------
-// 4. PASSWORD RESET / UPDATE REQUEST
-// -----------------------------------------------------------------------------
-if ($action === 'reset_password' || $action === 'update_password') {
-    $email = strtolower(trim($input['email'] ?? ''));
-    $token = trim($input['token'] ?? '');
-    $newPass = $input['password'] ?? null;
-    if (empty($email)) json_out(["success" => false, "error" => "Email is required."], 400);
-
-    // If token provided, verify it from system_config
-    if (!empty($token)) {
-        $tokenKey = 'reset_token_' . md5($email);
-        $stmt = $pdo->prepare("SELECT config_value FROM system_config WHERE config_key = :k LIMIT 1");
-        $stmt->execute([':k' => $tokenKey]);
-        $row = $stmt->fetch();
-        if (!$row) {
-            json_out(["success" => false, "error" => "This password reset token is invalid or has expired."], 400);
+    // -------------------------------------------------------------------------
+    // 3. SIGN OUT (LOGOUT)
+    // -------------------------------------------------------------------------
+    if ($action === 'logout') {
+        $token = get_bearer_token();
+        if (!empty($token)) {
+            try {
+                $pdo->prepare("DELETE FROM auth_tokens WHERE token = :t")->execute([':t' => $token]);
+            } catch (\Throwable $e) {}
         }
-        $data = json_decode($row['config_value'], true);
-        if (!$data || $data['token'] !== $token || time() > ($data['expires_at'] ?? 0)) {
-            json_out(["success" => false, "error" => "This password reset link has expired. Please request a new one."], 400);
+
+        $_SESSION = [];
+        if (ini_get("session.use_cookies")) {
+            $params = session_get_cookie_params();
+            setcookie(session_name(), '', time() - 42000,
+                $params["path"], $params["domain"],
+                $params["secure"], $params["httponly"]
+            );
         }
-        // Invalidate token so it cannot be reused
-        $stmt = $pdo->prepare("DELETE FROM system_config WHERE config_key = :k");
-        $stmt->execute([':k' => $tokenKey]);
+        session_destroy();
+
+        json_out([
+            "success" => true,
+            "message" => "Logged out successfully"
+        ]);
     }
 
-    if (!empty($newPass)) {
+    // -------------------------------------------------------------------------
+    // 4. FORGOT PASSWORD (CRYPTOGRAPHIC TOKEN GENERATION)
+    // -------------------------------------------------------------------------
+    if ($action === 'forgot_password' || $action === 'send_reset_link') {
+        $email = strtolower(trim($input['email'] ?? ''));
+        if (empty($email)) {
+            json_out(["success" => false, "error" => "Email address is required."], 400);
+        }
+
+        $stmt = $pdo->prepare("SELECT id, display_name, email FROM users WHERE LOWER(email) = :e LIMIT 1");
+        $stmt->execute([':e' => $email]);
+        $user = $stmt->fetch();
+
+        if (!$user) {
+            // Check employees table
+            $empStmt = $pdo->prepare("SELECT id, full_name as display_name, email, work_email FROM employees WHERE LOWER(work_email) = :e OR LOWER(email) = :e LIMIT 1");
+            $empStmt->execute([':e' => $email]);
+            $user = $empStmt->fetch();
+        }
+
+        if (!$user) {
+            json_out(["success" => false, "error" => "No registered account found with that email address."], 404);
+        }
+
+        $name = !empty($user['display_name']) ? htmlspecialchars($user['display_name']) : 'Team Member';
+        $token = bin2hex(random_bytes(32));
+        $expires = date('Y-m-d H:i:s', time() + 3600); // 1 hour
+
+        // Save to password_resets table
+        $stmt = $pdo->prepare("INSERT INTO password_resets (email, token, expires_at, used) VALUES (:e, :t, :exp, 0)");
+        $stmt->execute([':e' => $email, ':t' => $token, ':exp' => $expires]);
+
+        $resetUrl = "https://hrmstfw.com/reset-password.html?email=" . urlencode($email) . "&token=" . $token;
+
+        $subject = "Reset Your Diallo HRMS Password";
+        $headers = "MIME-Version: 1.0\r\n";
+        $headers .= "Content-Type: text/html; charset=UTF-8\r\n";
+        $headers .= "From: Diallo HRMS Security <noreply@hrmstfw.com>\r\n";
+        $headers .= "Reply-To: support@diallo.in\r\n";
+
+        $htmlBody = '
+        <!DOCTYPE html>
+        <html>
+        <head><meta charset="utf-8"><title>Reset Your Password</title></head>
+        <body style="font-family: Arial, sans-serif; background-color: #0f172a; margin: 0; padding: 30px; color: #e2e8f0;">
+          <div style="max-width: 520px; margin: 0 auto; background: #1e293b; border-radius: 12px; border: 1px solid #334155; overflow: hidden;">
+            <div style="background: #2563eb; padding: 24px; text-align: center; color: #ffffff;">
+              <h1 style="margin: 0; font-size: 20px;">Diallo HRMS Security</h1>
+            </div>
+            <div style="padding: 28px; line-height: 1.6;">
+              <h2 style="font-size: 16px; margin-top: 0;">Hello ' . $name . ',</h2>
+              <p>We received a request to reset your password for your Diallo HRMS account (<strong>' . htmlspecialchars($email) . '</strong>).</p>
+              <p>Click the button below to choose a strong new password. This link expires in 60 minutes.</p>
+              <div style="text-align: center; margin: 25px 0;">
+                <a href="' . $resetUrl . '" style="background: #2563eb; color: #ffffff; padding: 12px 28px; text-decoration: none; border-radius: 6px; font-weight: bold; display: inline-block;">Reset Password</a>
+              </div>
+              <p style="font-size: 12px; color: #94a3b8;">If you did not request a password reset, you can safely disregard this email.</p>
+            </div>
+          </div>
+        </body>
+        </html>';
+
+        @mail($email, $subject, $htmlBody, $headers);
+
+        log_audit($pdo, (string)$user['id'], $email, 'PASSWORD_RESET_REQUESTED', 'password_resets', $token);
+
+        json_out([
+            "success" => true,
+            "message" => "Password reset instructions have been sent to your email address.",
+            "reset_url" => $resetUrl
+        ]);
+    }
+
+    // -------------------------------------------------------------------------
+    // 5. RESET PASSWORD WITH TOKEN
+    // -------------------------------------------------------------------------
+    if ($action === 'reset_password' || $action === 'update_password') {
+        $email = strtolower(trim($input['email'] ?? ''));
+        $token = trim($input['token'] ?? '');
+        $newPass = (string)($input['password'] ?? '');
+
+        if (empty($email) || empty($token) || empty($newPass)) {
+            json_out(["success" => false, "error" => "Email, token, and new password are required."], 400);
+        }
+
         if (strlen($newPass) < 6) {
-            json_out(["success" => false, "error" => "Password must be at least 6 characters long."], 400);
+            json_out(["success" => false, "error" => "Password must be at least 6 characters in length."], 400);
         }
-        $stmt = $pdo->prepare("UPDATE users SET password_hash = :p WHERE LOWER(email) = :e OR UPPER(employee_code) = UPPER(:e) OR LOWER(email) LIKE :prefix");
-        $stmt->execute([
-            ':p' => password_hash($newPass, PASSWORD_DEFAULT),
-            ':e' => $email,
-            ':prefix' => (explode('@', $email)[0]) . '@%'
-        ]);
-        json_out([
-            "success" => true,
-            "message" => "Password updated successfully in database."
-        ]);
-    } else {
-        $tempPass = 'Diallo@' . rand(1000, 9999);
-        $stmt = $pdo->prepare("UPDATE users SET password_hash = :p WHERE LOWER(email) = :e OR UPPER(employee_code) = UPPER(:e) OR LOWER(email) LIKE :prefix");
-        $stmt->execute([
-            ':p' => password_hash($tempPass, PASSWORD_DEFAULT),
-            ':e' => $email,
-            ':prefix' => (explode('@', $email)[0]) . '@%'
-        ]);
+
+        // Verify token in password_resets
+        $stmt = $pdo->prepare("
+            SELECT id, expires_at, used 
+            FROM password_resets 
+            WHERE LOWER(email) = :e AND token = :t 
+            ORDER BY id DESC LIMIT 1
+        ");
+        $stmt->execute([':e' => $email, ':t' => $token]);
+        $resetRecord = $stmt->fetch();
+
+        if (!$resetRecord || intval($resetRecord['used']) === 1) {
+            json_out(["success" => false, "error" => "This password reset token is invalid or has already been used."], 400);
+        }
+
+        if (strtotime($resetRecord['expires_at']) < time()) {
+            json_out(["success" => false, "error" => "This password reset link has expired. Please request a new link."], 400);
+        }
+
+        // Hash new password and update user
+        $newHash = password_hash($newPass, PASSWORD_DEFAULT);
+        $upStmt = $pdo->prepare("
+            UPDATE users 
+            SET password_hash = :p, failed_attempts = 0, locked_until = NULL 
+            WHERE LOWER(email) = :e
+        ");
+        $upStmt->execute([':p' => $newHash, ':e' => $email]);
+
+        // Invalidate token
+        $pdo->prepare("UPDATE password_resets SET used = 1 WHERE id = :id")->execute([':id' => $resetRecord['id']]);
+
+        // Invalidate any active sessions for this email to enforce re-login
+        $pdo->prepare("DELETE FROM auth_tokens WHERE LOWER(user_email) = :e")->execute([':e' => $email]);
+
+        log_audit($pdo, 'system', $email, 'PASSWORD_RESET_SUCCESSFUL', 'users', $email);
 
         json_out([
             "success" => true,
-            "message" => "Temporary password generated for {$email}: {$tempPass}",
-            "temporary_password" => $tempPass
+            "message" => "Your password has been reset successfully. Please sign in with your new password."
         ]);
     }
-}
 
-    // Default fallback
-    json_out(["success" => false, "error" => "Invalid auth action specified."], 400);
+    // -------------------------------------------------------------------------
+    // 6. CHANGE PASSWORD (AUTHENTICATED USER)
+    // -------------------------------------------------------------------------
+    if ($action === 'change_password') {
+        $currentUser = require_authenticated_user($pdo);
+        $currentPass = (string)($input['current_password'] ?? '');
+        $newPass = (string)($input['new_password'] ?? '');
+
+        if (empty($currentPass) || empty($newPass)) {
+            json_out(["success" => false, "error" => "Current password and new password are required."], 400);
+        }
+
+        if (strlen($newPass) < 6) {
+            json_out(["success" => false, "error" => "New password must be at least 6 characters in length."], 400);
+        }
+
+        // Fetch user password hash
+        $stmt = $pdo->prepare("SELECT password_hash FROM users WHERE id = :id LIMIT 1");
+        $stmt->execute([':id' => $currentUser['id']]);
+        $storedHash = $stmt->fetchColumn();
+
+        if (empty($storedHash) || !password_verify($currentPass, $storedHash)) {
+            json_out(["success" => false, "error" => "Current password is incorrect."], 400);
+        }
+
+        $newHash = password_hash($newPass, PASSWORD_DEFAULT);
+        $pdo->prepare("UPDATE users SET password_hash = :p WHERE id = :id")->execute([
+            ':p' => $newHash,
+            ':id' => $currentUser['id']
+        ]);
+
+        log_audit($pdo, $currentUser['employee_id'], $currentUser['email'], 'PASSWORD_CHANGED', 'users', $currentUser['id']);
+
+        json_out([
+            "success" => true,
+            "message" => "Password changed successfully."
+        ]);
+    }
+
+    json_out(["success" => false, "error" => "Invalid authentication action."], 400);
 
 } catch (\Throwable $e) {
-    error_log("[Auth API Error] " . $e->getMessage() . " in " . $e->getFile() . ":" . $e->getLine());
-    json_out(["success" => false, "error" => "Authentication error: " . $e->getMessage()], 500);
+    error_log("[Auth Error] " . $e->getMessage());
+    json_out([
+        "success" => false,
+        "error" => "Authentication service error: " . $e->getMessage()
+    ], 500);
 }
 ?>

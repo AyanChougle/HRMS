@@ -1,34 +1,24 @@
+/**
+ * DIALLO HRMS — ZERO-NETWORK FIREBASE COMPATIBILITY STUB
+ * Completely decouples the application from Google Firebase.
+ * All runtime database and authentication operations run through Hostinger MySQL & PHP APIs.
+ * This stub safely intercepts legacy calls without making any network requests.
+ */
 
-const firebaseConfig = {
-  apiKey: "AIzaSyCiVmXa3LEf9VP9rvNoQtN2fVJTOPqDVws",
-  authDomain: "hrms-3b9d9.firebaseapp.com",
-  projectId: "hrms-3b9d9",
-  storageBucket: "hrms-3b9d9.firebasestorage.app",
-  messagingSenderId: "443705359479",
-  appId: "1:443705359479:web:648816dce3da59ae681a72",
-  measurementId: "G-5RHNVEH8TC"
-};
+var firebase;
+var auth;
+var db;
+var FirebaseApp;
 
-// Initialize Firebase once
-if (!firebase.apps.length) {
-  firebase.initializeApp(firebaseConfig);
-}
+(function () {
+  const noop = () => {};
+  const asyncNoop = async () => {};
 
-// -----------------------------------------------------------------------------
-// STRICT SYSTEM ARCHITECTURE:
-// Firebase is used EXCLUSIVELY for Authentication (Identity, Passwords, Session).
-// All database collections, business data, and storage reside on Hostinger MySQL.
-// -----------------------------------------------------------------------------
-const auth = firebase.auth();
-
-// Safe Offline/No-op Firestore Stub so legacy calls never query Google Firestore
-// and never trigger "FirebaseError: Missing or insufficient permissions"
-function createFirestoreStub() {
   const emptyQuerySnapshot = {
     empty: true,
     size: 0,
     docs: [],
-    forEach: () => {},
+    forEach: noop,
     map: () => []
   };
 
@@ -44,64 +34,85 @@ function createFirestoreStub() {
     limit: () => queryStub,
     startAfter: () => queryStub,
     get: async () => emptyQuerySnapshot,
-    onSnapshot: (callback) => {
-      if (typeof callback === 'function') {
-        try { callback(emptyQuerySnapshot); } catch (_) {}
+    onSnapshot: (cb) => {
+      if (typeof cb === 'function') {
+        try { cb(emptyQuerySnapshot); } catch (_) {}
       }
-      return () => {}; // Unsubscribe function
+      return noop;
     },
     doc: (docId) => ({
       id: docId || '',
       get: async () => ({ ...emptyDocSnapshot, id: docId }),
-      set: async () => {},
-      update: async () => {},
-      delete: async () => {}
+      set: asyncNoop,
+      update: asyncNoop,
+      delete: asyncNoop
     }),
     add: async () => ({ id: 'doc_' + Date.now() })
   };
 
-  return {
+  const firestoreStub = {
     collection: () => queryStub,
     doc: (docPath) => queryStub.doc(docPath),
     batch: () => ({
-      set: () => {},
-      update: () => {},
-      delete: () => {},
-      commit: async () => {}
+      set: noop,
+      update: noop,
+      delete: noop,
+      commit: asyncNoop
     }),
     runTransaction: async (fn) => fn({
       get: async () => emptyDocSnapshot,
-      set: () => {},
-      update: () => {},
-      delete: () => {}
+      set: noop,
+      update: noop,
+      delete: noop
     })
   };
-}
 
-const db = createFirestoreStub();
-const storage = null;
+  const FieldValue = {
+    serverTimestamp: () => new Date().toISOString(),
+    delete: () => null,
+    increment: (n) => n,
+    arrayUnion: (...items) => items,
+    arrayRemove: (...items) => items
+  };
 
-// Helper for server timestamps
-const serverTimestamp = () => new Date().toISOString();
-const FieldValue = {
-  serverTimestamp: () => new Date().toISOString(),
-  delete: () => null,
-  increment: (n) => n,
-  arrayUnion: (...items) => items,
-  arrayRemove: (...items) => items
-};
+  const authStub = {
+    currentUser: null,
+    onAuthStateChanged: (cb) => {
+      // Defer to AuthGuard and authService
+      return noop;
+    },
+    signInWithEmailAndPassword: async () => {
+      throw new Error('Firebase Auth is decommissioned. Use authService.signIn.');
+    },
+    createUserWithEmailAndPassword: async () => {
+      throw new Error('Firebase Auth is decommissioned.');
+    },
+    signOut: asyncNoop
+  };
 
-if (typeof firebase !== 'undefined' && firebase.firestore) {
-  try {
-    firebase.firestore.FieldValue = FieldValue;
-  } catch (_) {}
-}
+  window.firebase = {
+    apps: [{ name: '[DEFAULT]' }],
+    app: () => window.firebase.apps[0],
+    initializeApp: () => window.firebase.apps[0],
+    auth: () => authStub,
+    firestore: Object.assign(() => firestoreStub, { FieldValue }),
+    storage: () => ({
+      ref: () => ({
+        put: asyncNoop,
+        getDownloadURL: async () => ''
+      })
+    })
+  };
 
-window.FirebaseApp = {
-  config: firebaseConfig,
-  auth,
-  db,
-  storage,
-  serverTimestamp,
-  FieldValue
-};
+  window.auth = authStub;
+  window.db = firestoreStub;
+  window.FirebaseApp = {
+    auth: authStub,
+    db: firestoreStub
+  };
+
+  firebase = window.firebase;
+  auth = window.auth;
+  db = window.db;
+  FirebaseApp = window.FirebaseApp;
+})();

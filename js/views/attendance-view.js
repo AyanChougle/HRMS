@@ -80,6 +80,12 @@ const AttendanceView = {
             <p class="page-subtitle">${isEmployeeOnly ? 'Daily punch logging, shift timer, break station, and regularization requests' : 'Real-time punch records, roster status, regularization workflows, and holiday schedules'}</p>
           </div>
           <div class="page-actions">
+            <button class="btn btn-secondary btn-sm" onclick="reportService.downloadBackendExport('attendance', 'xlsx')" title="Export Monthly Attendance Muster (Exact RadeNextHR 18-Column Excel)">
+              <svg width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/>
+              </svg>
+              <span>Export Muster (Excel)</span>
+            </button>
             <button class="btn btn-secondary btn-sm" onclick="AttendanceView.openRegularizationModal()">
               <svg width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/>

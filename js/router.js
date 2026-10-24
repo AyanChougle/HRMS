@@ -195,6 +195,11 @@ const Router = {
 
       document.querySelector('.app-container')?.classList.remove('mobile-sidebar-open');
 
+      // Proactively refresh live attendance status from MySQL on relevant routes
+      if (['dashboard', 'attendance', 'ess'].includes(routeKey) && typeof ESSView !== 'undefined' && typeof ESSView.refreshFromDatabase === 'function') {
+        ESSView.refreshFromDatabase().catch(() => {});
+      }
+
       if (typeof routeConfig.postRender === 'function') {
         setTimeout(async () => {
           try {

@@ -9,6 +9,12 @@ if (empty($action) && isset($input['action'])) {
     $action = $input['action'];
 }
 
+$currentUser = get_current_user_or_null($pdo);
+$userRole = canonical_role($currentUser['role_id'] ?? $_GET['role'] ?? 'EMPLOYEE');
+$userCode = $currentUser['employee_code'] ?? $_GET['employee_code'] ?? '';
+$userUid = $currentUser['uid'] ?? $currentUser['id'] ?? $_GET['uid'] ?? '';
+$userDept = $currentUser['department'] ?? '';
+
 // -----------------------------------------------------------------------------
 // GET: Fetch Leaves or Balances
 // -----------------------------------------------------------------------------
@@ -17,11 +23,12 @@ if ($method === 'GET') {
 
     // Get Balances
     if ($action === 'balances') {
+        if (empty($empId)) $empId = $userUid;
         if (empty($empId)) json_out(["success" => false, "error" => "Employee ID is required."], 400);
 
         $year = intval($_GET['year'] ?? date('Y'));
-        $stmt = $pdo->prepare("SELECT * FROM leave_balances WHERE employee_id = :eid AND year = :y");
-        $stmt->execute([':eid' => $empId, ':y' => $year]);
+        $stmt = $pdo->prepare("SELECT * FROM leave_balances WHERE (employee_id = :eid OR employee_id = :ecode) AND year = :y");
+        $stmt->execute([':eid' => $empId, ':ecode' => $userCode, ':y' => $year]);
         $balances = $stmt->fetchAll();
 
         // Default standard leave balance if none initialized
@@ -33,7 +40,7 @@ if ($method === 'GET') {
                     VALUES (:eid, :t, :y, :c, 0, :c)
                 ")->execute([':eid' => $empId, ':t' => $t, ':y' => $year, ':c' => $days]);
             }
-            $stmt->execute([':eid' => $empId, ':y' => $year]);
+            $stmt->execute([':eid' => $empId, ':ecode' => $userCode, ':y' => $year]);
             $balances = $stmt->fetchAll();
         }
 
@@ -42,19 +49,39 @@ if ($method === 'GET') {
 
     // List Leave Applications
     $status = trim($_GET['status'] ?? '');
-    $sql = "SELECT * FROM leave_applications WHERE 1=1";
+    $sql = "SELECT l.* FROM leave_applications l LEFT JOIN employees e ON (l.employee_id = e.id OR l.employee_code = e.employee_code) WHERE 1=1";
     $params = [];
 
+    // Role Scoping
+    if ($userRole === 'EMPLOYEE') {
+        $sql .= " AND (l.employee_id = :self_uid OR l.employee_code = :self_code)";
+        $params[':self_uid'] = $userUid;
+        $params[':self_code'] = $userCode;
+    } elseif ($userRole === 'TL') {
+        $sql .= " AND (l.employee_id = :self_uid OR l.employee_code = :self_code OR e.team_lead_id = :tlid OR e.team_lead_id = :tlcode)";
+        $params[':self_uid'] = $userUid;
+        $params[':self_code'] = $userCode;
+        $params[':tlid'] = $userUid;
+        $params[':tlcode'] = $userCode;
+    } elseif ($userRole === 'MANAGER' && !empty($userDept)) {
+        $sql .= " AND (l.employee_id = :self_uid OR l.employee_code = :self_code OR e.department = :dept OR e.reporting_manager_id = :mgr_uid OR e.reporting_manager_id = :mgr_code)";
+        $params[':self_uid'] = $userUid;
+        $params[':self_code'] = $userCode;
+        $params[':dept'] = $userDept;
+        $params[':mgr_uid'] = $userUid;
+        $params[':mgr_code'] = $userCode;
+    }
+
     if (!empty($empId)) {
-        $sql .= " AND employee_id = :eid";
+        $sql .= " AND (l.employee_id = :eid OR l.employee_code = :eid)";
         $params[':eid'] = $empId;
     }
     if (!empty($status) && $status !== 'All') {
-        $sql .= " AND status = :st";
+        $sql .= " AND l.status = :st";
         $params[':st'] = $status;
     }
 
-    $sql .= " ORDER BY created_at DESC";
+    $sql .= " ORDER BY l.created_at DESC";
     $stmt = $pdo->prepare($sql);
     $stmt->execute($params);
     $leaves = $stmt->fetchAll();
@@ -70,11 +97,20 @@ if ($method === 'POST') {
     if ($action === 'review') {
         $leaveId = intval($input['id'] ?? 0);
         $status = strtoupper(trim($input['status'] ?? '')); // APPROVED or REJECTED
-        $reviewer = trim($input['reviewed_by'] ?? 'HR Admin');
+        $reviewer = trim($input['reviewed_by'] ?? ($currentUser['display_name'] ?? 'HR Admin'));
         $rejectionReason = trim($input['rejection_reason'] ?? '');
 
         if (!$leaveId || !in_array($status, ['APPROVED', 'REJECTED'])) {
             json_out(["success" => false, "error" => "Invalid review parameters."], 400);
+        }
+
+        // Fetch application details first
+        $getStmt = $pdo->prepare("SELECT * FROM leave_applications WHERE id = :id LIMIT 1");
+        $getStmt->execute([':id' => $leaveId]);
+        $app = $getStmt->fetch();
+
+        if (!$app) {
+            json_out(["success" => false, "error" => "Leave application not found."], 404);
         }
 
         $stmt = $pdo->prepare("
@@ -89,11 +125,36 @@ if ($method === 'POST') {
             ':id' => $leaveId
         ]);
 
+        // If APPROVED and was previously PENDING, deduct from balance
+        if ($status === 'APPROVED' && $app['status'] !== 'APPROVED') {
+            $leaveYear = intval(date('Y', strtotime($app['start_date'])));
+            $daysCount = floatval($app['days_count']);
+            $leaveType = $app['leave_type'];
+            $targetEmp = $app['employee_id'];
+
+            try {
+                $balStmt = $pdo->prepare("
+                    UPDATE leave_balances 
+                    SET used = used + :days, available = GREATEST(0, available - :days)
+                    WHERE (employee_id = :eid OR employee_id = :ecode) AND leave_type = :lt AND year = :y
+                ");
+                $balStmt->execute([
+                    ':days' => $daysCount,
+                    ':eid' => $targetEmp,
+                    ':ecode' => $app['employee_code'],
+                    ':lt' => $leaveType,
+                    ':y' => $leaveYear
+                ]);
+            } catch (\Throwable $balErr) {
+                error_log("[Leave Balance Deduction Notice] " . $balErr->getMessage());
+            }
+        }
+
         json_out(["success" => true, "message" => "Leave application marked as {$status}."]);
     }
 
     // 2. Submit New Leave Application
-    $empId = trim($input['employee_id'] ?? '');
+    $empId = trim($input['employee_id'] ?? $userUid);
     $leaveType = trim($input['leave_type'] ?? 'Casual Leave');
     $startDate = trim($input['start_date'] ?? '');
     $endDate = trim($input['end_date'] ?? '');
@@ -106,13 +167,13 @@ if ($method === 'POST') {
     }
 
     // Fetch employee name
-    $empStmt = $pdo->prepare("SELECT full_name, employee_code, department FROM employees WHERE id = :id LIMIT 1");
-    $empStmt->execute([':id' => $empId]);
+    $empStmt = $pdo->prepare("SELECT full_name, employee_code, department FROM employees WHERE id = :id OR employee_code = :code LIMIT 1");
+    $empStmt->execute([':id' => $empId, ':code' => $empId]);
     $emp = $empStmt->fetch();
 
-    $name = $emp ? $emp['full_name'] : ($input['employee_name'] ?? 'Employee');
-    $code = $emp ? $emp['employee_code'] : '';
-    $dept = $emp ? $emp['department'] : '';
+    $name = $emp ? $emp['full_name'] : ($input['employee_name'] ?? ($currentUser['display_name'] ?? 'Employee'));
+    $code = $emp ? $emp['employee_code'] : ($currentUser['employee_code'] ?? '');
+    $dept = $emp ? $emp['department'] : ($currentUser['department'] ?? 'Operations');
 
     $stmt = $pdo->prepare("
         INSERT INTO leave_applications (

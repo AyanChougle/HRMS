@@ -1169,6 +1169,20 @@ const ESSView = {
         this.startBreakTimer();
       }
     }
+    // Always refresh authoritatively from Hostinger MySQL in the background
+    this.refreshFromDatabase().catch(() => {});
+  },
+
+  async refreshFromDatabase() {
+    try {
+      if (typeof attendanceService === 'undefined') return;
+      const empId = AuthGuard?.userProfile?.employeeId || AuthGuard?.currentUser?.uid || AuthGuard?.userProfile?.employeeCode;
+      if (!empId) return;
+      const todayRecord = await attendanceService.getTodayRecord(empId);
+      await this.syncWithFirestore(todayRecord);
+    } catch (e) {
+      console.warn('[ESSView] Database attendance refresh notice:', e);
+    }
   },
 
   async syncWithFirestore(todayRecord) {
@@ -1225,17 +1239,6 @@ const ESSView = {
       } else if (todayRecord.lastBreakEndIso && !todayRecord.lastBreakStartIso) {
         resolvedOnBreak = false;
       }
-
-      // Check local persisted state for today
-      try {
-        const rawLocal = localStorage.getItem("diallo_timecard_state");
-        if (rawLocal) {
-          const localState = JSON.parse(rawLocal);
-          if (localState.shiftDate === today && localState.isOnBreak === false) {
-            resolvedOnBreak = false;
-          }
-        }
-      } catch (_) {}
 
       this.isOnBreak = resolvedOnBreak;
       this.totalBreakSeconds =
@@ -2010,16 +2013,6 @@ const ESSView = {
     }
 
     if (!this.isPunchedIn) {
-      const now = new Date();
-      const currentMinutes = now.getHours() * 60 + now.getMinutes();
-      const openMinutes = 9 * 60 + 30; // 09:30 AM
-      if (currentMinutes < openMinutes) {
-        Toast.warning(
-          "Shift check-in window opens at 09:30 AM (General Shift: 10:00 AM – 07:00 PM).",
-        );
-        return false;
-      }
-
       // Location capture for Punch-In (logs location only - no geofence block)
       let pos = null;
       let userLat = null, userLng = null, distanceMeters = 0, distanceDisplay = 'Unknown';

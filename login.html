@@ -7,16 +7,16 @@
   <meta name="description" content="Sign in or create a new organization account for Diallo HRMS Enterprise Cloud Suite." />
 
   <!-- CSS Architecture Tokens & Components -->
-  <link rel="stylesheet" href="css/variables.css?v=1792756000000" />
-  <link rel="stylesheet" href="css/global.css?v=1792756000000" />
-  <link rel="stylesheet" href="css/components.css?v=1792756000000" />
-  <link rel="stylesheet" href="css/forms.css?v=1792756000000" />
-  <link rel="stylesheet" href="css/modals.css?v=1792756000000" />
-  <link rel="stylesheet" href="css/responsive.css?v=1792756000000" />
-  <link rel="icon" type="image/png" sizes="32x32" href="favicon-32x32.png" />
-  <link rel="icon" type="image/png" sizes="16x16" href="favicon-16x16.png" />
-  <link rel="apple-touch-icon" sizes="180x180" href="apple-touch-icon.png" />
-  <link rel="shortcut icon" href="favicon.ico" />
+  <link rel="stylesheet" href="css/variables.css?v=1792765000000" />
+  <link rel="stylesheet" href="css/global.css?v=1792765000000" />
+  <link rel="stylesheet" href="css/components.css?v=1792765000000" />
+  <link rel="stylesheet" href="css/forms.css?v=1792765000000" />
+  <link rel="stylesheet" href="css/modals.css?v=1792765000000" />
+  <link rel="stylesheet" href="css/responsive.css?v=1792765000000" />
+  <link rel="icon" type="image/png" sizes="32x32" href="favicon-32x32.png?v=1792765000000" />
+  <link rel="icon" type="image/png" sizes="16x16" href="favicon-16x16.png?v=1792765000000" />
+  <link rel="apple-touch-icon" sizes="180x180" href="apple-touch-icon.png?v=1792765000000" />
+  <link rel="shortcut icon" type="image/x-icon" href="favicon.ico?v=1792765000000" />
 
   <style>
     body {
@@ -262,20 +262,14 @@
 
   <div id="toast-container" class="toast-container"></div>
 
-  <!-- Firebase Web SDK (Compat CDN for Vanilla Browser) -->
-  <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-auth-compat.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore-compat.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-storage-compat.js"></script>
-
-  <!-- App Services & Config -->
-  <script src="js/firebase/firebase-config.js?v=1792756000000"></script>
-  <script src="js/theme.js?v=1792756000000"></script>
-  <script src="js/toast.js?v=1792756000000"></script>
-  <script src="js/services/auditService.js?v=1792756000000"></script>
-  <script src="js/services/apiClient.js?v=1792756000000"></script>
-  <script src="js/services/authService.js?v=1792756000000"></script>
-  <script src="js/firebase/auth-guard.js?v=1792756000000"></script>
+  <!-- App Services & Architecture (100% Hostinger MySQL & PHP Backend) -->
+  <script src="js/firebase/firebase-config.js?v=1792765000000"></script>
+  <script src="js/theme.js?v=1792765000000"></script>
+  <script src="js/toast.js?v=1792765000000"></script>
+  <script src="js/services/apiClient.js?v=1792765000000"></script>
+  <script src="js/services/authService.js?v=1792765000000"></script>
+  <script src="js/services/auditService.js?v=1792765000000"></script>
+  <script src="js/firebase/auth-guard.js?v=1792765000000"></script>
 
   <script>
     
@@ -345,40 +339,18 @@
     }
 
     // Explicit Sign Up Handler (always called directly by onsubmit)
-    document.addEventListener('DOMContentLoaded', () => {
+    document.addEventListener('DOMContentLoaded', async () => {
       try {
         ThemeManager.init();
         Toast.init();
       } catch (e) {
         console.warn('UI init warning:', e);
       }
-
-      // If user is already authenticated on initial page load, redirect to dashboard
-      try {
-        const rawSession = sessionStorage.getItem('dh_user_session') || localStorage.getItem('dh_user_session');
-        if (rawSession && !isAuthenticating) {
-          try {
-            const parsed = JSON.parse(rawSession);
-            if (parsed && (parsed.status || 'ACTIVE').toUpperCase() === 'ACTIVE') {
-              const redirect = sessionStorage.getItem('redirect_after_login') || 'index.html#dashboard';
-              sessionStorage.removeItem('redirect_after_login');
-              window.location.replace(redirect);
-              return;
-            }
-          } catch (_) {}
-        }
-
-        auth.onAuthStateChanged((user) => {
-          if (user && !isAuthenticating) {
-            const redirect = sessionStorage.getItem('redirect_after_login') || 'index.html#dashboard';
-            sessionStorage.removeItem('redirect_after_login');
-            window.location.replace(redirect);
-          }
-        });
-      } catch (e) {
-        console.warn('Auth state check warning:', e);
+      if (window.AuthGuard) {
+        await AuthGuard.init({ isPublicPage: true });
       }
     });
   </script>
 </body>
 </html>
+

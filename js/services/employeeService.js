@@ -202,45 +202,11 @@ const employeeService = {
         }
       }
 
-      // 2. Secondary: Fallback to Firestore if MySQL was empty or failed
-      if (!loadedFromMySQL && typeof db !== 'undefined') {
-        let query = db.collection('employees');
-        const snapshot = await query.get();
-        records = snapshot.docs.map(doc => ({
-          id: doc.id,
-          ...doc.data()
-        }));
-      } else if (loadedFromMySQL && typeof db !== 'undefined') {
-        // Only merge legitimate Firestore-only records (strictly excluding test/dummy records)
-        try {
-          const snapshot = await db.collection('employees').get();
-          const existingCodes = new Set(records.map(r => (r.employeeCode || '').toUpperCase().trim()));
-          const existingIds = new Set(records.map(r => r.id));
-          snapshot.docs.forEach(doc => {
-            const data = doc.data() || {};
-            const code = (data.employeeCode || '').toUpperCase().trim();
-            const email = (data.workEmail || data.email || '').toLowerCase().trim();
-            const name = (data.fullName || data.name || '').toLowerCase().trim();
-            const isTest = code.startsWith('D-000') || email.includes('carrentpedatabase') || name.includes('car database');
-            if (!isTest && !existingIds.has(doc.id) && (!code || !existingCodes.has(code))) {
-              records.push({ id: doc.id, ...data });
-            } else if (isTest) {
-              // Opportunistically delete test record from Firestore in the background
-              doc.ref.delete().catch(() => {});
-            }
-          });
-        } catch (_) {}
-      }
+      // MySQL is authoritative source of truth
 
-      // Filter out empty, corrupted, or obsolete test records
+      // Filter out empty or corrupted records
       records = records.filter(e => {
         if (!e || !(e.fullName || e.name || e.employeeCode || e.workEmail || e.email)) return false;
-        const c = (e.employeeCode || '').toUpperCase().trim();
-        const em = (e.workEmail || e.email || '').toLowerCase().trim();
-        const nm = (e.fullName || e.name || '').toLowerCase().trim();
-        if (c.startsWith('D-000') || em.includes('carrentpedatabase') || nm.includes('car database')) {
-          return false;
-        }
         return true;
       });
 
@@ -322,10 +288,21 @@ const employeeService = {
         const cCode = (child.employeeCode || child.code || '').toString().toUpperCase().trim();
         if (pIds.has(cId) || (cCode && pCodes.has(cCode))) return false;
 
-        const mId = (child.managerId || child.manager_id || '').toString().trim();
-        const mStr = (child.manager || child.reportingManager || '').toString().trim().toLowerCase();
+        // Check Team Lead link
+        const tlId = (child.team_lead_id || child.teamLeadId || '').toString().trim();
+        const tlStr = (child.team_lead || child.teamLead || '').toString().trim().toLowerCase();
+        if (tlId && (pIds.has(tlId) || pCodes.has(tlId.toUpperCase()))) return true;
+        for (const code of pCodes) {
+          if (code && tlStr.includes(code.toLowerCase())) return true;
+        }
+        for (const name of pNames) {
+          if (name && tlStr.includes(name)) return true;
+        }
 
-        if (mId && pIds.has(mId)) return true;
+        // Check Reporting Manager link
+        const mId = (child.managerId || child.manager_id || child.reporting_manager_id || '').toString().trim();
+        const mStr = (child.manager || child.reportingManager || '').toString().trim().toLowerCase();
+        if (mId && (pIds.has(mId) || pCodes.has(mId.toUpperCase()))) return true;
         for (const code of pCodes) {
           if (code && mStr.includes(code.toLowerCase())) return true;
         }
@@ -428,6 +405,27 @@ const employeeService = {
       }
 
       if (!searchTarget) return null;
+
+      // Safe immediate fallback: if searchTarget matches current user, return userProfile
+      if (typeof AuthGuard !== 'undefined' && AuthGuard.userProfile) {
+        const u = AuthGuard.userProfile;
+        if (searchTarget === u.employeeId || searchTarget === u.id || searchTarget === u.uid || searchTarget === u.employeeCode || searchTarget === u.email) {
+          return {
+            id: u.employeeId || u.id || u.uid,
+            userId: u.uid || u.id,
+            employeeCode: u.employeeCode || '',
+            fullName: u.displayName || u.fullName || 'Employee',
+            name: u.displayName || u.fullName || 'Employee',
+            email: u.email || '',
+            workEmail: u.workEmail || u.email || '',
+            department: u.department || 'Operations',
+            designation: u.designation || 'Staff',
+            roleId: u.roleId || 'EMPLOYEE',
+            dateOfJoining: u.dateOfJoining || u.joiningDate || '',
+            employmentStatus: u.status || 'ACTIVE'
+          };
+        }
+      }
 
       // 1. Search directly by Firestore Doc ID
       try {

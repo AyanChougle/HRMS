@@ -1,3 +1,7 @@
+/**
+ * DIALLO HRMS — REPORT SERVICE
+ * Handles CSV export with formula injection protection and printable views
+ */
 
 const reportService = {
   // Export table or raw JSON array as CSV
@@ -7,32 +11,60 @@ const reportService = {
       return;
     }
 
-    let csvContent = 'data:text/csv;charset=utf-8,';
+    let csvContent = '\uFEFF'; // UTF-8 BOM
     
     // Headers
     const columnKeys = headers ? Object.keys(headers) : Object.keys(rows[0]);
     const headerLabels = headers ? Object.values(headers) : columnKeys;
-    csvContent += headerLabels.map(h => `"${String(h).replace(/"/g, '""')}"`).join(',') + '\r\n';
+    csvContent += headerLabels.map(h => {
+      let str = String(h);
+      if (/^[=+\-@\t\r]/.test(str)) str = "'" + str;
+      return `"${str.replace(/"/g, '""')}"`;
+    }).join(',') + '\r\n';
 
-    // Rows
+    // Rows with CSV Formula Injection Protection
     rows.forEach(row => {
       const line = columnKeys.map(key => {
         let val = row[key];
         if (val === null || val === undefined) val = '';
         if (typeof val === 'object') val = JSON.stringify(val);
-        return `"${String(val).replace(/"/g, '""')}"`;
+        let strVal = String(val);
+        // Formula injection protection
+        if (/^[=+\-@\t\r]/.test(strVal)) {
+          strVal = "'" + strVal;
+        }
+        return `"${strVal.replace(/"/g, '""')}"`;
       }).join(',');
       csvContent += line + '\r\n';
     });
 
-    const encodedUri = encodeURI(csvContent);
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
     const link = document.createElement('a');
-    link.setAttribute('href', encodedUri);
+    link.setAttribute('href', url);
     link.setAttribute('download', `${filename}_${new Date().toISOString().slice(0, 10)}.csv`);
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+
     Toast.success(`Exported "${filename}.csv" successfully.`);
+  },
+
+  // Authoritative Backend Export: Direct XLSX / CSV from Hostinger MySQL
+  downloadBackendExport(type = 'attendance', format = 'xlsx', extraParams = {}) {
+    const baseUrl = 'https://hrmstfw.com/hostinger_backend/export.php';
+    const params = new URLSearchParams({ type, format, ...extraParams });
+    const downloadUrl = `${baseUrl}?${params.toString()}`;
+    const link = document.createElement('a');
+    link.href = downloadUrl;
+    link.setAttribute('download', '');
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    if (typeof Toast !== 'undefined') {
+      Toast.success(`Generated official ${format.toUpperCase()} export from MySQL database.`);
+    }
   },
 
   printReport(containerId = 'report-printable-area') {

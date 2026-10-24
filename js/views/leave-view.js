@@ -278,7 +278,7 @@ const LeaveView = {
         <div class="card-header">
           <div>
             <div class="card-title">Leave Applications (${requests.length})</div>
-            <div class="card-subtitle">Verified in Cloud Firestore</div>
+            <div class="card-subtitle">Verified in MySQL Database</div>
           </div>
           <button class="btn btn-primary btn-sm" onclick="LeaveView.openApplyLeaveModal()">+ Apply Leave</button>
         </div>
