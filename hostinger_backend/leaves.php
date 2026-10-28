@@ -58,13 +58,13 @@ if ($method === 'GET') {
         $params[':self_uid'] = $userUid;
         $params[':self_code'] = $userCode;
     } elseif ($userRole === 'TL') {
-        $sql .= " AND (l.employee_id = :self_uid OR l.employee_code = :self_code OR e.team_lead_id = :tlid OR e.team_lead_id = :tlcode)";
+        $sql .= " AND (l.employee_id = :self_uid OR l.employee_code = :self_code OR e.team_lead_id = :tlid OR e.team_lead_id = :tlcode OR e.manager_id = :tlid OR e.manager_id = :tlcode)";
         $params[':self_uid'] = $userUid;
         $params[':self_code'] = $userCode;
         $params[':tlid'] = $userUid;
         $params[':tlcode'] = $userCode;
     } elseif ($userRole === 'MANAGER' && !empty($userDept)) {
-        $sql .= " AND (l.employee_id = :self_uid OR l.employee_code = :self_code OR e.department = :dept OR e.reporting_manager_id = :mgr_uid OR e.reporting_manager_id = :mgr_code)";
+        $sql .= " AND (l.employee_id = :self_uid OR l.employee_code = :self_code OR e.department = :dept OR e.manager_id = :mgr_uid OR e.manager_id = :mgr_code)";
         $params[':self_uid'] = $userUid;
         $params[':self_code'] = $userCode;
         $params[':dept'] = $userDept;

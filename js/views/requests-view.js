@@ -9,7 +9,7 @@ const RequestsView = {
   async render() {
     const role = (AuthGuard._previewRoleId || AuthGuard.userProfile?.roleId || 'EMPLOYEE').toString().toUpperCase().trim();
     const isSuperAdminOrHR = ['SUPER_ADMIN', 'COMPANY_ADMIN', 'ADMIN', 'HR_MANAGER', 'HR'].includes(role);
-    const isManager = ['MANAGER', 'OPERATIONS_MANAGER', 'PROCESS_OWNER', 'TEAM_LEAD'].includes(role);
+    const isManager = ['MANAGER', 'OPERATIONS_MANAGER', 'OPS', 'PROCESS_OWNER', 'TEAM_LEAD', 'TL'].includes(role);
     const isEmployee = !isSuperAdminOrHR && !isManager;
     const currentEmpId = AuthGuard.userProfile?.employeeId || AuthGuard.currentUser?.uid;
     const currentEmpCode = (AuthGuard.userProfile?.employeeCode || '').toUpperCase().trim();
@@ -472,7 +472,7 @@ const RequestsView = {
   async openNewRequestModal(preselectedType = 'EMPLOYMENT_CERTIFICATE') {
     const role = (AuthGuard._previewRoleId || AuthGuard.userProfile?.roleId || 'EMPLOYEE').toString().toUpperCase().trim();
     const isSuperAdminOrHR = ['SUPER_ADMIN', 'COMPANY_ADMIN', 'ADMIN', 'HR_MANAGER', 'HR'].includes(role);
-    const isManager = ['MANAGER', 'OPERATIONS_MANAGER', 'PROCESS_OWNER', 'TEAM_LEAD'].includes(role);
+    const isManager = ['MANAGER', 'OPERATIONS_MANAGER', 'OPS', 'PROCESS_OWNER', 'TEAM_LEAD', 'TL'].includes(role);
     const isEmployee = !isSuperAdminOrHR && !isManager;
 
     let employeeSelectHtml = '';

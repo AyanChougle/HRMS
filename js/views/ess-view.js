@@ -1247,41 +1247,59 @@ const ESSView = {
           ? Number(todayRecord.totalBreakSeconds)
           : (todayRecord.totalBreakMinutes || 0) * 60;
 
-      if (todayRecord.currentCheckInDateIso || todayRecord.checkInDateIso || todayRecord.checkInIso) {
-        const inDate = new Date(
-          todayRecord.currentCheckInDateIso || todayRecord.checkInDateIso || todayRecord.checkInIso,
-        );
-        if (!isNaN(inDate.getTime())) {
-          this.punchInTimestamp = inDate.getTime();
-        }
-      }
-      
-      if (!this.punchInTimestamp && todayRecord.checkIn && typeof todayRecord.checkIn === 'string') {
-        const match = todayRecord.checkIn.match(/(\d+):(\d+)(?::(\d+))?\s*(AM|PM)?/i);
+      if (todayRecord.checkIn && typeof todayRecord.checkIn === 'string') {
+        const match = todayRecord.checkIn.trim().match(/^(\d{1,2}):(\d{2})(?::(\d{2}))?\s*(AM|PM)?$/i);
         if (match) {
           let h = parseInt(match[1], 10);
           const m = parseInt(match[2], 10);
+          const s = match[3] ? parseInt(match[3], 10) : 0;
           const ampm = match[4] ? match[4].toUpperCase() : null;
           if (ampm === 'PM' && h < 12) h += 12;
           if (ampm === 'AM' && h === 12) h = 0;
-          
-          const inDate = new Date();
-          inDate.setHours(h, m, 0, 0);
-          this.punchInTimestamp = inDate.getTime();
+
+          const recDate = todayRecord.date || this.getTodayDateKey();
+          const parts = recDate.split('-');
+          if (parts.length === 3) {
+            const inDate = new Date(Number(parts[0]), Number(parts[1]) - 1, Number(parts[2]), h, m, s, 0);
+            if (!isNaN(inDate.getTime())) {
+              resolvedTimestamp = inDate.getTime();
+            }
+          }
         }
       }
+
+      if (!resolvedTimestamp && (todayRecord.currentCheckInDateIso || todayRecord.checkInDateIso || todayRecord.checkInIso)) {
+        let isoStr = todayRecord.currentCheckInDateIso || todayRecord.checkInDateIso || todayRecord.checkInIso;
+        if (typeof isoStr === 'string' && /^\d{4}-\d{2}-\d{2}\s+\d{2}:\d{2}:\d{2}$/.test(isoStr)) {
+          isoStr = isoStr.replace(' ', 'T') + '+05:30';
+        }
+        const inDate = new Date(isoStr);
+        if (!isNaN(inDate.getTime())) {
+          resolvedTimestamp = inDate.getTime();
+        }
+      }
+
+      if (!resolvedTimestamp && this.punchInTimestamp && this.isPunchedIn) {
+        resolvedTimestamp = this.punchInTimestamp;
+      }
+
+      this.punchInTimestamp = resolvedTimestamp;
 
       if (this.punchInTimestamp) {
         const now = Date.now();
         const totalElapsed = Math.floor((now - this.punchInTimestamp) / 1000);
         this.workSeconds = Math.max(0, totalElapsed - this.totalBreakSeconds);
+      } else {
+        this.workSeconds = 0;
       }
 
       if (this.isOnBreak) {
         if (todayRecord.lastBreakStartIso) {
-          this.breakStartTimestamp = new Date(
-            todayRecord.lastBreakStartIso,
-          ).getTime();
+          let bStartStr = todayRecord.lastBreakStartIso;
+          if (typeof bStartStr === 'string' && /^\d{4}-\d{2}-\d{2}\s+\d{2}:\d{2}:\d{2}$/.test(bStartStr)) {
+            bStartStr = bStartStr.replace(' ', 'T') + '+05:30';
+          }
+          this.breakStartTimestamp = new Date(bStartStr).getTime();
           const rawElapsed = Math.floor((Date.now() - this.breakStartTimestamp) / 1000);
           this.breakSeconds = Math.min(7200, Math.max(0, rawElapsed));
         } else if (!this.breakStartTimestamp) {
@@ -1305,11 +1323,17 @@ const ESSView = {
   loadPersistedState() {
     try {
       const today = this.getTodayDateKey();
-      const raw = localStorage.getItem("diallo_timecard_state");
+      // Remove legacy un-scoped key
+      localStorage.removeItem("diallo_timecard_state");
+
+      const empId = AuthGuard?.userProfile?.employeeId || AuthGuard?.currentUser?.uid || AuthGuard?.userProfile?.employeeCode || 'active_user';
+      const storageKey = `diallo_timecard_state_${empId}`;
+      const raw = localStorage.getItem(storageKey);
       if (raw) {
         const state = JSON.parse(raw);
-        // If state is from a previous day, auto-reset for the new day's 10:00 AM - 07:00 PM shift
+        // If state is from a previous day, auto-reset
         if (state.shiftDate && state.shiftDate !== today) {
+          localStorage.removeItem(storageKey);
           this.isPunchedIn = false;
           this.isOnBreak = false;
           this.isShiftCompletedToday = false;
@@ -1320,7 +1344,6 @@ const ESSView = {
           this.punchOutTimestamp = null;
           this.breakStartTimestamp = null;
           this.shiftDate = today;
-          this.savePersistedState();
           return;
         }
 
@@ -1332,7 +1355,6 @@ const ESSView = {
         this.isOnBreak = this.isPunchedIn ? !!state.isOnBreak : false;
         this.currentBreakType = this.isOnBreak ? state.currentBreakType || null : null;
         this.currentBreakLabel = this.isOnBreak ? state.currentBreakLabel || null : null;
-        this.workSeconds = state.workSeconds || 0;
         this.totalBreakSeconds = state.totalBreakSeconds || 0;
         this.breakSeconds = this.isOnBreak ? state.breakSeconds || 0 : 0;
         this.punchInTimestamp = state.punchInTimestamp || null;
@@ -1349,19 +1371,22 @@ const ESSView = {
         ) {
           const now = Date.now();
           const totalElapsed = Math.floor((now - this.punchInTimestamp) / 1000);
-
-          if (this.isOnBreak && this.breakStartTimestamp) {
-            this.breakSeconds = Math.floor(
-              (now - this.breakStartTimestamp) / 1000,
+          if (totalElapsed < 0 || totalElapsed > 57600) {
+            this.workSeconds = 0;
+            this.punchInTimestamp = now;
+          } else {
+            if (this.isOnBreak && this.breakStartTimestamp) {
+              this.breakSeconds = Math.max(0, Math.floor((now - this.breakStartTimestamp) / 1000));
+            }
+            this.workSeconds = Math.max(
+              0,
+              totalElapsed -
+                this.totalBreakSeconds -
+                (this.isOnBreak ? this.breakSeconds : 0),
             );
           }
-
-          this.workSeconds = Math.max(
-            0,
-            totalElapsed -
-              this.totalBreakSeconds -
-              (this.isOnBreak ? this.breakSeconds : 0),
-          );
+        } else {
+          this.workSeconds = state.workSeconds || 0;
         }
       } else {
         this.shiftDate = today;
@@ -1377,6 +1402,8 @@ const ESSView = {
   savePersistedState() {
     try {
       const today = this.getTodayDateKey();
+      const empId = AuthGuard?.userProfile?.employeeId || AuthGuard?.currentUser?.uid || AuthGuard?.userProfile?.employeeCode || 'active_user';
+      const storageKey = `diallo_timecard_state_${empId}`;
       const state = {
         shiftDate: this.shiftDate || today,
         isShiftCompletedToday: !!this.isShiftCompletedToday,
@@ -1393,7 +1420,7 @@ const ESSView = {
         punchOutTimestamp: this.punchOutTimestamp || null,
         breakStartTimestamp: this.breakStartTimestamp || null,
       };
-      localStorage.setItem("diallo_timecard_state", JSON.stringify(state));
+      localStorage.setItem(storageKey, JSON.stringify(state));
     } catch (e) {
       console.warn("Could not save timecard state:", e);
     }
@@ -1793,12 +1820,9 @@ const ESSView = {
     }
 
     if (this.isShiftCompletedToday) {
-      if (typeof Toast !== "undefined") {
-        Toast.warning(
-          "Shift completed for today! Your check-out has already been recorded. The timecard station is locked until tomorrow at 09:30 AM."
-        );
-      }
-      return false;
+      // Allow re-punching / resuming shift
+      this.isShiftCompletedToday = false;
+      this.isPunchedIn = false;
     }
     if (this.isPunchedIn) {
       if (typeof Toast !== "undefined") {
@@ -1917,6 +1941,7 @@ const ESSView = {
       );
     } catch (e) {
       console.warn("Punch record warning:", e);
+      Toast.error("Punch out notice: " + (e.message || "Failed to sync check out."));
     }
     return true;
   },
@@ -2006,10 +2031,9 @@ const ESSView = {
     }
 
     if (this.isShiftCompletedToday) {
-      Toast.warning(
-        "Shift completed for today! Your check-out has already been recorded. The timecard station is locked until tomorrow at 09:30 AM.",
-      );
-      return false;
+      // Allow employee to resume their shift
+      this.isShiftCompletedToday = false;
+      this.isPunchedIn = false;
     }
 
     if (!this.isPunchedIn) {
@@ -2070,6 +2094,11 @@ const ESSView = {
         );
       } catch (e) {
         console.warn("Punch record warning:", e);
+        Toast.error("Punch error: " + (e.message || "Failed to record punch on server."));
+        this.isPunchedIn = false;
+        this.stopTimer();
+        this.updateTimecardUI();
+        return false;
       }
       return true;
     } else {

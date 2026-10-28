@@ -1,4 +1,7 @@
 <?php
+// Set official application timezone strictly to Indian Standard Time (IST / UTC+05:30)
+date_default_timezone_set('Asia/Kolkata');
+
 // ==============================================================================
 // DIALLO HRMS — CENTRAL DATABASE CONNECTION & API HELPERS
 // Hostinger MySQL 8.0+ / PDO Connection
@@ -75,6 +78,7 @@ foreach ($hostsToTry as $hostCandidate) {
         try {
             $dsn = "mysql:host=$hostCandidate;port=3306;dbname=$dbName;charset=$charset";
             $pdo = new PDO($dsn, $userCandidate, $dbPass, $options);
+            $pdo->exec("SET time_zone = '+05:30'");
             $dbUser = $userCandidate;
             break 2;
         } catch (\PDOException $ex) {
@@ -169,6 +173,70 @@ try {
             INDEX `idx_doc_cat` (`category`)
         ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
     ");
+
+    // Auto-normalize mismatched employee_id in attendance_records
+    try {
+        $pdo->exec("
+            UPDATE attendance_records a
+            JOIN employees e ON (a.employee_code = e.employee_code AND a.employee_code != '')
+            SET a.employee_id = e.id
+            WHERE a.employee_id != e.id
+        ");
+
+        // Universal Auto-fix for skewed gross_minutes across attendance_records
+        $pdo->exec("
+            UPDATE attendance_records 
+            SET gross_minutes = TIMESTAMPDIFF(MINUTE, STR_TO_DATE(CONCAT(date, ' ', check_in), '%Y-%m-%d %h:%i %p'), STR_TO_DATE(CONCAT(date, ' ', check_out), '%Y-%m-%d %h:%i %p')),
+                gross_hours_formatted = CONCAT(
+                    FLOOR(TIMESTAMPDIFF(MINUTE, STR_TO_DATE(CONCAT(date, ' ', check_in), '%Y-%m-%d %h:%i %p'), STR_TO_DATE(CONCAT(date, ' ', check_out), '%Y-%m-%d %h:%i %p')) / 60),
+                    'h ',
+                    LPAD(MOD(TIMESTAMPDIFF(MINUTE, STR_TO_DATE(CONCAT(date, ' ', check_in), '%Y-%m-%d %h:%i %p'), STR_TO_DATE(CONCAT(date, ' ', check_out), '%Y-%m-%d %h:%i %p')), 60), 2, '0'),
+                    'm'
+                )
+            WHERE check_in IS NOT NULL AND check_out IS NOT NULL 
+              AND check_in != '' AND check_out != ''
+              AND check_in LIKE '%:%M' AND check_out LIKE '%:%M'
+              AND STR_TO_DATE(CONCAT(date, ' ', check_out), '%Y-%m-%d %h:%i %p') >= STR_TO_DATE(CONCAT(date, ' ', check_in), '%Y-%m-%d %h:%i %p')
+              AND ABS(gross_minutes - TIMESTAMPDIFF(MINUTE, STR_TO_DATE(CONCAT(date, ' ', check_in), '%Y-%m-%d %h:%i %p'), STR_TO_DATE(CONCAT(date, ' ', check_out), '%Y-%m-%d %h:%i %p'))) > 10;
+        ");
+
+        // Auto-clean legacy duplicate employee entries in MySQL
+        $pdo->exec("
+            DELETE FROM employees WHERE id = 'emp_emp0001' AND EXISTS (SELECT 1 FROM users WHERE uid = 'super_admin_ayan');
+            DELETE FROM employees WHERE id = 'Q7DWXwGStNNies9E6HSF' AND EXISTS (SELECT 1 FROM employees WHERE id = 'ehyJCFxLSVZwaDqNo3SWAs5UwJt2');
+            DELETE FROM users WHERE uid = 'Q7DWXwGStNNies9E6HSF' AND EXISTS (SELECT 1 FROM employees WHERE id = 'ehyJCFxLSVZwaDqNo3SWAs5UwJt2');
+        ");
+
+        // Auto Punch-Out Sweep: Closes forgotten shifts at 9:00 PM and marks as HALF_DAY
+        $nowDate = date('Y-m-d');
+        $nowHourMin = date('H:i');
+        $pdo->prepare("
+            UPDATE attendance_records
+            SET check_out = '09:00 PM',
+                check_out_iso = CONCAT(date, ' 21:00:00'),
+                status = 'HALF_DAY',
+                is_on_break = 0,
+                device = CASE 
+                    WHEN device IS NULL OR device = '' THEN 'Auto Punched Out (9:00 PM System)'
+                    WHEN device NOT LIKE '%Auto Punched Out%' THEN CONCAT(device, ' | Auto Punched Out (9:00 PM System)')
+                    ELSE device
+                END,
+                gross_minutes = GREATEST(0, TIMESTAMPDIFF(MINUTE, STR_TO_DATE(CONCAT(date, ' ', check_in), '%Y-%m-%d %h:%i %p'), STR_TO_DATE(CONCAT(date, ' 09:00 PM'), '%Y-%m-%d %h:%i %p'))),
+                gross_hours_formatted = CONCAT(
+                    FLOOR(GREATEST(0, TIMESTAMPDIFF(MINUTE, STR_TO_DATE(CONCAT(date, ' ', check_in), '%Y-%m-%d %h:%i %p'), STR_TO_DATE(CONCAT(date, ' 09:00 PM'), '%Y-%m-%d %h:%i %p'))) / 60),
+                    'h ',
+                    LPAD(MOD(GREATEST(0, TIMESTAMPDIFF(MINUTE, STR_TO_DATE(CONCAT(date, ' ', check_in), '%Y-%m-%d %h:%i %p'), STR_TO_DATE(CONCAT(date, ' 09:00 PM'), '%Y-%m-%d %h:%i %p'))), 60), 2, '0'),
+                    'm'
+                ),
+                updated_at = CURRENT_TIMESTAMP
+            WHERE check_in IS NOT NULL AND check_in != ''
+              AND (check_out IS NULL OR check_out = '' OR check_out = '-')
+              AND (
+                  date < :today
+                  OR (date = :today AND :now_time >= '21:00')
+              )
+        ")->execute([':today' => $nowDate, ':now_time' => $nowHourMin]);
+    } catch (\Throwable $e) {}
 } catch (\Throwable $patchErr) {
     // Non-fatal
 }

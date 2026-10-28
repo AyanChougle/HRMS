@@ -192,7 +192,7 @@ const Forms = {
                 <option value="COMPLIANCE" ${emp?.roleId === 'COMPLIANCE' ? 'selected' : ''}>Compliance Officer</option>
                 <option value="DIGITAL_MARKETING" ${emp?.roleId === 'DIGITAL_MARKETING' ? 'selected' : ''}>Digital Marketing</option>
                 <option value="HR_MANAGER" ${(emp?.roleId === 'HR_MANAGER' || emp?.roleId === 'HR') ? 'selected' : ''}>HR Manager (HRS)</option>
-                <option value="TEAM_LEAD" ${emp?.roleId === 'TEAM_LEAD' ? 'selected' : ''}>Team Leader</option>
+                <option value="TEAM_LEAD" ${(emp?.roleId === 'TEAM_LEAD' || emp?.roleId === 'TL') ? 'selected' : ''}>Team Leader</option>
                 <option value="RELATIONSHIP_MANAGER" ${emp?.roleId === 'RELATIONSHIP_MANAGER' ? 'selected' : ''}>Relationship Manager</option>
                 <option value="MENTOR_TRAINER" ${emp?.roleId === 'MENTOR_TRAINER' ? 'selected' : ''}>Mentor / Trainer</option>
                 <option value="TRAINEE" ${emp?.roleId === 'TRAINEE' ? 'selected' : ''}>Trainee</option>
@@ -332,8 +332,8 @@ const Forms = {
       }
 
       ModalManager.closeModal();
-      if (window.PeopleView) {
-        Router.navigate('employees');
+      if (window.Router) {
+        Router.mountView('employees');
       }
     } catch (err) {
       Toast.error(`Operation failed: ${err.message}`);

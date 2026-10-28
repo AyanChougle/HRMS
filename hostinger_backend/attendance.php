@@ -15,6 +15,61 @@ if (empty($action) && isset($input['action'])) {
     $action = $input['action'];
 }
 
+/**
+ * Auto Punch-Out Maintenance Routine:
+ * If an employee forgets to punch out:
+ * 1. For any past date: automatically close the shift at 09:00 PM and record status as HALF_DAY.
+ * 2. For today: if current IST time is >= 21:00 (9:00 PM), automatically close the shift at 09:00 PM and record status as HALF_DAY.
+ */
+function trigger_auto_punchout_maintenance($pdo) {
+    if (!$pdo) return;
+    try {
+        $today = date('Y-m-d');
+        $nowTime = date('H:i');
+
+        $sql = "
+            UPDATE attendance_records
+            SET check_out = '09:00 PM',
+                check_out_iso = CONCAT(date, ' 21:00:00'),
+                status = 'HALF_DAY',
+                is_on_break = 0,
+                device = CASE 
+                    WHEN device IS NULL OR device = '' THEN 'Auto Punched Out (9:00 PM System)'
+                    WHEN device NOT LIKE '%Auto Punched Out%' THEN CONCAT(device, ' | Auto Punched Out (9:00 PM System)')
+                    ELSE device
+                END,
+                gross_minutes = GREATEST(0, TIMESTAMPDIFF(MINUTE, STR_TO_DATE(CONCAT(date, ' ', check_in), '%Y-%m-%d %h:%i %p'), STR_TO_DATE(CONCAT(date, ' 09:00 PM'), '%Y-%m-%d %h:%i %p'))),
+                gross_hours_formatted = CONCAT(
+                    FLOOR(GREATEST(0, TIMESTAMPDIFF(MINUTE, STR_TO_DATE(CONCAT(date, ' ', check_in), '%Y-%m-%d %h:%i %p'), STR_TO_DATE(CONCAT(date, ' 09:00 PM'), '%Y-%m-%d %h:%i %p'))) / 60),
+                    'h ',
+                    LPAD(MOD(GREATEST(0, TIMESTAMPDIFF(MINUTE, STR_TO_DATE(CONCAT(date, ' ', check_in), '%Y-%m-%d %h:%i %p'), STR_TO_DATE(CONCAT(date, ' 09:00 PM'), '%Y-%m-%d %h:%i %p'))), 60), 2, '0'),
+                    'm'
+                ),
+                updated_at = CURRENT_TIMESTAMP
+            WHERE check_in IS NOT NULL AND check_in != ''
+              AND (check_out IS NULL OR check_out = '' OR check_out = '-')
+              AND (
+                  date < :today
+                  OR (date = :today AND :now_time >= '21:00')
+              )
+        ";
+        $stmt = $pdo->prepare($sql);
+        $stmt->execute([
+            ':today' => $today,
+            ':now_time' => $nowTime
+        ]);
+    } catch (\Throwable $e) {
+        // Non-blocking maintenance failure
+    }
+}
+
+// Automatically execute auto punch-out sweep on every access
+trigger_auto_punchout_maintenance($pdo);
+
+if ($action === 'auto_punchout') {
+    json_out(["success" => true, "message" => "Auto punch-out maintenance executed successfully."]);
+}
+
 try {
     // -------------------------------------------------------------------------
     // GET: Today's Status or Filtered Attendance Records
@@ -26,6 +81,7 @@ try {
         $myTeamId = $currentUser ? ($currentUser['team_id'] ?? null) : null;
 
         $empId = trim($_GET['employee_id'] ?? $_GET['id'] ?? '');
+        $empCode = trim($_GET['employee_code'] ?? '');
         $date = trim($_GET['date'] ?? '');
 
         // Safe parameter splitting if query contains double-question-marks
@@ -35,6 +91,9 @@ try {
             parse_str(implode('&', array_slice($parts, 1)), $extraGet);
             if (empty($empId) && !empty($extraGet['employee_id'])) {
                 $empId = trim($extraGet['employee_id']);
+            }
+            if (empty($empCode) && !empty($extraGet['employee_code'])) {
+                $empCode = trim($extraGet['employee_code']);
             }
             if (empty($date) && !empty($extraGet['date'])) {
                 $date = trim($extraGet['date']);
@@ -46,11 +105,12 @@ try {
         // ---------------------------------------------------------------------
         if ($action === 'today') {
             $checkDate = !empty($date) ? $date : date('Y-m-d');
-            if (empty($empId) && $currentUser) {
+            if (empty($empId) && empty($empCode) && $currentUser) {
                 $empId = $myEmpId;
+                $empCode = $currentUser['employee_code'] ?? '';
             }
 
-            if (empty($empId)) {
+            if (empty($empId) && empty($empCode)) {
                 json_out([
                     "success" => true,
                     "record" => null,
@@ -60,19 +120,46 @@ try {
                 ]);
             }
 
-            // Self-service scoping: Employees can only query their own attendance
-            if ($userRole === 'EMPLOYEE' && $empId !== $myEmpId && $empId !== ($currentUser['employee_code'] ?? '')) {
-                $empId = $myEmpId;
+            // Self-service scoping: Non-managers can only query their own attendance
+            if ($userRole === 'EMPLOYEE' && $currentUser) {
+                $myAllowedCodes = array_filter([$myEmpId, $currentUser['employee_code'] ?? '', $currentUser['uid'] ?? '', (string)($currentUser['id'] ?? '')]);
+                $cleanEmpId = preg_replace('/^emp_/i', '', $empId);
+                $isSelf = in_array($empId, $myAllowedCodes) || in_array($cleanEmpId, $myAllowedCodes) || (!empty($empCode) && in_array($empCode, $myAllowedCodes));
+                if (!$isSelf) {
+                    $empId = $myEmpId;
+                    $empCode = $currentUser['employee_code'] ?? '';
+                }
             }
+
+            // Clean candidate identifiers
+            $cleanCandidate = preg_replace('/^emp_/i', '', $empId);
+            $cleanCode = !empty($empCode) ? str_replace('-', '', $empCode) : str_replace('-', '', $cleanCandidate);
 
             // Robust multi-key lookup across ID, Employee Code, or record_key
             $stmt = $pdo->prepare("
                 SELECT * FROM attendance_records 
-                WHERE (employee_id = :eid OR employee_code = :eid OR REPLACE(employee_code, '-', '') = REPLACE(:eid, '-', '') OR record_key LIKE :rk) 
+                WHERE (
+                    employee_id = :eid 
+                    OR employee_id = :cleanEid 
+                    OR employee_code = :eid 
+                    OR employee_code = :cleanEid 
+                    OR (:ecode != '' AND (employee_code = :ecode OR employee_id = :ecode))
+                    OR REPLACE(employee_code, '-', '') = :cleanCode 
+                    OR record_key LIKE :rk1 
+                    OR record_key LIKE :rk2
+                ) 
                   AND date = :d 
                 LIMIT 1
             ");
-            $stmt->execute([':eid' => $empId, ':rk' => $empId . '_%', ':d' => $checkDate]);
+            $stmt->execute([
+                ':eid' => $empId,
+                ':cleanEid' => $cleanCandidate,
+                ':ecode' => $empCode,
+                ':cleanCode' => $cleanCode,
+                ':rk1' => $empId . '_%',
+                ':rk2' => $cleanCandidate . '_%',
+                ':d' => $checkDate
+            ]);
             $record = $stmt->fetch();
 
             // Insensitive / fuzzy match for UID font ambiguities (e.g. 1 vs i/I/l)
@@ -250,17 +337,65 @@ try {
 
         // Strict Server-Side Scope Filtering
         if ($userRole === 'TL') {
-            $sql .= " AND (e.team_lead_id = :myTLId OR e.team_id = :myTeamId OR a.employee_id = :myTLId)";
+            $myCode = $currentUser['employee_code'] ?? '';
+            $myName = $currentUser['display_name'] ?? trim(($currentUser['first_name'] ?? '') . ' ' . ($currentUser['last_name'] ?? ''));
+            $tlDocId = $myEmpId;
+            try {
+                $tlDocStmt = $pdo->prepare("SELECT id FROM employees WHERE user_id = :uid OR employee_code = :c OR id = :id LIMIT 1");
+                $tlDocStmt->execute([':uid' => $myEmpId, ':c' => $myCode, ':id' => $myEmpId]);
+                $tlDoc = $tlDocStmt->fetch();
+                if ($tlDoc && !empty($tlDoc['id'])) $tlDocId = $tlDoc['id'];
+            } catch (\Throwable $e) {}
+
+            $sql .= " AND (
+                e.team_lead_id = :myTLId 
+                OR e.team_lead_id = :myTLDocId
+                OR e.team_lead_id = :myTLCode 
+                OR e.team_lead LIKE :myTLName
+                OR e.manager_id = :myTLId 
+                OR e.manager_id = :myTLDocId
+                OR e.manager_id = :myTLCode 
+                OR e.manager LIKE :myTLPattern
+                OR (e.team_id > 0 AND e.team_id = :myTeamId)
+                OR a.employee_id = :myTLId 
+                OR a.employee_id = :myTLDocId
+                OR a.employee_code = :myTLCode
+            )";
             $params[':myTLId'] = $myEmpId;
+            $params[':myTLDocId'] = $tlDocId;
+            $params[':myTLCode'] = $myCode;
+            $params[':myTLName'] = '%' . trim($myName) . '%';
+            $params[':myTLPattern'] = '%' . trim($myCode ?: $myName) . '%';
             $params[':myTeamId'] = $myTeamId ?: 0;
         } elseif ($userRole === 'MANAGER') {
-            $sql .= " AND (e.manager_id = :myMgrId OR a.employee_id = :myMgrId)";
+            $myCode = $currentUser['employee_code'] ?? '';
+            $myName = $currentUser['display_name'] ?? trim(($currentUser['first_name'] ?? '') . ' ' . ($currentUser['last_name'] ?? ''));
+            $mgrDocId = $myEmpId;
+            try {
+                $mDocStmt = $pdo->prepare("SELECT id FROM employees WHERE user_id = :uid OR employee_code = :c OR id = :id LIMIT 1");
+                $mDocStmt->execute([':uid' => $myEmpId, ':c' => $myCode, ':id' => $myEmpId]);
+                $mDoc = $mDocStmt->fetch();
+                if ($mDoc && !empty($mDoc['id'])) $mgrDocId = $mDoc['id'];
+            } catch (\Throwable $e) {}
+
+            $sql .= " AND (
+                e.manager_id = :myMgrId 
+                OR e.manager_id = :myMgrDocId
+                OR e.manager_id = :myMgrCode 
+                OR e.manager LIKE :myMgrPattern
+                OR e.team_lead_id = :myMgrId
+                OR e.team_lead_id = :myMgrDocId
+                OR a.employee_id = :myMgrId 
+                OR a.employee_id = :myMgrDocId
+                OR a.employee_code = :myMgrCode
+            )";
             $params[':myMgrId'] = $myEmpId;
-        } elseif ($userRole === 'EMPLOYEE') {
-            $sql .= " AND (a.employee_id = :myEmpIdSelf OR a.employee_code = :myEmpCodeSelf)";
-            $params[':myEmpIdSelf'] = $myEmpId;
-            $params[':myEmpCodeSelf'] = $currentUser['employee_code'] ?? $myEmpId;
+            $params[':myMgrDocId'] = $mgrDocId;
+            $params[':myMgrCode'] = $myCode;
+            $params[':myMgrPattern'] = '%' . trim($myCode ?: $myName) . '%';
         }
+
+        // Roles ADMIN, HR, and OPS have full administrative/operational visibility across their departments/teams
 
         if (!empty($targetDate)) {
             $sql .= " AND a.date = :d";
@@ -271,9 +406,71 @@ try {
             $params[':y'] = intval($year);
         }
 
-        if (!empty($empId) && $userRole !== 'EMPLOYEE') {
-            $sql .= " AND (a.employee_id = :eid OR a.employee_code = :eid)";
-            $params[':eid'] = $empId;
+        // Robust Employee Filter & Alias Resolution across ID, UID, Code, and Email
+        $empCode = trim($_GET['employee_code'] ?? '');
+        $filterEmp = !empty($empId) ? $empId : ($userRole === 'EMPLOYEE' ? $myEmpId : '');
+        $filterCode = !empty($empCode) ? $empCode : ($userRole === 'EMPLOYEE' ? ($currentUser['employee_code'] ?? '') : '');
+
+        if (!empty($filterEmp) || !empty($filterCode)) {
+            $keysToLookup = array_unique(array_filter([$filterEmp, $filterCode]));
+            $aliases = $keysToLookup;
+            foreach ($keysToLookup as $k) {
+                $cleanK = str_replace('-', '', $k);
+                $aliases[] = $cleanK;
+                $aliases[] = preg_replace('/^emp_/i', '', $k);
+                $aliases[] = 'emp_' . strtolower($cleanK);
+
+                try {
+                    $lStmt = $pdo->prepare("
+                        SELECT id, user_id, employee_code, email, work_email 
+                        FROM employees 
+                        WHERE id = :k OR user_id = :k OR employee_code = :k OR REPLACE(employee_code, '-', '') = :ck OR email = :k OR work_email = :k
+                        LIMIT 1
+                    ");
+                    $lStmt->execute([':k' => $k, ':ck' => $cleanK]);
+                    $f = $lStmt->fetch();
+                    if ($f) {
+                        if (!empty($f['id'])) $aliases[] = $f['id'];
+                        if (!empty($f['user_id'])) $aliases[] = $f['user_id'];
+                        if (!empty($f['employee_code'])) {
+                            $aliases[] = $f['employee_code'];
+                            $aliases[] = str_replace('-', '', $f['employee_code']);
+                            $aliases[] = 'emp_' . strtolower(str_replace('-', '', $f['employee_code']));
+                        }
+                    }
+                } catch (\Throwable $e) {}
+
+                try {
+                    $uStmt = $pdo->prepare("
+                        SELECT id, uid, employee_id, employee_code, email 
+                        FROM users 
+                        WHERE uid = :k OR id = :k OR employee_code = :k OR REPLACE(employee_code, '-', '') = :ck OR email = :k
+                        LIMIT 1
+                    ");
+                    $uStmt->execute([':k' => $k, ':ck' => $cleanK]);
+                    $u = $uStmt->fetch();
+                    if ($u) {
+                        if (!empty($u['uid'])) $aliases[] = $u['uid'];
+                        if (!empty($u['id'])) $aliases[] = $u['id'];
+                        if (!empty($u['employee_id'])) $aliases[] = $u['employee_id'];
+                        if (!empty($u['employee_code'])) {
+                            $aliases[] = $u['employee_code'];
+                            $aliases[] = str_replace('-', '', $u['employee_code']);
+                            $aliases[] = 'emp_' . strtolower(str_replace('-', '', $u['employee_code']));
+                        }
+                    }
+                } catch (\Throwable $e) {}
+            }
+            $aliases = array_values(array_unique(array_filter($aliases)));
+
+            $inPlaceholders = [];
+            foreach ($aliases as $idx => $aliasVal) {
+                $pName = ":ealias_{$idx}";
+                $inPlaceholders[] = $pName;
+                $params[$pName] = $aliasVal;
+            }
+            $inClause = implode(',', $inPlaceholders);
+            $sql .= " AND (a.employee_id IN ($inClause) OR a.employee_code IN ($inClause) OR REPLACE(a.employee_code, '-', '') IN ($inClause) OR e.id IN ($inClause) OR e.employee_code IN ($inClause))";
         }
 
         if (!empty($dept) && $dept !== 'All') {
@@ -404,17 +601,67 @@ try {
             json_out(["success" => false, "error" => "Employee ID is required."], 400);
         }
 
-        // Fetch employee metadata
-        $empStmt = $pdo->prepare("SELECT * FROM employees WHERE id = :id OR employee_code = :id OR email = :id LIMIT 1");
-        $empStmt->execute([':id' => $empId]);
+        // Fetch employee metadata with robust cross-table alias resolution
+        $cleanCandidate = preg_replace('/^emp_/i', '', $empId);
+        $cleanCode = str_replace('-', '', $cleanCandidate);
+
+        $empStmt = $pdo->prepare("
+            SELECT * FROM employees 
+            WHERE id = :id 
+               OR user_id = :id 
+               OR employee_code = :id 
+               OR REPLACE(employee_code, '-', '') = :cleanCode
+               OR email = :id 
+               OR work_email = :id
+            LIMIT 1
+        ");
+        $empStmt->execute([':id' => $empId, ':cleanCode' => $cleanCode]);
         $emp = $empStmt->fetch();
 
-        $actualEmpId = $emp ? $emp['id'] : $empId;
-        $actualEmpCode = $emp ? $emp['employee_code'] : ($input['employee_code'] ?? $empId);
-        $empName = $emp ? $emp['full_name'] : ($input['name'] ?? ($currentUser['display_name'] ?? 'Employee'));
-        $dept = $emp ? $emp['department'] : ($currentUser['department'] ?? 'Operations');
-        $mgrId = $emp ? $emp['manager_id'] : null;
-        $mgrName = $emp ? $emp['manager'] : null;
+        if (!$emp) {
+            $uStmt = $pdo->prepare("
+                SELECT * FROM users 
+                WHERE uid = :id 
+                   OR id = :id 
+                   OR employee_code = :id 
+                   OR REPLACE(employee_code, '-', '') = :cleanCode
+                   OR email = :id
+                LIMIT 1
+            ");
+            $uStmt->execute([':id' => $empId, ':cleanCode' => $cleanCode]);
+            $uFound = $uStmt->fetch();
+            if ($uFound) {
+                $empLookupKey = $uFound['employee_id'] ?? $uFound['employee_code'] ?? $uFound['uid'];
+                $empStmt2 = $pdo->prepare("
+                    SELECT * FROM employees 
+                    WHERE id = :k OR user_id = :k OR employee_code = :k OR email = :email LIMIT 1
+                ");
+                $empStmt2->execute([':k' => $empLookupKey, ':email' => $uFound['email'] ?? '']);
+                $emp = $empStmt2->fetch();
+                if (!$emp) {
+                    $actualEmpId = $uFound['uid'] ?: ($uFound['id'] ?: $empId);
+                    $actualEmpCode = $uFound['employee_code'] ?: ($input['employee_code'] ?? $empId);
+                    $empName = $uFound['display_name'] ?: trim(($uFound['first_name'] ?? '') . ' ' . ($uFound['last_name'] ?? ''));
+                    $dept = $uFound['department'] ?? 'Operations';
+                }
+            }
+        }
+
+        if ($emp) {
+            $actualEmpId = $emp['id'];
+            $actualEmpCode = $emp['employee_code'] ?: ($input['employee_code'] ?? $empId);
+            $empName = $emp['full_name'] ?: ($emp['name'] ?: ($input['name'] ?? 'Employee'));
+            $dept = $emp['department'] ?: ($input['department'] ?? 'Operations');
+            $mgrId = $emp['manager_id'] ?? null;
+            $mgrName = $emp['manager'] ?? null;
+        } else if (!isset($actualEmpId)) {
+            $actualEmpId = $empId;
+            $actualEmpCode = $input['employee_code'] ?? $empId;
+            $empName = $input['name'] ?? ($currentUser['display_name'] ?? 'Employee');
+            $dept = $input['department'] ?? ($currentUser['department'] ?? 'Operations');
+            $mgrId = null;
+            $mgrName = null;
+        }
 
         $recordKey = "{$actualEmpId}_{$dateStr}";
 
@@ -436,21 +683,52 @@ try {
             ]);
         } catch (\Throwable $e) {}
 
-        // Fetch today's existing record
+        // Fetch today's existing record across doc ID, user UID, and employee codes
         $recStmt = $pdo->prepare("
             SELECT * FROM attendance_records 
-            WHERE (employee_id = :eid OR employee_code = :ecode) AND date = :d 
+            WHERE (employee_id = :eid OR employee_id = :empIdInput OR employee_code = :ecode OR REPLACE(employee_code, '-', '') = :cleanCode) AND date = :d 
             LIMIT 1
         ");
-        $recStmt->execute([':eid' => $actualEmpId, ':ecode' => $actualEmpCode, ':d' => $dateStr]);
+        $recStmt->execute([
+            ':eid' => $actualEmpId,
+            ':empIdInput' => $empId,
+            ':ecode' => $actualEmpCode,
+            ':cleanCode' => str_replace('-', '', $actualEmpCode),
+            ':d' => $dateStr
+        ]);
         $existing = $recStmt->fetch();
 
         // ---------------------------------------------------------------------
-        // PUNCH IN
+        // PUNCH IN / RESUME SHIFT
         // ---------------------------------------------------------------------
         if ($punchType === 'In' || $punchType === 'In (Resume)') {
             if ($existing && !empty($existing['check_out'])) {
-                json_out(["success" => false, "error" => "Shift completed for today! Your check-out has already been recorded. The timecard station is locked until tomorrow."], 400);
+                // Resume daily shift: reset check_out, keep original check_in and check_in_iso
+                $pdo->prepare("
+                    UPDATE attendance_records 
+                    SET check_out = NULL, check_out_iso = NULL, status = 'PRESENT', is_on_break = 0, updated_at = CURRENT_TIMESTAMP
+                    WHERE id = :id
+                ")->execute([':id' => $existing['id']]);
+
+                $recStmt->execute([
+                    ':eid' => $actualEmpId,
+                    ':empIdInput' => $empId,
+                    ':ecode' => $actualEmpCode,
+                    ':cleanCode' => str_replace('-', '', $actualEmpCode),
+                    ':d' => $dateStr
+                ]);
+                $updated = $recStmt->fetch();
+
+                log_audit($pdo, $actualEmpId, $currentUser['email'] ?? '', 'PUNCH_IN_RESUME', 'attendance_records', $existing['id']);
+
+                json_out([
+                    "success" => true,
+                    "message" => "Shift resumed successfully at {$timeStr}.",
+                    "record" => $updated,
+                    "is_punched_in" => true,
+                    "is_completed" => false,
+                    "is_on_break" => false
+                ]);
             }
 
             if ($existing && !empty($existing['check_in'])) {
@@ -458,7 +736,9 @@ try {
                     "success" => true,
                     "message" => "You are already punched in for today.",
                     "record" => $existing,
-                    "is_punched_in" => true
+                    "is_punched_in" => true,
+                    "is_completed" => false,
+                    "is_on_break" => false
                 ]);
             }
 
@@ -518,7 +798,13 @@ try {
                 ':dev' => $device
             ]);
 
-            $recStmt->execute([':eid' => $actualEmpId, ':ecode' => $actualEmpCode, ':d' => $dateStr]);
+            $recStmt->execute([
+                ':eid' => $actualEmpId,
+                ':empIdInput' => $empId,
+                ':ecode' => $actualEmpCode,
+                ':cleanCode' => str_replace('-', '', $actualEmpCode),
+                ':d' => $dateStr
+            ]);
             $updated = $recStmt->fetch();
 
             log_audit($pdo, $actualEmpId, $currentUser['email'] ?? '', 'PUNCH_IN', 'attendance_records', $recordKey);
@@ -547,7 +833,24 @@ try {
 
             $nowIso = date('Y-m-d H:i:s');
             $cinIso = !empty($existing['check_in_iso']) ? $existing['check_in_iso'] : ($dateStr . ' 10:00:00');
-            $grossSec = max(0, strtotime($nowIso) - strtotime($cinIso));
+
+            // Exact local timestamp parsing immune to UTC/timezone offset skew
+            $cinTime = strtotime($cinIso);
+            $coutTime = strtotime($nowIso);
+            if (!empty($existing['check_in'])) {
+                $cinCandidate = strtotime($dateStr . ' ' . $existing['check_in']);
+                if ($cinCandidate !== false && $cinCandidate > 0) {
+                    $cinTime = $cinCandidate;
+                }
+            }
+            if (!empty($timeStr)) {
+                $coutCandidate = strtotime($dateStr . ' ' . $timeStr);
+                if ($coutCandidate !== false && $coutCandidate > 0) {
+                    $coutTime = $coutCandidate;
+                }
+            }
+
+            $grossSec = max(0, $coutTime - $cinTime);
             $grossMinutes = round($grossSec / 60);
             $grossHrs = sprintf('%dh %02dm', floor($grossMinutes / 60), $grossMinutes % 60);
 
@@ -597,7 +900,13 @@ try {
                 ':id' => $existing['id']
             ]);
 
-            $recStmt->execute([':eid' => $actualEmpId, ':ecode' => $actualEmpCode, ':d' => $dateStr]);
+            $recStmt->execute([
+                ':eid' => $actualEmpId,
+                ':empIdInput' => $empId,
+                ':ecode' => $actualEmpCode,
+                ':cleanCode' => str_replace('-', '', $actualEmpCode),
+                ':d' => $dateStr
+            ]);
             $updated = $recStmt->fetch();
 
             log_audit($pdo, $actualEmpId, $currentUser['email'] ?? '', 'PUNCH_OUT', 'attendance_records', $existing['id']);
@@ -642,7 +951,13 @@ try {
                 ")->execute([':arid' => $existing['id'], ':eid' => $actualEmpId, ':d' => $dateStr, ':st' => $nowIso]);
             } catch (\Throwable $e) {}
 
-            $recStmt->execute([':eid' => $actualEmpId, ':ecode' => $actualEmpCode, ':d' => $dateStr]);
+            $recStmt->execute([
+                ':eid' => $actualEmpId,
+                ':empIdInput' => $empId,
+                ':ecode' => $actualEmpCode,
+                ':cleanCode' => str_replace('-', '', $actualEmpCode),
+                ':d' => $dateStr
+            ]);
             $updated = $recStmt->fetch();
 
             json_out([
@@ -702,7 +1017,13 @@ try {
                 ")->execute([':end' => $nowIso, ':dur' => $breakElapsed, ':eid' => $actualEmpId, ':d' => $dateStr]);
             } catch (\Throwable $e) {}
 
-            $recStmt->execute([':eid' => $actualEmpId, ':ecode' => $actualEmpCode, ':d' => $dateStr]);
+            $recStmt->execute([
+                ':eid' => $actualEmpId,
+                ':empIdInput' => $empId,
+                ':ecode' => $actualEmpCode,
+                ':cleanCode' => str_replace('-', '', $actualEmpCode),
+                ':d' => $dateStr
+            ]);
             $updated = $recStmt->fetch();
 
             json_out([

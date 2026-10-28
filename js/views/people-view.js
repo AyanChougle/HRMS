@@ -41,7 +41,7 @@ const PeopleView = {
 
     // Apply strict team-level scoping for non-Admin/HR roles
     if (!isSuperAdminOrHR) {
-      if (['TEAM_LEAD', 'MANAGER', 'OPERATIONS_MANAGER', 'OPS', 'PROCESS_OWNER'].includes(userRole)) {
+      if (['TEAM_LEAD', 'TL', 'MANAGER', 'OPERATIONS_MANAGER', 'OPS', 'PROCESS_OWNER'].includes(userRole)) {
         employees = await employeeService.getSubordinates(user, employees, { directOnly: false, forceScoped: true });
       } else if (userRole === 'DIGITAL_MARKETING' || userRole === 'DIGITAL') {
         employees = employees.filter(e => (e.department || '').toLowerCase().trim() === 'digital');
@@ -376,7 +376,7 @@ const PeopleView = {
       const currentEmpCode = AuthGuard.userProfile?.employeeCode || '';
       const currentEmpName = AuthGuard.userProfile?.displayName || AuthGuard.userProfile?.fullName || '';
 
-      if (activeRole === 'TEAM_LEAD') {
+      if (activeRole === 'TEAM_LEAD' || activeRole === 'TL') {
         const isAssigned = emp.teamLeaderId && (emp.teamLeaderId === currentEmpId || emp.teamLeaderId === currentEmpCode || emp.teamLeaderId === currentEmpName);
         if (!isAssigned) {
           if (typeof Toast !== 'undefined') Toast.error('Access Denied: You can only view profiles of employees assigned to your team.');
@@ -409,7 +409,7 @@ const PeopleView = {
                 <span class="badge ${emp.employmentStatus === 'ACTIVE' ? 'badge-success' : 'badge-warning'}" style="font-size: 0.85rem; padding: 6px 12px;">
                   <span class="badge-dot"></span> ${emp.employmentStatus || 'ACTIVE'}
                 </span>
-                ${activeRole !== 'TEAM_LEAD' ? `<button class="btn btn-secondary btn-sm" onclick="Forms.openEmployeeModal('${emp.id}')">Edit Profile</button>` : ''}
+                ${activeRole !== 'TEAM_LEAD' && activeRole !== 'TL' ? `<button class="btn btn-secondary btn-sm" onclick="Forms.openEmployeeModal('${emp.id}')">Edit Profile</button>` : ''}
               </div>
             </div>
           </div>
@@ -427,7 +427,7 @@ const PeopleView = {
               <button type="button" class="tab-btn" onclick="PeopleView.switchProfileSubTab('ptab-org')">Organization</button>
               <button type="button" class="tab-btn" onclick="PeopleView.switchProfileSubTab('ptab-docs')">Documents (${docs.length})</button>
               <button type="button" class="tab-btn" onclick="PeopleView.switchProfileSubTab('ptab-history')">Timeline (${history.length})</button>
-              ${activeRole !== 'TEAM_LEAD' ? `<button type="button" class="tab-btn" onclick="PeopleView.switchProfileSubTab('ptab-access')">Access & Portal</button>` : ''}
+              ${activeRole !== 'TEAM_LEAD' && activeRole !== 'TL' ? `<button type="button" class="tab-btn" onclick="PeopleView.switchProfileSubTab('ptab-access')">Access & Portal</button>` : ''}
             </div>
             <button type="button" class="tab-scroll-arrow next-tab" onclick="PeopleView.scrollProfileTabs(200)" title="Scroll tabs right">
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"></polyline></svg>

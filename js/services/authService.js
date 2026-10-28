@@ -34,13 +34,14 @@ const authService = {
 
       if (resp && resp.success && resp.user) {
         const mUser = resp.user;
-        const resolvedRole = this.resolveCanonicalRole(mUser.role_id, mUser.designation, cleanEmail);
+        const userEmail = (mUser.email || cleanEmail).toLowerCase().trim();
+        const resolvedRole = this.resolveCanonicalRole(mUser.role_id, mUser.designation, userEmail);
 
         const sessionPayload = {
           uid: mUser.uid || `usr_${mUser.id}`,
           id: mUser.id,
-          employeeId: mUser.uid || mUser.id,
-          email: cleanEmail,
+          employeeId: mUser.employee_id || mUser.uid || mUser.id,
+          email: userEmail,
           displayName: mUser.display_name || `${mUser.first_name || ''} ${mUser.last_name || ''}`.trim() || cleanEmail.split('@')[0],
           roleId: resolvedRole,
           role: resolvedRole,
@@ -111,7 +112,7 @@ const authService = {
         const sessionPayload = {
           uid: mUser.uid || `usr_${mUser.id}`,
           id: mUser.id,
-          employeeId: mUser.uid || mUser.id,
+          employeeId: mUser.employee_id || mUser.uid || mUser.id,
           email: mUser.email,
           displayName: mUser.display_name || mUser.email.split('@')[0],
           roleId: resolvedRole,

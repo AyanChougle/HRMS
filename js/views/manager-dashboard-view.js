@@ -73,7 +73,7 @@ const ManagerDashboardView = {
     } else if (role === 'PROCESS_OWNER') {
       portalTitle = 'Process Owner Portal';
       portalSubtitle = 'Process governance, workflow compliance, team attendance monitoring, and operational KPIs';
-    } else if (role === 'TEAM_LEAD') {
+    } else if (role === 'TEAM_LEAD' || role === 'TL') {
       portalTitle = 'Team Leader Portal';
       portalSubtitle = 'Direct team attendance monitoring, shift approvals, and daily goal tracking';
     } else if (role === 'COMPLIANCE') {

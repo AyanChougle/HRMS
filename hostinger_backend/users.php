@@ -17,6 +17,7 @@ if ($method === 'GET') {
     $role = trim($_GET['role'] ?? '');
     $status = trim($_GET['status'] ?? '');
     $uid = trim($_GET['uid'] ?? '');
+    $emailParam = trim($_GET['email'] ?? '');
 
     if (!empty($uid)) {
         $stmt = $pdo->prepare("SELECT * FROM users WHERE uid = :uid OR id = :id LIMIT 1");
@@ -31,6 +32,11 @@ if ($method === 'GET') {
 
     $sql = "SELECT id, uid, employee_code, email, display_name, first_name, last_name, phone, role_id, company_name, branch_name, department, designation, status, last_login_at, created_at, updated_at FROM users WHERE 1=1";
     $params = [];
+
+    if (!empty($emailParam)) {
+        $sql .= " AND (email = :email OR work_email = :email)";
+        $params[':email'] = $emailParam;
+    }
 
     if (!empty($search)) {
         $sql .= " AND (display_name LIKE :s OR email LIKE :s OR employee_code LIKE :s OR department LIKE :s)";
@@ -126,36 +132,52 @@ if ($method === 'POST') {
 
         $newId = $pdo->lastInsertId();
 
-        // Cross-sync into employees table
-        $empStmt = $pdo->prepare("
-            INSERT INTO employees (
-                id, user_id, employee_code, first_name, last_name, full_name,
-                work_email, phone, role_id, department, designation, employment_status, company_id
-            ) VALUES (
-                :id, :uid, :code, :first, :last, :full,
-                :email, :phone, :role, :dept, :desig, :status, 'comp_diallo_india'
-            )
-            ON DUPLICATE KEY UPDATE
-                full_name = VALUES(full_name),
-                role_id = VALUES(role_id),
-                department = VALUES(department),
-                designation = VALUES(designation),
-                employment_status = VALUES(employment_status)
+        // Cross-link with employees table without creating duplicate records
+        $checkEmp = $pdo->prepare("
+            SELECT id FROM employees 
+            WHERE LOWER(work_email) = :email 
+               OR LOWER(email) = :email2 
+               OR (employee_code != '' AND (employee_code = :code OR REPLACE(employee_code, '-', '') = REPLACE(:clean, '-', '')))
+            LIMIT 1
         ");
-        $empStmt->execute([
-            ':id' => 'emp_' . ($employeeCode ? strtolower($employeeCode) : bin2hex(random_bytes(6))),
-            ':uid' => $newUid,
+        $checkEmp->execute([
+            ':email' => strtolower($email),
+            ':email2' => strtolower($email),
             ':code' => $employeeCode,
-            ':first' => $firstName,
-            ':last' => $lastName,
-            ':full' => $displayName,
-            ':email' => $email,
-            ':phone' => $phone,
-            ':role' => $roleId,
-            ':dept' => $department,
-            ':desig' => $designation,
-            ':status' => $status
+            ':clean' => $employeeCode
         ]);
+        $existingEmp = $checkEmp->fetch();
+
+        if ($existingEmp) {
+            // Link existing employee to this user login
+            $upd = $pdo->prepare("UPDATE employees SET user_id = :uid, role_id = :role WHERE id = :id");
+            $upd->execute([':uid' => $newUid, ':role' => $roleId, ':id' => $existingEmp['id']]);
+        } else {
+            // Insert employee record only if none existed previously
+            $empStmt = $pdo->prepare("
+                INSERT INTO employees (
+                    id, user_id, employee_code, first_name, last_name, full_name,
+                    work_email, phone, role_id, department, designation, employment_status, company_id
+                ) VALUES (
+                    :id, :uid, :code, :first, :last, :full,
+                    :email, :phone, :role, :dept, :desig, :status, 'comp_diallo_india'
+                )
+            ");
+            $empStmt->execute([
+                ':id' => 'emp_' . ($employeeCode ? strtolower($employeeCode) : bin2hex(random_bytes(6))),
+                ':uid' => $newUid,
+                ':code' => $employeeCode,
+                ':first' => $firstName,
+                ':last' => $lastName,
+                ':full' => $displayName,
+                ':email' => $email,
+                ':phone' => $phone,
+                ':role' => $roleId,
+                ':dept' => $department,
+                ':desig' => $designation,
+                ':status' => $status
+            ]);
+        }
 
         json_out([
             "success" => true,

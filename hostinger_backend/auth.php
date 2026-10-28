@@ -38,53 +38,8 @@ try {
         ]);
         $user = $stmt->fetch();
 
-        // 2. Fallback check in employees table if user record was not pre-created
         if (!$user) {
-            $empStmt = $pdo->prepare("
-                SELECT * FROM employees 
-                WHERE LOWER(work_email) = :login1 
-                   OR LOWER(email) = :login2 
-                   OR UPPER(employee_code) = UPPER(:login3)
-                LIMIT 1
-            ");
-            $empStmt->execute([
-                ':login1' => $loginId,
-                ':login2' => $loginId,
-                ':login3' => $loginId
-            ]);
-            $emp = $empStmt->fetch();
-
-            if ($emp) {
-                $newUid = !empty($emp['id']) ? $emp['id'] : ('usr_' . bin2hex(random_bytes(8)));
-                $passHash = password_hash($password, PASSWORD_DEFAULT);
-                $role = canonical_role($emp['role_id'] ?? 'EMPLOYEE');
-                $userEmail = !empty($emp['work_email']) ? $emp['work_email'] : (!empty($emp['email']) ? $emp['email'] : $loginId);
-
-                $insStmt = $pdo->prepare("
-                    INSERT INTO users (uid, employee_code, email, password_hash, display_name, first_name, last_name, role_id, department, designation, status)
-                    VALUES (:uid, :code, :email, :pass, :name, :fname, :lname, :role, :dept, :desig, 'ACTIVE')
-                ");
-                $insStmt->execute([
-                    ':uid' => $newUid,
-                    ':code' => $emp['employee_code'],
-                    ':email' => $userEmail,
-                    ':pass' => $passHash,
-                    ':name' => $emp['full_name'],
-                    ':fname' => $emp['first_name'],
-                    ':lname' => $emp['last_name'],
-                    ':role' => $role,
-                    ':dept' => $emp['department'],
-                    ':desig' => $emp['designation']
-                ]);
-
-                $stmt->execute([
-                    ':login1' => $userEmail,
-                    ':login2' => $emp['employee_code']
-                ]);
-                $user = $stmt->fetch();
-            } else {
-                json_out(["success" => false, "error" => "No account found matching this email address or Employee ID."], 404);
-            }
+            json_out(["success" => false, "error" => "Invalid credentials or user account does not exist."], 401);
         }
 
         // Account status check

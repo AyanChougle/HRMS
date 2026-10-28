@@ -63,21 +63,21 @@ try {
     } elseif ($userRole === 'MANAGER') {
         // Scoped to department or reportees
         if (!empty($userDept)) {
-            $empScopeSql .= " AND (department = :dept OR reporting_manager_id = :mgr_uid OR reporting_manager_id = :mgr_code OR id = :m_self_uid OR employee_code = :m_self_code)";
+            $empScopeSql .= " AND (department = :dept OR manager_id = :mgr_uid OR manager_id = :mgr_code OR id = :m_self_uid OR employee_code = :m_self_code)";
             $empScopeParams[':dept'] = $userDept;
             $empScopeParams[':mgr_uid'] = $userUid;
             $empScopeParams[':mgr_code'] = $userCode;
             $empScopeParams[':m_self_uid'] = $userUid;
             $empScopeParams[':m_self_code'] = $userCode;
 
-            $attScopeSql .= " AND employee_id IN (SELECT id FROM employees WHERE department = :att_dept OR reporting_manager_id = :att_mgr_uid OR reporting_manager_id = :att_mgr_code OR id = :att_m_self_uid OR employee_code = :att_m_self_code)";
+            $attScopeSql .= " AND employee_id IN (SELECT id FROM employees WHERE department = :att_dept OR manager_id = :att_mgr_uid OR manager_id = :att_mgr_code OR id = :att_m_self_uid OR employee_code = :att_m_self_code)";
             $attScopeParams[':att_dept'] = $userDept;
             $attScopeParams[':att_mgr_uid'] = $userUid;
             $attScopeParams[':att_mgr_code'] = $userCode;
             $attScopeParams[':att_m_self_uid'] = $userUid;
             $attScopeParams[':att_m_self_code'] = $userCode;
 
-            $leaveScopeSql .= " AND employee_id IN (SELECT id FROM employees WHERE department = :l_dept OR reporting_manager_id = :l_mgr_uid OR reporting_manager_id = :l_mgr_code OR id = :l_m_self_uid OR employee_code = :l_m_self_code)";
+            $leaveScopeSql .= " AND employee_id IN (SELECT id FROM employees WHERE department = :l_dept OR manager_id = :l_mgr_uid OR manager_id = :l_mgr_code OR id = :l_m_self_uid OR employee_code = :l_m_self_code)";
             $leaveScopeParams[':l_dept'] = $userDept;
             $leaveScopeParams[':l_mgr_uid'] = $userUid;
             $leaveScopeParams[':l_mgr_code'] = $userCode;

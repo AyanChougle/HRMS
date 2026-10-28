@@ -67,68 +67,69 @@ try {
                 $id = $myEmpId; // Force own profile
             }
 
-            $stmt = $pdo->prepare("SELECT * FROM employees WHERE id = :id OR employee_code = :code OR user_id = :uid LIMIT 1");
-            $stmt->execute([':id' => $id, ':code' => $id, ':uid' => $id]);
+            // Robust read-only multi-key matching (zero auto-creation on GET)
+            $stmt = $pdo->prepare("
+                SELECT * FROM employees 
+                WHERE id = :id 
+                   OR employee_code = :code 
+                   OR REPLACE(employee_code, '-', '') = REPLACE(:clean, '-', '')
+                   OR user_id = :uid 
+                   OR email = :email 
+                   OR work_email = :wemail
+                LIMIT 1
+            ");
+            $stmt->execute([
+                ':id' => $id,
+                ':code' => $id,
+                ':clean' => $id,
+                ':uid' => $id,
+                ':email' => $id,
+                ':wemail' => $id
+            ]);
             $emp = $stmt->fetch();
 
             if (!$emp) {
-                // Check if user exists in users table and auto-sync into employees table
-                $uStmt = $pdo->prepare("SELECT * FROM users WHERE uid = :id OR employee_code = :code OR id = :uid OR email = :email LIMIT 1");
-                $uStmt->execute([':id' => $id, ':code' => $id, ':uid' => is_numeric($id) ? intval($id) : 0, ':email' => $id]);
+                // Secondary check: match through users record by email or clean code
+                $uStmt = $pdo->prepare("
+                    SELECT * FROM users 
+                    WHERE uid = :id 
+                       OR employee_code = :code 
+                       OR REPLACE(employee_code, '-', '') = REPLACE(:clean, '-', '')
+                       OR email = :email 
+                    LIMIT 1
+                ");
+                $uStmt->execute([':id' => $id, ':code' => $id, ':clean' => $id, ':email' => $id]);
                 $u = $uStmt->fetch();
 
                 if ($u) {
-                    $newEmpId = !empty($u['uid']) ? $u['uid'] : ('emp_' . $u['id']);
-                    $empCode = !empty($u['employee_code']) ? $u['employee_code'] : ('D' . str_pad($u['id'], 5, '0', STR_PAD_LEFT));
-                    $name = !empty($u['display_name']) ? $u['display_name'] : trim(($u['first_name'] ?? '') . ' ' . ($u['last_name'] ?? ''));
-                    if (empty($name)) $name = 'Employee';
-                    $empRole = canonical_role($u['role_id'] ?? 'EMPLOYEE');
-
-                    $insStmt = $pdo->prepare("
-                        INSERT INTO employees (
-                            id, user_id, employee_code, full_name, first_name, last_name,
-                            email, work_email, phone, department, designation, role_id,
-                            company_id, company_name, branch_name, employment_status, status
-                        ) VALUES (
-                            :eid, :uid, :code, :name, :fname, :lname,
-                            :email, :wemail, :phone, :dept, :desig, :role,
-                            'comp_diallo_india', 'Diallo India Private Limited', 'Ghansoli - Navi Mumbai, Maharashtra', 'ACTIVE', 'ACTIVE'
-                        ) ON DUPLICATE KEY UPDATE full_name = VALUES(full_name), updated_at = CURRENT_TIMESTAMP
+                    $uCode = $u['employee_code'] ?? '';
+                    $uEmail = $u['email'] ?? '';
+                    $uUid = $u['uid'] ?? '';
+                    $matchStmt = $pdo->prepare("
+                        SELECT * FROM employees 
+                        WHERE id = :uid 
+                           OR user_id = :uuid 
+                           OR employee_code = :ucode 
+                           OR REPLACE(employee_code, '-', '') = REPLACE(:uclean, '-', '')
+                           OR email = :uemail 
+                           OR work_email = :uwemail
+                        LIMIT 1
                     ");
-                    $insStmt->execute([
-                        ':eid' => $newEmpId,
-                        ':uid' => $u['uid'] ?: $newEmpId,
-                        ':code' => $empCode,
-                        ':name' => $name,
-                        ':fname' => $u['first_name'] ?: 'Employee',
-                        ':lname' => $u['last_name'] ?: '',
-                        ':email' => $u['email'] ?: '',
-                        ':wemail' => $u['email'] ?: '',
-                        ':phone' => $u['phone'] ?: '',
-                        ':dept' => $u['department'] ?: 'Operations',
-                        ':desig' => $u['designation'] ?: 'Associate',
-                        ':role' => $empRole
+                    $matchStmt->execute([
+                        ':uid' => $uUid,
+                        ':uuid' => $uUid,
+                        ':ucode' => $uCode,
+                        ':uclean' => $uCode,
+                        ':uemail' => $uEmail,
+                        ':uwemail' => $uEmail
                     ]);
-
-                    // Initialize leave balances safely
-                    try {
-                        $currYear = intval(date('Y'));
-                        $types = ['Casual Leave' => 12, 'Sick Leave' => 12, 'Earned Leave' => 15];
-                        foreach ($types as $t => $days) {
-                            $pdo->prepare("
-                                INSERT IGNORE INTO leave_balances (employee_id, leave_type, year, total_credited, used, available)
-                                VALUES (:eid, :t, :y, :c, 0, :c)
-                            ")->execute([':eid' => $newEmpId, ':t' => $t, ':y' => $currYear, ':c' => $days]);
-                        }
-                    } catch (\Throwable $ignored) {}
-
-                    $stmt = $pdo->prepare("SELECT * FROM employees WHERE id = :id OR employee_code = :code LIMIT 1");
-                    $stmt->execute([':id' => $newEmpId, ':code' => $empCode]);
-                    $emp = $stmt->fetch();
+                    $emp = $matchStmt->fetch();
                 }
             }
 
-            if (!$emp) json_out(["success" => false, "error" => "Employee not found"], 404);
+            if (!$emp) {
+                json_out(["success" => false, "error" => "Employee record not found."], 404);
+            }
 
             $emp['role_id'] = canonical_role($emp['role_id']);
             json_out(["success" => true, "employee" => $emp]);
@@ -265,7 +266,15 @@ try {
     // POST / PUT: Create or Update Employee (Requires ADMIN, HR, or OPS)
     // -------------------------------------------------------------------------
     if ($method === 'POST' || $method === 'PUT') {
-        $user = require_role($pdo, ['ADMIN', 'HR', 'OPS']);
+        $user = require_authenticated_user($pdo);
+        $userRole = canonical_role($user['role_id']);
+        $isPrivileged = in_array($userRole, ['ADMIN', 'HR', 'OPS', 'SUPER_ADMIN', 'COMPANY_ADMIN', 'MANAGER']);
+        $targetId = trim($input['id'] ?? '');
+        $isSelf = !empty($targetId) && ($targetId === ($user['employee_id'] ?? '') || $targetId === ($user['uid'] ?? '') || $targetId === ($user['id'] ?? ''));
+
+        if (!$isPrivileged && !$isSelf) {
+            json_out(["success" => false, "error" => "Unauthorized: Only HR, Admin, or Managers can modify employee records."], 403);
+        }
 
         $code = strtoupper(trim($input['employee_code'] ?? $input['code'] ?? ''));
         $fullName = trim($input['full_name'] ?? ($input['name'] ?? trim(($input['first_name'] ?? '') . ' ' . ($input['last_name'] ?? ''))));
@@ -299,71 +308,116 @@ try {
         if (!in_array($status, $validStatuses)) $status = 'ACTIVE';
 
         $doj = $input['date_of_joining'] ?? date('Y-m-d');
-        $id = trim($input['id'] ?? ('emp_' . bin2hex(random_bytes(8))));
+        
+        // Prevent duplicate creation: Match existing employee by ID, email, or employee code
+        $existingEmp = null;
+        $idCandidate = trim($input['id'] ?? '');
+        $codeCandidate = strtoupper(trim($input['employee_code'] ?? $input['code'] ?? ''));
+        $emailCandidate = strtolower(trim($input['work_email'] ?? $input['email'] ?? ''));
+
+        if (!empty($idCandidate)) {
+            $fStmt = $pdo->prepare("SELECT * FROM employees WHERE id = :id OR user_id = :id LIMIT 1");
+            $fStmt->execute([':id' => $idCandidate]);
+            $existingEmp = $fStmt->fetch();
+        }
+
+        if (!$existingEmp && !empty($codeCandidate)) {
+            $fStmt = $pdo->prepare("SELECT * FROM employees WHERE employee_code = :c OR REPLACE(employee_code, '-', '') = :clean LIMIT 1");
+            $fStmt->execute([':c' => $codeCandidate, ':clean' => str_replace('-', '', $codeCandidate)]);
+            $existingEmp = $fStmt->fetch();
+        }
+
+        if (!$existingEmp && !empty($emailCandidate)) {
+            $fStmt = $pdo->prepare("SELECT * FROM employees WHERE LOWER(email) = :e OR LOWER(work_email) = :e LIMIT 1");
+            $fStmt->execute([':e' => $emailCandidate]);
+            $existingEmp = $fStmt->fetch();
+        }
+
+        if ($existingEmp) {
+            $id = $existingEmp['id'];
+        } else {
+            $id = !empty($idCandidate) ? $idCandidate : ('emp_' . bin2hex(random_bytes(8)));
+        }
 
         if (empty($fullName) || empty($email)) {
             json_out(["success" => false, "error" => "Full Name and Official Email are required."], 400);
         }
 
         if (empty($code)) {
-            $code = 'D' . str_pad(rand(100, 99999), 5, '0', STR_PAD_LEFT);
+            $code = $existingEmp ? $existingEmp['employee_code'] : ('D' . str_pad(rand(100, 99999), 5, '0', STR_PAD_LEFT));
         }
 
         // Circular reporting safeguard
         if ($mgrId === $id) $mgrId = null;
         if ($teamLeadId === $id) $teamLeadId = null;
 
+        $branchName = trim($input['branch_name'] ?? $input['location'] ?? ($existingEmp['branch_name'] ?? 'Ghansoli - Navi Mumbai, Maharashtra'));
+        $location = $branchName;
+        $personalEmail = trim($input['personal_email'] ?? ($existingEmp['personal_email'] ?? ''));
+
         $parts = explode(' ', $fullName);
         $firstName = $input['first_name'] ?? ($parts[0] ?? $fullName);
         $lastName = $input['last_name'] ?? (count($parts) > 1 ? end($parts) : '');
 
-        // 1. Save to employees table
+        // 1. Save to employees table with all organization and branch attributes
         $stmt = $pdo->prepare("
             INSERT INTO employees (
-                id, employee_code, first_name, last_name, full_name, email, work_email, phone,
+                id, user_id, employee_code, first_name, last_name, full_name, email, work_email, personal_email, phone,
                 department, team_id, team_name, designation, role_id, 
+                branch_name, location,
                 manager_id, manager, team_lead_id, team_lead,
                 date_of_joining, employment_status, status
             ) VALUES (
-                :id, :code, :fname, :lname, :name, :email, :wemail, :phone,
+                :id, :uid, :code, :fname, :lname, :name, :email, :wemail, :pemail, :phone,
                 :dept, :tid, :tname, :desig, :role,
+                :bname, :loc,
                 :mid, :mname, :tlid, :tlname,
                 :doj, :estatus, :status
             )
             ON DUPLICATE KEY UPDATE
+                employee_code = VALUES(employee_code),
                 first_name = VALUES(first_name),
                 last_name = VALUES(last_name),
                 full_name = VALUES(full_name),
                 email = VALUES(email),
                 work_email = VALUES(work_email),
+                personal_email = VALUES(personal_email),
                 phone = VALUES(phone),
                 department = VALUES(department),
                 team_id = VALUES(team_id),
                 team_name = VALUES(team_name),
                 designation = VALUES(designation),
                 role_id = VALUES(role_id),
+                branch_name = VALUES(branch_name),
+                location = VALUES(location),
                 manager_id = VALUES(manager_id),
                 manager = VALUES(manager),
                 team_lead_id = VALUES(team_lead_id),
                 team_lead = VALUES(team_lead),
+                date_of_joining = VALUES(date_of_joining),
                 employment_status = VALUES(employment_status),
-                status = VALUES(status)
+                status = VALUES(status),
+                updated_at = CURRENT_TIMESTAMP
         ");
 
         $stmt->execute([
             ':id' => $id,
+            ':uid' => $id,
             ':code' => $code,
             ':fname' => $firstName,
             ':lname' => $lastName,
             ':name' => $fullName,
             ':email' => $email,
             ':wemail' => $email,
+            ':pemail' => $personalEmail ?: null,
             ':phone' => $phone,
             ':dept' => $dept,
             ':tid' => $teamId ?: null,
             ':tname' => $teamName ?: null,
             ':desig' => $desig,
             ':role' => $role,
+            ':bname' => $branchName,
+            ':loc' => $location,
             ':mid' => !empty($mgrId) ? $mgrId : null,
             ':mname' => !empty($mgrName) ? $mgrName : null,
             ':tlid' => !empty($teamLeadId) ? $teamLeadId : null,
@@ -376,17 +430,21 @@ try {
         // 2. Synchronize user login record
         $userStatus = in_array($status, ['ACTIVE', 'SUSPENDED', 'PENDING', 'INACTIVE']) ? $status : 'ACTIVE';
         $userStmt = $pdo->prepare("
-            INSERT INTO users (uid, employee_code, email, display_name, first_name, last_name, phone, role_id, department, designation, status)
-            VALUES (:uid, :code, :email, :name, :fname, :lname, :phone, :role, :dept, :desig, :status)
+            INSERT INTO users (uid, employee_code, email, display_name, first_name, last_name, phone, role_id, department, designation, branch_name, status)
+            VALUES (:uid, :code, :email, :name, :fname, :lname, :phone, :role, :dept, :desig, :bname, :status)
             ON DUPLICATE KEY UPDATE
+                employee_code = VALUES(employee_code),
                 display_name = VALUES(display_name),
                 first_name = VALUES(first_name),
                 last_name = VALUES(last_name),
+                email = VALUES(email),
                 phone = VALUES(phone),
                 role_id = VALUES(role_id),
                 department = VALUES(department),
                 designation = VALUES(designation),
-                status = VALUES(status)
+                branch_name = VALUES(branch_name),
+                status = VALUES(status),
+                updated_at = CURRENT_TIMESTAMP
         ");
         $userStmt->execute([
             ':uid' => $id,
@@ -399,6 +457,7 @@ try {
             ':role' => $role,
             ':dept' => $dept,
             ':desig' => $desig,
+            ':bname' => $branchName,
             ':status' => $userStatus
         ]);
 

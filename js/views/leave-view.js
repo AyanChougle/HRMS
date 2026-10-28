@@ -11,7 +11,7 @@ const LeaveView = {
     const canManageSchemes =
       ["SUPER_ADMIN", "COMPANY_ADMIN", "ADMIN", "HR", "HR_MANAGER"].includes(role);
     const canViewTeam =
-      ["SUPER_ADMIN", "COMPANY_ADMIN", "ADMIN", "HR", "HR_MANAGER", "MANAGER", "OPERATIONS_MANAGER", "TEAM_LEAD"].includes(role);
+      ["SUPER_ADMIN", "COMPANY_ADMIN", "ADMIN", "HR", "HR_MANAGER", "OPS", "OPERATIONS_MANAGER", "MANAGER", "TEAM_LEAD", "TL", "PROCESS_OWNER"].includes(role);
 
     if (!canManageSchemes) {
       if (canViewTeam && (this.activeTab === "all" || this.activeTab === "types")) {

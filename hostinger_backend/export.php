@@ -271,7 +271,7 @@ try {
         // Fetch Employees
         $empSql = "
             SELECT e.id, e.employee_code, e.full_name, e.department, e.designation, e.user_id,
-                   e.team_lead_id, e.reporting_manager_id
+                   e.team_lead_id, e.manager_id
             FROM employees e
             WHERE (e.employment_status IS NULL OR e.employment_status = 'ACTIVE' OR e.employment_status = 'PROBATION')
         ";
@@ -283,13 +283,25 @@ try {
             $empParams[':self_uid'] = $userUid;
             $empParams[':self_code'] = $userCode;
         } elseif ($userRole === 'TL') {
-            $empSql .= " AND (e.team_lead_id = :tlid OR e.team_lead_id = :tlcode OR e.id = :self_uid OR e.employee_code = :self_code)";
+            $tlName = $currentUser['display_name'] ?? trim(($currentUser['first_name'] ?? '') . ' ' . ($currentUser['last_name'] ?? ''));
+            $empSql .= " AND (
+                e.team_lead_id = :tlid 
+                OR e.team_lead_id = :tlcode 
+                OR e.team_lead LIKE :tlname
+                OR e.manager_id = :tlid
+                OR e.manager_id = :tlcode
+                OR e.manager LIKE :tlpattern
+                OR e.id = :self_uid 
+                OR e.employee_code = :self_code
+            )";
             $empParams[':tlid'] = $userUid;
             $empParams[':tlcode'] = $userCode;
+            $empParams[':tlname'] = '%' . trim($tlName) . '%';
+            $empParams[':tlpattern'] = '%' . trim($userCode ?: $tlName) . '%';
             $empParams[':self_uid'] = $userUid;
             $empParams[':self_code'] = $userCode;
         } elseif ($userRole === 'MANAGER' && !empty($userDept)) {
-            $empSql .= " AND (e.department = :dept OR e.reporting_manager_id = :mgr_uid OR e.reporting_manager_id = :mgr_code OR e.id = :self_uid OR e.employee_code = :self_code)";
+            $empSql .= " AND (e.department = :dept OR e.manager_id = :mgr_uid OR e.manager_id = :mgr_code OR e.id = :self_uid OR e.employee_code = :self_code)";
             $empParams[':dept'] = $userDept;
             $empParams[':mgr_uid'] = $userUid;
             $empParams[':mgr_code'] = $userCode;
@@ -473,13 +485,25 @@ try {
             $params[':self_code'] = $userCode;
             $params[':self_uid'] = $userUid;
         } elseif ($userRole === 'TL') {
-            $sql .= " AND (e.team_lead_id = :tlid OR e.team_lead_id = :tlcode OR e.employee_code = :self_code OR e.id = :self_uid)";
+            $tlName = $currentUser['display_name'] ?? trim(($currentUser['first_name'] ?? '') . ' ' . ($currentUser['last_name'] ?? ''));
+            $sql .= " AND (
+                e.team_lead_id = :tlid 
+                OR e.team_lead_id = :tlcode 
+                OR e.team_lead LIKE :tlname
+                OR e.manager_id = :tlid
+                OR e.manager_id = :tlcode
+                OR e.manager LIKE :tlpattern
+                OR e.employee_code = :self_code 
+                OR e.id = :self_uid
+            )";
             $params[':tlid'] = $userUid;
             $params[':tlcode'] = $userCode;
+            $params[':tlname'] = '%' . trim($tlName) . '%';
+            $params[':tlpattern'] = '%' . trim($userCode ?: $tlName) . '%';
             $params[':self_code'] = $userCode;
             $params[':self_uid'] = $userUid;
         } elseif ($userRole === 'MANAGER' && !empty($userDept)) {
-            $sql .= " AND (e.department = :dept OR e.reporting_manager_id = :mgr_uid OR e.reporting_manager_id = :mgr_code OR e.employee_code = :self_code OR e.id = :self_uid)";
+            $sql .= " AND (e.department = :dept OR e.manager_id = :mgr_uid OR e.manager_id = :mgr_code OR e.employee_code = :self_code OR e.id = :self_uid)";
             $params[':dept'] = $userDept;
             $params[':mgr_uid'] = $userUid;
             $params[':mgr_code'] = $userCode;
@@ -538,7 +562,7 @@ try {
             $params[':self_code'] = $userCode;
             $params[':self_uid'] = $userUid;
         } elseif ($userRole === 'MANAGER' && !empty($userDept)) {
-            $sql .= " AND (e.department = :dept OR e.reporting_manager_id = :mgr_uid OR e.reporting_manager_id = :mgr_code OR e.employee_code = :self_code OR e.id = :self_uid)";
+            $sql .= " AND (e.department = :dept OR e.manager_id = :mgr_uid OR e.manager_id = :mgr_code OR e.employee_code = :self_code OR e.id = :self_uid)";
             $params[':dept'] = $userDept;
             $params[':mgr_uid'] = $userUid;
             $params[':mgr_code'] = $userCode;
@@ -599,13 +623,25 @@ try {
             $params[':self_uid'] = $userUid;
             $params[':self_code'] = $userCode;
         } elseif ($userRole === 'TL') {
-            $sql .= " AND (e.team_lead_id = :tlid OR e.team_lead_id = :tlcode OR e.employee_code = :self_code OR e.id = :self_uid)";
+            $tlName = $currentUser['display_name'] ?? trim(($currentUser['first_name'] ?? '') . ' ' . ($currentUser['last_name'] ?? ''));
+            $sql .= " AND (
+                e.team_lead_id = :tlid 
+                OR e.team_lead_id = :tlcode 
+                OR e.team_lead LIKE :tlname
+                OR e.manager_id = :tlid
+                OR e.manager_id = :tlcode
+                OR e.manager LIKE :tlpattern
+                OR e.employee_code = :self_code 
+                OR e.id = :self_uid
+            )";
             $params[':tlid'] = $userUid;
             $params[':tlcode'] = $userCode;
+            $params[':tlname'] = '%' . trim($tlName) . '%';
+            $params[':tlpattern'] = '%' . trim($userCode ?: $tlName) . '%';
             $params[':self_code'] = $userCode;
             $params[':self_uid'] = $userUid;
         } elseif ($userRole === 'MANAGER' && !empty($userDept)) {
-            $sql .= " AND (e.department = :dept OR e.reporting_manager_id = :mgr_uid OR e.reporting_manager_id = :mgr_code OR e.employee_code = :self_code OR e.id = :self_uid)";
+            $sql .= " AND (e.department = :dept OR e.manager_id = :mgr_uid OR e.manager_id = :mgr_code OR e.employee_code = :self_code OR e.id = :self_uid)";
             $params[':dept'] = $userDept;
             $params[':mgr_uid'] = $userUid;
             $params[':mgr_code'] = $userCode;

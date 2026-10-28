@@ -10,26 +10,66 @@ const AttendanceView = {
   myAttendanceMonth: '',
   myAttendanceDate: '',
 
+  getUserRoleInfo() {
+    const userProf = AuthGuard.userProfile || {};
+    const desig = (userProf.designation || '').toLowerCase();
+    const rawRole = (
+      AuthGuard._previewRoleId || 
+      userProf.roleId || 
+      userProf.role || 
+      userProf.role_id || 
+      AuthGuard.userRole?.id || 
+      AuthGuard.userRole?.name || 
+      'EMPLOYEE'
+    ).toString().toUpperCase().trim();
+
+    const canonicalRole = (typeof AuthGuard !== 'undefined' && typeof AuthGuard.resolveCanonicalRole === 'function')
+      ? AuthGuard.resolveCanonicalRole(rawRole, userProf.designation, userProf.email)
+      : rawRole;
+
+    const isSuperAdmin = ['SUPER_ADMIN', 'COMPANY_ADMIN', 'ADMIN'].includes(canonicalRole) || desig.includes('super admin') || desig.includes('admin');
+    const isHR = ['HR', 'HR_MANAGER'].includes(canonicalRole) || desig.includes('hr');
+    const isOps = ['OPS', 'OPERATIONS_MANAGER'].includes(canonicalRole) || desig.includes('operation');
+    const isTL = ['TL', 'TEAM_LEAD'].includes(canonicalRole) || desig.includes('team lead') || desig.includes('team leader');
+    const isDeptManager = ['MANAGER', 'DEPARTMENT_MANAGER', 'PROCESS_OWNER'].includes(canonicalRole) || (desig.includes('manager') && !isOps);
+
+    // Leadership with full operational attendance management
+    const canManageAttendance = isSuperAdmin || isHR || isOps;
+
+    // Any leadership role responsible for subordinates
+    const isManager = isDeptManager || isTL || isOps || canManageAttendance;
+    const canApproveRegularization = canManageAttendance || isManager;
+    const isStaffOnly = !canManageAttendance && !isDeptManager && !isTL;
+    const isEmployeeOnly = isStaffOnly;
+
+    return {
+      role: canonicalRole,
+      rawRole,
+      isSuperAdmin,
+      isHR,
+      isOps,
+      isTL,
+      isDeptManager,
+      canManageAttendance,
+      isManager,
+      canApproveRegularization,
+      isStaffOnly,
+      isEmployeeOnly
+    };
+  },
+
   async renderHub() {
     let summary = { totalEmployees: 0, present: 0, onTime: 0, late: 0, onLeave: 0, absent: 0, avgWorkHours: '0h 00m' };
     let departments = [];
     let todayRecord = null;
-    const employeeId = AuthGuard.userProfile?.employeeId || AuthGuard.currentUser?.uid;
+    const employeeId = AuthGuard.userProfile?.employeeId || AuthGuard.userProfile?.employeeCode || AuthGuard.currentUser?.uid || AuthGuard.userProfile?.id;
 
-    const rawRole = (AuthGuard._previewRoleId || AuthGuard.userProfile?.roleId || 'EMPLOYEE').toString().toUpperCase().trim();
-    const isSuperAdmin = rawRole === 'SUPER_ADMIN';
-    const isCompanyAdmin = rawRole === 'COMPANY_ADMIN' || rawRole === 'ADMIN';
-    const isHR = rawRole === 'HR' || rawRole === 'HR_MANAGER';
-    const isManager = ['MANAGER', 'OPERATIONS_MANAGER', 'PROCESS_OWNER', 'TEAM_LEAD'].includes(rawRole);
-    const canManageAttendance = isSuperAdmin || isCompanyAdmin || isHR;
-    const canApproveRegularization = canManageAttendance || isManager;
-    const isStaffOnly = !canManageAttendance && !isManager;
-    const isEmployeeOnly = isStaffOnly;
-    const role = rawRole;
+    const roleInfo = this.getUserRoleInfo();
+    const { isSuperAdmin, isHR, isOps, isTL, isDeptManager, canManageAttendance, isManager, canApproveRegularization, isEmployeeOnly, isStaffOnly, role } = roleInfo;
 
     let teamIds = null;
     let myTeamEmps = [];
-    if (!canManageAttendance && isManager) {
+    if (isTL || isDeptManager || isOps) {
       try {
         myTeamEmps = await employeeService.getSubordinates(AuthGuard.userProfile, null, { directOnly: false, forceScoped: true });
         teamIds = myTeamEmps;
@@ -40,11 +80,11 @@ const AttendanceView = {
 
     try {
       [summary, departments, todayRecord] = await Promise.all([
-        attendanceService.getTodaySummary(null, teamIds),
+        attendanceService.getTodaySummary(null, (isTL || isOps || isDeptManager) ? teamIds : null),
         departmentService.getDepartments(),
         attendanceService.getTodayRecord(employeeId)
       ]);
-      if (!canManageAttendance && isManager && myTeamEmps.length > 0) {
+      if ((isTL || isOps || isDeptManager) && myTeamEmps.length > 0) {
         summary.totalEmployees = myTeamEmps.length;
       }
     } catch (e) {
@@ -59,12 +99,18 @@ const AttendanceView = {
       }
     }
 
-    if (!canManageAttendance) {
-      if (isManager && (this.activeTab === 'daily' || this.activeTab === 'presence' || this.activeTab === 'settings')) {
+    // Smart default active tab for roles
+    if (isTL || isDeptManager) {
+      if (this.activeTab === 'daily' || this.activeTab === 'presence' || this.activeTab === 'settings' || !this.activeTab) {
         this.activeTab = 'team';
-      } else if (isStaffOnly && (this.activeTab === 'daily' || this.activeTab === 'team' || this.activeTab === 'presence' || this.activeTab === 'settings')) {
-        this.activeTab = 'my';
       }
+    } else if (isOps) {
+      // Ops manager defaults to Team Attendance to see their Team Leaders and teams
+      if (!this.activeTab || this.activeTab === 'presence' || this.activeTab === 'settings') {
+        this.activeTab = 'team';
+      }
+    } else if (isStaffOnly) {
+      this.activeTab = 'my';
     }
 
     return `
@@ -271,20 +317,22 @@ const AttendanceView = {
 
   setFilterStatus(status) {
     this.currentFilters.status = status;
-    const rawRole = (AuthGuard._previewRoleId || AuthGuard.userProfile?.roleId || 'EMPLOYEE').toString().toUpperCase().trim();
-    const canManageAttendance = ['SUPER_ADMIN', 'COMPANY_ADMIN', 'HR', 'HR_MANAGER'].includes(rawRole);
-    if (!canManageAttendance && ['MANAGER', 'OPERATIONS_MANAGER', 'TEAM_LEAD', 'PROCESS_OWNER'].includes(rawRole)) {
+    const roleInfo = this.getUserRoleInfo();
+    if (!roleInfo.canManageAttendance && (roleInfo.isTL || roleInfo.isDeptManager)) {
       this.activeTab = 'team';
-    } else if (canManageAttendance) {
+    } else if (roleInfo.isOps) {
+      // Keep team if currently viewing team, else daily
+      if (this.activeTab !== 'team') this.activeTab = 'daily';
+    } else if (roleInfo.canManageAttendance) {
       this.activeTab = 'daily';
     }
     Router.mountView('attendance');
   },
 
-  // 1. DAILY ATTENDANCE ROSTER TAB (ADMIN / HR)
+  // 1. DAILY ATTENDANCE ROSTER TAB (ADMIN / HR / OPS)
   async renderDailyRosterTab(departments) {
-    const rawRole = (AuthGuard._previewRoleId || AuthGuard.userProfile?.roleId || 'EMPLOYEE').toString().toUpperCase().trim();
-    const canManageAttendance = ['SUPER_ADMIN', 'COMPANY_ADMIN', 'HR', 'HR_MANAGER'].includes(rawRole);
+    const roleInfo = this.getUserRoleInfo();
+    const canManageAttendance = roleInfo.canManageAttendance;
     const filters = {
       date: this.currentDate,
       ...this.currentFilters
@@ -390,7 +438,16 @@ const AttendanceView = {
                     <td>${r.branchName || 'HQ - Mumbai'}</td>
                     <td><span class="font-semibold text-main">${r.checkIn || '-'}</span></td>
                     <td><span class="badge ${r.totalBreakMinutes > 0 ? 'badge-warning' : 'badge-neutral'}">${r.breakFormatted || (r.totalBreakMinutes ? r.totalBreakMinutes + 'm' : '0m')}</span></td>
-                    <td><span class="font-semibold text-main">${r.checkOut || '<span class="badge badge-warning" style="font-size: 0.7rem;">In Progress</span>'}</span></td>
+                    <td>
+                      ${((r.checkOut === '09:00 PM' || r.check_out === '09:00 PM') && ((r.device && r.device.includes('Auto Punched Out')) || r.status === 'HALF_DAY')) ? `
+                        <span class="badge badge-warning" style="font-size: 0.72rem; display: inline-flex; align-items: center; gap: 4px;" title="Shift auto-closed at 9:00 PM because check-out was not recorded.">
+                          <svg width="11" height="11" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                          09:00 PM (Auto)
+                        </span>
+                      ` : `
+                        <span class="font-semibold text-main">${r.checkOut || '<span class="badge badge-warning" style="font-size: 0.7rem;">In Progress</span>'}</span>
+                      `}
+                    </td>
                     <td><span class="text-secondary" style="font-size: 0.85rem;">${r.grossHoursFormatted || r.workedHoursFormatted || '0h 00m'}</span></td>
                     <td><strong style="color: var(--primary);">${r.workedHoursFormatted || '0h 00m'}</strong></td>
                     <td>
@@ -399,8 +456,8 @@ const AttendanceView = {
                       ${r.lateMinutes === 0 && r.overtimeMinutes === 0 ? '<span class="text-muted" style="font-size: 0.75rem;">—</span>' : ''}
                     </td>
                     <td>
-                      <span class="badge ${r.status === 'PRESENT' ? 'badge-success' : (r.status === 'LATE' ? 'badge-warning' : (r.status === 'ON_BREAK' ? 'badge-warning' : (r.status === 'REGULARIZED' ? 'badge-primary' : 'badge-neutral')))}">
-                        <span class="badge-dot"></span> ${r.status}
+                      <span class="badge ${r.status === 'PRESENT' ? 'badge-success' : (r.status === 'LATE' ? 'badge-warning' : (r.status === 'HALF_DAY' ? 'badge-warning' : (r.status === 'ON_BREAK' ? 'badge-warning' : (r.status === 'REGULARIZED' ? 'badge-primary' : 'badge-neutral'))))}">
+                        <span class="badge-dot"></span> ${r.status === 'HALF_DAY' && (r.device || '').includes('Auto Punched Out') ? 'HALF DAY (Auto Closed)' : r.status}
                       </span>
                     </td>
                     ${canManageAttendance ? `
@@ -503,8 +560,12 @@ const AttendanceView = {
 
   // 2. MY ATTENDANCE TAB (EMPLOYEE SELF-SERVICE)
   async renderMyAttendanceTab(todayRecord) {
-    const employeeId = AuthGuard.userProfile?.employeeId || AuthGuard.currentUser?.uid;
-    const history = await attendanceService.getAttendanceRecords({ employeeId });
+    const employeeId = AuthGuard.userProfile?.employeeId || AuthGuard.userProfile?.employeeCode || AuthGuard.currentUser?.uid || AuthGuard.userProfile?.id;
+    const employeeCode = AuthGuard.userProfile?.employeeCode || '';
+    const history = await attendanceService.getAttendanceRecords({ 
+      employeeId: employeeCode || employeeId,
+      employeeCode: employeeCode 
+    });
 
     // Recent records strictly on top (descending date sort)
     history.sort((a, b) => {
@@ -596,9 +657,9 @@ const AttendanceView = {
                   <span>Web Check Out</span>
                 </button>
               ` : `
-                <button class="btn btn-secondary btn-lg" disabled style="display: inline-flex; align-items: center; gap: 8px;">
-                  <svg width="18" height="18" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
-                  <span>Attendance Completed</span>
+                <button class="btn btn-primary btn-lg" id="btn-self-punch" onclick="AttendanceView.executeCheckIn()" style="display: inline-flex; align-items: center; gap: 8px; background: var(--primary);">
+                  <svg width="18" height="18" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>
+                  <span>Resume Today's Shift</span>
                 </button>
               `)}
             </div>
@@ -701,14 +762,23 @@ const AttendanceView = {
                     <td class="font-semibold text-main">${h.date}</td>
                     <td><span class="font-medium text-main">${h.checkIn || '-'}</span></td>
                     <td><span class="badge ${h.totalBreakMinutes > 0 ? 'badge-warning' : 'badge-neutral'}">${h.breakFormatted || (h.totalBreakMinutes ? h.totalBreakMinutes + 'm' : '0m')}</span></td>
-                    <td><span class="font-medium text-main">${h.checkOut || '-'}</span></td>
+                    <td>
+                      ${((h.checkOut === '09:00 PM' || h.check_out === '09:00 PM') && ((h.device && h.device.includes('Auto Punched Out')) || h.status === 'HALF_DAY')) ? `
+                        <span class="badge badge-warning" style="font-size: 0.72rem; display: inline-flex; align-items: center; gap: 4px;" title="Shift auto-closed at 9:00 PM because check-out was not recorded.">
+                          <svg width="11" height="11" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                          09:00 PM (Auto)
+                        </span>
+                      ` : `
+                        <span class="font-medium text-main">${h.checkOut || '-'}</span>
+                      `}
+                    </td>
                     <td><span class="text-secondary" style="font-size: 0.85rem;">${h.grossHoursFormatted || h.workedHoursFormatted || '0h 00m'}</span></td>
                     <td><strong style="color: var(--primary); font-family: monospace;">${h.workedHoursFormatted || '0h 00m'}</strong></td>
                     <td>${h.lateMinutes > 0 ? `<span class="text-warning font-semibold">+${h.lateMinutes}m</span>` : '—'}</td>
                     <td>${h.overtimeMinutes > 0 ? `<span class="text-success font-semibold">+${h.overtimeMinutes}m</span>` : '—'}</td>
                     <td>
-                      <span class="badge ${h.status === 'PRESENT' ? 'badge-success' : (h.status === 'LATE' ? 'badge-warning' : (h.status === 'ON_BREAK' ? 'badge-warning' : (h.status === 'REGULARIZED' ? 'badge-primary' : 'badge-neutral')))}">
-                        ${h.status}
+                      <span class="badge ${h.status === 'PRESENT' ? 'badge-success' : (h.status === 'LATE' ? 'badge-warning' : (h.status === 'HALF_DAY' ? 'badge-warning' : (h.status === 'ON_BREAK' ? 'badge-warning' : (h.status === 'REGULARIZED' ? 'badge-primary' : 'badge-neutral'))))}">
+                        <span class="badge-dot"></span> ${h.status === 'HALF_DAY' && (h.device || '').includes('Auto Punched Out') ? 'HALF DAY (Auto Closed)' : h.status}
                       </span>
                     </td>
                     <td>
@@ -766,7 +836,7 @@ const AttendanceView = {
   },
 
   async quickPunch() {
-    const employeeId = AuthGuard.userProfile?.employeeId || AuthGuard.currentUser?.uid;
+    const employeeId = AuthGuard.userProfile?.employeeId || AuthGuard.userProfile?.employeeCode || AuthGuard.currentUser?.uid || AuthGuard.userProfile?.id;
     const todayRecord = await attendanceService.getTodayRecord(employeeId);
     if (!todayRecord || !todayRecord.checkIn || todayRecord.checkOut) {
       await this.executeCheckIn();
@@ -936,11 +1006,20 @@ const AttendanceView = {
                         <td>${t.employee.designation || 'Staff'}</td>
                         <td><span class="font-semibold text-main">${t.attendance.checkIn || '—'}</span></td>
                         <td><span class="badge ${t.attendance.totalBreakMinutes > 0 ? 'badge-warning' : 'badge-neutral'}">${t.attendance.breakFormatted || (t.attendance.totalBreakMinutes ? t.attendance.totalBreakMinutes + 'm' : '0m')}</span></td>
-                        <td><span class="font-semibold text-main">${t.attendance.checkOut || '—'}</span></td>
+                        <td>
+                          ${((t.attendance.checkOut === '09:00 PM' || t.attendance.check_out === '09:00 PM') && ((t.attendance.device && t.attendance.device.includes('Auto Punched Out')) || t.attendance.status === 'HALF_DAY')) ? `
+                            <span class="badge badge-warning" style="font-size: 0.72rem; display: inline-flex; align-items: center; gap: 4px;" title="Shift auto-closed at 9:00 PM because check-out was not recorded.">
+                              <svg width="11" height="11" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                              09:00 PM (Auto)
+                            </span>
+                          ` : `
+                            <span class="font-semibold text-main">${t.attendance.checkOut || '<span class="badge badge-warning" style="font-size: 0.7rem;">On Shift</span>'}</span>
+                          `}
+                        </td>
                         <td><strong style="color: var(--primary);">${t.attendance.workedHoursFormatted || '0h 00m'}</strong></td>
                         <td>
-                          <span class="badge ${t.attendance.status === 'PRESENT' ? 'badge-success' : (t.attendance.status === 'LATE' ? 'badge-warning' : (t.attendance.status === 'ON_BREAK' ? 'badge-warning' : 'badge-neutral'))}">
-                            ${t.attendance.status}
+                          <span class="badge ${t.attendance.status === 'PRESENT' ? 'badge-success' : (t.attendance.status === 'LATE' ? 'badge-warning' : (t.attendance.status === 'HALF_DAY' ? 'badge-warning' : (t.attendance.status === 'ON_BREAK' ? 'badge-warning' : 'badge-neutral')))}">
+                            <span class="badge-dot"></span> ${t.attendance.status === 'HALF_DAY' ? 'HALF DAY (Auto Closed)' : t.attendance.status}
                           </span>
                         </td>
                       </tr>
@@ -979,12 +1058,9 @@ const AttendanceView = {
 
   // 4. REGULARIZATION QUEUE TAB
   async renderRegularizationsTab() {
-    const rawRole = (AuthGuard._previewRoleId || AuthGuard.userProfile?.roleId || 'EMPLOYEE').toString().toUpperCase().trim();
-    const isSuperAdmin = rawRole === 'SUPER_ADMIN';
-    const isCompanyAdmin = rawRole === 'COMPANY_ADMIN' || rawRole === 'ADMIN';
-    const isHR = rawRole === 'HR' || rawRole === 'HR_MANAGER';
-    const isManager = ['MANAGER', 'OPERATIONS_MANAGER', 'TEAM_LEAD'].includes(rawRole);
-    const canApprove = isSuperAdmin || isCompanyAdmin || isHR || isManager;
+    const roleInfo = this.getUserRoleInfo();
+    const { isSuperAdmin, isHR, isOps, isTL, isDeptManager, isManager } = roleInfo;
+    const canApprove = roleInfo.canApproveRegularization;
     const currentUserId = AuthGuard.currentUser?.uid;
     const currentEmployeeId = AuthGuard.userProfile?.employeeId;
 
@@ -1085,7 +1161,7 @@ const AttendanceView = {
   },
 
   openRegularizationModal(defaultDate = null, origIn = null, origOut = null) {
-    const employeeId = AuthGuard.userProfile?.employeeId || AuthGuard.currentUser?.uid;
+    const employeeId = AuthGuard.userProfile?.employeeId || AuthGuard.userProfile?.employeeCode || AuthGuard.currentUser?.uid || AuthGuard.userProfile?.id;
     const employeeName = AuthGuard.userProfile?.displayName || 'Employee';
 
     ModalManager.openModal({
@@ -1130,7 +1206,7 @@ const AttendanceView = {
   },
 
   async submitRegularization() {
-    const employeeId = AuthGuard.userProfile?.employeeId || AuthGuard.currentUser?.uid;
+    const employeeId = AuthGuard.userProfile?.employeeId || AuthGuard.userProfile?.employeeCode || AuthGuard.currentUser?.uid || AuthGuard.userProfile?.id;
     const employeeName = AuthGuard.userProfile?.displayName || 'Employee';
     const date = document.getElementById('reg-date')?.value;
     const reqIn = document.getElementById('reg-req-in')?.value;
@@ -1450,11 +1526,11 @@ const AttendanceView = {
     }
   },
 
-  // 7. EDIT ATTENDANCE MODAL (ADMIN / HR)
+  // 7. EDIT ATTENDANCE MODAL (ADMIN / HR / OPS)
   openEditAttendanceModal(recordId, name, date, checkIn, checkOut, status) {
-    const rawRole = (AuthGuard._previewRoleId || AuthGuard.userProfile?.roleId || 'EMPLOYEE').toString().toUpperCase().trim();
-    if (!['SUPER_ADMIN', 'COMPANY_ADMIN', 'HR', 'HR_MANAGER'].includes(rawRole)) {
-      Toast.error('Security Alert: Only HR and Super Admin can edit attendance records.');
+    const roleInfo = this.getUserRoleInfo();
+    if (!roleInfo.canManageAttendance) {
+      Toast.error('Security Alert: Only HR, Operations Managers, and Administrators can edit attendance records.');
       return;
     }
 
@@ -1492,9 +1568,9 @@ const AttendanceView = {
   },
 
   async saveAttendanceEdit(recordId) {
-    const rawRole = (AuthGuard._previewRoleId || AuthGuard.userProfile?.roleId || 'EMPLOYEE').toString().toUpperCase().trim();
-    if (!['SUPER_ADMIN', 'COMPANY_ADMIN', 'HR', 'HR_MANAGER'].includes(rawRole)) {
-      Toast.error('Security Alert: Only HR and Super Admin can edit attendance records.');
+    const roleInfo = this.getUserRoleInfo();
+    if (!roleInfo.canManageAttendance) {
+      Toast.error('Security Alert: Only HR, Operations Managers, and Administrators can edit attendance records.');
       return;
     }
 

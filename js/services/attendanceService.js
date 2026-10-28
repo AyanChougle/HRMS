@@ -197,22 +197,33 @@ const attendanceService = {
 
   // 1. GET TODAY'S ATTENDANCE RECORD FOR AN EMPLOYEE
   async getTodayRecord(employeeId, date = null) {
-    if (!employeeId) return null;
+    const targetEmpId = employeeId 
+      || AuthGuard.userProfile?.employeeId 
+      || AuthGuard.userProfile?.employeeCode 
+      || AuthGuard.currentUser?.uid 
+      || AuthGuard.userProfile?.id;
+    if (!targetEmpId) return null;
     try {
       const attendanceDate = date || this.getCompanyLocalDate();
-      const recordId = `${employeeId}_${attendanceDate}`;
+      const recordId = `${targetEmpId}_${attendanceDate}`;
 
       // 1. Primary & Authoritative: Check Hostinger MySQL
       if (typeof apiClient !== 'undefined') {
         try {
-          const sqlRes = await apiClient.get('attendance.php', { action: 'today', employee_id: employeeId, date: attendanceDate });
+          const empCode = AuthGuard.userProfile?.employeeCode || '';
+          const sqlRes = await apiClient.get('attendance.php', { 
+            action: 'today', 
+            employee_id: targetEmpId, 
+            employee_code: empCode, 
+            date: attendanceDate 
+          });
           if (sqlRes && sqlRes.success && sqlRes.record) {
             const r = sqlRes.record;
             return this.sanitizeRecord({
               id: recordId,
               recordKey: r.record_key || recordId,
-              employeeId: r.employee_id || employeeId,
-              employeeCode: r.employee_code || '',
+              employeeId: r.employee_id || targetEmpId,
+              employeeCode: r.employee_code || empCode,
               employeeName: r.employee_name || '',
               department: r.department || 'Operations',
               managerId: r.manager_id || '',
@@ -401,6 +412,7 @@ const attendanceService = {
           const sqlParams = {};
           if (filters.date) sqlParams.date = filters.date;
           if (filters.employeeId) sqlParams.employee_id = filters.employeeId;
+          if (filters.employeeCode) sqlParams.employee_code = filters.employeeCode;
           const sqlRes = await apiClient.get('attendance.php', sqlParams);
           if (sqlRes && sqlRes.success && Array.isArray(sqlRes.records) && sqlRes.records.length > 0) {
             records = sqlRes.records.map(r => this.sanitizeRecord({

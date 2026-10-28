@@ -204,9 +204,17 @@ const employeeService = {
 
       // MySQL is authoritative source of truth
 
-      // Filter out empty or corrupted records
+      // Filter out empty or corrupted records and strictly deduplicate by code & email
+      const seenCodes = new Set();
+      const seenEmails = new Set();
       records = records.filter(e => {
         if (!e || !(e.fullName || e.name || e.employeeCode || e.workEmail || e.email)) return false;
+        const c = (e.employeeCode || '').trim().toUpperCase();
+        const em = (e.workEmail || e.email || '').trim().toLowerCase();
+        if (c && seenCodes.has(c)) return false;
+        if (em && seenEmails.has(em)) return false;
+        if (c) seenCodes.add(c);
+        if (em) seenEmails.add(em);
         return true;
       });
 
@@ -579,8 +587,35 @@ const employeeService = {
       // await onboardingService.generateDefaultTasksForEmployee(payload);
 
       await auditService.log('EMPLOYEE_CREATED', 'PEOPLE', 'employees', docRef.id, { employeeCode, fullName });
+      
+      // Authoritative Save directly to Hostinger MySQL Backend
+      const mysqlPayload = {
+        id: docRef.id,
+        employee_code: payload.employeeCode,
+        first_name: payload.firstName,
+        last_name: payload.lastName,
+        full_name: payload.fullName,
+        email: payload.workEmail || payload.email,
+        work_email: payload.workEmail || payload.email,
+        personal_email: payload.personalEmail || null,
+        phone: payload.phone || '',
+        department: payload.department || 'Operations',
+        designation: payload.designation || 'Staff',
+        role_id: payload.roleId || 'EMPLOYEE',
+        branch_name: payload.branchName || payload.location || 'Ghansoli - Navi Mumbai, Maharashtra',
+        location: payload.branchName || payload.location || 'Ghansoli - Navi Mumbai, Maharashtra',
+        manager_id: payload.managerId || null,
+        manager: payload.manager || null,
+        date_of_joining: payload.dateOfJoining,
+        employment_status: payload.employmentStatus || 'ACTIVE',
+        status: payload.status || 'ACTIVE'
+      };
+      if (typeof apiClient !== 'undefined') {
+        await apiClient.post('employees.php', mysqlPayload);
+      } else {
         await this.syncToMySQL(payload);
-        return payload;
+      }
+      return payload;
     } catch (err) {
       console.error('Error creating employee:', err);
       throw err;
@@ -661,9 +696,43 @@ const employeeService = {
       }
 
       await auditService.log('EMPLOYEE_UPDATED', 'PEOPLE', 'employees', actualDocId, updates);
-        const snap = await db.collection('employees').doc(actualDocId).get();
-        if (snap.exists) await this.syncToMySQL(snap.data());
-        return true;
+
+      // Authoritative Save directly to Hostinger MySQL Backend
+      const mysqlPayload = {
+        id: actualDocId,
+        employee_code: payload.employeeCode,
+        first_name: payload.firstName || (payload.fullName || '').split(' ')[0] || '',
+        last_name: payload.lastName || (payload.fullName || '').split(' ').slice(1).join(' ') || '',
+        full_name: payload.fullName || payload.name,
+        email: payload.workEmail || payload.email,
+        work_email: payload.workEmail || payload.email,
+        personal_email: payload.personalEmail || null,
+        phone: payload.phone || '',
+        department: payload.department || 'Operations',
+        designation: payload.designation || 'Staff',
+        role_id: payload.roleId || 'EMPLOYEE',
+        branch_name: payload.branchName || payload.location || 'Ghansoli - Navi Mumbai, Maharashtra',
+        location: payload.branchName || payload.location || 'Ghansoli - Navi Mumbai, Maharashtra',
+        manager_id: payload.managerId || null,
+        manager: payload.manager || null,
+        team_id: payload.teamId || null,
+        team_name: payload.teamName || null,
+        team_lead_id: payload.teamLeadId || null,
+        team_lead: payload.teamLead || null,
+        date_of_joining: payload.dateOfJoining || payload.joiningDate || new Date().toISOString().slice(0, 10),
+        employment_status: payload.employmentStatus || payload.status || 'ACTIVE',
+        status: payload.status || payload.employmentStatus || 'ACTIVE'
+      };
+
+      if (typeof apiClient !== 'undefined') {
+        const resp = await apiClient.post('employees.php', mysqlPayload);
+        if (resp && resp.success === false) {
+          throw new Error(resp.error || 'Failed to update employee in MySQL database.');
+        }
+      } else {
+        await this.syncToMySQL({ id: actualDocId, ...payload });
+      }
+      return true;
     } catch (err) {
       console.error('Error updating employee:', err);
       throw err;
