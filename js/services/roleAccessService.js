@@ -55,7 +55,7 @@ const roleAccessService = {
     ],
     TL: [
       'dashboard', 'people', 'attendance', 'leave', 'performance', 'compliance',
-      'requests', 'communication', 'reports', 'ess'
+      'documents', 'requests', 'communication', 'reports', 'ess'
     ],
     EMPLOYEE: [
       'dashboard', 'ess', 'attendance', 'leave', 'performance', 'compliance',

@@ -54,7 +54,7 @@ const CreateEmployeeView = {
         <div class="page-title-row">
           <div>
             <h1 class="page-title">Create Employee & Trainee Login</h1>
-            <p class="page-subtitle">Provision official accounts with Firebase Auth credentials, designated roles, and 8 standardized departments</p>
+            <p class="page-subtitle">Provision official accounts with secure login credentials, designated roles, and standardized departments</p>
           </div>
           <div class="page-actions">
             <button class="btn btn-secondary btn-sm" onclick="Router.navigate('people')">
@@ -287,117 +287,95 @@ const CreateEmployeeView = {
     const submitBtn = document.getElementById('create-emp-submit-btn');
     if (submitBtn) {
       submitBtn.disabled = true;
-      submitBtn.innerHTML = '<span>Creating Account in Firebase...</span>';
+      submitBtn.innerHTML = '<span>Creating Login Account...</span>';
     }
 
-    const firstName = document.getElementById('new-emp-firstname').value.trim();
-    const lastName = document.getElementById('new-emp-lastname').value.trim();
+    const firstName = (document.getElementById('new-emp-firstname')?.value || '').trim();
+    const lastName = (document.getElementById('new-emp-lastname')?.value || '').trim();
     const fullName = `${firstName} ${lastName}`.trim();
-    const email = document.getElementById('new-emp-email').value.trim().toLowerCase();
-    const password = document.getElementById('new-emp-password').value;
-    const phone = document.getElementById('new-emp-phone').value.trim();
-    const roleId = document.getElementById('new-emp-role').value;
-    const department = document.getElementById('new-emp-department').value;
-    const designation = document.getElementById('new-emp-designation').value.trim();
-    const mentor = document.getElementById('new-emp-mentor').value.trim();
-    const dateOfJoining = document.getElementById('new-emp-doj').value;
+    const email = (document.getElementById('new-emp-email')?.value || '').trim().toLowerCase();
+    const password = document.getElementById('new-emp-password')?.value || '';
+    const phone = (document.getElementById('new-emp-phone')?.value || '').trim();
+    const roleId = document.getElementById('new-emp-role')?.value || 'EMPLOYEE';
+    const department = document.getElementById('new-emp-department')?.value || 'Sales';
+    const designation = (document.getElementById('new-emp-designation')?.value || '').trim();
+    const dateOfJoining = document.getElementById('new-emp-doj')?.value || new Date().toISOString().split('T')[0];
 
-    let secondaryApp = null;
+    const tlSelect = document.getElementById('new-emp-team-leader');
+    const teamLeadId = tlSelect?.value || '';
+    const teamLeadName = tlSelect?.selectedIndex > 0 ? tlSelect.options[tlSelect.selectedIndex].text.replace(/\s*\([^)]*\)$/, '').trim() : '';
+
+    const opsSelect = document.getElementById('new-emp-ops-manager');
+    const opsManagerId = opsSelect?.value || '';
+    const opsManagerName = opsSelect?.selectedIndex > 0 ? opsSelect.options[opsSelect.selectedIndex].text.replace(/\s*\([^)]*\)$/, '').trim() : '';
+
+    const mgrSelect = document.getElementById('new-emp-manager');
+    const managerId = mgrSelect?.value || '';
+    const managerName = mgrSelect?.selectedIndex > 0 ? mgrSelect.options[mgrSelect.selectedIndex].text.replace(/\s*\([^)]*\)$/, '').trim() : '';
+
+    const mentorSelect = document.getElementById('new-emp-mentor');
+    const mentorId = mentorSelect?.value || '';
+    const mentorName = mentorSelect?.selectedIndex > 0 ? mentorSelect.options[mentorSelect.selectedIndex].text.replace(/\s*\([^)]*\)$/, '').trim() : '';
+
     try {
-      // 1. Provision Firebase Auth User using a secondary Firebase App instance
-      // This prevents the current logged-in HR / Mentor session from being logged out!
-      const appName = `AccountCreation_${Date.now()}`;
-      secondaryApp = firebase.initializeApp(firebaseConfig, appName);
-      const secondaryAuth = secondaryApp.auth();
-
-      const userCred = await secondaryAuth.createUserWithEmailAndPassword(email, password);
-      const uid = userCred.user.uid;
-
-      // Update Auth Profile Display Name
-      await userCred.user.updateProfile({ displayName: fullName });
-
-      // Generate Clean Employee Code
-      const empCode = 'EMP-' + Math.floor(100 + Math.random() * 900);
-
-      // 2. Write to Firestore 'users' collection
-      const userDoc = {
-        uid,
-        email,
+      const payload = {
+        firstName,
+        lastName,
         displayName: fullName,
-        firstName,
-        lastName,
-        phone,
-        roleId,
-        department,
-        designation,
-        initialPassword: password,
-        companyId: 'comp_diallo_india',
-        status: 'ACTIVE',
-        createdAt: firebase.firestore.FieldValue.serverTimestamp(),
-        updatedAt: firebase.firestore.FieldValue.serverTimestamp()
-      };
-      await db.collection('users').doc(uid).set(userDoc);
-
-      // 3. Write to Firestore 'employees' collection
-      const empDoc = {
-        id: uid,
-        employeeCode: empCode,
-        firstName,
-        lastName,
-        fullName,
         email,
-        workEmail: email,
+        password,
         phone,
         roleId,
         department,
         designation,
-        manager: mentor,
-        mentor,
         dateOfJoining,
-        joiningDate: dateOfJoining,
-        employmentStatus: 'ACTIVE',
-        status: 'ACTIVE',
-        initialPassword: password,
-        loginPassword: password,
-        companyId: 'comp_diallo_india',
-        branchName: 'Diallo - HQ Mumbai',
-        shift: '10:00 AM – 07:00 PM',
-        createdAt: firebase.firestore.FieldValue.serverTimestamp()
+        teamLeadId,
+        teamLead: teamLeadName,
+        teamLeadName,
+        opsManagerId,
+        opsManagerName,
+        managerId: managerId || opsManagerId,
+        manager: managerName || opsManagerName,
+        managerName: managerName || opsManagerName,
+        mentor: mentorName,
+        mentorId,
+        branchName: 'Trade For Wealth - HQ Mumbai',
+        location: 'Ghansoli - Navi Mumbai, Maharashtra'
       };
-      await db.collection('employees').doc(uid).set(empDoc);
 
-      // 4. If Trainee, automatically initialize in 'trainees' collection with Day 1
-      if (roleId === 'TRAINEE') {
-        await db.collection('trainees').doc(uid).set({
-          traineeId: uid,
-          name: fullName,
-          fullName,
-          email,
-          phone,
-          department,
-          mentorName: mentor || 'Lead Corporate Trainer',
-          mentorContact: '9372868617',
-          currentDay: 1,
-          totalDays: 7,
-          currentModuleTitle: 'Day 1: Introduction, Trade Types, Market, What is Cryptocurrency',
-          status: 'ACTIVE',
-          enrolledDate: dateOfJoining,
-          companyId: 'comp_diallo_india',
-          createdAt: firebase.firestore.FieldValue.serverTimestamp()
-        });
+      const res = await apiClient.post('users.php?action=create', payload);
+
+      if (!res || res.success === false) {
+        throw new Error(res?.error || res?.message || 'Failed to create user account.');
       }
 
-      // Log Audit Trail
+      const createdUser = res.user || {};
+      const empCode = createdUser.employee_code || '';
+
+      // Log Audit Trail if available
       if (typeof auditService !== 'undefined') {
-        await auditService.log('USER_LOGIN_CREATED', 'SECURITY', 'users', uid, { email, roleId, department, createdBy: AuthGuard.userProfile?.displayName });
+        try {
+          await auditService.log('USER_LOGIN_CREATED', 'SECURITY', 'users', createdUser.id || createdUser.uid, {
+            email,
+            roleId,
+            department,
+            employeeCode: empCode,
+            createdBy: AuthGuard.userProfile?.displayName || AuthGuard.userProfile?.email
+          });
+        } catch (_) {}
       }
 
-      // 5. Present Success Modal with Credentials
-      document.getElementById('cred-name').textContent = fullName;
-      document.getElementById('cred-email').textContent = email;
-      document.getElementById('cred-pass').textContent = password;
-      document.getElementById('cred-role').textContent = roleId;
-      document.getElementById('cred-dept').textContent = department;
+      // Present Success Modal with Credentials
+      const credName = document.getElementById('cred-name');
+      if (credName) credName.textContent = fullName + (empCode ? ` (${empCode})` : '');
+      const credEmail = document.getElementById('cred-email');
+      if (credEmail) credEmail.textContent = email;
+      const credPass = document.getElementById('cred-pass');
+      if (credPass) credPass.textContent = password;
+      const credRole = document.getElementById('cred-role');
+      if (credRole) credRole.textContent = roleId;
+      const credDept = document.getElementById('cred-dept');
+      if (credDept) credDept.textContent = department;
 
       const modal = document.getElementById('credentials-success-modal');
       if (modal) modal.style.display = 'flex';
@@ -405,21 +383,15 @@ const CreateEmployeeView = {
       Toast.success(`Login credentials created for ${fullName} (${email})`);
 
       // Reset form
-      document.getElementById('create-employee-form').reset();
-      document.getElementById('new-emp-doj').value = new Date().toISOString().split('T')[0];
+      const form = document.getElementById('create-employee-form');
+      if (form) form.reset();
+      const dojInput = document.getElementById('new-emp-doj');
+      if (dojInput) dojInput.value = new Date().toISOString().split('T')[0];
+
     } catch (err) {
       console.error('[CreateEmployee] Error provisioning user:', err);
-      let msg = err.message;
-      if (err.code === 'auth/email-already-in-use') {
-        msg = 'An account with this email address already exists in Firebase Auth.';
-      } else if (err.code === 'auth/weak-password') {
-        msg = 'The password is too weak. Please use at least 6 characters.';
-      }
-      Toast.error('Account creation failed: ' + msg);
+      Toast.error('Account creation failed: ' + (err.message || 'Unknown server error'));
     } finally {
-      if (secondaryApp) {
-        try { await secondaryApp.delete(); } catch (_) {}
-      }
       if (submitBtn) {
         submitBtn.disabled = false;
         submitBtn.innerHTML = `
@@ -438,11 +410,11 @@ const CreateEmployeeView = {
   },
 
   copyCredentials() {
-    const email = document.getElementById('cred-email').textContent;
-    const pass = document.getElementById('cred-pass').textContent;
-    const name = document.getElementById('cred-name').textContent;
-    const role = document.getElementById('cred-role').textContent;
-    const text = `Diallo HRMS Login Credentials:\nName: ${name}\nRole: ${role}\nEmail: ${email}\nPassword: ${pass}\nPortal: https://ayanchougle.github.io/HRMS/login.html`;
+    const email = document.getElementById('cred-email')?.textContent || '';
+    const pass = document.getElementById('cred-pass')?.textContent || '';
+    const name = document.getElementById('cred-name')?.textContent || '';
+    const role = document.getElementById('cred-role')?.textContent || '';
+    const text = `Trade For Wealth HRMS Login Credentials:\nName: ${name}\nRole: ${role}\nEmail: ${email}\nPassword: ${pass}\nPortal: https://hrmstfw.com/login.html`;
     
     if (navigator.clipboard) {
       navigator.clipboard.writeText(text).then(() => {

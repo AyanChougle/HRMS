@@ -486,6 +486,7 @@ const LeaveView = {
                   <th>Days</th>
                   <th>Reason</th>
                   <th>Status</th>
+                  <th>Reviewed / Approved By</th>
                   <th>Action</th>
                 </tr>
               </thead>
@@ -502,6 +503,25 @@ const LeaveView = {
                       <span class="badge ${r.status === "APPROVED" ? "badge-success" : r.status === "PENDING" ? "badge-warning" : r.status === "REJECTED" ? "badge-danger" : "badge-neutral"}">
                         <span class="badge-dot"></span> ${r.status}
                       </span>
+                    </td>
+                    <td>
+                      ${r.status === "APPROVED" ? `
+                        <div style="font-size: 0.82rem; font-weight: 600; color: var(--success); display: flex; align-items: center; gap: 4px;">
+                          <svg width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
+                          <span>${r.approvedByName || r.reviewedBy || 'Manager / HR'}</span>
+                        </div>
+                        ${r.reviewedAt ? `<div style="font-size: 0.72rem; color: var(--text-muted); margin-top: 2px;">${r.reviewedAt}</div>` : ''}
+                      ` : (r.status === "REJECTED" ? `
+                        <div style="font-size: 0.82rem; font-weight: 600; color: var(--danger); display: flex; align-items: center; gap: 4px;">
+                          <svg width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+                          <span>Rejected by ${r.approvedByName || r.reviewedBy || 'Manager / HR'}</span>
+                        </div>
+                        ${r.rejectionReason ? `<div style="font-size: 0.72rem; color: var(--danger); font-style: italic; margin-top: 2px;">"${r.rejectionReason}"</div>` : ''}
+                      ` : (r.status === "CANCELLED" ? `
+                        <span class="text-muted" style="font-size: 0.75rem;">Cancelled</span>
+                      ` : `
+                        <span class="badge badge-warning" style="font-size: 0.72rem;">Pending Review</span>
+                      `))}
                     </td>
                     <td>
                       ${
@@ -574,6 +594,7 @@ const LeaveView = {
                   <th>Days</th>
                   <th>Reason</th>
                   <th>Status</th>
+                  <th>Reviewed / Approved By</th>
                   <th>Actions</th>
                 </tr>
               </thead>
@@ -601,6 +622,25 @@ const LeaveView = {
                       </span>
                     </td>
                     <td>
+                      ${r.status === "APPROVED" ? `
+                        <div style="font-size: 0.82rem; font-weight: 600; color: var(--success); display: flex; align-items: center; gap: 4px;">
+                          <svg width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
+                          <span>${r.approvedByName || r.reviewedBy || 'Manager / HR'}</span>
+                        </div>
+                        ${r.reviewedAt ? `<div style="font-size: 0.72rem; color: var(--text-muted); margin-top: 2px;">${r.reviewedAt}</div>` : ''}
+                      ` : (r.status === "REJECTED" ? `
+                        <div style="font-size: 0.82rem; font-weight: 600; color: var(--danger); display: flex; align-items: center; gap: 4px;">
+                          <svg width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+                          <span>Rejected by ${r.approvedByName || r.reviewedBy || 'Manager / HR'}</span>
+                        </div>
+                        ${r.rejectionReason ? `<div style="font-size: 0.72rem; color: var(--danger); font-style: italic; margin-top: 2px;">"${r.rejectionReason}"</div>` : ''}
+                      ` : (r.status === "CANCELLED" ? `
+                        <span class="text-muted" style="font-size: 0.75rem;">Cancelled</span>
+                      ` : `
+                        <span class="badge badge-warning" style="font-size: 0.72rem;">Pending Review</span>
+                      `))}
+                    </td>
+                    <td>
                       ${
                         r.status === "PENDING"
                           ? `
@@ -609,7 +649,7 @@ const LeaveView = {
                           <button class="btn btn-secondary btn-sm" onclick="LeaveView.openRejectModal('${r.id}')">Reject</button>
                         </div>
                       `
-                          : '<span class="text-muted" style="font-size: 0.75rem;">Reviewed</span>'
+                          : `<span class="badge badge-soft" style="font-size: 0.72rem; color: ${r.status === "APPROVED" ? "var(--success)" : "var(--danger)"};">${r.status === "APPROVED" ? "Approved" : "Reviewed"}</span>`
                       }
                     </td>
                   </tr>

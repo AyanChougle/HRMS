@@ -44,16 +44,13 @@ const leaveService = {
   // 2. CHECK CONFLICTING OVERLAPPING LEAVE
   async checkLeaveConflict(employeeId, startDate, endDate, excludeDocId = null) {
     try {
-      const snapshot = await db.collection('leaveRequests')
-        .where('employeeId', '==', employeeId)
-        .where('status', 'in', ['PENDING', 'APPROVED'])
-        .get();
-
-      for (const doc of snapshot.docs) {
-        if (excludeDocId && doc.id === excludeDocId) continue;
-        const d = doc.data();
-        if (startDate <= d.endDate && endDate >= d.startDate) {
-          return { hasConflict: true, conflictLeave: d };
+      const allLeaves = await this.getLeaveApplications({ employeeId });
+      for (const d of allLeaves) {
+        if (excludeDocId && String(d.id) === String(excludeDocId)) continue;
+        if (['PENDING', 'APPROVED'].includes(d.status)) {
+          if (startDate <= d.endDate && endDate >= d.startDate) {
+            return { hasConflict: true, conflictLeave: d };
+          }
         }
       }
       return { hasConflict: false };
@@ -179,17 +176,14 @@ const leaveService = {
 
       // Query leaveApplications to compute dynamic counters
       if (employeeId) {
-        const snap = await db.collection('leaveApplications')
-          .where('employeeId', '==', employeeId)
-          .get();
+        const apps = await this.getLeaveApplications({ employeeId });
 
-        snap.docs.forEach(doc => {
-          const d = doc.data();
+        apps.forEach(d => {
           if (d.status === 'REJECTED' || d.status === 'CANCELLED') return;
 
-          const days = Number(d.numberOfDays) || 1;
-          const code = this.normalizeLeaveCode(d.leaveTypeCode || d.type || d.leaveTypeName);
-          const lDate = new Date(d.startDate);
+          const days = Number(d.numberOfDays || d.days_count) || 1;
+          const code = this.normalizeLeaveCode(d.leaveTypeCode || d.type || d.leaveTypeName || d.leave_type);
+          const lDate = new Date(d.startDate || d.start_date);
           const isCurrentYear = !isNaN(lDate.getTime()) ? lDate.getFullYear() === currentYear : true;
           const isCurrentMonth = !isNaN(lDate.getTime()) ? (lDate.getFullYear() === currentYear && lDate.getMonth() === currentMonth) : false;
 
@@ -301,8 +295,9 @@ const leaveService = {
       const balances = await this.getEmployeeBalances(employeeId, year, companyId);
       const leaveCode = this.normalizeLeaveCode(leaveData.type || leaveData.leaveTypeCode || 'PL');
 
+      const quota = leaveCode === 'LWP' ? (balances.LWP || { name: 'Unpaid Leave (Loss of Pay)' }) : (balances.PL || { name: 'Paid Leave (PL)' });
+
       if (leaveCode !== 'LWP') {
-        const quota = balances.PL;
         if (!quota || quota.allocated === 0) {
           throw new Error('Employees with tenure under 6 months have 0 Paid Leaves allocated. You may submit an Unpaid Leave (Loss of Pay) request.');
         }
@@ -317,18 +312,15 @@ const leaveService = {
         const maxPerMonth = quota.monthlyQuota || (quota.allocated > 12 ? 3 : 1);
 
         let monthDaysAlreadyUsed = 0;
-        const appsSnap = await db.collection('leaveApplications')
-          .where('employeeId', '==', employeeId)
-          .get();
+        const apps = await this.getLeaveApplications({ employeeId });
 
-        appsSnap.docs.forEach(doc => {
-          const d = doc.data();
+        apps.forEach(d => {
           if (d.status === 'REJECTED' || d.status === 'CANCELLED') return;
-          const c = this.normalizeLeaveCode(d.leaveTypeCode || d.type || d.leaveTypeName);
+          const c = this.normalizeLeaveCode(d.leaveTypeCode || d.type || d.leaveTypeName || d.leave_type);
           if (c === 'PL') {
-            const lDate = new Date(d.startDate);
+            const lDate = new Date(d.startDate || d.start_date);
             if (!isNaN(lDate.getTime()) && lDate.getFullYear() === reqYear && lDate.getMonth() === reqMonth) {
-              monthDaysAlreadyUsed += (Number(d.numberOfDays) || 1);
+              monthDaysAlreadyUsed += (Number(d.numberOfDays || d.days_count) || 1);
             }
           }
         });
@@ -350,7 +342,7 @@ const leaveService = {
         managerId: emp?.managerId || '',
         manager: emp?.manager || '',
         leaveTypeCode: leaveCode,
-        leaveTypeName: quota?.name || leaveData.leaveTypeName || 'Leave',
+        leaveTypeName: leaveCode === 'LWP' ? 'Unpaid Leave (Loss of Pay)' : (quota?.name || leaveData.leaveTypeName || 'Paid Leave (PL)'),
         startDate: leaveData.startDate,
         endDate: leaveData.endDate,
         numberOfDays,
@@ -418,72 +410,35 @@ const leaveService = {
   async approveLeave(leaveId) {
     try {
       const currentUserId = AuthGuard.currentUser?.uid;
-      const leaveDoc = await db.collection('leaveApplications').doc(leaveId).get();
-      if (!leaveDoc.exists) throw new Error('Leave application not found');
+      const reviewerName = AuthGuard.userProfile?.displayName || AuthGuard.userProfile?.fullName || 'Supervisor';
+      const reviewerRole = AuthGuard._previewRoleId || AuthGuard.userProfile?.roleId || '';
+      const fullReviewer = reviewerRole ? `${reviewerName} (${reviewerRole})` : reviewerName;
 
-      const leave = leaveDoc.data();
-      if (leave.status !== 'PENDING') {
-        throw new Error(`Leave application is already ${leave.status}.`);
-      }
-
-      // Enforce anti-self-approval
-      if (leave.requestedById === currentUserId && AuthGuard.userProfile?.roleId !== 'SUPER_ADMIN') {
-        throw new Error('Security Violation: You cannot approve your own leave request.');
-      }
-
-      const year = new Date(leave.startDate).getFullYear() || 2026;
-      const balanceDocId = `${leave.employeeId}_${year}`;
-
-      // Update Leave Balances in Firestore
-      const balanceRef = db.collection('leaveBalances').doc(balanceDocId);
-      const balanceDoc = await balanceRef.get();
-      if (balanceDoc.exists) {
-        const balances = balanceDoc.data().balances || {};
-        const code = leave.leaveTypeCode || 'AL';
-        if (balances[code]) {
-          balances[code].used = (balances[code].used || 0) + leave.numberOfDays;
-          balances[code].available = Math.max(0, balances[code].allocated - balances[code].used);
-          await balanceRef.update({ balances, updatedAt: firebase.firestore.FieldValue.serverTimestamp() });
+      // 1. Authoritative approval on Hostinger MySQL
+      if (typeof apiClient !== 'undefined') {
+        const resp = await apiClient.post('leaves.php?action=review', {
+          id: leaveId,
+          status: 'APPROVED',
+          reviewed_by: fullReviewer
+        });
+        if (resp && resp.success === false) {
+          throw new Error(resp.error || 'Failed to approve leave request.');
         }
       }
 
-      // Update Leave Status to APPROVED
-      await db.collection('leaveApplications').doc(leaveId).update({
-        status: 'APPROVED',
-        approvedBy: AuthGuard.userProfile?.displayName || 'Manager',
-        approvedById: currentUserId,
-        approvedAt: firebase.firestore.FieldValue.serverTimestamp(),
-        updatedAt: firebase.firestore.FieldValue.serverTimestamp()
-      });
+      // 2. Sync to local Firestore stub
+      try {
+        await db.collection('leaveApplications').doc(String(leaveId)).update({
+          status: 'APPROVED',
+          approvedBy: fullReviewer,
+          approvedByName: fullReviewer,
+          reviewedBy: fullReviewer,
+          approvedById: currentUserId,
+          approvedAt: firebase.firestore.FieldValue.serverTimestamp()
+        });
+      } catch (_) {}
 
-      // Synchronize with attendanceRecords (mark dates as ON_LEAVE)
-      const start = new Date(leave.startDate);
-      const end = new Date(leave.endDate);
-      const cur = new Date(start);
-
-      while (cur <= end) {
-        const dateStr = cur.toISOString().slice(0, 10);
-        const recordId = `${leave.employeeId}_${dateStr}`;
-        const recordRef = db.collection('attendanceRecords').doc(recordId);
-        const recDoc = await recordRef.get();
-
-        if (!recDoc.exists || recDoc.data().status === 'ABSENT') {
-          await recordRef.set({
-            employeeId: leave.employeeId,
-            employeeName: leave.employeeName,
-            companyId: leave.companyId,
-            date: dateStr,
-            checkIn: '—',
-            checkOut: '—',
-            status: 'ON_LEAVE',
-            notes: `Approved ${leave.leaveTypeName}`,
-            updatedAt: firebase.firestore.FieldValue.serverTimestamp()
-          }, { merge: true });
-        }
-        cur.setDate(cur.getDate() + 1);
-      }
-
-      await auditService.log('LEAVE_APPROVED', 'LEAVE', 'leaveApplications', leaveId, { approvedBy: AuthGuard.userProfile?.displayName });
+      await auditService.log('LEAVE_APPROVED', 'LEAVE', 'leaveApplications', String(leaveId), { approvedBy: fullReviewer }).catch(() => {});
       return true;
     } catch (err) {
       console.error('Error approving leave:', err);
@@ -494,15 +449,39 @@ const leaveService = {
   // 6. REJECT LEAVE REQUEST
   async rejectLeave(leaveId, reason = 'Rejected by Approver') {
     try {
-      await db.collection('leaveApplications').doc(leaveId).update({
-        status: 'REJECTED',
-        rejectionReason: reason,
-        rejectedBy: AuthGuard.userProfile?.displayName || 'Approver',
-        rejectedAt: firebase.firestore.FieldValue.serverTimestamp(),
-        updatedAt: firebase.firestore.FieldValue.serverTimestamp()
-      });
+      const currentUserId = AuthGuard.currentUser?.uid;
+      const reviewerName = AuthGuard.userProfile?.displayName || AuthGuard.userProfile?.fullName || 'Supervisor';
+      const reviewerRole = AuthGuard._previewRoleId || AuthGuard.userProfile?.roleId || '';
+      const fullReviewer = reviewerRole ? `${reviewerName} (${reviewerRole})` : reviewerName;
 
-      await auditService.log('LEAVE_REJECTED', 'LEAVE', 'leaveApplications', leaveId, { reason });
+      // 1. Authoritative rejection on Hostinger MySQL
+      if (typeof apiClient !== 'undefined') {
+        const resp = await apiClient.post('leaves.php?action=review', {
+          id: leaveId,
+          status: 'REJECTED',
+          reviewed_by: fullReviewer,
+          rejection_reason: reason
+        });
+        if (resp && resp.success === false) {
+          throw new Error(resp.error || 'Failed to reject leave request.');
+        }
+      }
+
+      // 2. Sync to local Firestore stub
+      try {
+        await db.collection('leaveApplications').doc(String(leaveId)).update({
+          status: 'REJECTED',
+          rejectionReason: reason,
+          rejectedBy: fullReviewer,
+          approvedByName: fullReviewer,
+          reviewedBy: fullReviewer,
+          rejectedById: currentUserId,
+          rejectedAt: firebase.firestore.FieldValue.serverTimestamp(),
+          updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+        });
+      } catch (_) {}
+
+      await auditService.log('LEAVE_REJECTED', 'LEAVE', 'leaveApplications', String(leaveId), { reason, rejectedBy: fullReviewer }).catch(() => {});
       return true;
     } catch (err) {
       console.error('Error rejecting leave:', err);
@@ -513,35 +492,19 @@ const leaveService = {
   // 7. CANCEL UPCOMING APPROVED LEAVE (RESTORES DEDUCTED BALANCE)
   async cancelLeave(leaveId) {
     try {
-      const leaveDoc = await db.collection('leaveApplications').doc(leaveId).get();
-      if (!leaveDoc.exists) throw new Error('Leave application not found');
-
-      const leave = leaveDoc.data();
-      const year = new Date(leave.startDate).getFullYear() || 2026;
-      const balanceDocId = `${leave.employeeId}_${year}`;
-
-      // Restore balance if previously approved
-      if (leave.status === 'APPROVED') {
-        const balanceRef = db.collection('leaveBalances').doc(balanceDocId);
-        const balanceDoc = await balanceRef.get();
-        if (balanceDoc.exists) {
-          const balances = balanceDoc.data().balances || {};
-          const code = leave.leaveTypeCode || 'AL';
-          if (balances[code]) {
-            balances[code].used = Math.max(0, (balances[code].used || 0) - leave.numberOfDays);
-            balances[code].available = Math.max(0, balances[code].allocated - balances[code].used);
-            await balanceRef.update({ balances, updatedAt: firebase.firestore.FieldValue.serverTimestamp() });
-          }
-        }
+      if (typeof apiClient !== 'undefined') {
+        await apiClient.post('leaves.php?action=cancel', { id: leaveId }).catch(() => {});
       }
 
-      await db.collection('leaveApplications').doc(leaveId).update({
-        status: 'CANCELLED',
-        cancelledAt: firebase.firestore.FieldValue.serverTimestamp(),
-        updatedAt: firebase.firestore.FieldValue.serverTimestamp()
-      });
+      try {
+        await db.collection('leaveApplications').doc(String(leaveId)).update({
+          status: 'CANCELLED',
+          cancelledAt: firebase.firestore.FieldValue.serverTimestamp(),
+          updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+        });
+      } catch (_) {}
 
-      await auditService.log('LEAVE_CANCELLED', 'LEAVE', 'leaveApplications', leaveId, { cancelledBy: AuthGuard.userProfile?.displayName });
+      await auditService.log('LEAVE_CANCELLED', 'LEAVE', 'leaveApplications', String(leaveId), { cancelledBy: AuthGuard.userProfile?.displayName }).catch(() => {});
       return true;
     } catch (err) {
       console.error('Error cancelling leave:', err);
@@ -576,6 +539,10 @@ const leaveService = {
               numberOfDays: Number(l.days_count || 1),
               reason: l.reason,
               status: l.status,
+              approvedByName: l.approved_by_name || l.reviewed_by || null,
+              reviewedBy: l.approved_by_name || l.reviewed_by || null,
+              reviewedAt: l.reviewed_at || null,
+              rejectionReason: l.rejection_reason || null,
               createdAt: l.created_at
             }));
             loadedFromMySQL = true;
@@ -612,19 +579,23 @@ const leaveService = {
     }
   },
 
+  // Alias for getLeaveRequests
+  async getLeaveApplications(filters = {}) {
+    return this.getLeaveRequests(filters);
+  },
+
   // 9. COMPUTE TODAY'S LEAVE METRICS FOR DASHBOARDS
   async getLeaveDashboardSummary(companyId = 'comp_diallo_india') {
     try {
       const todayStr = new Date().toISOString().slice(0, 10);
-      const snapshot = await db.collection('leaveApplications').where('companyId', '==', companyId).get();
+      const leaves = await this.getLeaveRequests({ companyId });
 
       let onLeaveToday = 0;
       let pendingRequests = 0;
       let approvedCount = 0;
       let rejectedCount = 0;
 
-      snapshot.docs.forEach(doc => {
-        const d = doc.data();
+      leaves.forEach(d => {
         if (d.status === 'PENDING') pendingRequests++;
         else if (d.status === 'APPROVED') {
           approvedCount++;

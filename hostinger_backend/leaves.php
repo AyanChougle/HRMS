@@ -15,6 +15,41 @@ $userCode = $currentUser['employee_code'] ?? $_GET['employee_code'] ?? '';
 $userUid = $currentUser['uid'] ?? $currentUser['id'] ?? $_GET['uid'] ?? '';
 $userDept = $currentUser['department'] ?? '';
 
+// Ensure leave_applications table and review audit columns exist
+try {
+    $pdo->exec("
+        CREATE TABLE IF NOT EXISTS leave_applications (
+            id INT AUTO_INCREMENT PRIMARY KEY,
+            company_id VARCHAR(100) DEFAULT 'comp_diallo_india',
+            employee_id VARCHAR(100) NOT NULL,
+            employee_code VARCHAR(50) DEFAULT NULL,
+            employee_name VARCHAR(150) DEFAULT NULL,
+            department VARCHAR(100) DEFAULT 'Operations',
+            leave_type VARCHAR(100) NOT NULL,
+            start_date DATE NOT NULL,
+            end_date DATE NOT NULL,
+            days_count DECIMAL(4,1) DEFAULT 1.0,
+            is_half_day TINYINT(1) DEFAULT 0,
+            reason TEXT DEFAULT NULL,
+            status ENUM('PENDING', 'APPROVED', 'REJECTED', 'CANCELLED') DEFAULT 'PENDING',
+            approved_by_name VARCHAR(150) DEFAULT NULL,
+            rejection_reason TEXT DEFAULT NULL,
+            reviewed_at DATETIME DEFAULT NULL,
+            created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+            updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+            INDEX idx_leave_emp (employee_id),
+            INDEX idx_leave_status (status)
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+    ");
+
+    $cols = $pdo->query("SHOW COLUMNS FROM leave_applications LIKE 'approved_by_name'")->fetchAll();
+    if (empty($cols)) {
+        $pdo->exec("ALTER TABLE leave_applications ADD COLUMN approved_by_name VARCHAR(150) DEFAULT NULL AFTER status");
+        $pdo->exec("ALTER TABLE leave_applications ADD COLUMN rejection_reason TEXT DEFAULT NULL AFTER approved_by_name");
+        $pdo->exec("ALTER TABLE leave_applications ADD COLUMN reviewed_at DATETIME DEFAULT NULL AFTER rejection_reason");
+    }
+} catch (\Throwable $e) {}
+
 // -----------------------------------------------------------------------------
 // GET: Fetch Leaves or Balances
 // -----------------------------------------------------------------------------

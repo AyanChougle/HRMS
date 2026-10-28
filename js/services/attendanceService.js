@@ -578,10 +578,51 @@ const attendanceService = {
   },
 
   // 6. ATTENDANCE REGULARIZATION WORKFLOW
+  async getRegularizations(status = null) {
+    if (typeof apiClient !== 'undefined') {
+      try {
+        const query = status ? `?action=get_regularizations&status=${encodeURIComponent(status)}` : '?action=get_regularizations';
+        const resp = await apiClient.get(`attendance.php${query}`);
+        if (resp && resp.success && Array.isArray(resp.regularizations)) {
+          return resp.regularizations.map(r => ({
+            id: r.id,
+            employeeId: r.employee_id,
+            employeeCode: r.employee_code,
+            employeeName: r.employee_name,
+            requestedDate: r.date,
+            date: r.date,
+            originalCheckIn: r.check_in || 'Missed',
+            originalCheckOut: r.check_out || 'Missed',
+            requestedCheckIn: r.check_in || '09:00 AM',
+            requestedCheckOut: r.check_out || '06:00 PM',
+            reason: r.reason,
+            status: r.status,
+            requestedBy: r.employee_name,
+            requestedById: r.employee_id,
+            reviewedBy: r.reviewed_by,
+            reviewedById: r.reviewed_by_id,
+            reviewedAt: r.reviewed_at,
+            rejectionReason: r.rejection_reason,
+            createdAt: r.created_at
+          }));
+        }
+      } catch (err) {
+        console.warn('[attendanceService] MySQL getRegularizations error:', err);
+      }
+    }
+    try {
+      const snap = await db.collection('attendanceRegularizations').orderBy('createdAt', 'desc').get();
+      return snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+    } catch (_) {
+      return [];
+    }
+  },
+
   async requestRegularization(reqData) {
     try {
       const payload = {
         employeeId: reqData.employeeId,
+        employeeCode: reqData.employeeCode || AuthGuard.userProfile?.employeeCode || '',
         employeeName: reqData.employeeName || 'Employee',
         companyId: reqData.companyId || AuthGuard.userProfile?.companyId || 'comp_diallo_india',
         attendanceId: `${reqData.employeeId}_${reqData.requestedDate}`,
@@ -591,28 +632,50 @@ const attendanceService = {
         requestedCheckIn: reqData.requestedCheckIn || '09:00 AM',
         requestedCheckOut: reqData.requestedCheckOut || '06:00 PM',
         reason: reqData.reason,
-        status: 'PENDING', // PENDING, APPROVED, REJECTED, CANCELLED
+        status: 'PENDING',
         requestedBy: AuthGuard.userProfile?.displayName || 'Employee',
         requestedById: AuthGuard.currentUser?.uid || reqData.employeeId,
         createdAt: firebase.firestore.FieldValue.serverTimestamp(),
         updatedAt: firebase.firestore.FieldValue.serverTimestamp()
       };
 
-      const docRef = await db.collection('attendanceRegularizations').add(payload);
-      
-      // Also register in approvalRequests queue
-      await approvalService.createApprovalRequest({
-        employee: payload.employeeName,
-        referenceId: docRef.id,
-        type: 'Attendance Regularization',
-        detail: `${payload.requestedDate}: ${payload.requestedCheckIn} – ${payload.requestedCheckOut} (${payload.reason})`,
-        status: 'PENDING',
-        companyId: payload.companyId,
-        metadata: { regularizationId: docRef.id, attendanceId: payload.attendanceId }
-      });
+      // 1. Authoritative Save to MySQL
+      let newId = null;
+      if (typeof apiClient !== 'undefined') {
+        try {
+          const resp = await apiClient.post('attendance.php?action=request_regularization', {
+            employeeId: payload.employeeId,
+            employeeCode: payload.employeeCode,
+            employeeName: payload.employeeName,
+            requestedDate: payload.requestedDate,
+            requestedCheckIn: payload.requestedCheckIn,
+            requestedCheckOut: payload.requestedCheckOut,
+            reason: payload.reason
+          });
+          if (resp && resp.id) newId = resp.id;
+        } catch (apiErr) {
+          console.warn('[attendanceService] MySQL regularization submit warning:', apiErr);
+        }
+      }
 
-      await auditService.log('REGULARIZATION_REQUESTED', 'ATTENDANCE', 'attendanceRegularizations', docRef.id, payload);
-      return { id: docRef.id, ...payload };
+      const docRef = await db.collection('attendanceRegularizations').add(payload);
+      const finalId = newId || docRef.id;
+
+      // Register in approvalRequests queue
+      try {
+        await approvalService.createApprovalRequest({
+          employee: payload.employeeName,
+          referenceId: String(finalId),
+          type: 'Attendance Regularization',
+          detail: `${payload.requestedDate}: ${payload.requestedCheckIn} – ${payload.requestedCheckOut} (${payload.reason})`,
+          status: 'PENDING',
+          companyId: payload.companyId,
+          metadata: { regularizationId: finalId, attendanceId: payload.attendanceId }
+        });
+      } catch (_) {}
+
+      await auditService.log('REGULARIZATION_REQUESTED', 'ATTENDANCE', 'attendanceRegularizations', String(finalId), payload);
+      return { id: finalId, ...payload };
     } catch (err) {
       console.error('Error requesting regularization:', err);
       throw err;
@@ -622,58 +685,38 @@ const attendanceService = {
   async approveRegularization(requestId, attendanceId, requestedCheckIn, requestedCheckOut) {
     try {
       const currentUserId = AuthGuard.currentUser?.uid;
-      const regDoc = await db.collection('attendanceRegularizations').doc(requestId).get();
-      if (!regDoc.exists) throw new Error('Regularization request not found');
+      const checkInStr = requestedCheckIn || '09:00 AM';
+      const checkOutStr = requestedCheckOut || '06:00 PM';
+      const reviewerName = AuthGuard.userProfile?.displayName || AuthGuard.userProfile?.fullName || 'Supervisor';
+      const reviewerRole = AuthGuard._previewRoleId || AuthGuard.userProfile?.roleId || '';
+      const fullReviewer = reviewerRole ? `${reviewerName} (${reviewerRole})` : reviewerName;
 
-      const reg = regDoc.data();
-      // Enforce anti-self-approval rule
-      if (reg.requestedById === currentUserId && AuthGuard.userProfile?.roleId !== 'SUPER_ADMIN') {
-        throw new Error('Security Violation: You cannot approve your own attendance regularization request.');
+      // 1. Authoritative approval on Hostinger MySQL
+      if (typeof apiClient !== 'undefined') {
+        const resp = await apiClient.post('attendance.php?action=approve_regularization', {
+          id: requestId,
+          requestedCheckIn: checkInStr,
+          requestedCheckOut: checkOutStr,
+          reviewedBy: fullReviewer,
+          reviewedById: currentUserId || AuthGuard.userProfile?.employeeId || ''
+        });
+        if (resp && resp.success === false) {
+          throw new Error(resp.error || 'Failed to approve regularization.');
+        }
       }
 
-      const checkInStr = requestedCheckIn || reg.requestedCheckIn || '10:00 AM';
-      const checkOutStr = requestedCheckOut || reg.requestedCheckOut || '07:00 PM';
-      const inMins = this.time12ToMinutes(checkInStr);
-      const outMins = this.time12ToMinutes(checkOutStr);
-      const grossMins = Math.max(0, outMins - inMins);
-      // Standard 1 hour break for a 9hr shift (10:00 to 19:00 = 8h work + 1h break)
-      const breakMins = grossMins >= 540 ? 60 : 0;
-      const netWorkedMins = Math.max(0, grossMins - breakMins);
-      const otMins = netWorkedMins > 480 ? netWorkedMins - 480 : 0;
+      // 2. Sync to local Firestore stub
+      try {
+        await db.collection('attendanceRegularizations').doc(String(requestId)).update({
+          status: 'APPROVED',
+          approvedBy: fullReviewer,
+          reviewedBy: fullReviewer,
+          approvedById: currentUserId,
+          approvedAt: firebase.firestore.FieldValue.serverTimestamp()
+        });
+      } catch (_) {}
 
-      const grossHoursFormatted = `${Math.floor(grossMins / 60)}h ${String(grossMins % 60).padStart(2, '0')}m`;
-      const workedHoursFormatted = `${Math.floor(netWorkedMins / 60)}h ${String(netWorkedMins % 60).padStart(2, '0')}m`;
-
-      // Update attendance record
-      await db.collection('attendanceRecords').doc(attendanceId).set({
-        employeeId: reg.employeeId,
-        employeeName: reg.employeeName,
-        companyId: reg.companyId,
-        date: reg.requestedDate,
-        checkIn: checkInStr,
-        checkOut: checkOutStr,
-        grossMinutes: grossMins,
-        grossHoursFormatted: grossHoursFormatted,
-        totalBreakMinutes: breakMins,
-        totalBreakSeconds: breakMins * 60,
-        breakFormatted: `${breakMins}m`,
-        workedMinutes: netWorkedMins,
-        workedHoursFormatted: workedHoursFormatted,
-        status: 'REGULARIZED',
-        lateMinutes: 0,
-        overtimeMinutes: otMins,
-        updatedAt: firebase.firestore.FieldValue.serverTimestamp()
-      }, { merge: true });
-
-      // Update request status
-      await db.collection('attendanceRegularizations').doc(requestId).update({
-        status: 'APPROVED',
-        approvedBy: AuthGuard.userProfile?.displayName || 'Manager',
-        approvedById: currentUserId,
-        approvedAt: firebase.firestore.FieldValue.serverTimestamp()
-      });
-
-      await auditService.log('REGULARIZATION_APPROVED', 'ATTENDANCE', 'attendanceRegularizations', requestId, { attendanceId });
+      await auditService.log('REGULARIZATION_APPROVED', 'ATTENDANCE', 'attendanceRegularizations', String(requestId), { attendanceId, approvedBy: fullReviewer });
       return true;
     } catch (err) {
       console.error('Error approving regularization:', err);
@@ -683,17 +726,58 @@ const attendanceService = {
 
   async rejectRegularization(requestId, reason = 'Request rejected by Manager/HR') {
     try {
-      await db.collection('attendanceRegularizations').doc(requestId).update({
-        status: 'REJECTED',
-        rejectionReason: reason,
-        rejectedBy: AuthGuard.userProfile?.displayName || 'Manager',
-        rejectedAt: firebase.firestore.FieldValue.serverTimestamp()
-      });
+      const currentUserId = AuthGuard.currentUser?.uid;
+      const reviewerName = AuthGuard.userProfile?.displayName || AuthGuard.userProfile?.fullName || 'Supervisor';
+      const reviewerRole = AuthGuard._previewRoleId || AuthGuard.userProfile?.roleId || '';
+      const fullReviewer = reviewerRole ? `${reviewerName} (${reviewerRole})` : reviewerName;
 
-      await auditService.log('REGULARIZATION_REJECTED', 'ATTENDANCE', 'attendanceRegularizations', requestId, { reason });
+      // 1. Authoritative rejection on Hostinger MySQL
+      if (typeof apiClient !== 'undefined') {
+        const resp = await apiClient.post('attendance.php?action=reject_regularization', {
+          id: requestId,
+          reason: reason,
+          reviewedBy: fullReviewer,
+          reviewedById: currentUserId || AuthGuard.userProfile?.employeeId || ''
+        });
+        if (resp && resp.success === false) {
+          throw new Error(resp.error || 'Failed to reject regularization.');
+        }
+      }
+
+      // 2. Sync to local Firestore stub
+      try {
+        await db.collection('attendanceRegularizations').doc(String(requestId)).update({
+          status: 'REJECTED',
+          rejectionReason: reason,
+          rejectedBy: fullReviewer,
+          reviewedBy: fullReviewer,
+          rejectedById: currentUserId,
+          rejectedAt: firebase.firestore.FieldValue.serverTimestamp()
+        });
+      } catch (_) {}
+
+      await auditService.log('REGULARIZATION_REJECTED', 'ATTENDANCE', 'attendanceRegularizations', String(requestId), { reason, rejectedBy: fullReviewer });
       return true;
     } catch (err) {
       console.error('Error rejecting regularization:', err);
+      throw err;
+    }
+  },
+
+  async cancelRegularization(requestId) {
+    try {
+      if (typeof apiClient !== 'undefined') {
+        await apiClient.post('attendance.php?action=cancel_regularization', { id: requestId });
+      }
+      try {
+        await db.collection('attendanceRegularizations').doc(String(requestId)).update({
+          status: 'CANCELLED',
+          updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+        });
+      } catch (_) {}
+      return true;
+    } catch (err) {
+      console.error('Error cancelling regularization:', err);
       throw err;
     }
   },

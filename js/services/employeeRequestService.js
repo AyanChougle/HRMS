@@ -112,7 +112,7 @@ const employeeRequestService = {
       if (!docSnap.exists) throw new Error('Request not found');
 
       const req = docSnap.data();
-      const approverName = AuthGuard.userProfile?.displayName || 'HR Lead';
+      const approverName = `${AuthGuard.userProfile?.displayName || AuthGuard.userProfile?.fullName || 'HR Lead'} (${AuthGuard._previewRoleId || AuthGuard.userProfile?.roleId || 'HR'})`;
 
       // If this is a profile update, automatically sync to Employee record!
       if (req.requestType === 'PROFILE_CHANGE' || req.requestType === 'ADDRESS_CHANGE' || req.requestType === 'BANK_DETAILS_CHANGE') {
@@ -126,6 +126,7 @@ const employeeRequestService = {
       const payload = {
         status: 'COMPLETED',
         resolvedBy: approverName,
+        approvedBy: approverName,
         resolutionNotes: resolutionNotes || 'Request approved and processed.',
         generatedDocumentUrl: generatedDocUrl || null,
         resolvedAt: firebase.firestore.FieldValue.serverTimestamp(),
@@ -175,10 +176,11 @@ const employeeRequestService = {
       if (!docSnap.exists) throw new Error('Request not found');
       const req = docSnap.data();
 
-      const reviewerName = AuthGuard.userProfile?.displayName || 'HR Operations';
+      const reviewerName = `${AuthGuard.userProfile?.displayName || AuthGuard.userProfile?.fullName || 'HR Operations'} (${AuthGuard._previewRoleId || AuthGuard.userProfile?.roleId || 'HR'})`;
       const payload = {
         status: 'REJECTED',
         resolvedBy: reviewerName,
+        rejectedBy: reviewerName,
         rejectionReason: rejectionReason.trim(),
         resolvedAt: firebase.firestore.FieldValue.serverTimestamp(),
         updatedAt: firebase.firestore.FieldValue.serverTimestamp()

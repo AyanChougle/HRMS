@@ -188,9 +188,18 @@ const employeeService = {
               roleId: e.role_id || 'EMPLOYEE',
               role: e.role_id || 'EMPLOYEE',
               managerId: e.manager_id || '',
+              manager_id: e.manager_id || '',
               manager: e.manager || '',
               reportingManager: e.manager || '',
               mentor: e.mentor || '',
+              teamId: e.team_id || '',
+              team_id: e.team_id || '',
+              teamName: e.team_name || '',
+              team_name: e.team_name || '',
+              teamLeadId: e.team_lead_id || '',
+              team_lead_id: e.team_lead_id || '',
+              teamLead: e.team_lead || '',
+              team_lead: e.team_lead || '',
               dateOfJoining: e.date_of_joining || '',
               employmentStatus: e.employment_status || e.status || 'ACTIVE',
               status: e.status || e.employment_status || 'ACTIVE'
@@ -296,6 +305,13 @@ const employeeService = {
         const cCode = (child.employeeCode || child.code || '').toString().toUpperCase().trim();
         if (pIds.has(cId) || (cCode && pCodes.has(cCode))) return false;
 
+        // Check Team ID link for Team Leads
+        const myTeamId = user.teamId || user.team_id || matchedSelf?.team_id || matchedSelf?.teamId;
+        const childTeamId = child.team_id || child.teamId;
+        if (role === 'TL' && myTeamId && childTeamId && String(childTeamId) === String(myTeamId)) {
+          return true;
+        }
+
         // Check Team Lead link
         const tlId = (child.team_lead_id || child.teamLeadId || '').toString().trim();
         const tlStr = (child.team_lead || child.teamLead || '').toString().trim().toLowerCase();
@@ -322,10 +338,12 @@ const employeeService = {
         return false;
       }
 
-      let searchIds = new Set([myId, resolvedId].filter(Boolean));
-      let searchCodes = new Set([myCode, resolvedCode].filter(Boolean));
-      let searchNames = new Set([myName, resolvedName].filter(Boolean));
+      let searchIds = new Set([myId, resolvedId, matchedSelf?.id, matchedSelf?.userId].filter(Boolean).map(String));
+      let searchCodes = new Set([myCode, resolvedCode, matchedSelf?.employeeCode].filter(Boolean).map(c => c.toUpperCase().trim()));
+      let searchNames = new Set([myName, resolvedName].filter(Boolean).map(n => n.toLowerCase().trim()));
       if (matchedSelf?.fullName) searchNames.add(matchedSelf.fullName.toLowerCase().trim());
+      if (matchedSelf?.name) searchNames.add(matchedSelf.name.toLowerCase().trim());
+      if (user.displayName) searchNames.add(user.displayName.toLowerCase().trim());
 
       const subordinates = [];
       let remaining = [...emps];
@@ -402,8 +420,18 @@ const employeeService = {
               roleId: e.role_id || 'EMPLOYEE',
               role: e.role_id || 'EMPLOYEE',
               managerId: e.manager_id || '',
+              manager_id: e.manager_id || '',
               manager: e.manager || '',
+              reportingManager: e.manager || '',
               mentor: e.mentor || '',
+              teamId: e.team_id || '',
+              team_id: e.team_id || '',
+              teamName: e.team_name || '',
+              team_name: e.team_name || '',
+              teamLeadId: e.team_lead_id || '',
+              team_lead_id: e.team_lead_id || '',
+              teamLead: e.team_lead || '',
+              team_lead: e.team_lead || '',
               dateOfJoining: e.date_of_joining || '',
               employmentStatus: e.employment_status || e.status || 'ACTIVE',
               status: e.status || e.employment_status || 'ACTIVE'
@@ -534,6 +562,10 @@ const employeeService = {
         costCenterId: employeeData.costCenterId || '',
         managerId: employeeData.managerId || '',
         manager: employeeData.manager || '',
+        teamId: employeeData.teamId || employeeData.team_id || '',
+        teamName: employeeData.teamName || employeeData.team_name || '',
+        teamLeadId: employeeData.teamLeadId || employeeData.team_lead_id || '',
+        teamLead: employeeData.teamLead || employeeData.team_lead || '',
 
         // Contact
         personalEmail: employeeData.personalEmail || '',
@@ -606,6 +638,10 @@ const employeeService = {
         location: payload.branchName || payload.location || 'Ghansoli - Navi Mumbai, Maharashtra',
         manager_id: payload.managerId || null,
         manager: payload.manager || null,
+        team_id: payload.teamId || null,
+        team_name: payload.teamName || null,
+        team_lead_id: payload.teamLeadId || null,
+        team_lead: payload.teamLead || null,
         date_of_joining: payload.dateOfJoining,
         employment_status: payload.employmentStatus || 'ACTIVE',
         status: payload.status || 'ACTIVE'
@@ -715,6 +751,10 @@ const employeeService = {
         location: payload.branchName || payload.location || 'Ghansoli - Navi Mumbai, Maharashtra',
         manager_id: payload.managerId || null,
         manager: payload.manager || null,
+        team_id: payload.teamId || null,
+        team_name: payload.teamName || null,
+        team_lead_id: payload.teamLeadId || null,
+        team_lead: payload.teamLead || null,
         team_id: payload.teamId || null,
         team_name: payload.teamName || null,
         team_lead_id: payload.teamLeadId || null,

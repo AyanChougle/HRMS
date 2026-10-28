@@ -63,6 +63,39 @@ function trigger_auto_punchout_maintenance($pdo) {
     }
 }
 
+/**
+ * Ensures attendance_regularizations table exists
+ */
+function ensure_regularizations_table($pdo) {
+    if (!$pdo) return;
+    try {
+        $pdo->exec("
+            CREATE TABLE IF NOT EXISTS attendance_regularizations (
+                id INT AUTO_INCREMENT PRIMARY KEY,
+                company_id VARCHAR(100) DEFAULT 'comp_diallo_india',
+                employee_id VARCHAR(100) NOT NULL,
+                employee_code VARCHAR(50) DEFAULT NULL,
+                employee_name VARCHAR(150) DEFAULT NULL,
+                date DATE NOT NULL,
+                check_in VARCHAR(20) DEFAULT NULL,
+                check_out VARCHAR(20) DEFAULT NULL,
+                reason TEXT DEFAULT NULL,
+                type VARCHAR(50) DEFAULT 'MISSED_PUNCH',
+                status ENUM('PENDING', 'APPROVED', 'REJECTED', 'CANCELLED') DEFAULT 'PENDING',
+                reviewed_by VARCHAR(150) DEFAULT NULL,
+                reviewed_by_id VARCHAR(100) DEFAULT NULL,
+                reviewed_at DATETIME DEFAULT NULL,
+                rejection_reason TEXT DEFAULT NULL,
+                created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+                updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+                INDEX idx_reg_emp (employee_id),
+                INDEX idx_reg_date (date),
+                INDEX idx_reg_status (status)
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+        ");
+    } catch (\Throwable $e) {}
+}
+
 // Automatically execute auto punch-out sweep on every access
 trigger_auto_punchout_maintenance($pdo);
 
@@ -314,6 +347,50 @@ try {
         }
 
         // ---------------------------------------------------------------------
+        // 1.5. GET ATTENDANCE REGULARIZATION REQUESTS
+        // ---------------------------------------------------------------------
+        if ($action === 'get_regularizations' || $action === 'regularizations') {
+            ensure_regularizations_table($pdo);
+            $regStatus = trim($_GET['status'] ?? '');
+            $rSql = "SELECT r.* FROM attendance_regularizations r LEFT JOIN employees e ON (r.employee_id = e.id OR r.employee_code = e.employee_code) WHERE 1=1";
+            $rParams = [];
+
+            if ($userRole === 'EMPLOYEE') {
+                $rSql .= " AND (r.employee_id = :self_eid OR r.employee_code = :self_code)";
+                $rParams[':self_eid'] = $myEmpId;
+                $rParams[':self_code'] = $currentUser['employee_code'] ?? '';
+            } elseif ($userRole === 'TL') {
+                $myCode = $currentUser['employee_code'] ?? '';
+                $rSql .= " AND (r.employee_id = :self_eid OR r.employee_code = :self_code OR e.team_lead_id = :tlid OR e.team_lead_id = :tlcode OR (e.team_id > 0 AND e.team_id = :myTeamId))";
+                $rParams[':self_eid'] = $myEmpId;
+                $rParams[':self_code'] = $myCode;
+                $rParams[':tlid'] = $myEmpId;
+                $rParams[':tlcode'] = $myCode;
+                $rParams[':myTeamId'] = $myTeamId ?: 0;
+            } elseif ($userRole === 'MANAGER') {
+                $myCode = $currentUser['employee_code'] ?? '';
+                $rSql .= " AND (r.employee_id = :self_eid OR r.employee_code = :self_code OR e.manager_id = :mgrid OR e.manager_id = :mgrcode)";
+                $rParams[':self_eid'] = $myEmpId;
+                $rParams[':self_code'] = $myCode;
+                $rParams[':mgrid'] = $myEmpId;
+                $rParams[':mgrcode'] = $myCode;
+            }
+            // ADMIN, HR, OPS see all across their organization
+
+            if (!empty($regStatus) && $regStatus !== 'All') {
+                $rSql .= " AND r.status = :st";
+                $rParams[':st'] = $regStatus;
+            }
+
+            $rSql .= " ORDER BY r.created_at DESC";
+            $rStmt = $pdo->prepare($rSql);
+            $rStmt->execute($rParams);
+            $regs = $rStmt->fetchAll();
+
+            json_out(["success" => true, "count" => count($regs), "regularizations" => $regs]);
+        }
+
+        // ---------------------------------------------------------------------
         // 2. LIST ATTENDANCE RECORDS (ROSTER / HISTORY / REPORTS)
         // ---------------------------------------------------------------------
         $targetDate = !empty($date) ? $date : (!empty($_GET['for_date']) ? $_GET['for_date'] : '');
@@ -533,6 +610,155 @@ try {
         $lat = isset($input['latitude']) && $input['latitude'] !== null ? floatval($input['latitude']) : null;
         $lng = isset($input['longitude']) && $input['longitude'] !== null ? floatval($input['longitude']) : null;
         $dist = isset($input['distance_meters']) ? floatval($input['distance_meters']) : null;
+
+        // ---------------------------------------------------------------------
+        // Attendance Regularization Actions
+        // ---------------------------------------------------------------------
+        if ($actionName === 'request_regularization') {
+            ensure_regularizations_table($pdo);
+            $reqDate = trim($input['requestedDate'] ?? $input['date'] ?? date('Y-m-d'));
+            $reqIn = trim($input['requestedCheckIn'] ?? $input['check_in'] ?? '09:00 AM');
+            $reqOut = trim($input['requestedCheckOut'] ?? $input['check_out'] ?? '06:00 PM');
+            $reason = trim($input['reason'] ?? 'Punch adjustment requested');
+            $empName = trim($input['employeeName'] ?? ($currentUser['display_name'] ?? 'Employee'));
+            $empCode = trim($input['employeeCode'] ?? ($currentUser['employee_code'] ?? ''));
+
+            $insStmt = $pdo->prepare("
+                INSERT INTO attendance_regularizations (
+                    company_id, employee_id, employee_code, employee_name,
+                    date, check_in, check_out, reason, status
+                ) VALUES (
+                    'comp_diallo_india', :eid, :ecode, :ename,
+                    :d, :cin, :cout, :reason, 'PENDING'
+                )
+            ");
+            $insStmt->execute([
+                ':eid' => $empId,
+                ':ecode' => $empCode,
+                ':ename' => $empName,
+                ':d' => $reqDate,
+                ':cin' => $reqIn,
+                ':cout' => $reqOut,
+                ':reason' => $reason
+            ]);
+            $newId = $pdo->lastInsertId();
+
+            json_out([
+                "success" => true,
+                "id" => $newId,
+                "message" => "Attendance regularization request submitted successfully."
+            ], 201);
+        }
+
+        if ($actionName === 'approve_regularization') {
+            ensure_regularizations_table($pdo);
+            $userRole = canonical_role($currentUser['role_id'] ?? 'EMPLOYEE');
+            $canApprove = in_array($userRole, ['ADMIN', 'HR', 'OPS', 'SUPER_ADMIN', 'COMPANY_ADMIN', 'MANAGER', 'TL']);
+            if (!$canApprove) {
+                json_out(["success" => false, "error" => "Unauthorized: Only Managers, Team Leads, OPS, or HR can approve regularizations."], 403);
+            }
+
+            $reqId = intval($input['id'] ?? $input['requestId'] ?? 0);
+            $rStmt = $pdo->prepare("SELECT * FROM attendance_regularizations WHERE id = :id LIMIT 1");
+            $rStmt->execute([':id' => $reqId]);
+            $reg = $rStmt->fetch();
+            if (!$reg) {
+                json_out(["success" => false, "error" => "Regularization request not found."], 404);
+            }
+
+            // Anti-self-approval rule
+            if ($userRole !== 'ADMIN' && $userRole !== 'SUPER_ADMIN' && ($reg['employee_id'] === $myEmpId || $reg['employee_code'] === ($currentUser['employee_code'] ?? ''))) {
+                json_out(["success" => false, "error" => "Security Violation: You cannot approve your own attendance regularization request."], 403);
+            }
+
+            $revBy = !empty($input['reviewedBy']) ? trim($input['reviewedBy']) : (!empty($currentUser['display_name']) ? $currentUser['display_name'] : 'HR Admin');
+            $revId = !empty($input['reviewedById']) ? trim($input['reviewedById']) : $myEmpId;
+            $pdo->prepare("
+                UPDATE attendance_regularizations
+                SET status = 'APPROVED', reviewed_by = :rb, reviewed_by_id = :rid, reviewed_at = CURRENT_TIMESTAMP
+                WHERE id = :id
+            ")->execute([':rb' => $revBy, ':rid' => $revId, ':id' => $reqId]);
+
+            // Update attendance_records for that employee on that date
+            $targetDate = $reg['date'];
+            $targetEmpId = $reg['employee_id'];
+            $targetCode = $reg['employee_code'];
+            $cin = $input['requestedCheckIn'] ?? $reg['check_in'] ?? '09:00 AM';
+            $cout = $input['requestedCheckOut'] ?? $reg['check_out'] ?? '06:00 PM';
+
+            // Calculate gross minutes
+            $cin24 = date('H:i', strtotime($cin));
+            $cout24 = date('H:i', strtotime($cout));
+            $cinMins = intval(substr($cin24, 0, 2)) * 60 + intval(substr($cin24, 3, 2));
+            $coutMins = intval(substr($cout24, 0, 2)) * 60 + intval(substr($cout24, 3, 2));
+            $grossMins = max(0, $coutMins - $cinMins);
+            $grossFmt = floor($grossMins / 60) . 'h ' . str_pad($grossMins % 60, 2, '0', STR_PAD_LEFT) . 'm';
+
+            // Upsert attendance record
+            $recKey = "{$targetEmpId}_{$targetDate}";
+            $devText = "Regularized (Approved by {$revBy})";
+            $upStmt = $pdo->prepare("
+                INSERT INTO attendance_records (
+                    record_key, company_id, employee_id, employee_code, employee_name,
+                    date, check_in, check_out, gross_minutes, gross_hours_formatted,
+                    status, device
+                ) VALUES (
+                    :rk, 'comp_diallo_india', :eid, :code, :name,
+                    :d, :cin, :cout, :gm, :ghf,
+                    'REGULARIZED', :dev
+                )
+                ON DUPLICATE KEY UPDATE
+                    check_in = VALUES(check_in),
+                    check_out = VALUES(check_out),
+                    gross_minutes = VALUES(gross_minutes),
+                    gross_hours_formatted = VALUES(gross_hours_formatted),
+                    status = 'REGULARIZED',
+                    device = VALUES(device),
+                    updated_at = CURRENT_TIMESTAMP
+            ");
+            $upStmt->execute([
+                ':rk' => $recKey,
+                ':eid' => $targetEmpId,
+                ':code' => $targetCode,
+                ':name' => $reg['employee_name'],
+                ':d' => $targetDate,
+                ':cin' => $cin,
+                ':cout' => $cout,
+                ':gm' => $grossMins,
+                ':ghf' => $grossFmt,
+                ':dev' => $devText
+            ]);
+
+            json_out(["success" => true, "message" => "Attendance regularization approved and attendance record regularized."]);
+        }
+
+        if ($actionName === 'reject_regularization') {
+            ensure_regularizations_table($pdo);
+            $userRole = canonical_role($currentUser['role_id'] ?? 'EMPLOYEE');
+            $canApprove = in_array($userRole, ['ADMIN', 'HR', 'OPS', 'SUPER_ADMIN', 'COMPANY_ADMIN', 'MANAGER', 'TL']);
+            if (!$canApprove) {
+                json_out(["success" => false, "error" => "Unauthorized."], 403);
+            }
+            $reqId = intval($input['id'] ?? $input['requestId'] ?? 0);
+            $reason = trim($input['reason'] ?? $input['rejectionReason'] ?? 'Rejected by supervisor');
+            $revBy = !empty($input['reviewedBy']) ? trim($input['reviewedBy']) : (!empty($currentUser['display_name']) ? $currentUser['display_name'] : 'HR Admin');
+            $revId = !empty($input['reviewedById']) ? trim($input['reviewedById']) : $myEmpId;
+
+            $pdo->prepare("
+                UPDATE attendance_regularizations
+                SET status = 'REJECTED', rejection_reason = :r, reviewed_by = :rb, reviewed_by_id = :rid, reviewed_at = CURRENT_TIMESTAMP
+                WHERE id = :id
+            ")->execute([':r' => $reason, ':rb' => $revBy, ':rid' => $revId, ':id' => $reqId]);
+
+            json_out(["success" => true, "message" => "Attendance regularization request rejected."]);
+        }
+
+        if ($actionName === 'cancel_regularization') {
+            ensure_regularizations_table($pdo);
+            $reqId = intval($input['id'] ?? $input['requestId'] ?? 0);
+            $pdo->prepare("UPDATE attendance_regularizations SET status = 'CANCELLED' WHERE id = :id")->execute([':id' => $reqId]);
+            json_out(["success" => true, "message" => "Regularization request cancelled."]);
+        }
 
         // Holiday Management
         if ($actionName === 'create_holiday' || $actionName === 'holiday') {

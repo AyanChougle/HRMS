@@ -16,6 +16,36 @@ const announcementService = {
     try {
       const opts = filters || {};
       const limit = typeof limitCount === 'number' ? limitCount : (opts.limit || 30);
+
+      // 1. Primary: Hostinger MySQL API
+      if (typeof apiClient !== 'undefined') {
+        try {
+          const params = {};
+          if (opts.category && opts.category !== 'ALL') params.type = opts.category;
+          if (opts.priority && opts.priority !== 'ALL') params.priority = opts.priority;
+          const resp = await apiClient.get('announcements.php', params);
+          if (resp && resp.success && Array.isArray(resp.announcements)) {
+            return resp.announcements.slice(0, limit).map(a => ({
+              id: a.id,
+              title: a.title,
+              message: a.content || '',
+              content: a.content || '',
+              category: a.type || 'GENERAL',
+              type: a.type || 'GENERAL',
+              priority: a.priority || 'NORMAL',
+              audienceType: a.target_audience || 'ALL',
+              createdBy: a.author_name || 'HR Broadcast',
+              createdAt: a.created_at,
+              expiresAt: a.expires_at,
+              status: 'PUBLISHED'
+            }));
+          }
+        } catch (apiErr) {
+          console.warn('[announcementService] MySQL fetch notice:', apiErr.message);
+        }
+      }
+
+      // 2. Fallback to Firestore
       const companyId = opts.companyId || (typeof AuthGuard !== 'undefined' && AuthGuard?.userProfile?.companyId) || 'comp_diallo_india';
       let query = db.collection('announcements').where('companyId', '==', companyId);
 
@@ -69,40 +99,43 @@ const announcementService = {
         title: data.title,
         message: data.message || data.content || '',
         category: data.category || 'GENERAL',
-        priority: data.priority || 'NORMAL', // LOW, NORMAL, HIGH, URGENT
-        audienceType: data.audienceType || 'COMPANY', // COMPANY, BRANCH, DEPARTMENT, ROLE
+        priority: data.priority || 'NORMAL',
+        audienceType: data.audienceType || 'ALL',
         audienceIds: data.audienceIds || [],
         attachmentUrl: data.attachmentUrl || null,
         attachmentName: data.attachmentName || null,
         publishAt: data.publishAt || new Date().toISOString(),
         expiresAt: data.expiresAt || null,
-        status: data.status || 'PUBLISHED', // PUBLISHED, SCHEDULED, DRAFT, ARCHIVED
+        status: data.status || 'PUBLISHED',
         createdBy: createdByName,
         createdAt: firebase.firestore.FieldValue.serverTimestamp(),
         updatedAt: firebase.firestore.FieldValue.serverTimestamp()
       };
 
-      const docRef = await db.collection('announcements').add(payload);
-      payload.id = docRef.id;
-
-      // Broadcast automated in-app notification to employees
-      if (payload.status === 'PUBLISHED') {
-        const empSnap = await db.collection('employees').where('companyId', '==', companyId).limit(50).get();
-        empSnap.docs.forEach(async doc => {
-          await notificationService.createNotification({
-            companyId,
-            employeeId: doc.id,
-            type: 'ANNOUNCEMENT',
-            title: `Announcement: ${payload.title}`,
-            message: payload.message.slice(0, 120),
+      // 1. Authoritative Save to MySQL
+      if (typeof apiClient !== 'undefined') {
+        try {
+          const resp = await apiClient.post('announcements.php', {
+            title: payload.title,
+            content: payload.message,
+            type: payload.category,
             priority: payload.priority,
-            relatedModule: 'announcements',
-            relatedId: docRef.id
+            target_audience: payload.audienceType,
+            author_name: createdByName,
+            expires_at: payload.expiresAt
           });
-        });
+          if (resp && resp.id) payload.id = resp.id;
+        } catch (apiErr) {
+          console.warn('[announcementService] MySQL post warning:', apiErr.message);
+        }
       }
 
-      await auditService.log('ANNOUNCEMENT_PUBLISHED', 'COMMUNICATION', 'announcements', docRef.id, payload);
+      if (!payload.id) {
+        const docRef = await db.collection('announcements').add(payload);
+        payload.id = docRef.id;
+      }
+
+      await auditService.log('ANNOUNCEMENT_PUBLISHED', 'COMMUNICATION', 'announcements', String(payload.id), payload).catch(() => {});
       return payload;
     } catch (err) {
       console.error('Error creating announcement:', err);
@@ -113,8 +146,15 @@ const announcementService = {
   // 3. ARCHIVE / DELETE ANNOUNCEMENT
   async deleteAnnouncement(id) {
     try {
-      await db.collection('announcements').doc(id).delete();
-      await auditService.log('ANNOUNCEMENT_DELETED', 'COMMUNICATION', 'announcements', id, {});
+      if (typeof apiClient !== 'undefined') {
+        try {
+          await apiClient.delete(`announcements.php?id=${encodeURIComponent(id)}`);
+        } catch (_) {}
+      }
+      try {
+        await db.collection('announcements').doc(String(id)).delete();
+      } catch (_) {}
+      await auditService.log('ANNOUNCEMENT_DELETED', 'COMMUNICATION', 'announcements', String(id), {}).catch(() => {});
       return true;
     } catch (e) {
       throw e;

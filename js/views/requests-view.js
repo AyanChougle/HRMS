@@ -277,8 +277,10 @@ const RequestsView = {
                     <td style="max-width: 250px;">
                       ${r.resolutionNotes ? `
                         <div style="font-size: 0.8rem; color: #059669; font-weight: 500;">${r.resolutionNotes}</div>
+                        ${(r.resolvedBy || r.approvedBy) ? `<div style="font-size: 0.72rem; color: var(--text-muted); margin-top: 2px;">Approved by <strong>${r.resolvedBy || r.approvedBy}</strong></div>` : ''}
                       ` : (r.rejectionReason ? `
                         <div style="font-size: 0.8rem; color: #dc2626;">${r.rejectionReason}</div>
+                        ${(r.resolvedBy || r.rejectedBy) ? `<div style="font-size: 0.72rem; color: var(--text-muted); margin-top: 2px;">Rejected by <strong>${r.resolvedBy || r.rejectedBy}</strong></div>` : ''}
                       ` : `<span class="text-muted" style="font-size: 0.78rem;">Awaiting HR review</span>`)}
                     </td>
                     <td>
@@ -421,6 +423,7 @@ const RequestsView = {
                   <th>Request Title & Change</th>
                   <th>Submission Date</th>
                   <th>Status</th>
+                  <th>Reviewed / Approved By</th>
                   <th>Actions</th>
                 </tr>
               </thead>
@@ -446,6 +449,23 @@ const RequestsView = {
                       <span class="badge ${r.status === 'COMPLETED' || r.status === 'APPROVED' ? 'badge-success' : (r.status === 'SUBMITTED' ? 'badge-warning' : 'badge-danger')}">
                         ${r.status}
                       </span>
+                    </td>
+                    <td>
+                      ${(r.status === 'COMPLETED' || r.status === 'APPROVED') ? `
+                        <div style="font-size: 0.82rem; font-weight: 600; color: var(--success); display: flex; align-items: center; gap: 4px;">
+                          <svg width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
+                          <span>${r.resolvedBy || r.approvedBy || 'HR Operations'}</span>
+                        </div>
+                        ${r.resolutionNotes ? `<div style="font-size: 0.72rem; color: var(--text-muted); margin-top: 2px;">${r.resolutionNotes}</div>` : ''}
+                      ` : (r.status === 'REJECTED' ? `
+                        <div style="font-size: 0.82rem; font-weight: 600; color: var(--danger); display: flex; align-items: center; gap: 4px;">
+                          <svg width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+                          <span>Rejected by ${r.resolvedBy || r.rejectedBy || 'HR Operations'}</span>
+                        </div>
+                        ${r.rejectionReason ? `<div style="font-size: 0.72rem; color: var(--danger); font-style: italic; margin-top: 2px;">"${r.rejectionReason}"</div>` : ''}
+                      ` : `
+                        <span class="badge badge-warning" style="font-size: 0.72rem;">Pending Review</span>
+                      `)}
                     </td>
                     <td>
                       <div class="flex items-center gap-1">

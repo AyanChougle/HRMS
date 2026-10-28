@@ -9,7 +9,7 @@ const DocumentsView = {
 
   async render() {
     const role = (AuthGuard.userProfile?.roleId || "EMPLOYEE").toUpperCase();
-    const isRestrictedRole = !["SUPER_ADMIN", "COMPANY_ADMIN", "HR_MANAGER", "HR"].includes(role);
+    const isRestrictedRole = !["SUPER_ADMIN", "COMPANY_ADMIN", "ADMIN", "HR_MANAGER", "HR", "COMPLIANCE", "OPS"].includes(role);
     const currentEmpId =
       AuthGuard.userProfile?.employeeId || AuthGuard.currentUser?.uid;
     const currentEmpName = AuthGuard.userProfile?.displayName || "Employee";

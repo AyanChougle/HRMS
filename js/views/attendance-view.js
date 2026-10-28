@@ -1066,13 +1066,12 @@ const AttendanceView = {
 
     let requests = [];
     try {
-      const snap = await db.collection('attendanceRegularizations').orderBy('createdAt', 'desc').get();
-      const all = snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+      const all = await attendanceService.getRegularizations();
       if (canApprove) {
         requests = all;
       } else {
-        // Staff/Trainers/Employees strictly only see their own regularization requests
-        requests = all.filter(r => r.requestedById === currentUserId || (currentEmployeeId && r.employeeId === currentEmployeeId));
+        // Staff/Employees strictly only see their own regularization requests
+        requests = all.filter(r => r.requestedById === currentUserId || (currentEmployeeId && (r.employeeId === currentEmployeeId || r.employeeCode === currentEmployeeId)));
       }
     } catch (e) {
       console.warn('Regularizations fetch error:', e);
@@ -1111,6 +1110,7 @@ const AttendanceView = {
                   <th>Requested Punches</th>
                   <th>Reason</th>
                   <th>Status</th>
+                  <th>Reviewed / Approved By</th>
                   <th>Actions</th>
                 </tr>
               </thead>
@@ -1123,7 +1123,7 @@ const AttendanceView = {
                       ${r.employeeName || 'Staff'}
                       ${isSelfRequest ? '<span class="badge badge-neutral" style="font-size: 0.65rem; margin-left: 4px;">You</span>' : ''}
                     </td>
-                    <td>${r.requestedDate}</td>
+                    <td>${r.requestedDate || r.date}</td>
                     <td><span class="text-secondary" style="font-size: 0.8rem;">${r.originalCheckIn} → ${r.originalCheckOut}</span></td>
                     <td><strong style="color: var(--primary);">${r.requestedCheckIn} → ${r.requestedCheckOut}</strong></td>
                     <td style="max-width: 200px; font-size: 0.8rem;">${r.reason}</td>
@@ -1131,6 +1131,25 @@ const AttendanceView = {
                       <span class="badge ${r.status === 'APPROVED' ? 'badge-success' : (r.status === 'REJECTED' ? 'badge-danger' : (r.status === 'CANCELLED' ? 'badge-neutral' : 'badge-warning'))}">
                         ${r.status}
                       </span>
+                    </td>
+                    <td>
+                      ${r.status === 'APPROVED' ? `
+                        <div style="font-size: 0.82rem; font-weight: 600; color: var(--success); display: flex; align-items: center; gap: 4px;">
+                          <svg width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
+                          <span>${r.reviewedBy || 'Manager / HR'}</span>
+                        </div>
+                        ${r.reviewedAt ? `<div style="font-size: 0.72rem; color: var(--text-muted); margin-top: 2px;">${r.reviewedAt}</div>` : ''}
+                      ` : (r.status === 'REJECTED' ? `
+                        <div style="font-size: 0.82rem; font-weight: 600; color: var(--danger); display: flex; align-items: center; gap: 4px;">
+                          <svg width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+                          <span>Rejected by ${r.reviewedBy || 'Manager / HR'}</span>
+                        </div>
+                        ${r.rejectionReason ? `<div style="font-size: 0.72rem; color: var(--danger); font-style: italic; margin-top: 2px;">"${r.rejectionReason}"</div>` : ''}
+                      ` : (r.status === 'CANCELLED' ? `
+                        <span class="text-muted" style="font-size: 0.75rem;">Cancelled by User</span>
+                      ` : `
+                        <span class="badge badge-warning" style="font-size: 0.72rem;">Pending Supervisor Review</span>
+                      `))}
                     </td>
                     <td>
                       ${canApprove ? `
@@ -1143,7 +1162,7 @@ const AttendanceView = {
                               <button class="btn btn-secondary btn-sm" onclick="AttendanceView.rejectRegularization('${r.id}')">Reject</button>
                             </div>
                           `}
-                        ` : `<span class="text-muted" style="font-size: 0.75rem;">Reviewed</span>`}
+                        ` : `<span class="badge badge-soft" style="font-size: 0.72rem; color: ${r.status === 'APPROVED' ? 'var(--success)' : 'var(--danger)'};">${r.status === 'APPROVED' ? 'Approved' : 'Reviewed'}</span>`}
                       ` : `
                         ${r.status === 'PENDING' ? `
                           <button class="btn btn-secondary btn-sm" onclick="AttendanceView.cancelRegularization('${r.id}')">Cancel Request</button>
@@ -1617,10 +1636,7 @@ const AttendanceView = {
   async cancelRegularization(reqId) {
     if (!confirm('Are you sure you want to cancel this regularization request?')) return;
     try {
-      await db.collection('attendanceRegularizations').doc(reqId).update({
-        status: 'CANCELLED',
-        updatedAt: firebase.firestore.FieldValue.serverTimestamp()
-      });
+      await attendanceService.cancelRegularization(reqId);
       Toast.info('Regularization request cancelled.');
       this.switchTab('regularizations');
     } catch (e) {

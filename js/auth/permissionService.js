@@ -546,16 +546,58 @@ const PermissionService = {
       }
     }
 
+    // Role-based baseline guarantees for Operations Manager
+    if (normalizedRole === 'OPS' || normalizedRole === 'OPERATIONS_MANAGER' || normalizedRole === 'PROCESS_OWNER') {
+      const opsAllowedPerms = [
+        'people.view', 'team.*', 'team.view', 'team.attendance', 'team.leave', 'team.approve',
+        'attendance.*', 'attendance.view', 'attendance.team', 'attendance.approve',
+        'leave.*', 'leave.view', 'leave.approve', 'performance.view', 'compliance.view',
+        'requests.view', 'communication.*', 'communication.view', 'reports.view',
+        'documents.view', 'approvals.*', 'approvals.process', 'workflows.view',
+        'own.profile', 'own.attendance', 'own.leave', 'own.documents', 'ess.view'
+      ];
+      if (opsAllowedPerms.includes(permissionName) || permissionName.startsWith('team.') || permissionName.startsWith('approvals.')) {
+        return true;
+      }
+    }
+
+    // Role-based baseline guarantees for Team Lead
+    if (normalizedRole === 'TL' || normalizedRole === 'TEAM_LEAD') {
+      const tlAllowedPerms = [
+        'people.view', 'team.*', 'team.view', 'team.attendance', 'team.leave', 'team.approve',
+        'attendance.view', 'attendance.team', 'attendance.punch', 'attendance.approve',
+        'leave.view', 'leave.approve', 'leave.create', 'performance.view', 'compliance.view',
+        'requests.view', 'communication.view', 'reports.view', 'documents.view',
+        'approvals.*', 'approvals.process', 'workflows.view',
+        'own.profile', 'own.attendance', 'own.leave', 'own.documents', 'ess.view'
+      ];
+      if (tlAllowedPerms.includes(permissionName) || permissionName.startsWith('team.')) {
+        return true;
+      }
+    }
+
+    // Role-based baseline guarantees for Compliance Officer
+    if (normalizedRole === 'COMPLIANCE') {
+      const compAllowedPerms = [
+        'compliance.*', 'compliance.view', 'compliance.manage', 'documents.*', 'documents.view', 'documents.upload',
+        'reports.view', 'attendance.view', 'leave.view', 'communication.view', 'requests.view',
+        'own.profile', 'own.attendance', 'own.leave', 'own.documents', 'ess.view'
+      ];
+      if (compAllowedPerms.includes(permissionName) || permissionName.startsWith('compliance.') || permissionName.startsWith('documents.')) {
+        return true;
+      }
+    }
+
     // Role-based baseline guarantees for Line Manager
     if (normalizedRole === 'MANAGER') {
       const managerAllowedPerms = [
-        'attendance.view', 'attendance.punch', 'leave.view', 'leave.create', 'leave.approve',
-        'payroll.view', 'communication.view', 'reports.view', 'own.profile',
-        'ess.view', 'expenses.view', 'assets.view', 'performance.view',
-        'documents.view', 'requests.view', 'team.view', 'people.view', 'workflows.view',
-        'approvals.process'
+        'people.view', 'team.*', 'team.view', 'team.attendance', 'team.leave', 'team.approve',
+        'attendance.view', 'attendance.team', 'attendance.punch', 'attendance.approve',
+        'leave.view', 'leave.create', 'leave.approve', 'payroll.view', 'communication.view',
+        'reports.view', 'own.profile', 'ess.view', 'expenses.view', 'assets.view', 'performance.view',
+        'documents.view', 'requests.view', 'workflows.view', 'approvals.*', 'approvals.process'
       ];
-      if (managerAllowedPerms.includes(permissionName)) {
+      if (managerAllowedPerms.includes(permissionName) || permissionName.startsWith('team.')) {
         return true;
       }
     }

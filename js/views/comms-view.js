@@ -16,8 +16,8 @@ const CommsView = {
   },
 
   async render() {
-    const role = AuthGuard.userProfile?.roleId || 'EMPLOYEE';
-    const canBroadcast = role === 'SUPER_ADMIN' || role === 'COMPANY_ADMIN' || role === 'HR';
+    const role = (AuthGuard.userProfile?.roleId || 'EMPLOYEE').toUpperCase();
+    const canBroadcast = ['SUPER_ADMIN', 'COMPANY_ADMIN', 'ADMIN', 'HR', 'OPS'].includes(role);
 
     if (!canBroadcast && this.activeTab === 'manage') {
       this.activeTab = 'wall';
@@ -425,8 +425,8 @@ const CommsView = {
   },
 
   openNewAnnouncementModal() {
-    const role = AuthGuard.userProfile?.roleId || 'EMPLOYEE';
-    const canBroadcast = role === 'SUPER_ADMIN' || role === 'COMPANY_ADMIN' || role === 'HR';
+    const role = (AuthGuard.userProfile?.roleId || 'EMPLOYEE').toUpperCase();
+    const canBroadcast = ['SUPER_ADMIN', 'COMPANY_ADMIN', 'ADMIN', 'HR', 'OPS'].includes(role);
     if (!canBroadcast) {
       Toast.error('Access Denied: Only HR and Organization Administrators can broadcast announcements.');
       return;
@@ -488,8 +488,8 @@ const CommsView = {
   },
 
   async saveAnnouncement() {
-    const role = AuthGuard.userProfile?.roleId || 'EMPLOYEE';
-    const canBroadcast = role === 'SUPER_ADMIN' || role === 'COMPANY_ADMIN' || role === 'HR';
+    const role = (AuthGuard.userProfile?.roleId || 'EMPLOYEE').toUpperCase();
+    const canBroadcast = ['SUPER_ADMIN', 'COMPANY_ADMIN', 'ADMIN', 'HR', 'OPS'].includes(role);
     if (!canBroadcast) {
       Toast.error('Access Denied: Only HR and Organization Administrators can broadcast announcements.');
       return;
@@ -570,8 +570,8 @@ const CommsView = {
   },
 
   async deleteAnnouncement(id) {
-    const role = AuthGuard.userProfile?.roleId || 'EMPLOYEE';
-    const canBroadcast = role === 'SUPER_ADMIN' || role === 'COMPANY_ADMIN' || role === 'HR';
+    const role = (AuthGuard.userProfile?.roleId || 'EMPLOYEE').toUpperCase();
+    const canBroadcast = ['SUPER_ADMIN', 'COMPANY_ADMIN', 'ADMIN', 'HR', 'OPS'].includes(role);
     if (!canBroadcast) {
       Toast.error('Access Denied: Only HR and Organization Administrators can delete broadcasts.');
       return;

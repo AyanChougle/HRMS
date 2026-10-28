@@ -289,12 +289,67 @@ try {
     }
 
     // -------------------------------------------------------------------------
-    // 5. RESET PASSWORD WITH TOKEN
+    // 4.5. VERIFY RESET TOKEN
+    // -------------------------------------------------------------------------
+    if ($action === 'verify_reset_token') {
+        $token = trim($_GET['token'] ?? $input['token'] ?? '');
+        if (empty($token)) {
+            json_out(["success" => false, "error" => "Token is required."], 400);
+        }
+
+        $stmt = $pdo->prepare("
+            SELECT id, email, expires_at, used 
+            FROM password_resets 
+            WHERE token = :t 
+            ORDER BY id DESC LIMIT 1
+        ");
+        $stmt->execute([':t' => $token]);
+        $row = $stmt->fetch();
+
+        if (!$row || intval($row['used']) === 1) {
+            json_out(["success" => false, "error" => "This password reset token is invalid or has already been used."], 400);
+        }
+        if (strtotime($row['expires_at']) < time()) {
+            json_out(["success" => false, "error" => "This password reset link has expired."], 400);
+        }
+
+        json_out(["success" => true, "email" => $row['email'], "valid" => true]);
+    }
+
+    // -------------------------------------------------------------------------
+    // 5. RESET PASSWORD WITH TOKEN OR ADMIN TEMPORARY PASSWORD
     // -------------------------------------------------------------------------
     if ($action === 'reset_password' || $action === 'update_password') {
         $email = strtolower(trim($input['email'] ?? ''));
         $token = trim($input['token'] ?? '');
         $newPass = (string)($input['password'] ?? '');
+
+        // Admin direct temporary password reset (e.g. from Users management view)
+        if (empty($token) && !empty($email) && empty($newPass)) {
+            $userAuth = get_current_user_or_null($pdo);
+            $userRole = canonical_role($userAuth['role_id'] ?? '');
+            if (in_array($userRole, ['ADMIN', 'HR', 'SUPER_ADMIN', 'COMPANY_ADMIN'])) {
+                $tempPassword = 'Diallo@' . rand(1000, 9999);
+                $tempHash = password_hash($tempPassword, PASSWORD_DEFAULT);
+                $up = $pdo->prepare("UPDATE users SET password_hash = :p WHERE LOWER(email) = :e");
+                $up->execute([':p' => $tempHash, ':e' => $email]);
+                json_out([
+                    "success" => true,
+                    "message" => "Temporary password generated.",
+                    "temporary_password" => $tempPassword
+                ]);
+            }
+        }
+
+        // Auto-resolve email from token if missing
+        if (empty($email) && !empty($token)) {
+            $tStmt = $pdo->prepare("SELECT email FROM password_resets WHERE token = :t AND used = 0 ORDER BY id DESC LIMIT 1");
+            $tStmt->execute([':t' => $token]);
+            $tRow = $tStmt->fetch();
+            if ($tRow) {
+                $email = strtolower(trim($tRow['email']));
+            }
+        }
 
         if (empty($email) || empty($token) || empty($newPass)) {
             json_out(["success" => false, "error" => "Email, token, and new password are required."], 400);

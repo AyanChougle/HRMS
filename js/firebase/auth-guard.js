@@ -59,26 +59,35 @@ const AuthGuard = {
     }
     if (r === 'OPS') {
       return new Set([
-        'people.view', 'attendance.view', 'leave.view', 'performance.view',
-        'compliance.view', 'requests.view', 'communication.view', 'reports.view', 'ess'
+        'people.view', 'team.*', 'team.view', 'team.attendance', 'team.leave', 'team.approve',
+        'attendance.*', 'attendance.view', 'attendance.team', 'attendance.approve',
+        'leave.*', 'leave.view', 'leave.approve', 'performance.view', 'compliance.view',
+        'requests.view', 'communication.*', 'communication.view', 'reports.view',
+        'documents.view', 'approvals.*', 'workflows.view', 'ess'
       ]);
     }
     if (r === 'COMPLIANCE') {
       return new Set([
-        'compliance.*', 'documents.view', 'reports.view', 'attendance.view',
-        'leave.view', 'communication.view', 'requests.view', 'ess'
+        'compliance.*', 'documents.*', 'documents.view', 'documents.upload',
+        'reports.view', 'attendance.view', 'leave.view', 'communication.view',
+        'requests.view', 'ess'
       ]);
     }
     if (r === 'MANAGER') {
       return new Set([
-        'people.view', 'attendance.view', 'leave.view', 'performance.view',
-        'compliance.view', 'requests.view', 'communication.view', 'reports.view', 'ess'
+        'people.view', 'team.*', 'team.view', 'team.attendance', 'team.leave', 'team.approve',
+        'attendance.view', 'attendance.team', 'attendance.approve', 'leave.view', 'leave.approve',
+        'performance.view', 'compliance.view', 'requests.view', 'communication.view',
+        'reports.view', 'documents.view', 'approvals.*', 'workflows.view', 'ess'
       ]);
     }
     if (r === 'TL') {
       return new Set([
-        'people.view', 'attendance.view', 'leave.view', 'performance.view',
-        'compliance.view', 'requests.view', 'communication.view', 'reports.view', 'ess'
+        'people.view', 'team.*', 'team.view', 'team.attendance', 'team.leave', 'team.approve',
+        'attendance.view', 'attendance.team', 'attendance.punch', 'attendance.approve',
+        'leave.view', 'leave.approve', 'performance.view', 'compliance.view',
+        'requests.view', 'communication.view', 'reports.view', 'documents.view',
+        'approvals.*', 'workflows.view', 'ess'
       ]);
     }
     // Default EMPLOYEE
