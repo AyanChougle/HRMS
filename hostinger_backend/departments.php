@@ -5,6 +5,9 @@ $method = $_SERVER['REQUEST_METHOD'];
 $input = get_json_input();
 
 try {
+    $user = require_authenticated_user($pdo);
+    $userRole = canonical_role($user['role_id']);
+
     // -----------------------------------------------------------------------------
     // GET: Fetch all active departments dynamically from DB with member counts
     // -----------------------------------------------------------------------------
@@ -30,6 +33,9 @@ try {
     // POST / PUT: Create or Update Department dynamically
     // -----------------------------------------------------------------------------
     if ($method === 'POST' || $method === 'PUT') {
+        if (!in_array($userRole, ['ADMIN', 'HR', 'OPS', 'SUPER_ADMIN', 'COMPANY_ADMIN'])) {
+            json_out(["success" => false, "error" => "Unauthorized: Only HR, Admin, or Ops can modify departments."], 403);
+        }
         $id = !empty($input['id']) ? trim($input['id']) : null;
         $name = trim($input['name'] ?? '');
         $code = strtoupper(trim($input['code'] ?? ''));
@@ -85,6 +91,9 @@ try {
     // DELETE: Soft delete department
     // -----------------------------------------------------------------------------
     if ($method === 'DELETE') {
+        if (!in_array($userRole, ['ADMIN', 'HR', 'OPS', 'SUPER_ADMIN', 'COMPANY_ADMIN'])) {
+            json_out(["success" => false, "error" => "Unauthorized: Only HR, Admin, or Ops can deactivate departments."], 403);
+        }
         $id = $_GET['id'] ?? ($input['id'] ?? '');
         if (empty($id)) {
             json_out(["success" => false, "error" => "Department ID is required."], 400);

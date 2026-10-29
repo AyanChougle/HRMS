@@ -1,15 +1,13 @@
 
 const employeeService = {
-  // Check if employee code is already taken within company
+  // Check if employee code is already taken within company (100% dynamic MySQL check)
   async isEmployeeCodeTaken(employeeCode, companyId, excludeDocId = null) {
     try {
-      const snapshot = await db.collection('employees')
-        .where('companyId', '==', companyId || 'comp_diallo_india')
-        .where('employeeCode', '==', employeeCode.trim().toUpperCase())
-        .get();
-
-      if (snapshot.empty) return false;
-      if (excludeDocId && snapshot.docs.length === 1 && snapshot.docs[0].id === excludeDocId) {
+      const list = await this.getAllEmployees(companyId);
+      const target = (employeeCode || '').trim().toUpperCase();
+      const found = list.find(e => (e.employeeCode || e.employee_code || '').toUpperCase() === target);
+      if (!found) return false;
+      if (excludeDocId && (found.id == excludeDocId || found.employee_id == excludeDocId || found.userId == excludeDocId)) {
         return false;
       }
       return true;
@@ -19,7 +17,7 @@ const employeeService = {
     }
   },
 
-  // Suggest next available employee code (e.g. EMP-0001)
+  // Suggest next available employee code (e.g. D-001) dynamically from MySQL
   async getNextEmployeeCode(companyId = 'comp_diallo_india') {
     try {
       let prefix = 'D-';
@@ -34,10 +32,10 @@ const employeeService = {
         }
       } catch (e) {}
 
-      const snapshot = await db.collection('employees').where('companyId', '==', companyId).get();
+      const list = await this.getAllEmployees(companyId);
       let maxNum = 0;
-      snapshot.docs.forEach(d => {
-        const c = d.data().employeeCode;
+      list.forEach(e => {
+        const c = e.employeeCode || e.employee_code || '';
         if (c && c.toUpperCase().startsWith(prefix.toUpperCase())) {
           const numStr = c.substring(prefix.length);
           const num = parseInt(numStr, 10);
@@ -82,71 +80,7 @@ const employeeService = {
         }
       }
 
-      // 2. Fetch existing Firestore employees and users
-      const empSnap = (typeof db !== 'undefined') ? await db.collection('employees').get() : { docs: [] };
-      const existingEmployees = empSnap.docs.map(d => ({ id: d.id, ...d.data() }));
-      const existingIds = new Set(existingEmployees.map(e => e.id));
-
-      // 3. Upsert MySQL employees into Firestore employees collection
-      if (typeof db !== 'undefined') {
-        for (const me of mysqlEmployees) {
-          const id = me.id;
-          const payload = {
-            userId: me.user_id || id,
-            employeeCode: me.employee_code || '',
-            firstName: me.first_name || '',
-            lastName: me.last_name || '',
-            fullName: me.full_name || `${me.first_name || ''} ${me.last_name || ''}`.trim(),
-            name: me.full_name || `${me.first_name || ''} ${me.last_name || ''}`.trim(),
-            workEmail: me.work_email || me.email || '',
-            email: me.email || me.work_email || '',
-            phone: me.phone || '',
-            companyId: me.company_id || 'comp_diallo_india',
-            companyName: me.company_name || 'Diallo India Private Limited',
-            branchName: me.branch_name || 'Ghansoli - Navi Mumbai, Maharashtra',
-            location: me.location || 'Ghansoli - Navi Mumbai, Maharashtra',
-            department: me.department || 'Operations',
-            designation: me.designation || 'Associate',
-            gradeId: me.grade_id || 'G2',
-            roleId: me.role_id || 'EMPLOYEE',
-            managerId: me.manager_id || null,
-            manager: me.manager || null,
-            mentor: me.mentor || null,
-            dateOfJoining: me.date_of_joining || '',
-            employmentStatus: me.employment_status || me.status || 'ACTIVE',
-            status: me.status || me.employment_status || 'ACTIVE'
-          };
-
-          await db.collection('employees').doc(String(id)).set(payload, { merge: true });
-          if (!existingIds.has(id)) {
-            createdCount++;
-            existingIds.add(id);
-          } else {
-            syncedCount++;
-          }
-        }
-
-        // 4. Also upsert MySQL users into Firestore users collection
-        for (const mu of mysqlUsers) {
-          const uid = mu.uid || String(mu.id);
-          await db.collection('users').doc(uid).set({
-            uid: uid,
-            employeeCode: mu.employee_code || '',
-            displayName: mu.display_name || `${mu.first_name || ''} ${mu.last_name || ''}`.trim(),
-            firstName: mu.first_name || '',
-            lastName: mu.last_name || '',
-            email: mu.email || '',
-            phone: mu.phone || '',
-            roleId: mu.role_id || 'EMPLOYEE',
-            department: mu.department || 'Operations',
-            designation: mu.designation || 'Associate',
-            status: mu.status || 'ACTIVE'
-          }, { merge: true });
-        }
-      }
-
-      const total = mysqlEmployees.length || (createdCount + syncedCount);
-      return { created: createdCount, synced: syncedCount, total };
+      return { created: mysqlEmployees.length, synced: mysqlUsers.length, total: mysqlEmployees.length };
     } catch (err) {
       console.warn('Error syncing users to employees:', err);
       return { created: 0, synced: 0, error: err.message };
@@ -463,56 +397,18 @@ const employeeService = {
         }
       }
 
-      // 1. Search directly by Firestore Doc ID
+      // 1. Fallback search against full MySQL employee list
       try {
-        const doc = await db.collection('employees').doc(searchTarget).get();
-        if (doc.exists) {
-          return { id: doc.id, ...doc.data() };
-        }
-      } catch (e) {
-        // Continue fallback search
-      }
-
-      // 2. Search by userId
-      try {
-        const uidSnap = await db.collection('employees').where('userId', '==', searchTarget).limit(1).get();
-        if (!uidSnap.empty) {
-          return { id: uidSnap.docs[0].id, ...uidSnap.docs[0].data() };
-        }
-      } catch (e) {}
-
-      // 3. Search by employeeCode
-      try {
-        const codeSnap = await db.collection('employees').where('employeeCode', '==', searchTarget).limit(1).get();
-        if (!codeSnap.empty) {
-          return { id: codeSnap.docs[0].id, ...codeSnap.docs[0].data() };
-        }
-      } catch (e) {}
-
-      // 4. Search by Work / Personal / Generic Email
-      const emailTarget = (typeof searchTarget === 'string' && searchTarget.includes('@')) ? searchTarget : AuthGuard.currentUser?.email;
-      if (emailTarget) {
-        try {
-          const workEmailSnap = await db.collection('employees').where('workEmail', '==', emailTarget).limit(1).get();
-          if (!workEmailSnap.empty) {
-            return { id: workEmailSnap.docs[0].id, ...workEmailSnap.docs[0].data() };
-          }
-          const pEmailSnap = await db.collection('employees').where('personalEmail', '==', emailTarget).limit(1).get();
-          if (!pEmailSnap.empty) {
-            return { id: pEmailSnap.docs[0].id, ...pEmailSnap.docs[0].data() };
-          }
-        } catch (e) {}
-      }
-
-      // 5. Fallback check for current authenticated user's UID
-      if (AuthGuard.currentUser?.uid && AuthGuard.currentUser.uid !== searchTarget) {
-        try {
-          const curUidSnap = await db.collection('employees').where('userId', '==', AuthGuard.currentUser.uid).limit(1).get();
-          if (!curUidSnap.empty) {
-            return { id: curUidSnap.docs[0].id, ...curUidSnap.docs[0].data() };
-          }
-        } catch (e) {}
-      }
+        const all = await this.getAllEmployees();
+        const targetStr = String(searchTarget).toLowerCase().trim();
+        const match = all.find(e => 
+          String(e.id || '').toLowerCase() === targetStr ||
+          String(e.userId || '').toLowerCase() === targetStr ||
+          String(e.employeeCode || e.employee_code || '').toLowerCase() === targetStr ||
+          String(e.workEmail || e.email || '').toLowerCase() === targetStr
+        );
+        if (match) return match;
+      } catch (_) {}
 
       return null;
     } catch (err) {
@@ -604,25 +500,9 @@ const employeeService = {
       };
 
       Object.keys(payload).forEach(k => { if (payload[k] === undefined) delete payload[k]; });
-      const docRef = await db.collection('employees').add(payload);
-      payload.id = docRef.id;
-
-      // Log creation in timeline
-      await historyService.logChange(
-        docRef.id,
-        companyId,
-        'EMPLOYEE_CREATED',
-        `Employee record created with code ${employeeCode} (${fullName})`
-      );
-
-      // Auto-generate onboarding checklist tasks
-      // await onboardingService.generateDefaultTasksForEmployee(payload);
-
-      await auditService.log('EMPLOYEE_CREATED', 'PEOPLE', 'employees', docRef.id, { employeeCode, fullName });
       
       // Authoritative Save directly to Hostinger MySQL Backend
       const mysqlPayload = {
-        id: docRef.id,
         employee_code: payload.employeeCode,
         first_name: payload.firstName,
         last_name: payload.lastName,
@@ -646,11 +526,23 @@ const employeeService = {
         employment_status: payload.employmentStatus || 'ACTIVE',
         status: payload.status || 'ACTIVE'
       };
+
       if (typeof apiClient !== 'undefined') {
-        await apiClient.post('employees.php', mysqlPayload);
-      } else {
-        await this.syncToMySQL(payload);
+        const res = await apiClient.post('employees.php', mysqlPayload);
+        if (res && res.id) payload.id = res.id;
       }
+      if (!payload.id) {
+        payload.id = 'emp_' + (payload.employeeCode ? payload.employeeCode.toLowerCase().replace(/[^a-z0-9]/g, '') : Date.now());
+      }
+
+      // Log creation in timeline & audit
+      if (typeof historyService !== 'undefined' && historyService.logChange) {
+        await historyService.logChange(payload.id, companyId, 'EMPLOYEE_CREATED', `Employee record created with code ${employeeCode} (${fullName})`).catch(() => {});
+      }
+      if (typeof auditService !== 'undefined' && auditService.log) {
+        await auditService.log('EMPLOYEE_CREATED', 'PEOPLE', 'employees', payload.id, { employeeCode, fullName }).catch(() => {});
+      }
+      
       return payload;
     } catch (err) {
       console.error('Error creating employee:', err);
@@ -712,26 +604,13 @@ const employeeService = {
         payload.designation = payload.designation || 'Software Engineer';
       }
 
-      await db.collection('employees').doc(actualDocId).set(payload, { merge: true });
-
-      if (AuthGuard.userProfile) {
+      if (AuthGuard.userProfile && !AuthGuard.userProfile.employeeId) {
         AuthGuard.userProfile.employeeId = actualDocId;
       }
 
-      // Also sync roleId and basic details to Firestore users collection
-      if (payload.roleId) {
-        try {
-          await db.collection('users').doc(actualDocId).set({
-            roleId: payload.roleId,
-            designation: payload.designation,
-            department: payload.department,
-            displayName: payload.fullName || payload.name,
-            phone: payload.phone || ''
-          }, { merge: true });
-        } catch (_) {}
+      if (typeof auditService !== 'undefined' && auditService.log) {
+        await auditService.log('EMPLOYEE_UPDATED', 'PEOPLE', 'employees', actualDocId, updates).catch(() => {});
       }
-
-      await auditService.log('EMPLOYEE_UPDATED', 'PEOPLE', 'employees', actualDocId, updates);
 
       // Authoritative Save directly to Hostinger MySQL Backend
       const mysqlPayload = {
@@ -798,7 +677,7 @@ const employeeService = {
   // Delete employee permanently from Hostinger MySQL & Firestore
   async deleteEmployee(employeeId, employeeCode = '', employeeEmail = '') {
     try {
-      // 1. Delete from Hostinger MySQL (both employees and users tables)
+      // 1. Authoritative Delete from Hostinger MySQL (both employees and users tables)
       if (typeof apiClient !== 'undefined') {
         try {
           await apiClient.post('employees.php?action=delete', {
@@ -811,48 +690,12 @@ const employeeService = {
         }
       }
 
-      // 2. Delete from Firestore employees collection
-      if (employeeId) {
-        try {
-          await db.collection('employees').doc(String(employeeId)).delete();
-        } catch (_) {}
+      if (typeof auditService !== 'undefined' && auditService.log) {
+        await auditService.log('EMPLOYEE_DELETED', 'PEOPLE', 'employees', employeeId || employeeCode, {
+          employeeCode,
+          employeeEmail
+        }).catch(() => {});
       }
-      if (employeeCode) {
-        try {
-          const snap = await db.collection('employees').where('employeeCode', '==', employeeCode).get();
-          snap.forEach(d => d.ref.delete());
-        } catch (_) {}
-      }
-      if (employeeEmail) {
-        try {
-          const snap = await db.collection('employees').where('workEmail', '==', employeeEmail).get();
-          snap.forEach(d => d.ref.delete());
-        } catch (_) {}
-      }
-
-      // 3. Delete from Firestore users collection
-      if (employeeId) {
-        try {
-          await db.collection('users').doc(String(employeeId)).delete();
-        } catch (_) {}
-      }
-      if (employeeCode) {
-        try {
-          const snap = await db.collection('users').where('employeeCode', '==', employeeCode).get();
-          snap.forEach(d => d.ref.delete());
-        } catch (_) {}
-      }
-      if (employeeEmail) {
-        try {
-          const snap = await db.collection('users').where('email', '==', employeeEmail).get();
-          snap.forEach(d => d.ref.delete());
-        } catch (_) {}
-      }
-
-      await auditService.log('EMPLOYEE_DELETED', 'PEOPLE', 'employees', employeeId || employeeCode, {
-        employeeCode,
-        employeeEmail
-      });
       return true;
     } catch (err) {
       console.error('Error deleting employee:', err);

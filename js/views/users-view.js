@@ -633,12 +633,17 @@ const UsersView = {
         status: 'ACTIVE'
       },
       prepare: async () => {
-        const snap = await db.collection('users').get();
-        const existingEmails = new Set();
-        snap.docs.forEach(d => {
-          const u = d.data();
-          if (u.email) existingEmails.add(u.email.toLowerCase().trim());
-        });
+        let existingEmails = new Set();
+        if (typeof apiClient !== 'undefined') {
+          try {
+            const resp = await apiClient.get('users.php');
+            if (resp && resp.success && Array.isArray(resp.users)) {
+              resp.users.forEach(u => {
+                if (u.email) existingEmails.add(u.email.toLowerCase().trim());
+              });
+            }
+          } catch (_) {}
+        }
         return { existingEmails };
       },
       validate: (row, ctx, seen) => {
@@ -654,50 +659,25 @@ const UsersView = {
         const code = (row.employeeCode || '').toUpperCase().trim();
         const pass = (row.loginPassword || '').trim() || 'Diallo@2026';
         const role = (row.roleId || '').toUpperCase().trim() || 'EMPLOYEE';
-        const parts = row.fullName.split(/\s+/);
+        const parts = (row.fullName || '').split(/\s+/);
         const firstName = parts[0] || '';
         const lastName = parts.slice(1).join(' ') || '';
 
-        const uid = 'usr_' + (code ? code.toLowerCase().replace(/[^a-z0-9]/g, '') : Date.now() + Math.floor(Math.random() * 1000));
-
-        // 1. Write to Firestore 'users'
-        await db.collection('users').doc(uid).set({
-          uid,
-          email,
-          displayName: row.fullName,
-          firstName,
-          lastName,
-          employeeCode: code || '',
-          roleId: role,
-          department: row.department || '',
-          designation: row.designation || '',
-          initialPassword: pass,
-          companyId,
-          status: (row.status || 'ACTIVE').toUpperCase(),
-          updatedAt: firebase.firestore.FieldValue.serverTimestamp()
-        }, { merge: true });
-
-        // 2. Also keep 'employees' record updated/created
-        try {
-          await db.collection('employees').doc(uid).set({
-            id: uid,
-            employeeCode: code || '',
-            fullName: row.fullName,
-            firstName,
-            lastName,
+        // Authoritative Save directly to Hostinger MySQL
+        if (typeof apiClient !== 'undefined') {
+          await apiClient.post('users.php?action=create', {
             email,
-            workEmail: email,
-            roleId: role,
-            department: row.department || '',
-            designation: row.designation || '',
-            initialPassword: pass,
-            loginPassword: pass,
-            employmentStatus: (row.status || 'ACTIVE').toUpperCase(),
-            status: (row.status || 'ACTIVE').toUpperCase(),
-            companyId,
-            updatedAt: firebase.firestore.FieldValue.serverTimestamp()
-          }, { merge: true });
-        } catch (_) {}
+            password: pass,
+            display_name: row.fullName,
+            first_name: firstName,
+            last_name: lastName,
+            employee_code: code,
+            role_id: role,
+            department: row.department || 'Operations',
+            designation: row.designation || 'Associate',
+            status: (row.status || 'ACTIVE').toUpperCase()
+          });
+        }
       },
       onDone: async (r) => {
         if (r.imported) {

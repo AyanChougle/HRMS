@@ -9,10 +9,10 @@ if (empty($action) && isset($input['action'])) {
     $action = $input['action'];
 }
 
-$currentUser = get_current_user_or_null($pdo);
-$userRole = canonical_role($currentUser['role_id'] ?? $_GET['role'] ?? 'EMPLOYEE');
-$userCode = $currentUser['employee_code'] ?? $_GET['employee_code'] ?? '';
-$userUid = $currentUser['uid'] ?? $currentUser['id'] ?? $_GET['uid'] ?? '';
+$currentUser = require_authenticated_user($pdo);
+$userRole = canonical_role($currentUser['role_id']);
+$userCode = $currentUser['employee_code'] ?? '';
+$userUid = $currentUser['uid'] ?? $currentUser['id'] ?? '';
 $userDept = $currentUser['department'] ?? '';
 
 // Ensure leave_applications table and review audit columns exist
@@ -188,7 +188,57 @@ if ($method === 'POST') {
         json_out(["success" => true, "message" => "Leave application marked as {$status}."]);
     }
 
-    // 2. Submit New Leave Application
+    // 2. Cancel Leave Application
+    if ($action === 'cancel') {
+        $leaveId = intval($input['id'] ?? $_GET['id'] ?? 0);
+        if (!$leaveId) {
+            json_out(["success" => false, "error" => "Leave application ID is required."], 400);
+        }
+
+        $getStmt = $pdo->prepare("SELECT * FROM leave_applications WHERE id = :id LIMIT 1");
+        $getStmt->execute([':id' => $leaveId]);
+        $app = $getStmt->fetch();
+
+        if (!$app) {
+            json_out(["success" => false, "error" => "Leave application not found."], 404);
+        }
+
+        // Ownership or privileged role check
+        $isSelf = ($app['employee_id'] === $userUid || $app['employee_code'] === ($currentUser['employee_code'] ?? ''));
+        $isPrivileged = in_array($userRole, ['ADMIN', 'HR', 'OPS', 'SUPER_ADMIN', 'COMPANY_ADMIN']);
+        if (!$isSelf && !$isPrivileged) {
+            json_out(["success" => false, "error" => "Unauthorized to cancel this leave application."], 403);
+        }
+
+        $wasApproved = ($app['status'] === 'APPROVED');
+        $upd = $pdo->prepare("UPDATE leave_applications SET status = 'CANCELLED', updated_at = CURRENT_TIMESTAMP WHERE id = :id");
+        $upd->execute([':id' => $leaveId]);
+
+        // If it was already approved, refund balance
+        if ($wasApproved) {
+            $leaveYear = intval(date('Y', strtotime($app['start_date'])));
+            $daysCount = floatval($app['days_count']);
+            $leaveType = $app['leave_type'];
+            try {
+                $balStmt = $pdo->prepare("
+                    UPDATE leave_balances 
+                    SET used = GREATEST(0, used - :days), available = available + :days
+                    WHERE (employee_id = :eid OR employee_id = :ecode) AND leave_type = :lt AND year = :y
+                ");
+                $balStmt->execute([
+                    ':days' => $daysCount,
+                    ':eid' => $app['employee_id'],
+                    ':ecode' => $app['employee_code'],
+                    ':lt' => $leaveType,
+                    ':y' => $leaveYear
+                ]);
+            } catch (\Throwable $balErr) {}
+        }
+
+        json_out(["success" => true, "message" => "Leave application cancelled successfully."]);
+    }
+
+    // 3. Submit New Leave Application
     $empId = trim($input['employee_id'] ?? $userUid);
     $leaveType = trim($input['leave_type'] ?? 'Casual Leave');
     $startDate = trim($input['start_date'] ?? '');
@@ -232,6 +282,7 @@ if ($method === 'POST') {
         ':reason' => $reason
     ]);
 
-    json_out(["success" => true, "message" => "Leave application submitted successfully for review."]);
+    $newId = $pdo->lastInsertId();
+    json_out(["success" => true, "id" => $newId, "message" => "Leave application submitted successfully for review."]);
 }
 ?>

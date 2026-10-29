@@ -9,6 +9,9 @@ if (empty($action) && isset($input['action'])) {
     $action = $input['action'];
 }
 
+$currentUser = require_authenticated_user($pdo);
+$userRole = canonical_role($currentUser['role_id']);
+
 // -----------------------------------------------------------------------------
 // GET: Fetch all users or single user
 // -----------------------------------------------------------------------------

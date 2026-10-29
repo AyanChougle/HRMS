@@ -45,43 +45,7 @@ const announcementService = {
         }
       }
 
-      // 2. Fallback to Firestore
-      const companyId = opts.companyId || (typeof AuthGuard !== 'undefined' && AuthGuard?.userProfile?.companyId) || 'comp_diallo_india';
-      let query = db.collection('announcements').where('companyId', '==', companyId);
-
-      if (opts.status && opts.status !== 'ALL') {
-        query = query.where('status', '==', opts.status);
-      }
-
-      let snapshot;
-      try {
-        snapshot = await query.orderBy('createdAt', 'desc').limit(limit).get();
-      } catch (idxErr) {
-        snapshot = await query.limit(limit).get();
-      }
-      let list = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-      list.sort((a, b) => {
-        const timeA = a.createdAt?.seconds ? a.createdAt.seconds * 1000 : (new Date(a.createdAt || 0).getTime() || 0);
-        const timeB = b.createdAt?.seconds ? b.createdAt.seconds * 1000 : (new Date(b.createdAt || 0).getTime() || 0);
-        return timeB - timeA;
-      });
-
-      // Exclude demo announcements
-      const DEMO_TITLES = ['q3 town hall', 'diwali festive', 'annual group medical insurance'];
-      list = list.filter(a => {
-        const titleLower = (a.title || '').toLowerCase();
-        return !docIdIsDemo(a.id) && !DEMO_TITLES.some(dt => titleLower.includes(dt));
-      });
-
-      function docIdIsDemo(id) {
-        return id && (id.startsWith('ANN_DEMO') || id.startsWith('ANN00'));
-      }
-
-      if (opts.category && opts.category !== 'ALL') {
-        list = list.filter(a => a && a.category === opts.category);
-      }
-
-      return list;
+      return [];
     } catch (err) {
       console.warn('Error fetching announcements:', err);
       return [];
@@ -131,8 +95,7 @@ const announcementService = {
       }
 
       if (!payload.id) {
-        const docRef = await db.collection('announcements').add(payload);
-        payload.id = docRef.id;
+        payload.id = 'ann_' + Date.now();
       }
 
       await auditService.log('ANNOUNCEMENT_PUBLISHED', 'COMMUNICATION', 'announcements', String(payload.id), payload).catch(() => {});
@@ -151,9 +114,6 @@ const announcementService = {
           await apiClient.delete(`announcements.php?id=${encodeURIComponent(id)}`);
         } catch (_) {}
       }
-      try {
-        await db.collection('announcements').doc(String(id)).delete();
-      } catch (_) {}
       await auditService.log('ANNOUNCEMENT_DELETED', 'COMMUNICATION', 'announcements', String(id), {}).catch(() => {});
       return true;
     } catch (e) {

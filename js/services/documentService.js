@@ -44,30 +44,10 @@ const documentService = {
             }));
           }
         } catch (apiErr) {
-          console.warn('[documentService] MySQL fetch error, falling back:', apiErr.message);
+          console.warn('[documentService] MySQL fetch notice:', apiErr.message);
         }
       }
-
-      // 2. Fallback to Firestore
-      let query = db.collection('employeeDocuments');
-      if (filters.companyId) query = query.where('companyId', '==', filters.companyId);
-      if (filters.employeeId) query = query.where('employeeId', '==', filters.employeeId);
-      if (filters.categoryCode && filters.categoryCode !== 'All') query = query.where('categoryCode', '==', filters.categoryCode);
-      if (filters.status && filters.status !== 'All') query = query.where('status', '==', filters.status);
-
-      let snapshot;
-      try {
-        snapshot = await query.orderBy('uploadedAt', 'desc').get();
-      } catch (idxErr) {
-        snapshot = await query.get();
-      }
-      const list = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-      list.sort((a, b) => {
-        const tA = a.uploadedAt?.seconds ? a.uploadedAt.seconds * 1000 : (new Date(a.uploadedAt || 0).getTime() || 0);
-        const tB = b.uploadedAt?.seconds ? b.uploadedAt.seconds * 1000 : (new Date(b.uploadedAt || 0).getTime() || 0);
-        return tB - tA;
-      });
-      return list;
+      return [];
     } catch (e) {
       console.warn('Error fetching employee documents:', e);
       return [];
@@ -126,8 +106,7 @@ const documentService = {
       }
 
       if (!payload.id) {
-        const docRef = await db.collection('employeeDocuments').add(payload);
-        payload.id = docRef.id;
+        payload.id = 'doc_' + Date.now();
       }
 
       await auditService.log('DOCUMENT_UPLOADED', 'DOCUMENTS', 'employeeDocuments', String(payload.id), payload).catch(() => {});
@@ -160,7 +139,9 @@ const documentService = {
   async createDocumentRequest(data) {
     try {
       const companyId = data.companyId || AuthGuard.userProfile?.companyId || 'comp_diallo_india';
+      const reqId = 'dreq_' + Date.now();
       const payload = {
+        id: reqId,
         companyId,
         employeeId: data.employeeId,
         employeeName: data.employeeName,
@@ -169,16 +150,10 @@ const documentService = {
         description: data.description || 'Please provide updated copy for compliance audit',
         requestedBy: AuthGuard.userProfile?.displayName || 'HR Operations',
         dueDate: data.dueDate || new Date(Date.now() + 7 * 86400000).toISOString().slice(0, 10),
-        status: 'REQUESTED', // REQUESTED, SUBMITTED, APPROVED, REJECTED
-        createdAt: firebase.firestore.FieldValue.serverTimestamp(),
-        updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+        status: 'REQUESTED'
       };
 
-      const docRef = await db.collection('documentRequests').add(payload);
-      payload.id = docRef.id;
-
-      // Notify Employee
-      if (window.notificationService) {
+      if (window.notificationService && notificationService.createNotification) {
         await notificationService.createNotification({
           companyId,
           employeeId: data.employeeId,
@@ -186,11 +161,13 @@ const documentService = {
           title: `Action Required: Upload ${payload.documentName}`,
           message: `HR Operations has requested your ${payload.documentName}. Due by ${payload.dueDate}.`,
           relatedModule: 'documents',
-          relatedId: docRef.id
-        });
+          relatedId: reqId
+        }).catch(() => {});
       }
 
-      await auditService.log('DOCUMENT_REQUEST_CREATED', 'DOCUMENTS', 'documentRequests', docRef.id, payload);
+      if (typeof auditService !== 'undefined' && auditService.log) {
+        await auditService.log('DOCUMENT_REQUEST_CREATED', 'DOCUMENTS', 'documentRequests', reqId, payload).catch(() => {});
+      }
       return payload;
     } catch (err) {
       throw err;
@@ -199,43 +176,22 @@ const documentService = {
 
   // 5. GET DOCUMENT REQUESTS
   async getDocumentRequests(filters = {}) {
-    try {
-      let query = db.collection('documentRequests');
-      if (filters.companyId) query = query.where('companyId', '==', filters.companyId);
-      if (filters.employeeId) query = query.where('employeeId', '==', filters.employeeId);
-      if (filters.status && filters.status !== 'All') query = query.where('status', '==', filters.status);
-
-      let snapshot;
-      try {
-        snapshot = await query.orderBy('createdAt', 'desc').get();
-      } catch (idxErr) {
-        snapshot = await query.get();
-      }
-      const list = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-      list.sort((a, b) => {
-        const tA = a.createdAt?.seconds ? a.createdAt.seconds * 1000 : (new Date(a.createdAt || 0).getTime() || 0);
-        const tB = b.createdAt?.seconds ? b.createdAt.seconds * 1000 : (new Date(b.createdAt || 0).getTime() || 0);
-        return tB - tA;
-      });
-      return list;
-    } catch (e) {
-      return [];
-    }
+    return [];
   },
 
   // 6. APPROVE OR REJECT DOCUMENT
   async reviewDocument(docId, newStatus, rejectionReason = '') {
     try {
-      const payload = {
-        status: newStatus,
-        reviewedBy: AuthGuard.userProfile?.displayName || 'HR Compliance',
-        reviewedAt: firebase.firestore.FieldValue.serverTimestamp(),
-        rejectionReason: newStatus === 'REJECTED' ? rejectionReason : null,
-        updatedAt: firebase.firestore.FieldValue.serverTimestamp()
-      };
-
-      await db.collection('employeeDocuments').doc(docId).update(payload);
-      await auditService.log(`DOCUMENT_${newStatus}`, 'DOCUMENTS', 'employeeDocuments', docId, payload);
+      if (typeof apiClient !== 'undefined') {
+        await apiClient.post('documents.php?action=review', {
+          id: docId,
+          status: newStatus,
+          rejectionReason
+        });
+      }
+      if (typeof auditService !== 'undefined' && auditService.log) {
+        await auditService.log(`DOCUMENT_${newStatus}`, 'DOCUMENTS', 'documents', String(docId), { newStatus, rejectionReason }).catch(() => {});
+      }
       return true;
     } catch (e) {
       throw e;
@@ -250,10 +206,9 @@ const documentService = {
           await apiClient.delete(`documents.php?id=${encodeURIComponent(docId)}`);
         } catch (_) {}
       }
-      try {
-        await db.collection('employeeDocuments').doc(String(docId)).delete();
-      } catch (_) {}
-      await auditService.log('DOCUMENT_DELETED', 'DOCUMENTS', 'employeeDocuments', String(docId), {}).catch(() => {});
+      if (typeof auditService !== 'undefined' && auditService.log) {
+        await auditService.log('DOCUMENT_DELETED', 'DOCUMENTS', 'employeeDocuments', String(docId), {}).catch(() => {});
+      }
       return true;
     } catch (e) {
       throw e;

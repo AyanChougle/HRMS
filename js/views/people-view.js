@@ -1861,9 +1861,13 @@ const PeopleView = {
       ],
       sampleRow: { employeeCode: '', fullName: 'Jane Doe', workEmail: 'jane.doe@company.com', department: 'Operations', designation: 'Operations Executive', branchName: 'Ghansoli - Navi Mumbai', manager: '', dateOfJoining: '2026-10-01', employmentStatus: 'ACTIVE', phone: '9876543210', loginPassword: 'Diallo@2026' },
 
-      // Load existing emails/codes once so duplicates within file are caught and existing records can be updated
+      // Load existing emails/codes once from Hostinger MySQL
       prepare: async () => {
-        const snap = await db.collection('employees').where('companyId', '==', companyId).get();
+        let existingEmployees = [];
+        try {
+          existingEmployees = await employeeService.getAllEmployees(companyId);
+        } catch (_) {}
+
         const emailToDocMap = {}, codeToDocMap = {}, managerMap = {};
 
         const registerManagerKeys = (name, docId) => {
@@ -1878,35 +1882,43 @@ const PeopleView = {
           }
         };
 
-        snap.docs.forEach(d => {
-          const e = d.data();
-          const docId = d.id;
-          [e.workEmail, e.email, e.personalEmail].forEach(x => {
+        existingEmployees.forEach(e => {
+          const docId = e.id;
+          [e.workEmail, e.email, e.work_email, e.personalEmail, e.personal_email].forEach(x => {
             if (x) emailToDocMap[String(x).toLowerCase().trim()] = docId;
           });
-          if (e.employeeCode) codeToDocMap[String(e.employeeCode).toUpperCase().trim()] = docId;
-          if (e.fullName) registerManagerKeys(e.fullName, docId);
+          const c = e.employeeCode || e.employee_code;
+          if (c) codeToDocMap[String(c).toUpperCase().trim()] = docId;
+          const fn = e.fullName || e.full_name || e.name;
+          if (fn) registerManagerKeys(fn, docId);
         });
 
-        // Also fetch user accounts to map login passwords
+        // Also fetch user accounts from MySQL to map login passwords
         const userPassMap = {};
-        try {
-          const uSnap = await db.collection('users').get();
-          uSnap.docs.forEach(d => {
-            const u = d.data();
-            if (u.email) userPassMap[u.email.toLowerCase().trim()] = u.initialPassword || u.password || 'Diallo@2026';
-          });
-        } catch (_) {}
+        if (typeof apiClient !== 'undefined') {
+          try {
+            const uRes = await apiClient.get('users.php');
+            if (uRes && uRes.success && Array.isArray(uRes.users)) {
+              uRes.users.forEach(u => {
+                if (u.email) userPassMap[u.email.toLowerCase().trim()] = u.initialPassword || u.password || 'Diallo@2026';
+              });
+            }
+          } catch (_) {}
+        }
 
-        // Track registered departments so we dynamically auto-create any new department in CSV
+        // Track registered departments dynamically from MySQL
         const knownDepartments = new Set();
-        try {
-          const deptSnap = await db.collection('departments').get();
-          deptSnap.docs.forEach(d => {
-            const dName = (d.data().name || '').trim().toLowerCase();
-            if (dName) knownDepartments.add(dName);
-          });
-        } catch (_) {}
+        if (typeof apiClient !== 'undefined') {
+          try {
+            const dRes = await apiClient.get('departments.php');
+            if (dRes && dRes.success && Array.isArray(dRes.departments)) {
+              dRes.departments.forEach(d => {
+                const dName = (d.name || '').trim().toLowerCase();
+                if (dName) knownDepartments.add(dName);
+              });
+            }
+          } catch (_) {}
+        }
 
         return { emailToDocMap, codeToDocMap, managerMap, userPassMap, knownDepartments, registerManagerKeys };
       },
@@ -1937,19 +1949,10 @@ const PeopleView = {
         const branch = (row.branchName || row.branch || 'Ghansoli - Navi Mumbai').trim();
         const phone = (row.phone || '').replace(/[^0-9+]/g, '');
 
-        // 1. Dynamic Department Auto-Creation in Firestore & MySQL
+        // 1. Dynamic Department Auto-Creation in Hostinger MySQL
         if (dept && !ctx.knownDepartments.has(dept.toLowerCase())) {
           try {
             const deptCode = dept.substring(0, 4).toUpperCase().replace(/[^A-Z]/g, '') || 'DEPT';
-            const deptRef = db.collection('departments').doc();
-            await deptRef.set({
-              id: deptRef.id,
-              name: dept,
-              code: deptCode,
-              status: 'ACTIVE',
-              companyId: companyId,
-              createdAt: firebase.firestore.FieldValue.serverTimestamp()
-            });
             ctx.knownDepartments.add(dept.toLowerCase());
             if (typeof apiClient !== 'undefined') {
               apiClient.post('departments.php', { name: dept, code: deptCode, status: 'ACTIVE' }).catch(() => {});
@@ -2020,26 +2023,25 @@ const PeopleView = {
           savedId = newEmp.id;
         }
 
-        // Keep user login account synchronized in Firestore 'users' collection
-        try {
-          const targetUid = savedId || ('emp_' + code.toLowerCase().replace(/[^a-z0-9]/g, ''));
-          await db.collection('users').doc(targetUid).set({
-            uid: targetUid,
-            employeeCode: code,
-            email: email,
-            displayName: fullName,
-            firstName: payload.firstName,
-            lastName: payload.lastName,
-            phone: payload.phone || '',
-            department: dept,
-            designation: desig,
-            roleId: 'EMPLOYEE',
-            initialPassword: loginPass,
-            companyId: companyId,
-            status: payload.employmentStatus || 'ACTIVE',
-            updatedAt: firebase.firestore.FieldValue.serverTimestamp()
-          }, { merge: true });
-        } catch (_) {}
+        // Keep user login account synchronized in MySQL users table
+        if (typeof apiClient !== 'undefined') {
+          try {
+            await apiClient.post('users.php', {
+              uid: savedId,
+              employee_code: code,
+              email: email,
+              display_name: fullName,
+              first_name: payload.firstName,
+              last_name: payload.lastName,
+              phone: payload.phone || '',
+              department: dept,
+              designation: desig,
+              role_id: 'EMPLOYEE',
+              initialPassword: loginPass,
+              status: payload.employmentStatus || 'ACTIVE'
+            });
+          } catch (_) {}
+        }
 
         // Dynamically register this employee in managerMap so subsequent rows match immediately
         if (savedId) {
@@ -2053,12 +2055,12 @@ const PeopleView = {
           Toast.info('Connecting organizational hierarchy & syncing with Hostinger MySQL...');
           try {
             // Second pass: resolve any hierarchical managers listed later in the CSV file
-            const allSnap = await db.collection('employees').where('companyId', '==', companyId).get();
-            const emps = allSnap.docs.map(d => ({ id: d.id, ...d.data() }));
+            const emps = await employeeService.getAllEmployees(companyId);
             const mLookup = {};
             emps.forEach(e => {
-              if (e.fullName) {
-                const clean = e.fullName.trim().toLowerCase();
+              const fn = e.fullName || e.full_name || e.name;
+              if (fn) {
+                const clean = fn.trim().toLowerCase();
                 mLookup[clean] = e.id;
                 const parts = clean.split(/\s+/);
                 if (parts.length >= 2) {
@@ -2069,22 +2071,17 @@ const PeopleView = {
               }
             });
 
-            const batch = db.batch();
-            let linkCount = 0;
-            emps.forEach(e => {
-              if (e.manager && !e.managerId) {
-                const k1 = e.manager.trim().toLowerCase();
+            for (const e of emps) {
+              const mgr = e.manager;
+              const mgrId = e.managerId || e.manager_id;
+              if (mgr && !mgrId) {
+                const k1 = mgr.trim().toLowerCase();
                 const k2 = k1.replace('.', ' ');
                 const matchedId = mLookup[k1] || mLookup[k2];
                 if (matchedId && matchedId !== e.id) {
-                  batch.update(db.collection('employees').doc(e.id), { managerId: matchedId });
-                  linkCount++;
+                  await employeeService.updateEmployee(e.id, { managerId: matchedId, manager: mgr }).catch(() => {});
                 }
               }
-            });
-            if (linkCount > 0) {
-              await batch.commit();
-              console.log(`[CSV Import] Linked ${linkCount} manager-employee hierarchy reporting lines.`);
             }
           } catch (hierErr) {
             console.warn('[CSV Import] Hierarchy resolution warning:', hierErr);

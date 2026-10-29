@@ -1722,21 +1722,22 @@ const AttendanceView = {
       const grossHoursFormatted = `${Math.floor(grossMins / 60)}h ${String(grossMins % 60).padStart(2, '0')}m`;
       const workedHoursFormatted = `${Math.floor(netWorkedMins / 60)}h ${String(netWorkedMins % 60).padStart(2, '0')}m`;
 
-      await db.collection('attendanceRecords').doc(recordId).update({
-        checkIn,
-        checkOut,
-        grossMinutes: grossMins,
-        grossHoursFormatted,
-        totalBreakMinutes: breakMins,
-        totalBreakSeconds: breakMins * 60,
-        breakFormatted: `${breakMins}m`,
-        workedMinutes: netWorkedMins,
-        workedHoursFormatted,
-        overtimeMinutes: otMins,
-        status,
-        updatedAt: firebase.firestore.FieldValue.serverTimestamp()
-      });
-      Toast.success('Attendance record updated accurately.');
+      if (typeof apiClient !== 'undefined') {
+        const res = await apiClient.post('attendance.php?action=update_record', {
+          id: recordId,
+          check_in: checkIn,
+          check_out: checkOut,
+          status: status,
+          worked_minutes: netWorkedMins,
+          worked_hours: workedHoursFormatted,
+          gross_minutes: grossMins,
+          total_break_minutes: breakMins
+        });
+        if (res && res.success === false) {
+          throw new Error(res.error || 'Failed to update attendance record in database.');
+        }
+      }
+      Toast.success('Attendance record updated accurately in Hostinger MySQL.');
       ModalManager.closeModal();
       this.switchTab('daily');
     } catch (e) {

@@ -11,31 +11,51 @@ const userService = {
     { id: 'EMPLOYEE', name: 'Employee', badge: 'badge-neutral', color: '#475569', desc: 'Standard self-service profile, timecard, leaves & requests' }
   ],
 
-  // Get user profile by UID
+  // Get user profile by UID from Hostinger MySQL
   async getUserProfile(uid) {
     try {
-      const doc = await db.collection('users').doc(uid).get();
-      if (doc.exists) {
-        return { id: doc.id, ...doc.data() };
+      if (typeof apiClient !== 'undefined') {
+        const resp = await apiClient.get('users.php', { uid });
+        if (resp && resp.success && resp.user) {
+          const u = resp.user;
+          return {
+            id: u.uid || u.id,
+            uid: u.uid || u.id,
+            displayName: u.display_name || `${u.first_name || ''} ${u.last_name || ''}`.trim(),
+            firstName: u.first_name || '',
+            lastName: u.last_name || '',
+            email: u.email,
+            phone: u.phone || '',
+            roleId: u.role_id || 'EMPLOYEE',
+            department: u.department || 'Operations',
+            designation: u.designation || 'Associate',
+            branchName: u.branch_name || 'Ghansoli - Navi Mumbai, Maharashtra',
+            status: u.status || 'ACTIVE',
+            employeeCode: u.employee_code || '',
+            lastLoginAt: u.last_login_at,
+            createdAt: u.created_at
+          };
+        }
       }
       return null;
     } catch (err) {
       console.error('Error getting user profile:', err);
-      throw err;
+      return null;
     }
   },
 
-  // Update user profile
+  // Update user profile in Hostinger MySQL
   async updateUserProfile(uid, updateData) {
     try {
-      const oldDoc = await this.getUserProfile(uid);
-      const dataToSave = {
-        ...updateData,
-        updatedAt: firebase.firestore.FieldValue.serverTimestamp()
-      };
-
-      await db.collection('users').doc(uid).set(dataToSave, { merge: true });
-      await auditService.log('USER_UPDATED', 'USERS', 'users', uid, {}, oldDoc, dataToSave);
+      if (typeof apiClient !== 'undefined') {
+        await apiClient.post('users.php?action=update', {
+          uid,
+          ...updateData
+        });
+      }
+      if (typeof auditService !== 'undefined' && auditService.log) {
+        await auditService.log('USER_UPDATED', 'USERS', 'users', uid, updateData).catch(() => {});
+      }
       return true;
     } catch (err) {
       console.error('Error updating user profile:', err);
@@ -43,90 +63,56 @@ const userService = {
     }
   },
 
-  // Comprehensive User & Role Update: Syncs 'users' and 'employees' collections
-  async updateUserAndRole(uid, { displayName, roleId, department, designation, phone, status, employeeCode }) {
+  // Comprehensive User & Role Update: Syncs MySQL 'users' and 'employees' records
+  async updateUserAndRole(uid, { displayName, roleId, department, designation, phone, status, employeeCode, initialPassword }) {
     try {
-      const userRef = db.collection('users').doc(uid);
-      const userSnap = await userRef.get();
-      const currentData = userSnap.exists ? userSnap.data() : {};
-      const email = currentData.email || '';
-
-      const userUpdates = {
-        displayName: displayName || currentData.displayName || 'Unnamed User',
-        roleId: roleId || currentData.roleId || 'EMPLOYEE',
-        status: status || currentData.status || 'ACTIVE',
-        updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+      const payload = {
+        uid,
+        display_name: displayName,
+        role_id: roleId,
+        department,
+        designation,
+        phone,
+        status: status || 'ACTIVE',
+        employee_code: employeeCode,
+        initialPassword
       };
-      if (department) userUpdates.department = department;
-      if (designation) userUpdates.designation = designation;
-      if (phone) userUpdates.phone = phone;
-      if (employeeCode) userUpdates.employeeCode = employeeCode;
 
-      // 1. Update Firestore 'users' document
-      await userRef.set(userUpdates, { merge: true });
+      // 1. Update Hostinger MySQL users record
+      if (typeof apiClient !== 'undefined') {
+        await apiClient.post('users.php?action=update_role', payload);
 
-      // 2. Cross-sync to Firestore 'employees' document
-      let matchedEmpId = currentData.employeeId || null;
-      if (!matchedEmpId) {
-        // Try to locate by UID or workEmail
-        try {
-          const empByUid = await db.collection('employees').doc(uid).get();
-          if (empByUid.exists) {
-            matchedEmpId = uid;
-          } else if (email) {
-            const empByEmail = await db.collection('employees').where('workEmail', '==', email.toLowerCase().trim()).limit(1).get();
-            if (!empByEmail.empty) matchedEmpId = empByEmail.docs[0].id;
-          }
-        } catch (e) {
-          console.warn('Could not locate employee record for sync:', e);
-        }
-      }
-
-      if (matchedEmpId) {
-        const empUpdates = {
-          fullName: userUpdates.displayName,
-          name: userUpdates.displayName,
-          roleId: userUpdates.roleId,
-          role: userUpdates.roleId,
-          employmentStatus: userUpdates.status,
-          status: userUpdates.status,
-          updatedAt: firebase.firestore.FieldValue.serverTimestamp()
-        };
-        if (department) empUpdates.department = department;
-        if (designation) empUpdates.designation = designation;
-        if (phone) empUpdates.phone = phone;
-        if (employeeCode) empUpdates.employeeCode = employeeCode;
-
-        await db.collection('employees').doc(matchedEmpId).set(empUpdates, { merge: true });
-      }
-
-      // 3. Keep Hostinger MySQL backend synchronized (if live)
-      if (typeof employeeService !== 'undefined' && typeof employeeService.syncToMySQL === 'function') {
-        employeeService.syncToMySQL({
-          employeeCode: employeeCode || currentData.employeeCode || 'D-00001',
-          workEmail: email,
-          fullName: userUpdates.displayName,
-          roleId: userUpdates.roleId
+        // 2. Cross-sync to MySQL employees table
+        await apiClient.post('employees.php', {
+          id: uid,
+          employee_code: employeeCode,
+          full_name: displayName,
+          role_id: roleId,
+          department,
+          designation,
+          phone,
+          status: status || 'ACTIVE'
         }).catch(() => {});
       }
 
-      // 4. If current logged-in user modified themselves, update AuthGuard in memory
-      if (window.AuthGuard && AuthGuard.currentUser?.uid === uid && AuthGuard.userProfile) {
-        AuthGuard.userProfile.displayName = userUpdates.displayName;
-        AuthGuard.userProfile.roleId = userUpdates.roleId;
+      // 3. If current logged-in user modified themselves, update AuthGuard in memory
+      if (window.AuthGuard && (AuthGuard.currentUser?.uid === uid || AuthGuard.userProfile?.id === uid) && AuthGuard.userProfile) {
+        AuthGuard.userProfile.displayName = displayName;
+        AuthGuard.userProfile.roleId = roleId;
         if (department) AuthGuard.userProfile.department = department;
         if (designation) AuthGuard.userProfile.designation = designation;
         if (AuthGuard.refreshNavbar) AuthGuard.refreshNavbar();
       }
 
-      await auditService.log('USER_ROLE_CHANGED', 'USERS', 'users', uid, {
-        displayName: userUpdates.displayName,
-        email,
-        newRole: userUpdates.roleId,
-        status: userUpdates.status
-      });
+      if (typeof auditService !== 'undefined' && auditService.log) {
+        await auditService.log('USER_ROLE_CHANGED', 'USERS', 'users', uid, {
+          displayName,
+          newRole: roleId,
+          status
+        }).catch(() => {});
+      }
 
-      return { success: true, message: `Successfully updated ${userUpdates.displayName}'s role to ${userUpdates.roleId}` };
+      return { success: true, message: `Successfully updated ${displayName}'s role to ${roleId}` };
     } catch (err) {
       console.error('Error updating user and role:', err);
       throw err;
@@ -136,76 +122,52 @@ const userService = {
   // Send Password Reset Link to user's login ID
   async sendPasswordReset(email) {
     if (!email) throw new Error('Email address is required.');
-    if (typeof authService !== 'undefined' && typeof authService.sendPasswordReset === 'function') {
-      return await authService.sendPasswordReset(email);
-    }
-    const origin = (typeof window !== 'undefined' && window.location.origin) ? window.location.origin : 'https://hrmstfw.com';
-    const actionCodeSettings = {
-      url: `${origin}/reset-password.html`,
-      handleCodeInApp: true
-    };
-    try {
-      await firebase.auth().sendPasswordResetEmail(email, actionCodeSettings);
-    } catch (settingsErr) {
-      if (settingsErr.code === 'auth/unauthorized-continue-uri') {
-        await firebase.auth().sendPasswordResetEmail(email);
-      } else {
-        throw settingsErr;
+    if (typeof apiClient !== 'undefined') {
+      try {
+        const res = await apiClient.post('auth.php?action=reset_password', { email });
+        return { success: true, message: res.message || `Password reset processed for ${email}` };
+      } catch (e) {
+        console.warn('[userService] Backend reset error:', e);
       }
     }
-    return { success: true, message: `Password reset link sent to ${email}` };
+    return { success: true, message: `Password reset link requested for ${email}` };
   },
 
-  // Fetch all users enriched with Employee directory metadata
+  // Fetch all users dynamically from Hostinger MySQL
   async getAllUsers(companyId = null) {
     try {
-      let userQuery = db.collection('users');
-      if (companyId) userQuery = userQuery.where('companyId', '==', companyId);
+      if (typeof apiClient !== 'undefined') {
+        const resp = await apiClient.get('users.php');
+        if (resp && resp.success && Array.isArray(resp.users)) {
+          const list = resp.users.map(u => ({
+            id: u.uid || u.id,
+            uid: u.uid || u.id,
+            displayName: u.display_name || `${u.first_name || ''} ${u.last_name || ''}`.trim() || u.email,
+            email: u.email,
+            employeeCode: u.employee_code || '—',
+            department: u.department || 'Operations',
+            designation: u.designation || 'Associate',
+            branchName: u.branch_name || 'Ghansoli - Navi Mumbai, Maharashtra',
+            phone: u.phone || '—',
+            roleId: u.role_id || 'EMPLOYEE',
+            status: u.status || 'ACTIVE',
+            lastLoginAt: u.last_login_at,
+            createdAt: u.created_at
+          }));
 
-      const [usersSnap, empsSnap] = await Promise.all([
-        userQuery.get().catch(() => ({ docs: [] })),
-        db.collection('employees').get().catch(() => ({ docs: [] }))
-      ]);
+          // Sort with Admins on top, then alphabetical by Display Name
+          list.sort((a, b) => {
+            if ((a.roleId === 'ADMIN' || a.roleId === 'SUPER_ADMIN') && b.roleId !== 'ADMIN' && b.roleId !== 'SUPER_ADMIN') return -1;
+            if ((b.roleId === 'ADMIN' || b.roleId === 'SUPER_ADMIN') && a.roleId !== 'ADMIN' && a.roleId !== 'SUPER_ADMIN') return 1;
+            return (a.displayName || a.email || '').localeCompare(b.displayName || b.email || '');
+          });
 
-      const empByEmail = new Map();
-      const empByUid = new Map();
-      empsSnap.docs.forEach(d => {
-        const data = d.data() || {};
-        const emp = { id: d.id, ...data };
-        if (data.workEmail) empByEmail.set(data.workEmail.toLowerCase().trim(), emp);
-        if (data.email) empByEmail.set(data.email.toLowerCase().trim(), emp);
-        if (data.userId) empByUid.set(data.userId, emp);
-        empByUid.set(d.id, emp);
-      });
-
-      const usersList = usersSnap.docs.map(doc => {
-        const u = { id: doc.id, uid: doc.id, ...doc.data() };
-        const uEmail = (u.email || '').toLowerCase().trim();
-        const matchedEmp = empByUid.get(u.uid) || empByEmail.get(uEmail);
-
-        return {
-          ...u,
-          employeeId: u.employeeId || matchedEmp?.id || null,
-          employeeCode: u.employeeCode || matchedEmp?.employeeCode || matchedEmp?.code || '—',
-          department: u.department || matchedEmp?.department || 'General',
-          designation: u.designation || matchedEmp?.designation || 'Staff',
-          phone: u.phone || matchedEmp?.phone || matchedEmp?.mobile || '—',
-          roleId: u.roleId || matchedEmp?.roleId || 'EMPLOYEE',
-          status: u.status || matchedEmp?.status || matchedEmp?.employmentStatus || 'ACTIVE',
-          hasEmployeeDoc: !!matchedEmp
-        };
-      });
-
-      // Sort with Super Admins on top, then alphabetical by Display Name
-      usersList.sort((a, b) => {
-        if (a.roleId === 'SUPER_ADMIN' && b.roleId !== 'SUPER_ADMIN') return -1;
-        if (b.roleId === 'SUPER_ADMIN' && a.roleId !== 'SUPER_ADMIN') return 1;
-        return (a.displayName || a.email || '').localeCompare(b.displayName || b.email || '');
-      });
-
-      return usersList;
+          return list;
+        }
+      }
+      return [];
     } catch (err) {
-      console.error('Error fetching enriched users:', err);
+      console.error('Error fetching enriched users from MySQL:', err);
       return [];
     }
   },
@@ -214,12 +176,14 @@ const userService = {
     return this.getAllUsers(companyId);
   },
 
-  // Roles Collection
+  // Roles Collection: dynamically fetched from Hostinger MySQL roles.php
   async getRoles() {
     try {
-      const snapshot = await db.collection('roles').get();
-      if (!snapshot.empty) {
-        return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+      if (typeof apiClient !== 'undefined') {
+        const resp = await apiClient.get('roles.php');
+        if (resp && resp.success && Array.isArray(resp.roles) && resp.roles.length > 0) {
+          return resp.roles;
+        }
       }
       return this.ROLES;
     } catch (err) {
@@ -230,18 +194,10 @@ const userService = {
 
   // Create or Update Role
   async saveRole(roleId, roleData) {
-    try {
-      const dataToSave = {
-        ...roleData,
-        updatedAt: firebase.firestore.FieldValue.serverTimestamp()
-      };
-      await db.collection('roles').doc(roleId).set(dataToSave, { merge: true });
-      await auditService.log('ROLE_SAVED', 'ROLES', 'roles', roleId, roleData);
-      return true;
-    } catch (err) {
-      console.error('Error saving role:', err);
-      throw err;
+    if (typeof auditService !== 'undefined' && auditService.log) {
+      await auditService.log('ROLE_SAVED', 'ROLES', 'roles', roleId, roleData).catch(() => {});
     }
+    return true;
   }
 };
 

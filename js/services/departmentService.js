@@ -19,35 +19,10 @@ const departmentService = {
             })).sort((a, b) => (a.name || '').localeCompare(b.name || ''));
           }
         } catch (apiErr) {
-          console.warn('[DepartmentService] MySQL fetch fallback to Firestore:', apiErr.message);
+          console.warn('[DepartmentService] MySQL fetch notice:', apiErr.message);
         }
       }
-
-      // 2. Fallback to Firestore
-      const targetCompany = companyId || AuthGuard.userProfile?.companyId || 'comp_diallo_india';
-      const snap = await db.collection('departments').get();
-      let list = snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-      
-      if (list.length === 0) {
-        const defaults = [
-          { name: 'Engineering', code: 'ENG', status: 'ACTIVE', members: 0, companyId: targetCompany },
-          { name: 'Human Resources', code: 'HR', status: 'ACTIVE', members: 0, companyId: targetCompany },
-          { name: 'Finance & Accounts', code: 'FIN', status: 'ACTIVE', members: 0, companyId: targetCompany },
-          { name: 'Sales & Marketing', code: 'SALES', status: 'ACTIVE', members: 0, companyId: targetCompany },
-          { name: 'Operations & IT', code: 'OPS', status: 'ACTIVE', members: 0, companyId: targetCompany }
-        ];
-        for (const d of defaults) {
-          try {
-            const docRef = await db.collection('departments').add({
-              ...d,
-              createdAt: firebase.firestore.FieldValue.serverTimestamp(),
-              updatedAt: firebase.firestore.FieldValue.serverTimestamp()
-            });
-            list.push({ id: docRef.id, ...d });
-          } catch(e) {}
-        }
-      }
-      return list.sort((a, b) => (a.name || '').localeCompare(b.name || ''));
+      return [];
     } catch (err) {
       console.error('Error getting departments:', err);
       return [];
@@ -56,32 +31,23 @@ const departmentService = {
 
   async createDepartment(deptData) {
     try {
+      let insertedId = null;
       if (typeof apiClient !== 'undefined') {
         try {
-          await apiClient.post('departments.php', {
+          const res = await apiClient.post('departments.php', {
             name: deptData.name,
             code: deptData.code,
             head_name: deptData.headName || '',
             description: deptData.description || ''
           });
+          if (res && res.id) insertedId = res.id;
         } catch (_) {}
       }
-      const newRef = db.collection('departments').doc();
-      const companyId = deptData.companyId || AuthGuard.userProfile?.companyId || 'comp_diallo_india';
-      const payload = {
-        name: (deptData.name || '').trim(),
-        code: (deptData.code || '').trim().toUpperCase(),
-        companyId,
-        status: deptData.status || 'ACTIVE',
-        members: deptData.members || 0,
-        createdAt: firebase.firestore.FieldValue.serverTimestamp(),
-        updatedAt: firebase.firestore.FieldValue.serverTimestamp()
-      };
-      await newRef.set(payload);
+      const finalId = insertedId || ('dept_' + Date.now());
       if (typeof auditService !== 'undefined' && auditService.log) {
-        auditService.log('DEPARTMENT_CREATED', 'departments', newRef.id, { name: payload.name, code: payload.code }).catch(() => {});
+        auditService.log('DEPARTMENT_CREATED', 'departments', finalId, { name: deptData.name, code: deptData.code }).catch(() => {});
       }
-      return { id: newRef.id, ...payload };
+      return { id: finalId, ...deptData };
     } catch (err) {
       console.error('Error creating department:', err);
       throw err;
@@ -104,11 +70,6 @@ const departmentService = {
           console.warn('[DepartmentService] MySQL update notice:', apiErr.message);
         }
       }
-      const payload = {
-        ...updateData,
-        updatedAt: firebase.firestore.FieldValue.serverTimestamp()
-      };
-      await db.collection('departments').doc(String(id)).set(payload, { merge: true });
       if (typeof auditService !== 'undefined' && auditService.log) {
         auditService.log('DEPARTMENT_UPDATED', 'departments', String(id), updateData).catch(() => {});
       }
@@ -130,7 +91,6 @@ const departmentService = {
           await apiClient.request(`departments.php?id=${encodeURIComponent(id)}`, { method: 'DELETE' });
         } catch (_) {}
       }
-      await db.collection('departments').doc(String(id)).delete();
       if (typeof auditService !== 'undefined' && auditService.log) {
         auditService.log('DEPARTMENT_DELETED', 'departments', String(id), {}).catch(() => {});
       }

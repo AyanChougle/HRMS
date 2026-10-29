@@ -357,10 +357,11 @@ const leaveService = {
         updatedAt: firebase.firestore.FieldValue.serverTimestamp()
       };
 
-      // 1. Primary: Save directly to Hostinger MySQL leave_applications table
+      // 1. Authoritative Save to Hostinger MySQL
+      let insertedId = null;
       if (typeof apiClient !== 'undefined') {
         try {
-          await apiClient.post('leaves.php', {
+          const res = await apiClient.post('leaves.php', {
             employee_id: employeeId,
             employee_code: payload.employeeCode,
             employee_name: payload.employeeName,
@@ -372,33 +373,31 @@ const leaveService = {
             reason: payload.reason,
             is_half_day: payload.halfDay ? 1 : 0
           });
+          if (res && res.id) insertedId = res.id;
         } catch (sqlErr) {
           console.warn('[leaveService] Hostinger MySQL leave save notice:', sqlErr.message || sqlErr);
         }
       }
 
-      // 2. Secondary: Firestore backup
-      let docRefId = `leave_${Date.now()}`;
-      if (typeof db !== 'undefined') {
-        try {
-          const docRef = await db.collection('leaveApplications').add(payload);
-          docRefId = docRef.id;
-        } catch (_) {}
-      }
+      const docRefId = String(insertedId || `leave_${Date.now()}`);
       payload.id = docRefId;
 
       // Register in approvalRequests queue
-      await approvalService.createApprovalRequest({
-        employee: payload.employeeName,
-        referenceId: docRefId,
-        type: `${payload.leaveTypeName} (${numberOfDays} Days)`,
-        detail: `${payload.startDate} to ${payload.endDate}: ${payload.reason}`,
-        status: 'PENDING',
-        companyId: payload.companyId,
-        metadata: { leaveId: docRefId, employeeId, numberOfDays, leaveCode }
-      }).catch(() => {});
+      if (typeof approvalService !== 'undefined' && approvalService.createApprovalRequest) {
+        await approvalService.createApprovalRequest({
+          employee: payload.employeeName,
+          referenceId: docRefId,
+          type: `${payload.leaveTypeName} (${numberOfDays} Days)`,
+          detail: `${payload.startDate} to ${payload.endDate}: ${payload.reason}`,
+          status: 'PENDING',
+          companyId: payload.companyId,
+          metadata: { leaveId: docRefId, employeeId, numberOfDays, leaveCode }
+        }).catch(() => {});
+      }
 
-      await auditService.log('LEAVE_REQUESTED', 'LEAVE', 'leaveApplications', docRefId, payload).catch(() => {});
+      if (typeof auditService !== 'undefined' && auditService.log) {
+        await auditService.log('LEAVE_REQUESTED', 'LEAVE', 'leaveApplications', docRefId, payload).catch(() => {});
+      }
       return payload;
     } catch (err) {
       console.error('Error applying for leave:', err);
@@ -426,19 +425,9 @@ const leaveService = {
         }
       }
 
-      // 2. Sync to local Firestore stub
-      try {
-        await db.collection('leaveApplications').doc(String(leaveId)).update({
-          status: 'APPROVED',
-          approvedBy: fullReviewer,
-          approvedByName: fullReviewer,
-          reviewedBy: fullReviewer,
-          approvedById: currentUserId,
-          approvedAt: firebase.firestore.FieldValue.serverTimestamp()
-        });
-      } catch (_) {}
-
-      await auditService.log('LEAVE_APPROVED', 'LEAVE', 'leaveApplications', String(leaveId), { approvedBy: fullReviewer }).catch(() => {});
+      if (typeof auditService !== 'undefined' && auditService.log) {
+        await auditService.log('LEAVE_APPROVED', 'LEAVE', 'leaveApplications', String(leaveId), { approvedBy: fullReviewer }).catch(() => {});
+      }
       return true;
     } catch (err) {
       console.error('Error approving leave:', err);
@@ -467,21 +456,9 @@ const leaveService = {
         }
       }
 
-      // 2. Sync to local Firestore stub
-      try {
-        await db.collection('leaveApplications').doc(String(leaveId)).update({
-          status: 'REJECTED',
-          rejectionReason: reason,
-          rejectedBy: fullReviewer,
-          approvedByName: fullReviewer,
-          reviewedBy: fullReviewer,
-          rejectedById: currentUserId,
-          rejectedAt: firebase.firestore.FieldValue.serverTimestamp(),
-          updatedAt: firebase.firestore.FieldValue.serverTimestamp()
-        });
-      } catch (_) {}
-
-      await auditService.log('LEAVE_REJECTED', 'LEAVE', 'leaveApplications', String(leaveId), { reason, rejectedBy: fullReviewer }).catch(() => {});
+      if (typeof auditService !== 'undefined' && auditService.log) {
+        await auditService.log('LEAVE_REJECTED', 'LEAVE', 'leaveApplications', String(leaveId), { reason, rejectedBy: fullReviewer }).catch(() => {});
+      }
       return true;
     } catch (err) {
       console.error('Error rejecting leave:', err);
@@ -496,15 +473,9 @@ const leaveService = {
         await apiClient.post('leaves.php?action=cancel', { id: leaveId }).catch(() => {});
       }
 
-      try {
-        await db.collection('leaveApplications').doc(String(leaveId)).update({
-          status: 'CANCELLED',
-          cancelledAt: firebase.firestore.FieldValue.serverTimestamp(),
-          updatedAt: firebase.firestore.FieldValue.serverTimestamp()
-        });
-      } catch (_) {}
-
-      await auditService.log('LEAVE_CANCELLED', 'LEAVE', 'leaveApplications', String(leaveId), { cancelledBy: AuthGuard.userProfile?.displayName }).catch(() => {});
+      if (typeof auditService !== 'undefined' && auditService.log) {
+        await auditService.log('LEAVE_CANCELLED', 'LEAVE', 'leaveApplications', String(leaveId), { cancelledBy: AuthGuard.userProfile?.displayName }).catch(() => {});
+      }
       return true;
     } catch (err) {
       console.error('Error cancelling leave:', err);
@@ -552,25 +523,7 @@ const leaveService = {
         }
       }
 
-      // 2. Secondary fallback: Firestore
-      if (!loadedFromMySQL && typeof db !== 'undefined') {
-        let query = db.collection('leaveApplications');
-        if (filters.companyId) query = query.where('companyId', '==', filters.companyId);
-        if (filters.employeeId) query = query.where('employeeId', '==', filters.employeeId);
-        if (filters.status && filters.status !== 'All Status') query = query.where('status', '==', filters.status);
-
-        const snapshot = await query.get();
-        records = snapshot.docs.map(doc => {
-          const d = doc.data();
-          const code = this.normalizeLeaveCode(d.leaveTypeCode || d.type || d.leaveTypeName);
-          return {
-            id: doc.id,
-            ...d,
-            leaveTypeCode: d.leaveTypeCode || code,
-            leaveTypeName: (d.leaveTypeName && d.leaveTypeName !== 'Leave') ? d.leaveTypeName : (code === 'LWP' ? 'Unpaid Leave (LWP)' : 'Paid Leave (PL)')
-          };
-        });
-      }
+      return records;
 
       return records;
     } catch (err) {

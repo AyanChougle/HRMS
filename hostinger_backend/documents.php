@@ -66,9 +66,19 @@ try {
     }
 
     // -------------------------------------------------------------------------
-    // POST: Add Document record
+    // POST: Add Document record or Review
     // -------------------------------------------------------------------------
     if ($method === 'POST') {
+        if ($action === 'review' || ($input['action'] ?? '') === 'review') {
+            if (!in_array($userRole, ['ADMIN', 'HR', 'COMPLIANCE', 'SUPER_ADMIN', 'COMPANY_ADMIN'])) {
+                json_out(["success" => false, "error" => "Unauthorized."], 403);
+            }
+            $docId = intval($input['id'] ?? 0);
+            $newStatus = trim($input['status'] ?? 'APPROVED');
+            $stmt = $pdo->prepare("UPDATE documents SET status = :st, updated_at = CURRENT_TIMESTAMP WHERE id = :id");
+            $stmt->execute([':st' => $newStatus, ':id' => $docId]);
+            json_out(["success" => true, "message" => "Document reviewed successfully."]);
+        }
         $empId = trim($input['employee_id'] ?? $userUid);
         $empCode = trim($input['employee_code'] ?? $userCode);
 

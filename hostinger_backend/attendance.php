@@ -137,6 +137,40 @@ try {
         }
 
         // ---------------------------------------------------------------------
+        // 0. LIVE PUNCH LOGS
+        // ---------------------------------------------------------------------
+        if ($action === 'punch_logs' || $action === 'punches') {
+            $limit = min(100, max(1, intval($_GET['limit'] ?? 50)));
+            $sql = "SELECT p.*, e.full_name as employee_name, e.employee_code 
+                    FROM punch_logs p 
+                    LEFT JOIN employees e ON (e.id = p.employee_id OR e.employee_code = p.employee_id)
+                    WHERE 1=1";
+            $params = [];
+            if ($userRole === 'EMPLOYEE') {
+                $sql .= " AND (p.employee_id = :me OR p.employee_id = :code)";
+                $params[':me'] = $myEmpId;
+                $params[':code'] = $currentUser['employee_code'] ?? '';
+            } elseif ($userRole === 'TL') {
+                $sql .= " AND (p.employee_id = :tlid OR p.employee_id IN (SELECT id FROM employees WHERE team_id = :tid OR team_lead_id = :tlid2))";
+                $params[':tlid'] = $myEmpId;
+                $params[':tid'] = $myTeamId;
+                $params[':tlid2'] = $myEmpId;
+            } elseif ($userRole === 'MANAGER') {
+                $sql .= " AND (p.employee_id = :mid OR p.employee_id IN (SELECT id FROM employees WHERE manager_id = :mid2))";
+                $params[':mid'] = $myEmpId;
+                $params[':mid2'] = $myEmpId;
+            }
+            $sql .= " ORDER BY p.id DESC LIMIT " . $limit;
+            $stmt = $pdo->prepare($sql);
+            $stmt->execute($params);
+            json_out([
+                "success" => true,
+                "count" => $limit,
+                "logs" => $stmt->fetchAll()
+            ]);
+        }
+
+        // ---------------------------------------------------------------------
         // 1. TODAY'S RECORD FOR AN EMPLOYEE
         // ---------------------------------------------------------------------
         if ($action === 'today') {
@@ -613,6 +647,48 @@ try {
         $lat = isset($input['latitude']) && $input['latitude'] !== null ? floatval($input['latitude']) : null;
         $lng = isset($input['longitude']) && $input['longitude'] !== null ? floatval($input['longitude']) : null;
         $dist = isset($input['distance_meters']) ? floatval($input['distance_meters']) : null;
+
+        // ---------------------------------------------------------------------
+        // Manual Record Update by Admin / HR
+        // ---------------------------------------------------------------------
+        if ($actionName === 'update_record' || $action === 'update_record') {
+            if (!in_array($userRole, ['ADMIN', 'HR', 'SUPER_ADMIN', 'COMPANY_ADMIN'])) {
+                json_out(["success" => false, "error" => "Unauthorized: Only HR or Admins can edit attendance records."], 403);
+            }
+            $recId = trim($input['id'] ?? $input['record_id'] ?? '');
+            if (empty($recId)) {
+                json_out(["success" => false, "error" => "Record ID is required."], 400);
+            }
+            $checkIn = trim($input['check_in'] ?? $input['checkIn'] ?? '');
+            $checkOut = trim($input['check_out'] ?? $input['checkOut'] ?? '');
+            $status = trim($input['status'] ?? 'PRESENT');
+            $workedMinutes = intval($input['worked_minutes'] ?? $input['workedMinutes'] ?? 0);
+            $workedHours = trim($input['worked_hours'] ?? $input['workedHoursFormatted'] ?? '');
+            $grossMinutes = intval($input['gross_minutes'] ?? $input['grossMinutes'] ?? 0);
+            $breakMinutes = intval($input['total_break_minutes'] ?? $input['totalBreakMinutes'] ?? 0);
+
+            $updStmt = $pdo->prepare("
+                UPDATE attendance_records
+                SET check_in = :ci, check_out = :co, status = :st,
+                    worked_minutes = :wm, worked_hours = :wh,
+                    gross_minutes = :gm, total_break_minutes = :bm,
+                    updated_at = CURRENT_TIMESTAMP
+                WHERE id = :id OR attendance_id = :aid
+            ");
+            $updStmt->execute([
+                ':ci' => $checkIn ?: null,
+                ':co' => $checkOut ?: null,
+                ':st' => $status,
+                ':wm' => $workedMinutes,
+                ':wh' => $workedHours,
+                ':gm' => $grossMinutes,
+                ':bm' => $breakMinutes,
+                ':id' => $recId,
+                ':aid' => $recId
+            ]);
+
+            json_out(["success" => true, "message" => "Attendance record updated successfully in MySQL."]);
+        }
 
         // ---------------------------------------------------------------------
         // Attendance Regularization Actions

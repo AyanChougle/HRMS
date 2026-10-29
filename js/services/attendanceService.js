@@ -133,12 +133,17 @@ const attendanceService = {
       // Shift starts at 10:00 AM (600 mins) + 15 mins grace = 615 mins (Grace window up to 10:15 AM)
       if (inMins > 615) {
         r.lateMinutes = inMins - 600;
+        r.isLate = true;
       } else {
         r.lateMinutes = 0;
+        r.isLate = false;
       }
+    } else {
+      r.isLate = Boolean(r.lateMinutes && r.lateMinutes > 0);
     }
 
     if (r.checkIn && r.checkOut && r.checkOut !== '-') {
+      r.isOpenShift = false;
       const inMins = this.time12ToMinutes(r.checkIn);
       const outMins = this.time12ToMinutes(r.checkOut);
       let sessionMinutes = 0;
@@ -184,6 +189,7 @@ const attendanceService = {
         r.status = workedMinutes < halfDayCutoff ? 'HALF_DAY' : (r.lateMinutes > 0 ? 'LATE' : 'PRESENT');
       }
     } else if (r.checkIn && (!r.checkOut || r.checkOut === '-')) {
+      r.isOpenShift = true;
       if (!r.status || r.status === 'PRESENT') {
         r.status = (r.lateMinutes > 0 ? 'LATE' : 'PRESENT');
       }
@@ -522,20 +528,9 @@ const attendanceService = {
         } catch (_) {}
       }
 
-      // 2. Secondary: Fetch from Firestore
-      let fsRecords = [];
-      try {
-        if (typeof db !== 'undefined') {
-          const snapshot = await db.collection('attendanceRecords')
-            .where('date', '==', attendanceDate)
-            .get();
-          fsRecords = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-        }
-      } catch (_) {}
-
-      // 3. Build unified recordsMap indexed across all identifiers
+      // 2. Build recordsMap indexed across all identifiers from MySQL records
       const recordsMap = {};
-      [...fsRecords, ...mysqlRecords].forEach(d => {
+      mysqlRecords.forEach(d => {
         if (!d) return;
         const eId = d.employeeId || d.employee_id;
         const uId = d.userId || d.user_id;
@@ -610,12 +605,7 @@ const attendanceService = {
         console.warn('[attendanceService] MySQL getRegularizations error:', err);
       }
     }
-    try {
-      const snap = await db.collection('attendanceRegularizations').orderBy('createdAt', 'desc').get();
-      return snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-    } catch (_) {
-      return [];
-    }
+    return [];
   },
 
   async requestRegularization(reqData) {
@@ -658,8 +648,7 @@ const attendanceService = {
         }
       }
 
-      const docRef = await db.collection('attendanceRegularizations').add(payload);
-      const finalId = newId || docRef.id;
+      const finalId = newId || ('reg_' + Date.now());
 
       // Register in approvalRequests queue
       try {
@@ -705,17 +694,6 @@ const attendanceService = {
         }
       }
 
-      // 2. Sync to local Firestore stub
-      try {
-        await db.collection('attendanceRegularizations').doc(String(requestId)).update({
-          status: 'APPROVED',
-          approvedBy: fullReviewer,
-          reviewedBy: fullReviewer,
-          approvedById: currentUserId,
-          approvedAt: firebase.firestore.FieldValue.serverTimestamp()
-        });
-      } catch (_) {}
-
       await auditService.log('REGULARIZATION_APPROVED', 'ATTENDANCE', 'attendanceRegularizations', String(requestId), { attendanceId, approvedBy: fullReviewer });
       return true;
     } catch (err) {
@@ -744,18 +722,6 @@ const attendanceService = {
         }
       }
 
-      // 2. Sync to local Firestore stub
-      try {
-        await db.collection('attendanceRegularizations').doc(String(requestId)).update({
-          status: 'REJECTED',
-          rejectionReason: reason,
-          rejectedBy: fullReviewer,
-          reviewedBy: fullReviewer,
-          rejectedById: currentUserId,
-          rejectedAt: firebase.firestore.FieldValue.serverTimestamp()
-        });
-      } catch (_) {}
-
       await auditService.log('REGULARIZATION_REJECTED', 'ATTENDANCE', 'attendanceRegularizations', String(requestId), { reason, rejectedBy: fullReviewer });
       return true;
     } catch (err) {
@@ -769,12 +735,6 @@ const attendanceService = {
       if (typeof apiClient !== 'undefined') {
         await apiClient.post('attendance.php?action=cancel_regularization', { id: requestId });
       }
-      try {
-        await db.collection('attendanceRegularizations').doc(String(requestId)).update({
-          status: 'CANCELLED',
-          updatedAt: firebase.firestore.FieldValue.serverTimestamp()
-        });
-      } catch (_) {}
       return true;
     } catch (err) {
       console.error('Error cancelling regularization:', err);
@@ -798,20 +758,9 @@ const attendanceService = {
         } catch (_) {}
       }
 
-      // 2. Fetch from Firestore
-      let fsDocs = [];
-      try {
-        if (typeof db !== 'undefined') {
-          let query = db.collection('attendanceRecords').where('date', '==', todayStr);
-          if (companyId) query = query.where('companyId', '==', companyId);
-          const snapshot = await query.get();
-          fsDocs = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-        }
-      } catch (_) {}
-
-      // Deduplicate records by employeeCode / employeeId / id
+      // 2. Index records by employeeCode / employeeId from MySQL
       const combinedMap = {};
-      [...fsDocs, ...mysqlRecords].forEach(r => {
+      mysqlRecords.forEach(r => {
         if (!r) return;
         const key = (r.employeeCode || r.employee_code || r.employeeId || r.employee_id || r.id || '').toString().trim();
         if (key) combinedMap[key] = r;
@@ -858,8 +807,11 @@ const attendanceService = {
       if (Array.isArray(employeeIds)) {
         totalEmployees = employeeIds.length;
       } else {
-        const allEmps = await employeeService.getEmployees();
-        totalEmployees = Array.isArray(allEmps) ? allEmps.length : 0;
+        const empSvc = typeof employeeService !== 'undefined' ? employeeService : (typeof window !== 'undefined' ? window.employeeService : null);
+        if (empSvc && typeof empSvc.getEmployees === 'function') {
+          const allEmps = await empSvc.getEmployees();
+          totalEmployees = Array.isArray(allEmps) ? allEmps.length : 0;
+        }
       }
 
       let present = 0;
@@ -904,15 +856,33 @@ const attendanceService = {
       };
     } catch (err) {
       console.error('Error computing attendance summary:', err);
-      return { totalEmployees: 0, present: 0, onTime: 0, late: 0, onLeave: 0, wfh: 0, absent: 0, avgWorkHours: '0h 00m' };
+      return { totalEmployees: 0, present: 0, onTime: 0, late: 0, halfDay: 0, onLeave: 0, wfh: 0, absent: 0, avgWorkHours: '0h 00m' };
     }
   },
 
-  // Legacy punch log getter for live feeds
+  // Dynamic live punch logs from Hostinger MySQL
   async getPunchLogs(limitCount = 50) {
     try {
-      const snapshot = await db.collection('punchLogs').orderBy('timestamp', 'desc').limit(limitCount).get();
-      return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+      if (typeof apiClient !== 'undefined') {
+        const resp = await apiClient.get(`attendance.php?action=punch_logs&limit=${limitCount}`);
+        if (resp && resp.success && Array.isArray(resp.logs)) {
+          return resp.logs.map(l => ({
+            id: l.id,
+            employeeId: l.employee_id,
+            employeeName: l.employee_name || 'Staff',
+            employeeCode: l.employee_code || '',
+            punchType: l.punch_type,
+            type: l.punch_type,
+            time: l.time,
+            date: l.date,
+            location: l.location,
+            device: l.device,
+            distanceMeters: l.distance_meters,
+            timestamp: l.created_at
+          }));
+        }
+      }
+      return [];
     } catch (e) {
       return [];
     }

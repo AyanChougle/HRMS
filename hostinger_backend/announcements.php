@@ -40,8 +40,11 @@ try {
     ");
 
     $currentUser = get_current_user_or_null($pdo);
-    $userRole = canonical_role($currentUser['role_id'] ?? $_GET['role'] ?? 'EMPLOYEE');
-    $userUid = $currentUser['uid'] ?? $currentUser['id'] ?? $_GET['uid'] ?? '';
+    if (!$currentUser) {
+        json_out(["success" => false, "error" => "Authentication required."], 401);
+    }
+    $userRole = canonical_role($currentUser['role_id']);
+    $userUid = $currentUser['uid'] ?? $currentUser['id'] ?? '';
     $userDept = $currentUser['department'] ?? '';
 
     // -------------------------------------------------------------------------
