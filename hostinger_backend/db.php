@@ -357,9 +357,12 @@ if (!function_exists('canonical_role')) {
 }
 
 /**
- * Extract Bearer Auth Token from HTTP headers
+ * Extract Bearer Auth Token from HTTP headers or query parameter (for direct file downloads)
  */
 function get_bearer_token() {
+    if (!empty($_GET['token'])) return trim($_GET['token']);
+    if (!empty($_GET['auth_token'])) return trim($_GET['auth_token']);
+
     $headers = null;
     if (isset($_SERVER['Authorization'])) {
         $headers = trim($_SERVER["Authorization"]);

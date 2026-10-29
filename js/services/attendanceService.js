@@ -417,8 +417,12 @@ const attendanceService = {
         try {
           const sqlParams = {};
           if (filters.date) sqlParams.date = filters.date;
+          if (filters.month) sqlParams.month = filters.month;
+          if (filters.year) sqlParams.year = filters.year;
           if (filters.employeeId) sqlParams.employee_id = filters.employeeId;
           if (filters.employeeCode) sqlParams.employee_code = filters.employeeCode;
+          if (filters.department && filters.department !== 'All Departments') sqlParams.department = filters.department;
+          if (filters.status && filters.status !== 'All Status') sqlParams.status = filters.status;
           const sqlRes = await apiClient.get('attendance.php', sqlParams);
           if (sqlRes && sqlRes.success && Array.isArray(sqlRes.records) && sqlRes.records.length > 0) {
             records = sqlRes.records.map(r => this.sanitizeRecord({

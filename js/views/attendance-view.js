@@ -7,8 +7,10 @@ const AttendanceView = {
   activeTab: 'daily',
   currentDate: new Date().toISOString().slice(0, 10),
   currentFilters: {},
-  myAttendanceMonth: '',
+  myAttendanceMonth: new Date().toISOString().slice(0, 7),
   myAttendanceDate: '',
+  lastFilteredHistory: [],
+  lastTeamAttendanceList: [],
 
   getUserRoleInfo() {
     const userProf = AuthGuard.userProfile || {};
@@ -529,6 +531,13 @@ const AttendanceView = {
             <p style="font-size: 0.85rem; color: var(--text-secondary); margin: 0;">
               Select the target month and year to download attendance history, payable days, and working metrics.
             </p>
+            <div class="form-group">
+              <label class="form-label required">Report Type</label>
+              <select id="export-muster-type" class="form-control">
+                <option value="attendance" selected>Monthly Attendance Muster (Exact RadeNextHR 18-Column Summary)</option>
+                <option value="daily_attendance">Daily Attendance Register (Detailed Punches & Break Logs)</option>
+              </select>
+            </div>
             <div class="grid" style="grid-template-columns: 1fr 1fr; gap: 14px;">
               <div class="form-group">
                 <label class="form-label required">Target Month</label>
@@ -562,11 +571,12 @@ const AttendanceView = {
         confirmText: 'Download Official Muster',
         cancelText: 'Cancel',
         onConfirm: () => {
+          const exportType = document.getElementById('export-muster-type')?.value || 'attendance';
           const month = document.getElementById('export-muster-month')?.value || curMonth;
           const year = document.getElementById('export-muster-year')?.value || curYear;
           const format = document.getElementById('export-muster-format')?.value || 'xlsx';
           ModalManager.closeModal();
-          reportService.downloadBackendExport('attendance', format, { month, year });
+          reportService.downloadBackendExport(exportType, format, { month, year });
         }
       });
     } else {
@@ -574,8 +584,131 @@ const AttendanceView = {
     }
   },
 
+  exportMyAttendanceCSV() {
+    const list = this.lastFilteredHistory || [];
+    if (!list || list.length === 0) {
+      if (typeof Toast !== 'undefined') Toast.info('No attendance records found for the selected period to export.');
+      return;
+    }
+
+    const user = AuthGuard.userProfile || {};
+    const empCode = user.employeeCode || user.employee_code || '';
+    const empName = user.fullName || user.displayName || user.name || 'Employee';
+    const dept = user.department || 'General';
+
+    const headers = [
+      'Date', 'Day', 'Employee Code', 'Employee Name', 'Department',
+      'Check In', 'Break Duration', 'Check Out',
+      'Gross Hours', 'Net Worked Hours', 'Late Arrival (Mins)', 'Overtime', 'Status'
+    ];
+
+    const rows = list.map(h => {
+      let dayName = '';
+      try {
+        if (h.date) {
+          const parts = h.date.split('-');
+          if (parts.length === 3) {
+            const d = new Date(Number(parts[0]), Number(parts[1]) - 1, Number(parts[2]));
+            dayName = d.toLocaleDateString('en-US', { weekday: 'short' });
+          }
+        }
+      } catch (_) {}
+
+      return [
+        h.date || '',
+        dayName,
+        h.employeeCode || empCode,
+        h.employeeName || empName,
+        h.department || dept,
+        h.checkIn || '-',
+        h.breakFormatted || (h.totalBreakMinutes ? h.totalBreakMinutes + 'm' : '0m'),
+        h.checkOut || '-',
+        h.grossHoursFormatted || '0h 00m',
+        h.workedHoursFormatted || '0h 00m',
+        Number(h.lateMinutes || 0),
+        h.overtimeFormatted || (h.overtimeMinutes ? h.overtimeMinutes + 'm' : '0m'),
+        h.status || 'PRESENT'
+      ];
+    });
+
+    const periodStr = this.myAttendanceDate || (this.myAttendanceMonth && this.myAttendanceMonth !== 'ALL' ? this.myAttendanceMonth : 'All_Time');
+    const filename = `Diallo_Attendance_${empCode || 'Self'}_${periodStr}_${new Date().toISOString().slice(0, 10)}`;
+
+    if (typeof reportService !== 'undefined' && reportService.exportToCSV) {
+      reportService.exportToCSV(filename, headers, rows);
+    } else {
+      let csvContent = '\uFEFF' + headers.map(h => `"${h.replace(/"/g, '""')}"`).join(',') + '\n';
+      rows.forEach(r => {
+        csvContent += r.map(val => `"${String(val ?? '').replace(/"/g, '""')}"`).join(',') + '\n';
+      });
+      const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.setAttribute('download', `${filename}.csv`);
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
+      if (typeof Toast !== 'undefined') Toast.success(`Exported ${list.length} attendance records to CSV.`);
+    }
+  },
+
+  exportTeamAttendanceCSV() {
+    const list = this.lastTeamAttendanceList || [];
+    if (!list || list.length === 0) {
+      if (typeof Toast !== 'undefined') Toast.info('No team attendance records to export.');
+      return;
+    }
+
+    const headers = [
+      'Date', 'Employee Code', 'Employee Name', 'Department', 'Designation',
+      'Reporting Manager', 'Team Lead', 'Check In', 'Check Out', 'Break Duration',
+      'Worked Hours', 'Status'
+    ];
+
+    const rows = list.map(t => {
+      const emp = t.employee || {};
+      const att = t.attendance || {};
+      return [
+        this.currentDate,
+        emp.employeeCode || emp.employee_code || emp.id || '',
+        emp.fullName || emp.name || '',
+        emp.department || '',
+        emp.designation || '',
+        emp.manager || emp.managerName || '',
+        emp.teamLead || emp.team_lead || '',
+        att.checkIn || '-',
+        att.checkOut || '-',
+        att.breakFormatted || (att.totalBreakMinutes ? att.totalBreakMinutes + 'm' : '0m'),
+        att.workedHoursFormatted || '0h 00m',
+        att.status || 'ABSENT'
+      ];
+    });
+
+    const filename = `Diallo_Team_Attendance_${this.currentDate}`;
+    if (typeof reportService !== 'undefined' && reportService.exportToCSV) {
+      reportService.exportToCSV(filename, headers, rows);
+    } else {
+      let csvContent = '\uFEFF' + headers.map(h => `"${h.replace(/"/g, '""')}"`).join(',') + '\n';
+      rows.forEach(r => {
+        csvContent += r.map(val => `"${String(val ?? '').replace(/"/g, '""')}"`).join(',') + '\n';
+      });
+      const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.setAttribute('download', `${filename}.csv`);
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
+      if (typeof Toast !== 'undefined') Toast.success(`Exported team attendance for ${this.currentDate}.`);
+    }
+  },
+
   shiftMyAttendanceMonth(offset) {
-    const cur = this.myAttendanceMonth || new Date().toISOString().slice(0, 7);
+    let cur = (this.myAttendanceMonth && this.myAttendanceMonth !== 'ALL') ? this.myAttendanceMonth : new Date().toISOString().slice(0, 7);
     const parts = cur.split('-').map(Number);
     const d = new Date(parts[0], parts[1] - 1 + offset, 1);
     const yStr = d.getFullYear();
@@ -586,7 +719,7 @@ const AttendanceView = {
   },
 
   setMyAttendanceMonth(monthStr) {
-    this.myAttendanceMonth = monthStr || '';
+    this.myAttendanceMonth = monthStr || new Date().toISOString().slice(0, 7);
     this.myAttendanceDate = '';
     Router.mountView('attendance');
   },
@@ -610,7 +743,7 @@ const AttendanceView = {
   },
 
   clearMyAttendanceFilters() {
-    this.myAttendanceMonth = '';
+    this.myAttendanceMonth = 'ALL';
     this.myAttendanceDate = '';
     Router.mountView('attendance');
   },
@@ -661,27 +794,32 @@ const AttendanceView = {
       return (b.checkIn || '').localeCompare(a.checkIn || '');
     });
 
-    const todayIso = new Date().toISOString().slice(0, 10);
+    const today = new Date();
+    const todayIso = today.toISOString().slice(0, 10);
     const currentMonthStr = todayIso.slice(0, 7);
-    const activeMonthVal = this.myAttendanceMonth || '';
+    const lastMonthDate = new Date(today.getFullYear(), today.getMonth() - 1, 1);
+    const lastMonthStr = `${lastMonthDate.getFullYear()}-${String(lastMonthDate.getMonth() + 1).padStart(2, '0')}`;
+    const activeMonthVal = this.myAttendanceMonth || currentMonthStr;
     const activeDateVal = this.myAttendanceDate || '';
 
     // Filter by date or month
     let filteredHistory = history;
     if (activeDateVal) {
       filteredHistory = history.filter(h => h.date === activeDateVal);
-    } else if (activeMonthVal) {
+    } else if (activeMonthVal && activeMonthVal !== 'ALL') {
       filteredHistory = history.filter(h => (h.date || '').startsWith(activeMonthVal));
     }
 
     let filterPeriodLabel = 'All Recorded Months';
     if (activeDateVal) {
       filterPeriodLabel = `Date: ${activeDateVal}`;
-    } else if (activeMonthVal) {
+    } else if (activeMonthVal && activeMonthVal !== 'ALL') {
       const [y, m] = activeMonthVal.split('-');
       const dObj = new Date(Number(y), Number(m) - 1, 1);
       filterPeriodLabel = dObj.toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
     }
+
+    this.lastFilteredHistory = filteredHistory;
 
     // Calculate period statistics
     const presentCount = filteredHistory.filter(h => h.status === 'PRESENT' || h.status === 'REGULARIZED').length;
@@ -761,7 +899,15 @@ const AttendanceView = {
             <div class="card-title">My Attendance History</div>
             <div class="card-subtitle">Verified monthly punch logs, break durations, and regularizations (Recent on top)</div>
           </div>
-          <button class="btn btn-soft btn-sm" onclick="AttendanceView.openRegularizationModal()">+ Request Correction</button>
+          <div class="flex items-center gap-2">
+            <button class="btn btn-secondary btn-sm" onclick="AttendanceView.exportMyAttendanceCSV()" title="Export Filtered Attendance Records to CSV" style="display: inline-flex; align-items: center; gap: 6px;">
+              <svg width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/>
+              </svg>
+              <span>Export (${filteredHistory.length})</span>
+            </button>
+            <button class="btn btn-soft btn-sm" onclick="AttendanceView.openRegularizationModal()">+ Request Correction</button>
+          </div>
         </div>
 
         <!-- Month Toggles & Date Filter Toolbar -->
@@ -774,25 +920,31 @@ const AttendanceView = {
                 <button class="btn btn-secondary btn-sm" onclick="AttendanceView.shiftMyAttendanceMonth(-1)" title="Previous Month" style="padding: 5px 9px;">
                   <svg width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/></svg>
                 </button>
-                <input type="month" id="my-att-month-picker" class="form-control" style="width: 160px; padding: 5px 10px; font-weight: 600;" value="${activeMonthVal || currentMonthStr}" onchange="AttendanceView.setMyAttendanceMonth(this.value)" />
+                <input type="month" id="my-att-month-picker" class="form-control" style="width: 160px; padding: 5px 10px; font-weight: 600;" value="${activeMonthVal && activeMonthVal !== 'ALL' ? activeMonthVal : currentMonthStr}" onchange="AttendanceView.setMyAttendanceMonth(this.value)" />
                 <button class="btn btn-secondary btn-sm" onclick="AttendanceView.shiftMyAttendanceMonth(1)" title="Next Month" style="padding: 5px 9px;">
                   <svg width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg>
                 </button>
               </div>
 
               <!-- Quick Month Toggles -->
-              <button class="btn ${!activeMonthVal && !activeDateVal ? 'btn-primary' : 'btn-secondary'} btn-sm" onclick="AttendanceView.clearMyAttendanceFilters()">All Months</button>
+              <button class="btn ${activeMonthVal === 'ALL' || (!activeMonthVal && !activeDateVal) ? 'btn-primary' : 'btn-secondary'} btn-sm" onclick="AttendanceView.clearMyAttendanceFilters()">All Months</button>
               <button class="btn ${activeMonthVal === currentMonthStr && !activeDateVal ? 'btn-primary' : 'btn-secondary'} btn-sm" onclick="AttendanceView.setMyAttendanceMonth('${currentMonthStr}')">This Month</button>
-              <button class="btn btn-secondary btn-sm" onclick="AttendanceView.setMyAttendanceLastMonth()">Last Month</button>
+              <button class="btn ${activeMonthVal === lastMonthStr && !activeDateVal ? 'btn-primary' : 'btn-secondary'} btn-sm" onclick="AttendanceView.setMyAttendanceLastMonth()">Last Month</button>
             </div>
 
-            <!-- Specific Date Filter -->
+            <!-- Specific Date Filter & Export Action -->
             <div class="flex items-center gap-2" style="flex-wrap: wrap;">
               <span style="font-size: 0.82rem; font-weight: 700; color: var(--text-muted); text-transform: uppercase;">Date:</span>
               <input type="date" id="my-att-date-picker" class="form-control" style="width: 150px; padding: 5px 10px;" value="${activeDateVal}" onchange="AttendanceView.setMyAttendanceDate(this.value)" />
               ${(activeMonthVal || activeDateVal) ? `
                 <button class="btn btn-soft btn-sm" onclick="AttendanceView.clearMyAttendanceFilters()" style="color: var(--danger);">Reset Filter</button>
               ` : ''}
+              <button class="btn btn-secondary btn-sm" onclick="AttendanceView.exportMyAttendanceCSV()" title="Export Current Filtered List" style="display: inline-flex; align-items: center; gap: 4px; padding: 5px 10px;">
+                <svg width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/>
+                </svg>
+                <span>Export</span>
+              </button>
             </div>
           </div>
 
@@ -963,6 +1115,8 @@ const AttendanceView = {
           return st === activeFilter;
         });
 
+    this.lastTeamAttendanceList = team;
+
     if (team.length === 0) {
       return `
         <div class="card">
@@ -988,6 +1142,10 @@ const AttendanceView = {
                 </button>
                 <button class="btn btn-secondary btn-sm" onclick="AttendanceView.changeTeamDate('${new Date().toISOString().slice(0, 10)}')" style="font-size: 0.75rem; padding: 4px 8px; height: auto;">Today</button>
               </div>
+              <button class="btn btn-secondary btn-sm" onclick="AttendanceView.exportTeamAttendanceCSV()" title="Export Team Attendance for ${this.currentDate}" style="display: inline-flex; align-items: center; gap: 4px; font-size: 0.75rem; padding: 4px 8px; height: auto;">
+                <svg width="13" height="13" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/></svg>
+                <span>Export Team</span>
+              </button>
               <div style="font-size: 0.8rem; color: var(--text-muted);">Total Personnel: <strong>0</strong></div>
             </div>
           </div>
@@ -1044,6 +1202,10 @@ const AttendanceView = {
                 </button>
                 <button class="btn btn-secondary btn-sm" onclick="AttendanceView.changeTeamDate('${new Date().toISOString().slice(0, 10)}')" style="font-size: 0.75rem; padding: 4px 8px; height: auto;">Today</button>
               </div>
+              <button class="btn btn-secondary btn-sm" onclick="AttendanceView.exportTeamAttendanceCSV()" title="Export Team Attendance for ${this.currentDate}" style="display: inline-flex; align-items: center; gap: 4px; font-size: 0.75rem; padding: 4px 8px; height: auto;">
+                <svg width="13" height="13" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/></svg>
+                <span>Export Team</span>
+              </button>
               ${hasMultipleGroups ? `
                 <button class="btn btn-secondary btn-sm" onclick="AttendanceView.expandAllGroups()" style="font-size: 0.75rem; padding: 3px 10px;">
                   Expand All

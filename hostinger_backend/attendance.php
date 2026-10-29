@@ -433,6 +433,11 @@ try {
         $targetDate = !empty($date) ? $date : (!empty($_GET['for_date']) ? $_GET['for_date'] : '');
         $month = trim($_GET['month'] ?? '');
         $year = trim($_GET['year'] ?? '');
+        if (!empty($month) && strpos($month, '-') !== false && empty($year)) {
+            list($yPart, $mPart) = explode('-', $month, 2);
+            $year = trim($yPart);
+            $month = trim($mPart);
+        }
         $dept = trim($_GET['department'] ?? '');
         $teamId = intval($_GET['team_id'] ?? 0);
         $status = trim($_GET['status'] ?? '');
@@ -517,6 +522,9 @@ try {
         } elseif (!empty($month) && !empty($year)) {
             $sql .= " AND MONTH(a.date) = :m AND YEAR(a.date) = :y";
             $params[':m'] = intval($month);
+            $params[':y'] = intval($year);
+        } elseif (!empty($year)) {
+            $sql .= " AND YEAR(a.date) = :y";
             $params[':y'] = intval($year);
         }
 

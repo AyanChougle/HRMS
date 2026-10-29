@@ -222,12 +222,19 @@ try {
         $targetYear = !empty($rawYear) && is_numeric($rawYear) ? intval($rawYear) : intval(date('Y'));
         $targetMonth = intval(date('n'));
         if (!empty($rawMonth)) {
-            if (is_numeric($rawMonth)) {
+            if (strpos($rawMonth, '-') !== false) {
+                list($pY, $pM) = explode('-', $rawMonth, 2);
+                if (is_numeric($pY)) $targetYear = intval($pY);
+                if (is_numeric($pM)) $targetMonth = intval($pM);
+            } elseif (is_numeric($rawMonth)) {
                 $targetMonth = intval($rawMonth);
             } else {
                 $parsedM = date_parse($rawMonth);
                 if ($parsedM && !empty($parsedM['month'])) {
                     $targetMonth = $parsedM['month'];
+                    if (!empty($parsedM['year']) && empty($rawYear)) {
+                        $targetYear = $parsedM['year'];
+                    }
                 }
             }
         }
@@ -461,8 +468,31 @@ try {
         ];
         $colWidths = [12, 14, 22, 18, 22, 12, 12, 16, 18, 12, 14, 25];
 
-        $startDate = trim($_GET['start_date'] ?? date('Y-m-01'));
-        $endDate = trim($_GET['end_date'] ?? date('Y-m-d'));
+        $rawMonth = trim($_GET['month'] ?? '');
+        $rawYear = trim($_GET['year'] ?? '');
+        if (!empty($rawMonth) && empty($_GET['start_date'])) {
+            $dYear = intval(date('Y'));
+            $dMonth = intval(date('n'));
+            if (strpos($rawMonth, '-') !== false) {
+                list($pY, $pM) = explode('-', $rawMonth, 2);
+                if (is_numeric($pY)) $dYear = intval($pY);
+                if (is_numeric($pM)) $dMonth = intval($pM);
+            } elseif (is_numeric($rawMonth)) {
+                $dMonth = intval($rawMonth);
+                if (!empty($rawYear) && is_numeric($rawYear)) $dYear = intval($rawYear);
+            }
+            if ($dMonth >= 1 && $dMonth <= 12) {
+                $startDate = sprintf('%04d-%02d-01', $dYear, $dMonth);
+                $daysInM = intval(date('t', strtotime($startDate)));
+                $endDate = sprintf('%04d-%02d-%02d', $dYear, $dMonth, $daysInM);
+            } else {
+                $startDate = trim($_GET['start_date'] ?? date('Y-m-01'));
+                $endDate = trim($_GET['end_date'] ?? date('Y-m-d'));
+            }
+        } else {
+            $startDate = trim($_GET['start_date'] ?? date('Y-m-01'));
+            $endDate = trim($_GET['end_date'] ?? date('Y-m-d'));
+        }
 
         $sql = "
             SELECT a.date, a.employee_code, COALESCE(e.full_name, a.employee_name) as full_name,
