@@ -402,9 +402,14 @@ const attendanceService = {
     try {
       const allEmps = await employeeService.getEmployees().catch(() => []);
       const empLookupById = {};
+      const empLookupByCode = {};
       const empLookupByName = {};
       allEmps.forEach(e => {
         if (e.id) empLookupById[e.id] = e;
+        if (e.employeeCode) {
+          empLookupByCode[e.employeeCode.toUpperCase().trim()] = e;
+          empLookupByCode[e.employeeCode.replace(/[^a-zA-Z0-9]/g, '').toUpperCase()] = e;
+        }
         if (e.fullName) empLookupByName[e.fullName.toLowerCase().trim()] = e;
         if (e.name) empLookupByName[e.name.toLowerCase().trim()] = e;
       });
@@ -425,27 +430,39 @@ const attendanceService = {
           if (filters.status && filters.status !== 'All Status') sqlParams.status = filters.status;
           const sqlRes = await apiClient.get('attendance.php', sqlParams);
           if (sqlRes && sqlRes.success && Array.isArray(sqlRes.records) && sqlRes.records.length > 0) {
-            records = sqlRes.records.map(r => this.sanitizeRecord({
-              id: r.record_key || `${r.employee_id}_${r.date}`,
-              recordKey: r.record_key,
-              employeeId: r.employee_id,
-              employeeCode: r.employee_code,
-              employeeName: r.employee_name,
-              department: r.department,
-              managerId: r.manager_id,
-              manager: r.manager,
-              date: r.date,
-              checkIn: r.check_in,
-              checkOut: r.check_out,
-              status: r.status,
-              lateMinutes: Number(r.late_minutes || 0),
-              grossMinutes: Number(r.gross_minutes || 0),
-              grossHoursFormatted: r.gross_hours_formatted || '0h 00m',
-              totalBreakSeconds: Number(r.total_break_seconds || 0),
-              totalBreakMinutes: Number(r.total_break_minutes || 0),
-              breakFormatted: r.break_formatted || '0m',
-              isOnBreak: (r.is_on_break == 1)
-            }));
+            records = sqlRes.records.map(r => {
+              const codeKey = (r.employee_code || '').toUpperCase().trim();
+              const cleanCodeKey = (r.employee_code || '').replace(/[^a-zA-Z0-9]/g, '').toUpperCase();
+              const matchedEmp = empLookupByCode[codeKey] || empLookupByCode[cleanCodeKey] || empLookupById[r.employee_id];
+              const resolvedName = (r.employee_name && r.employee_name !== 'Employee' && r.employee_name !== 'Staff')
+                ? r.employee_name
+                : (matchedEmp?.fullName || matchedEmp?.name || r.employee_name || 'Staff');
+              const resolvedDept = (r.department && r.department !== 'General' && r.department !== 'Operations')
+                ? r.department
+                : (matchedEmp?.department || r.department || 'General');
+
+              return this.sanitizeRecord({
+                id: r.record_key || `${r.employee_id}_${r.date}`,
+                recordKey: r.record_key,
+                employeeId: r.employee_id,
+                employeeCode: r.employee_code || matchedEmp?.employeeCode || '',
+                employeeName: resolvedName,
+                department: resolvedDept,
+                managerId: r.manager_id || matchedEmp?.managerId,
+                manager: r.manager || matchedEmp?.manager,
+                date: r.date,
+                checkIn: r.check_in,
+                checkOut: r.check_out,
+                status: r.status,
+                lateMinutes: Number(r.late_minutes || 0),
+                grossMinutes: Number(r.gross_minutes || 0),
+                grossHoursFormatted: r.gross_hours_formatted || '0h 00m',
+                totalBreakSeconds: Number(r.total_break_seconds || 0),
+                totalBreakMinutes: Number(r.total_break_minutes || 0),
+                breakFormatted: r.break_formatted || '0m',
+                isOnBreak: (r.is_on_break == 1)
+              });
+            });
             loadedFromMySQL = true;
           }
         } catch (sqlErr) {

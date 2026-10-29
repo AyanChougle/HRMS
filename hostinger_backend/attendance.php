@@ -444,12 +444,25 @@ try {
 
         $sql = "
             SELECT a.*,
+                   COALESCE(NULLIF(e.full_name, ''), NULLIF(u.display_name, ''), NULLIF(a.employee_name, ''), 'Staff') as employee_name,
+                   COALESCE(NULLIF(e.department, ''), NULLIF(u.department, ''), NULLIF(a.department, ''), 'General') as department,
+                   COALESCE(NULLIF(e.branch_name, ''), NULLIF(a.branch_name, ''), 'HQ - Mumbai') as branch_name,
                    COALESCE(e.team_id, 0) as team_id,
                    COALESCE(e.team_name, '') as team_name,
                    COALESCE(e.team_lead_id, '') as team_lead_id,
                    COALESCE(e.team_lead, '') as team_lead
             FROM attendance_records a
-            LEFT JOIN employees e ON (e.id = a.employee_id OR e.employee_code = a.employee_code)
+            LEFT JOIN employees e ON (
+                e.id = a.employee_id 
+                OR e.employee_code = a.employee_code 
+                OR REPLACE(e.employee_code, '-', '') = REPLACE(a.employee_code, '-', '')
+                OR e.user_id = a.employee_id
+            )
+            LEFT JOIN users u ON (
+                u.uid = a.employee_id
+                OR u.employee_code = a.employee_code
+                OR REPLACE(u.employee_code, '-', '') = REPLACE(a.employee_code, '-', '')
+            )
             WHERE 1=1
         ";
         $params = [];
@@ -614,6 +627,17 @@ try {
         $stmt = $pdo->prepare($sql);
         $stmt->execute($params);
         $records = $stmt->fetchAll();
+
+        foreach ($records as &$rec) {
+            if (empty($rec['employee_name']) || $rec['employee_name'] === 'Employee' || $rec['employee_name'] === 'Staff') {
+                if (!empty($rec['full_name'])) {
+                    $rec['employee_name'] = $rec['full_name'];
+                } elseif (!empty($rec['display_name'])) {
+                    $rec['employee_name'] = $rec['display_name'];
+                }
+            }
+        }
+        unset($rec);
 
         json_out([
             "success" => true,

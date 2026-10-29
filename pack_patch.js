@@ -34,14 +34,17 @@ const filesToCopy = [
   ['js/views/manager-dashboard-view.js', 'js/views/manager-dashboard-view.js'],
   ['js/views/role-permissions-view.js', 'js/views/role-permissions-view.js'],
   ['js/views/users-view.js', 'js/views/users-view.js'],
+  ['hostinger_backend/attendance.php', 'hostinger_backend/attendance.php'],
   ['hostinger_backend/auth.php', 'hostinger_backend/auth.php'],
   ['hostinger_backend/db.php', 'hostinger_backend/db.php'],
   ['hostinger_backend/departments.php', 'hostinger_backend/departments.php'],
   ['hostinger_backend/employees.php', 'hostinger_backend/employees.php'],
+  ['hostinger_backend/export.php', 'hostinger_backend/export.php'],
   ['hostinger_backend/migrate_from_firebase.php', 'hostinger_backend/migrate_from_firebase.php'],
   ['hostinger_backend/sync_roles.php', 'hostinger_backend/sync_roles.php'],
   ['hostinger_backend/sync_user.php', 'hostinger_backend/sync_user.php'],
-  ['hostinger_backend/users.php', 'hostinger_backend/users.php']
+  ['hostinger_backend/users.php', 'hostinger_backend/users.php'],
+  ['js/csvImport.js', 'js/csvImport.js']
 ];
 
 filesToCopy.forEach(([src, dest]) => {

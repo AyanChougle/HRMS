@@ -245,6 +245,26 @@ try {
             DELETE FROM users WHERE uid = 'Q7DWXwGStNNies9E6HSF' AND EXISTS (SELECT 1 FROM employees WHERE id = 'ehyJCFxLSVZwaDqNo3SWAs5UwJt2');
         ");
 
+        // Auto-resolve employee_name and department in attendance_records from employees master
+        $pdo->exec("
+            UPDATE attendance_records a
+            JOIN employees e ON (
+                a.employee_id = e.id 
+                OR a.employee_code = e.employee_code 
+                OR REPLACE(a.employee_code, '-', '') = REPLACE(e.employee_code, '-', '')
+            )
+            SET a.employee_name = e.full_name,
+                a.department = CASE WHEN a.department IS NULL OR a.department = '' OR a.department = 'Operations' OR a.department = 'General' THEN e.department ELSE a.department END
+            WHERE (a.employee_name = 'Employee' OR a.employee_name IS NULL OR a.employee_name = '' OR a.employee_name = 'Staff')
+              AND e.full_name IS NOT NULL AND e.full_name != '';
+        ");
+
+        // Ensure role_id columns accommodate all canonical 7 roles safely
+        try {
+            $pdo->exec("ALTER TABLE users MODIFY COLUMN role_id VARCHAR(50) NOT NULL DEFAULT 'EMPLOYEE'");
+            $pdo->exec("ALTER TABLE employees MODIFY COLUMN role_id VARCHAR(50) NOT NULL DEFAULT 'EMPLOYEE'");
+        } catch (\Throwable $e) {}
+
         // Auto Punch-Out Sweep: Closes forgotten shifts at 9:00 PM and marks as HALF_DAY
         $nowDate = date('Y-m-d');
         $nowHourMin = date('H:i');
