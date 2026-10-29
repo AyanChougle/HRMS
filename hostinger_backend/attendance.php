@@ -109,9 +109,12 @@ try {
     // -------------------------------------------------------------------------
     if ($method === 'GET') {
         $currentUser = get_current_user_or_null($pdo);
-        $userRole = $currentUser ? canonical_role($currentUser['role_id']) : null;
-        $myEmpId = $currentUser ? ($currentUser['employee_id'] ?? $currentUser['uid']) : '';
-        $myTeamId = $currentUser ? ($currentUser['team_id'] ?? null) : null;
+        if (!$currentUser) {
+            json_out(["success" => false, "error" => "Authentication required."], 401);
+        }
+        $userRole = canonical_role($currentUser['role_id']);
+        $myEmpId = $currentUser['employee_id'] ?? $currentUser['uid'] ?? '';
+        $myTeamId = $currentUser['team_id'] ?? null;
 
         $empId = trim($_GET['employee_id'] ?? $_GET['id'] ?? '');
         $empCode = trim($_GET['employee_code'] ?? '');
@@ -332,7 +335,7 @@ try {
                         start_time VARCHAR(20) DEFAULT '10:00',
                         end_time VARCHAR(20) DEFAULT '19:00',
                         break_minutes INT DEFAULT 60,
-                        grace_minutes INT DEFAULT 10,
+                        grace_minutes INT DEFAULT 15,
                         status VARCHAR(50) DEFAULT 'ACTIVE',
                         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                         updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
@@ -797,7 +800,7 @@ try {
             $st = trim($input['startTime'] ?? $input['start_time'] ?? '10:00');
             $et = trim($input['endTime'] ?? $input['end_time'] ?? '19:00');
             $bm = intval($input['breakMinutes'] ?? $input['break_minutes'] ?? 60);
-            $gm = intval($input['graceMinutes'] ?? $input['grace_minutes'] ?? 10);
+            $gm = intval($input['graceMinutes'] ?? $input['grace_minutes'] ?? 15);
             if (empty($name)) {
                 json_out(["success" => false, "error" => "Shift name is required."], 400);
             }
@@ -809,7 +812,7 @@ try {
                     start_time VARCHAR(20) DEFAULT '10:00',
                     end_time VARCHAR(20) DEFAULT '19:00',
                     break_minutes INT DEFAULT 60,
-                    grace_minutes INT DEFAULT 10,
+                    grace_minutes INT DEFAULT 15,
                     status VARCHAR(50) DEFAULT 'ACTIVE',
                     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
@@ -971,14 +974,14 @@ try {
             $nowIso = date('Y-m-d H:i:s');
             $nowMinutes = intval(date('H')) * 60 + intval(date('i'));
             $shiftStartMins = 10 * 60; // 10:00 AM
-            $graceMins = 10; // 10:10 AM
-            $halfDayMins = 10 * 60 + 70; // 11:10 AM
+            $graceMins = 15; // Official 15-minute grace window up to 10:15 AM
+            $halfDayMins = 10 * 60 + 90; // 11:30 AM cutoff for half day
 
             $status = 'PRESENT';
             $lateMinutes = 0;
             if ($nowMinutes > $halfDayMins) {
                 $status = 'HALF_DAY';
-                $lateMinutes = max(0, $nowMinutes - $shiftStartMins);
+                $lateMinutes = 0; // Distinct Half Day — not double counted as late mark
             } elseif ($nowMinutes > ($shiftStartMins + $graceMins)) {
                 $status = 'LATE';
                 $lateMinutes = max(0, $nowMinutes - $shiftStartMins);

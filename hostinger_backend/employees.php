@@ -17,9 +17,12 @@ try {
     // -------------------------------------------------------------------------
     if ($method === 'GET') {
         $currentUser = get_current_user_or_null($pdo);
-        $userRole = $currentUser ? canonical_role($currentUser['role_id']) : null;
-        $myEmpId = $currentUser ? ($currentUser['employee_id'] ?? $currentUser['uid']) : '';
-        $myTeamId = $currentUser ? ($currentUser['team_id'] ?? null) : null;
+        if (!$currentUser) {
+            json_out(["success" => false, "error" => "Authentication required."], 401);
+        }
+        $userRole = canonical_role($currentUser['role_id']);
+        $myEmpId = $currentUser['employee_id'] ?? $currentUser['uid'] ?? '';
+        $myTeamId = $currentUser['team_id'] ?? null;
 
         // 1. Return dynamic Org Chart Tree
         if ($action === 'tree') {
@@ -43,9 +46,13 @@ try {
             }
 
             foreach ($all as $emp) {
-                $mId = $emp['manager_id'];
-                if (!empty($mId) && isset($byId[$mId])) {
-                    $byId[$mId]['children'][] = &$byId[$emp['id']];
+                // Link under Team Lead first if configured, else Manager
+                $parentKey = !empty($emp['team_lead_id']) && isset($byId[$emp['team_lead_id']])
+                    ? $emp['team_lead_id']
+                    : (!empty($emp['manager_id']) && isset($byId[$emp['manager_id']]) ? $emp['manager_id'] : null);
+
+                if (!empty($parentKey) && isset($byId[$parentKey]) && $parentKey !== $emp['id']) {
+                    $byId[$parentKey]['children'][] = &$byId[$emp['id']];
                 } else {
                     $roots[] = &$byId[$emp['id']];
                 }

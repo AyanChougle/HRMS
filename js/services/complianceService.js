@@ -18,11 +18,11 @@ const complianceService = {
     attendanceRules: {
       method: "Biometric Attendance",
       reportingTime: "10:00 AM",
-      gracePeriod: "Up to 10:10 AM",
-      lateMarkStart: "10:10:01 AM",
+      gracePeriod: "Up to 10:15 AM",
+      lateMarkStart: "10:15:01 AM",
       lateMarkRules:
         "Up to 3 late marks: No deduction. 4th late mark onwards: Half Day marked with salary deduction.",
-      halfDayRule: "Reporting after 11:10 AM is marked as Half Day.",
+      halfDayRule: "Reporting after 11:30 AM is marked as Half Day.",
       correctionProcess:
         "Attendance correction request must be sent by email on next working day.",
       regularizationProcess: "Must be approved by Reporting Manager.",
@@ -263,7 +263,7 @@ const complianceService = {
         title: "Late Marks (Punctuality Penalty)",
         penalty: "4th Late Mark = Half-Day Salary Deduction",
         condition:
-          "Reporting to work between 10:10:01 AM and 11:10:00 AM (past the 10-minute grace period).",
+          "Reporting to work between 10:15:01 AM and 11:30:00 AM (past the 15-minute grace period).",
         explanation:
           "Up to 3 late marks in a single calendar month are permitted as grace with zero penalty. From the 4th late mark onwards in the same month, each late mark incurs a Half-Day (0.5 day) salary deduction.",
         severity: "MEDIUM",

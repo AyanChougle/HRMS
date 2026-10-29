@@ -126,7 +126,7 @@ const AttendanceView = {
             <p class="page-subtitle">${isEmployeeOnly ? 'Daily punch logging, shift timer, break station, and regularization requests' : 'Real-time punch records, roster status, regularization workflows, and holiday schedules'}</p>
           </div>
           <div class="page-actions">
-            <button class="btn btn-secondary btn-sm" onclick="reportService.downloadBackendExport('attendance', 'xlsx')" title="Export Monthly Attendance Muster (Exact RadeNextHR 18-Column Excel)">
+            <button class="btn btn-secondary btn-sm" onclick="AttendanceView.openExportModal()" title="Export Monthly Attendance Muster (Exact RadeNextHR 18-Column Excel)">
               <svg width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/>
               </svg>
@@ -248,7 +248,7 @@ const AttendanceView = {
             </div>
             <div class="kpi-value">${summary.late}</div>
             <div class="kpi-label">Late Arrivals</div>
-            <div class="kpi-subtitle">After 10:15 AM IST</div>
+            <div class="kpi-subtitle">${summary.halfDay > 0 ? `${summary.halfDay} Half Day • After 10:15 AM` : 'After 10:15 AM IST'}</div>
           </div>
 
           <div class="kpi-card" onclick="AttendanceView.setFilterStatus('LEAVE')" style="cursor: pointer;">
@@ -485,6 +485,93 @@ const AttendanceView = {
     cur.setDate(cur.getDate() + offset);
     this.currentDate = cur.toISOString().slice(0, 10);
     Router.navigate('attendance');
+  },
+
+  changeTeamDate(newDate) {
+    this.currentDate = newDate;
+    this.activeTab = 'team';
+    Router.mountView('attendance');
+  },
+
+  shiftTeamDate(offset) {
+    const cur = new Date(this.currentDate || new Date());
+    cur.setDate(cur.getDate() + offset);
+    this.currentDate = cur.toISOString().slice(0, 10);
+    this.activeTab = 'team';
+    Router.mountView('attendance');
+  },
+
+  openExportModal() {
+    const now = new Date();
+    const curMonth = now.getMonth() + 1;
+    const curYear = now.getFullYear();
+    const months = [
+      { num: 1, name: 'January' },
+      { num: 2, name: 'February' },
+      { num: 3, name: 'March' },
+      { num: 4, name: 'April' },
+      { num: 5, name: 'May' },
+      { num: 6, name: 'June' },
+      { num: 7, name: 'July' },
+      { num: 8, name: 'August' },
+      { num: 9, name: 'September' },
+      { num: 10, name: 'October' },
+      { num: 11, name: 'November' },
+      { num: 12, name: 'December' }
+    ];
+
+    if (typeof ModalManager !== 'undefined') {
+      ModalManager.openModal({
+        title: 'Export Monthly Attendance Muster',
+        subtitle: 'Official RadeNextHR 18-Column Excel specification from Hostinger MySQL',
+        contentHtml: `
+          <div class="flex flex-col gap-4">
+            <p style="font-size: 0.85rem; color: var(--text-secondary); margin: 0;">
+              Select the target month and year to download attendance history, payable days, and working metrics.
+            </p>
+            <div class="grid" style="grid-template-columns: 1fr 1fr; gap: 14px;">
+              <div class="form-group">
+                <label class="form-label required">Target Month</label>
+                <select id="export-muster-month" class="form-control">
+                  ${months.map(m => `<option value="${m.num}" ${m.num === curMonth ? 'selected' : ''}>${m.name}</option>`).join('')}
+                </select>
+              </div>
+              <div class="form-group">
+                <label class="form-label required">Target Year</label>
+                <select id="export-muster-year" class="form-control">
+                  <option value="2025" ${curYear === 2025 ? 'selected' : ''}>2025</option>
+                  <option value="2026" ${curYear === 2026 ? 'selected' : ''}>2026</option>
+                  <option value="2027" ${curYear === 2027 ? 'selected' : ''}>2027</option>
+                </select>
+              </div>
+            </div>
+            <div class="form-group">
+              <label class="form-label required">File Format</label>
+              <select id="export-muster-format" class="form-control">
+                <option value="xlsx" selected>Excel Spreadsheet (.xlsx) — Formatted Navy Blue Headers</option>
+                <option value="csv">Comma-Separated Values (.csv)</option>
+              </select>
+            </div>
+            <div style="font-size: 0.78rem; color: var(--text-muted); background: var(--bg-hover); padding: 10px 12px; border-radius: var(--radius-sm); border: 1px solid var(--border-color, #cbd5e1); line-height: 1.5;">
+              • <strong>Holidays</strong> only count if they fall within the selected month.<br>
+              • <strong>Working Days</strong> = Total Days in Month minus Declared Holidays in that month.<br>
+              • Includes full team hierarchy, designations, overtime hours, and payable days.
+            </div>
+          </div>
+        `,
+        confirmText: 'Download Official Muster',
+        cancelText: 'Cancel',
+        onConfirm: () => {
+          const month = document.getElementById('export-muster-month')?.value || curMonth;
+          const year = document.getElementById('export-muster-year')?.value || curYear;
+          const format = document.getElementById('export-muster-format')?.value || 'xlsx';
+          ModalManager.closeModal();
+          reportService.downloadBackendExport('attendance', format, { month, year });
+        }
+      });
+    } else {
+      reportService.downloadBackendExport('attendance', 'xlsx');
+    }
   },
 
   shiftMyAttendanceMonth(offset) {
@@ -890,7 +977,19 @@ const AttendanceView = {
               </div>
               <div class="card-subtitle">Real-time shift presence for your direct and operational hierarchy</div>
             </div>
-            <div style="font-size: 0.8rem; color: var(--text-muted);">Total Personnel: <strong>0</strong></div>
+            <div style="display: flex; align-items: center; gap: 8px; flex-wrap: wrap;">
+              <div class="flex items-center gap-1" style="background: var(--bg-hover); padding: 2px 6px; border-radius: var(--radius-md); border: 1px solid var(--border-color, #cbd5e1);">
+                <button class="btn btn-secondary btn-sm" onclick="AttendanceView.shiftTeamDate(-1)" title="Previous Day" style="padding: 4px 8px; height: auto;">
+                  <svg width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/></svg>
+                </button>
+                <input type="date" class="form-control" style="width: 135px; height: 30px; font-size: 0.8rem; padding: 2px 6px; font-weight: 600;" value="${this.currentDate}" onchange="AttendanceView.changeTeamDate(this.value)" />
+                <button class="btn btn-secondary btn-sm" onclick="AttendanceView.shiftTeamDate(1)" title="Next Day" style="padding: 4px 8px; height: auto;">
+                  <svg width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg>
+                </button>
+                <button class="btn btn-secondary btn-sm" onclick="AttendanceView.changeTeamDate('${new Date().toISOString().slice(0, 10)}')" style="font-size: 0.75rem; padding: 4px 8px; height: auto;">Today</button>
+              </div>
+              <div style="font-size: 0.8rem; color: var(--text-muted);">Total Personnel: <strong>0</strong></div>
+            </div>
           </div>
           <div class="card-body" style="padding: 0;">
             <div class="empty-state">
@@ -934,7 +1033,17 @@ const AttendanceView = {
               </div>
               <div class="card-subtitle">Real-time shift presence for your operational hierarchy (${groupKeys.length} Team${groupKeys.length > 1 ? 's' : ''})</div>
             </div>
-            <div style="display: flex; align-items: center; gap: 10px;">
+            <div style="display: flex; align-items: center; gap: 8px; flex-wrap: wrap;">
+              <div class="flex items-center gap-1" style="background: var(--bg-hover); padding: 2px 6px; border-radius: var(--radius-md); border: 1px solid var(--border-color, #cbd5e1);">
+                <button class="btn btn-secondary btn-sm" onclick="AttendanceView.shiftTeamDate(-1)" title="Previous Day" style="padding: 4px 8px; height: auto;">
+                  <svg width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/></svg>
+                </button>
+                <input type="date" class="form-control" style="width: 135px; height: 30px; font-size: 0.8rem; padding: 2px 6px; font-weight: 600;" value="${this.currentDate}" onchange="AttendanceView.changeTeamDate(this.value)" />
+                <button class="btn btn-secondary btn-sm" onclick="AttendanceView.shiftTeamDate(1)" title="Next Day" style="padding: 4px 8px; height: auto;">
+                  <svg width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg>
+                </button>
+                <button class="btn btn-secondary btn-sm" onclick="AttendanceView.changeTeamDate('${new Date().toISOString().slice(0, 10)}')" style="font-size: 0.75rem; padding: 4px 8px; height: auto;">Today</button>
+              </div>
               ${hasMultipleGroups ? `
                 <button class="btn btn-secondary btn-sm" onclick="AttendanceView.expandAllGroups()" style="font-size: 0.75rem; padding: 3px 10px;">
                   Expand All
@@ -952,8 +1061,9 @@ const AttendanceView = {
 
         ${groupKeys.map((groupName, idx) => {
           const members = teamGroups[groupName];
-          const presCount = members.filter(m => (m.attendance?.status === 'PRESENT' || m.attendance?.status === 'LATE' || m.attendance?.status === 'REGULARIZED' || Boolean(m.attendance?.checkIn && m.attendance.checkIn !== '—'))).length;
-          const lateCount = members.filter(m => m.attendance?.status === 'LATE' || Number(m.attendance?.lateMinutes || 0) > 0).length;
+          const presCount = members.filter(m => (m.attendance?.status === 'PRESENT' || m.attendance?.status === 'LATE' || m.attendance?.status === 'HALF_DAY' || m.attendance?.status === 'REGULARIZED' || Boolean(m.attendance?.checkIn && m.attendance.checkIn !== '—'))).length;
+          const lateCount = members.filter(m => m.attendance?.status === 'LATE').length;
+          const halfDayCount = members.filter(m => m.attendance?.status === 'HALF_DAY').length;
           const absCount = members.filter(m => !m.attendance?.checkIn && m.attendance?.status !== 'ON_LEAVE').length;
 
           return `
@@ -975,6 +1085,7 @@ const AttendanceView = {
                 <div style="display: flex; align-items: center; gap: 8px;">
                   <span class="badge badge-success" style="font-size: 0.72rem;">${presCount} Present</span>
                   ${lateCount > 0 ? `<span class="badge badge-warning" style="font-size: 0.72rem;">${lateCount} Late</span>` : ''}
+                  ${halfDayCount > 0 ? `<span class="badge badge-warning" style="font-size: 0.72rem; background: rgba(234, 88, 12, 0.12); color: #ea580c; border: 1px solid rgba(234, 88, 12, 0.3);">${halfDayCount} Half Day</span>` : ''}
                   <span class="badge badge-neutral" style="font-size: 0.72rem;">${absCount} Absent</span>
                 </div>
               </div>
@@ -1007,7 +1118,7 @@ const AttendanceView = {
                         <td><span class="font-semibold text-main">${t.attendance.checkIn || '—'}</span></td>
                         <td><span class="badge ${t.attendance.totalBreakMinutes > 0 ? 'badge-warning' : 'badge-neutral'}">${t.attendance.breakFormatted || (t.attendance.totalBreakMinutes ? t.attendance.totalBreakMinutes + 'm' : '0m')}</span></td>
                         <td>
-                          ${((t.attendance.checkOut === '09:00 PM' || t.attendance.check_out === '09:00 PM') && ((t.attendance.device && t.attendance.device.includes('Auto Punched Out')) || t.attendance.status === 'HALF_DAY')) ? `
+                          ${((t.attendance.checkOut === '09:00 PM' || t.attendance.check_out === '09:00 PM') && ((t.attendance.device && t.attendance.device.includes('Auto Punched Out')) || t.attendance.autoClosed)) ? `
                             <span class="badge badge-warning" style="font-size: 0.72rem; display: inline-flex; align-items: center; gap: 4px;" title="Shift auto-closed at 9:00 PM because check-out was not recorded.">
                               <svg width="11" height="11" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
                               09:00 PM (Auto)
@@ -1019,7 +1130,7 @@ const AttendanceView = {
                         <td><strong style="color: var(--primary);">${t.attendance.workedHoursFormatted || '0h 00m'}</strong></td>
                         <td>
                           <span class="badge ${t.attendance.status === 'PRESENT' ? 'badge-success' : (t.attendance.status === 'LATE' ? 'badge-warning' : (t.attendance.status === 'HALF_DAY' ? 'badge-warning' : (t.attendance.status === 'ON_BREAK' ? 'badge-warning' : 'badge-neutral')))}">
-                            <span class="badge-dot"></span> ${t.attendance.status === 'HALF_DAY' ? 'HALF DAY (Auto Closed)' : t.attendance.status}
+                            <span class="badge-dot"></span> ${t.attendance.status === 'HALF_DAY' ? ((t.attendance.device && t.attendance.device.includes('Auto')) || (t.attendance.checkOut === '09:00 PM' && t.attendance.autoClosed) ? 'HALF DAY (Auto Closed)' : 'HALF DAY') : t.attendance.status}
                           </span>
                         </td>
                       </tr>

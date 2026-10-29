@@ -75,7 +75,7 @@ const CreateEmployeeView = {
             </div>
             <div>
               <div class="card-title">New User Onboarding Form</div>
-              <div class="card-subtitle">Official shift: 10:00 AM – 07:00 PM (8h Work • 1h Break • 10m Grace) • Ghansoli - Navi Mumbai</div>
+              <div class="card-subtitle">Official shift: 10:00 AM – 07:00 PM (8h Work • 1h Break • 15m Grace) • Ghansoli - Navi Mumbai</div>
             </div>
           </div>
         </div>

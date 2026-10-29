@@ -2101,47 +2101,12 @@ const PeopleView = {
 
   async exportCSV() {
     try {
-      const employees = await employeeService.getEmployees(this.currentFilters);
-
-      // Fetch user accounts mapping for login passwords
-      const userPassMap = {};
-      try {
-        const uSnap = await db.collection('users').get();
-        uSnap.docs.forEach(d => {
-          const u = d.data();
-          if (u.email) userPassMap[u.email.toLowerCase().trim()] = u.initialPassword || u.password;
-        });
-      } catch (_) {}
-
-      const headers = ['Employee Code', 'Full Name', 'Department', 'Designation', 'Branch', 'Reporting Manager', 'Joining Date', 'Status', 'Work Email', 'Phone', 'Login Password'];
-      const rows = employees.map(e => {
-        const email = (e.workEmail || e.email || '').toLowerCase().trim();
-        const pass = e.loginPassword || e.initialPassword || userPassMap[email] || 'Diallo@2026';
-        return [
-          `"${e.employeeCode || ''}"`,
-          `"${e.fullName || e.name || ''}"`,
-          `"${e.department || ''}"`,
-          `"${e.designation || ''}"`,
-          `"${e.branchName || e.location || ''}"`,
-          `"${e.manager || ''}"`,
-          `"${e.dateOfJoining || e.joiningDate || ''}"`,
-          `"${e.employmentStatus || ''}"`,
-          `"${e.workEmail || e.email || ''}"`,
-          `"${e.phone || ''}"`,
-          `"${pass}"`
-        ];
-      });
-
-      const csv = [headers.join(','), ...rows.map(r => r.join(','))].join('\n');
-      const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
-      const url = URL.createObjectURL(blob);
-      const link = document.createElement('a');
-      link.href = url;
-      link.download = `Diallo_Employees_${new Date().toISOString().slice(0, 10)}.csv`;
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
-      Toast.success('Exported Employee Census CSV with Login Passwords.');
+      if (typeof reportService !== 'undefined' && reportService.downloadBackendExport) {
+        reportService.downloadBackendExport('employees', 'csv');
+      } else {
+        window.location.href = 'https://hrmstfw.com/hostinger_backend/export.php?type=employees&format=csv';
+      }
+      Toast.success('Exported Employee Census CSV with Reporting Managers & Login Credentials from MySQL.');
     } catch (e) {
       Toast.error(`Export failed: ${e.message}`);
     }

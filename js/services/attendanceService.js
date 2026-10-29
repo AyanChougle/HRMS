@@ -130,8 +130,8 @@ const attendanceService = {
     // Calculate lateMinutes if checkIn exists
     if (r.checkIn && (r.lateMinutes === undefined || r.lateMinutes === null || r.lateMinutes === 0)) {
       const inMins = this.time12ToMinutes(r.checkIn);
-      // Shift starts at 10:00 AM (600 mins) + 10 mins grace = 610 mins
-      if (inMins > 610) {
+      // Shift starts at 10:00 AM (600 mins) + 15 mins grace = 615 mins (Grace window up to 10:15 AM)
+      if (inMins > 615) {
         r.lateMinutes = inMins - 600;
       } else {
         r.lateMinutes = 0;
@@ -153,7 +153,7 @@ const attendanceService = {
       const totalGrossMinutes = Math.min(720, Math.max(0, sessionMinutes));
 
       const isSat = this.isSaturday(r.date);
-      const targetWorkMins = isSat ? 360 : 480; // Saturday shift target = 6h (3500m)
+      const targetWorkMins = isSat ? 360 : 480; // Saturday shift target = 6h (360m)
       const halfDayCutoff = isSat ? 180 : 240;   // Saturday half-day cutoff = 3h (180m)
 
       let effectiveBreakMinutes = r.totalBreakMinutes || 0;
@@ -161,7 +161,7 @@ const attendanceService = {
         effectiveBreakMinutes = 60;
         r.totalBreakMinutes = 60;
         r.totalBreakSeconds = 3600;
-        r.breakFormatted = '500m';
+        r.breakFormatted = '60m';
       }
 
       const workedMinutes = Math.max(0, totalGrossMinutes - effectiveBreakMinutes);
@@ -864,6 +864,7 @@ const attendanceService = {
 
       let present = 0;
       let late = 0;
+      let halfDay = 0;
       let onLeave = 0;
       let wfh = 0;
 
@@ -871,9 +872,13 @@ const attendanceService = {
         const st = (d.status || '').toString().toUpperCase().trim();
         const checkInVal = d.checkIn || d.check_in;
         const hasPunchIn = Boolean(checkInVal && checkInVal !== '—' && checkInVal !== '-');
-        const isLate = st === 'LATE' || Number(d.lateMinutes || d.late_minutes || 0) > 0;
+        const isHalfDay = st === 'HALF_DAY';
+        const isLate = st === 'LATE';
 
-        if (isLate) {
+        if (isHalfDay) {
+          present++;
+          halfDay++;
+        } else if (isLate) {
           present++;
           late++;
         } else if (st === 'PRESENT' || st === 'REGULARIZED' || st === 'ON_BREAK' || hasPunchIn) {
@@ -889,8 +894,9 @@ const attendanceService = {
       return {
         totalEmployees,
         present,
-        onTime: Math.max(0, present - late),
+        onTime: Math.max(0, present - late - halfDay),
         late,
+        halfDay,
         onLeave,
         wfh,
         absent: Math.max(0, totalEmployees - present - onLeave),

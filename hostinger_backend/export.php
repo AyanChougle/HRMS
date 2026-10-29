@@ -249,7 +249,7 @@ try {
             }
         }
 
-        // Count Holidays
+        // Count Holidays strictly within the target month (only count if in that month)
         $holidayDates = [];
         try {
             $hStmt = $pdo->prepare("SELECT date, name FROM holidays WHERE date BETWEEN :s AND :e");
@@ -259,11 +259,8 @@ try {
             }
         } catch (\Throwable $e) {}
 
+        // Holidays only count if in that month; if 0 declared, it is strictly 0
         $holidaysCount = count($holidayDates);
-        // Fallback default: RadeNextHR benchmark standard 8 holidays if none configured in table
-        if ($holidaysCount === 0) {
-            $holidaysCount = 8;
-        }
 
         // Working Days = Total Days in Month - Holidays
         $workingDays = max(0, $daysInMonth - $holidaysCount);
@@ -532,15 +529,15 @@ try {
     }
 
     // -------------------------------------------------------------------------
-    // 3. EMPLOYEES MASTER EXPORT
+    // 3. EMPLOYEES MASTER EXPORT (WITH REPORTING MANAGERS & DATABASE CREDS)
     // -------------------------------------------------------------------------
     elseif ($type === 'employees' || $type === 'people') {
         $headers = [
             'Employee Code', 'Full Name', 'Work Email', 'Phone', 'Role',
-            'Department', 'Designation', 'Team Name', 'Team Lead', 'Employment Status',
-            'Joining Date', 'Created At'
+            'Department', 'Designation', 'Reporting Manager', 'Team Lead', 'Branch',
+            'Employment Status', 'Joining Date', 'Initial Password'
         ];
-        $colWidths = [14, 24, 26, 16, 14, 18, 22, 18, 20, 16, 14, 18];
+        $colWidths = [14, 24, 26, 16, 14, 18, 22, 22, 20, 20, 16, 14, 20];
 
         if ($userRole === 'EMPLOYEE') {
             json_out(["success" => false, "error" => "Access denied. Employee census export is restricted to HR and Management."], 403);
@@ -548,24 +545,42 @@ try {
 
         $sql = "
             SELECT e.employee_code, e.full_name, e.work_email, e.phone, e.role_id,
-                   e.department, e.designation, e.team_name, e.team_lead, e.employment_status,
-                   e.joining_date, e.created_at
+                   e.department, e.designation,
+                   COALESCE(NULLIF(e.manager, ''), 'Management') AS manager,
+                   COALESCE(NULLIF(e.team_lead, ''), 'Direct') AS team_lead,
+                   COALESCE(NULLIF(e.branch_name, ''), e.location, 'HQ Mumbai') AS branch,
+                   e.employment_status, e.joining_date,
+                   COALESCE(NULLIF(u.initial_password, ''), 'TradeForWealth@2026') AS initial_password
             FROM employees e
+            LEFT JOIN users u ON (e.user_id = u.uid OR e.employee_code = u.employee_code OR LOWER(e.work_email) = LOWER(u.email))
             WHERE 1=1
         ";
         $params = [];
 
         if ($userRole === 'TL') {
-            $sql .= " AND (e.team_lead_id = :tlid OR e.team_lead_id = :tlcode OR e.employee_code = :self_code OR e.id = :self_uid)";
+            $tlName = $currentUser['display_name'] ?? trim(($currentUser['first_name'] ?? '') . ' ' . ($currentUser['last_name'] ?? ''));
+            $sql .= " AND (
+                e.team_lead_id = :tlid 
+                OR e.team_lead_id = :tlcode 
+                OR e.team_lead LIKE :tlname
+                OR e.manager_id = :tlid
+                OR e.manager_id = :tlcode
+                OR e.manager LIKE :tlpattern
+                OR e.employee_code = :self_code 
+                OR e.id = :self_uid
+            )";
             $params[':tlid'] = $userUid;
             $params[':tlcode'] = $userCode;
+            $params[':tlname'] = '%' . trim($tlName) . '%';
+            $params[':tlpattern'] = '%' . trim($userCode ?: $tlName) . '%';
             $params[':self_code'] = $userCode;
             $params[':self_uid'] = $userUid;
         } elseif ($userRole === 'MANAGER' && !empty($userDept)) {
-            $sql .= " AND (e.department = :dept OR e.manager_id = :mgr_uid OR e.manager_id = :mgr_code OR e.employee_code = :self_code OR e.id = :self_uid)";
+            $sql .= " AND (e.department = :dept OR e.manager_id = :mgr_uid OR e.manager_id = :mgr_code OR e.manager LIKE :mgr_name OR e.employee_code = :self_code OR e.id = :self_uid)";
             $params[':dept'] = $userDept;
             $params[':mgr_uid'] = $userUid;
             $params[':mgr_code'] = $userCode;
+            $params[':mgr_name'] = '%' . trim($currentUser['display_name'] ?? '') . '%';
             $params[':self_code'] = $userCode;
             $params[':self_uid'] = $userUid;
         }

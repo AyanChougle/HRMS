@@ -352,6 +352,31 @@ CREATE TABLE IF NOT EXISTS `system_config` (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- ------------------------------------------------------------------------------
+-- TABLE: documents
+-- Official Employee & Company Document Store
+-- ------------------------------------------------------------------------------
+CREATE TABLE IF NOT EXISTS `documents` (
+    `id` INT AUTO_INCREMENT PRIMARY KEY,
+    `company_id` VARCHAR(100) NOT NULL DEFAULT 'comp_diallo_india',
+    `employee_id` VARCHAR(128) NOT NULL,
+    `employee_code` VARCHAR(50) DEFAULT NULL,
+    `title` VARCHAR(200) NOT NULL,
+    `category` VARCHAR(80) NOT NULL DEFAULT 'GENERAL',
+    `file_name` VARCHAR(255) NOT NULL,
+    `file_path` TEXT NOT NULL,
+    `file_url` TEXT DEFAULT NULL,
+    `file_size` INT DEFAULT 0,
+    `file_type` VARCHAR(100) DEFAULT NULL,
+    `uploaded_by` VARCHAR(128) DEFAULT NULL,
+    `status` ENUM('ACTIVE', 'ARCHIVED') NOT NULL DEFAULT 'ACTIVE',
+    `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    `updated_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    INDEX `idx_doc_emp` (`employee_id`),
+    INDEX `idx_doc_cat` (`category`),
+    INDEX `idx_doc_status` (`status`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- ------------------------------------------------------------------------------
 -- SEED INITIAL DATA: Standard Departments & Super Admin Profile
 -- ------------------------------------------------------------------------------
 INSERT IGNORE INTO `departments` (`name`, `code`, `description`) VALUES

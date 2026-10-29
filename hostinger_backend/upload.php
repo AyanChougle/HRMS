@@ -9,8 +9,24 @@ if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
 
 try {
     $currentUser = get_current_user_or_null($pdo);
-    $userCode = $currentUser['employee_code'] ?? $_POST['employee_code'] ?? 'GENERAL';
-    $userUid = $currentUser['uid'] ?? $currentUser['id'] ?? null;
+    if (!$currentUser) {
+        json_out(["success" => false, "error" => "Authentication required to upload documents."], 401);
+    }
+
+    $userRole = canonical_role($currentUser['role_id'] ?? 'EMPLOYEE');
+    $userCode = $currentUser['employee_code'] ?? '';
+    $userUid = $currentUser['uid'] ?? $currentUser['id'] ?? '';
+
+    // If target employee is specified, verify caller permissions
+    $targetCode = trim($_POST['employee_code'] ?? $userCode);
+    $targetUid = trim($_POST['employee_id'] ?? $userUid);
+    if ($userRole === 'EMPLOYEE' && !empty($targetCode) && $targetCode !== $userCode) {
+        json_out(["success" => false, "error" => "Employees may only upload documents for their own profile."], 403);
+    }
+
+    $finalCode = !empty($targetCode) ? $targetCode : $userCode;
+    $finalUid = !empty($targetUid) ? $targetUid : $userUid;
+
     $category = strtoupper(trim($_POST['category'] ?? 'GENERAL'));
     $title = trim($_POST['title'] ?? '');
 
@@ -67,8 +83,8 @@ try {
         )
     ");
     $docStmt->execute([
-        ':eid' => $userUid,
-        ':ecode' => $userCode,
+        ':eid' => $finalUid,
+        ':ecode' => $finalCode,
         ':cat' => $category,
         ':title' => $title,
         ':fname' => $file['name'],

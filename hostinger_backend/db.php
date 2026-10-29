@@ -8,11 +8,33 @@ date_default_timezone_set('Asia/Kolkata');
 // Strictly 100% Hostinger Backend (Pure PHP/MySQL — Zero Firebase dependencies)
 // ==============================================================================
 
-// Enable CORS for frontend requests
-header("Access-Control-Allow-Origin: *");
+// Enable CORS with safe explicit origin allowlist (eliminating wildcard + credentials incompatibility)
+$origin = $_SERVER['HTTP_ORIGIN'] ?? '';
+$allowedOrigins = [
+    'https://hrmstfw.com',
+    'http://hrmstfw.com',
+    'https://www.hrmstfw.com',
+    'http://localhost',
+    'http://127.0.0.1',
+    'http://localhost:3000',
+    'http://localhost:5500',
+    'http://localhost:8080'
+];
+
+if (!empty($origin)) {
+    $parsedHost = parse_url($origin, PHP_URL_HOST);
+    if (in_array($origin, $allowedOrigins) || $parsedHost === 'hrmstfw.com' || $parsedHost === 'www.hrmstfw.com' || $parsedHost === 'localhost' || $parsedHost === '127.0.0.1') {
+        header("Access-Control-Allow-Origin: $origin");
+        header("Access-Control-Allow-Credentials: true");
+    } else {
+        header("Access-Control-Allow-Origin: https://hrmstfw.com");
+        header("Access-Control-Allow-Credentials: true");
+    }
+} else {
+    header("Access-Control-Allow-Origin: https://hrmstfw.com");
+}
 header("Access-Control-Allow-Methods: GET, POST, PUT, DELETE, OPTIONS");
 header("Access-Control-Allow-Headers: Content-Type, Authorization, X-Requested-With, X-CSRF-Token");
-header("Access-Control-Allow-Credentials: true");
 
 // Handle preflight OPTIONS request
 if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
@@ -157,12 +179,14 @@ try {
     $pdo->exec("
         CREATE TABLE IF NOT EXISTS `documents` (
             `id` INT AUTO_INCREMENT PRIMARY KEY,
+            `company_id` VARCHAR(100) NOT NULL DEFAULT 'comp_diallo_india',
             `employee_id` VARCHAR(128) NOT NULL,
             `employee_code` VARCHAR(50) DEFAULT NULL,
             `title` VARCHAR(200) NOT NULL,
             `category` VARCHAR(80) NOT NULL DEFAULT 'GENERAL',
             `file_name` VARCHAR(255) NOT NULL,
             `file_path` TEXT NOT NULL,
+            `file_url` TEXT DEFAULT NULL,
             `file_size` INT DEFAULT 0,
             `file_type` VARCHAR(100) DEFAULT NULL,
             `uploaded_by` VARCHAR(128) DEFAULT NULL,
@@ -173,6 +197,20 @@ try {
             INDEX `idx_doc_cat` (`category`)
         ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
     ");
+
+    // Seamless auto-migration: Ensure company_id and file_url exist if table was previously created
+    try {
+        $chkCol = $pdo->query("SHOW COLUMNS FROM documents LIKE 'company_id'")->fetch();
+        if (!$chkCol) {
+            $pdo->exec("ALTER TABLE documents ADD COLUMN company_id VARCHAR(100) DEFAULT 'comp_diallo_india' AFTER id");
+        }
+    } catch (\Throwable $e) {}
+    try {
+        $chkCol2 = $pdo->query("SHOW COLUMNS FROM documents LIKE 'file_url'")->fetch();
+        if (!$chkCol2) {
+            $pdo->exec("ALTER TABLE documents ADD COLUMN file_url TEXT AFTER file_path");
+        }
+    } catch (\Throwable $e) {}
 
     // Auto-normalize mismatched employee_id in attendance_records
     try {

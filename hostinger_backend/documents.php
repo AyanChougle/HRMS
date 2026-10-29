@@ -9,9 +9,12 @@ $input = get_json_input();
 
 try {
     $currentUser = get_current_user_or_null($pdo);
-    $userRole = canonical_role($currentUser['role_id'] ?? $_GET['role'] ?? 'EMPLOYEE');
-    $userCode = $currentUser['employee_code'] ?? $_GET['employee_code'] ?? '';
-    $userUid = $currentUser['uid'] ?? $currentUser['id'] ?? $_GET['uid'] ?? '';
+    if (!$currentUser) {
+        json_out(["success" => false, "error" => "Authentication required."], 401);
+    }
+    $userRole = canonical_role($currentUser['role_id'] ?? 'EMPLOYEE');
+    $userCode = $currentUser['employee_code'] ?? '';
+    $userUid = $currentUser['uid'] ?? $currentUser['id'] ?? '';
 
     // -------------------------------------------------------------------------
     // GET: List Documents
@@ -68,6 +71,12 @@ try {
     if ($method === 'POST') {
         $empId = trim($input['employee_id'] ?? $userUid);
         $empCode = trim($input['employee_code'] ?? $userCode);
+
+        // Security gate: non-admin/HR/managers cannot assign documents to arbitrary employees
+        if ($userRole === 'EMPLOYEE' && $empId !== $userUid && $empCode !== $userCode) {
+            json_out(["success" => false, "error" => "Access denied. Employees can only manage their own documents."], 403);
+        }
+
         $category = trim($input['category'] ?? 'GENERAL');
         $title = trim($input['title'] ?? 'Document');
         $fileName = trim($input['file_name'] ?? '');

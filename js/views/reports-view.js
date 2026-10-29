@@ -467,7 +467,7 @@ const ReportsView = {
         'Paid Leave': 0,
         'LWP': 0,
         'OT Hours': 0,
-        'Holidays': 8,
+        'Holidays': 0,
         'Week Off': 0,
         'Worked H/WO': 0,
         'Payable Days': 0,

@@ -245,17 +245,17 @@ const ComplianceView = {
               </div>
               <div style="display: flex; justify-content: space-between; padding-bottom: 8px; border-bottom: 1px solid var(--border-main);">
                 <span class="text-muted">Morning Grace Period:</span>
-                <strong style="color: var(--success);">10:00 AM to 10:10 AM (10 Minutes)</strong>
+                <strong style="color: var(--success);">10:00 AM to 10:15 AM (15 Minutes)</strong>
               </div>
               <div style="display: flex; justify-content: space-between; padding-bottom: 8px; border-bottom: 1px solid var(--border-main);">
                 <span class="text-muted">Late Mark Recorded From:</span>
-                <strong style="color: #d97706;">10:10:01 AM onwards</strong>
+                <strong style="color: #d97706;">10:15:01 AM onwards</strong>
               </div>
               <div style="background: rgba(217, 119, 6, 0.08); border-left: 3px solid #d97706; padding: 10px 12px; border-radius: var(--radius-sm); font-size: 0.85rem; line-height: 1.45;">
                 <strong>Late Mark Allowance:</strong> You receive up to <strong>3 late marks per month</strong> without any salary deduction. Starting from the <strong>4th late mark</strong> in the same month, a <strong>Half-Day salary deduction</strong> applies.
               </div>
               <div style="background: rgba(220, 38, 38, 0.08); border-left: 3px solid var(--danger); padding: 10px 12px; border-radius: var(--radius-sm); font-size: 0.85rem; line-height: 1.45;">
-                <strong>Reporting After 11:10 AM:</strong> Arriving after 11:10 AM is automatically recorded as a <strong>Half Day</strong>, and half-day salary is deducted.
+                <strong>Reporting After 11:30 AM:</strong> Arriving after 11:30 AM is automatically recorded as a <strong>Half Day</strong>, and half-day salary is deducted.
               </div>
               <div style="font-size: 0.825rem; color: var(--text-secondary); line-height: 1.5; margin-top: 4px;">
                 <strong>Attendance Lockout:</strong> When you punch out for the day, your attendance locks until <strong>09:30 AM next working morning</strong>. Any correction requests must be emailed on the next working day with Reporting Manager approval.
@@ -435,13 +435,13 @@ const ComplianceView = {
         id: 'LATE_MARK',
         title: 'Late Marks (Punctuality Penalty)',
         penalty: '4th Late Mark = Half-Day Salary Deduction',
-        condition: 'Reporting to work between 10:10:01 AM and 11:10:00 AM (past the 10-minute grace period).',
+        condition: 'Reporting to work between 10:15:01 AM and 11:30:00 AM (past the 15-minute grace period).',
         explanation: 'Up to 3 late marks in a single calendar month are permitted as grace with zero penalty. From the 4th late mark onwards in the same month, each late mark incurs a Half-Day (0.5 day) salary deduction.',
         severity: 'MEDIUM'
       },
       {
         id: 'CUTOFF_LATE',
-        title: 'Reporting After 11:10 AM',
+        title: 'Reporting After 11:30 AM',
         penalty: 'Automatic Half-Day Salary Deduction',
         condition: 'Punching in past 11:10:00 AM (more than 70 minutes after official shift start).',
         explanation: 'Arrival after 11:10 AM is automatically categorized as Half-Day work. The afternoon shift must still be completed until 07:00 PM.',
@@ -551,8 +551,8 @@ const ComplianceView = {
               </tr>
               <tr>
                 <td style="font-weight: 700; color: var(--text-muted); text-align: center;">3</td>
-                <td><strong style="color: #d97706;">Late Marks (10:10 AM – 11:10 AM)</strong></td>
-                <td>Reporting past 10:10 AM grace window</td>
+                <td><strong style="color: #d97706;">Late Marks (10:15 AM – 11:30 AM)</strong></td>
+                <td>Reporting past 10:15 AM grace window</td>
                 <td><span class="badge badge-warning">4th Late Mark = Half-Day Deduction</span></td>
                 <td>1st to 3rd late marks in month are free</td>
               </tr>

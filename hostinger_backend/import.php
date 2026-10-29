@@ -20,15 +20,18 @@ if ($action === 'template') {
     $output = fopen('php://output', 'w');
     fputcsv($output, [
         'Employee Code', 'First Name', 'Last Name', 'Work Email', 'Phone',
-        'Role', 'Department', 'Designation', 'Employment Status', 'Joining Date'
+        'Role', 'Department', 'Designation', 'Reporting Manager', 'Team Lead',
+        'Branch', 'Employment Status', 'Joining Date', 'Initial Password'
     ]);
     fputcsv($output, [
         'D09991', 'Aarav', 'Sharma', 'aarav.sharma@tradeforwealth.co.in', '9876543210',
-        'EMPLOYEE', 'Operations', 'Relationship Manager', 'ACTIVE', '2026-01-15'
+        'EMPLOYEE', 'Operations', 'Relationship Manager', 'Ritik Shukla', 'Ritik Shukla',
+        'Trade For Wealth - HQ Mumbai', 'ACTIVE', '2026-01-15', 'Diallo@2026'
     ]);
     fputcsv($output, [
         'D09992', 'Priya', 'Patel', 'priya.patel@tradeforwealth.co.in', '9876543211',
-        'TL', 'Operations', 'Team Lead', 'ACTIVE', '2025-06-01'
+        'TL', 'Operations', 'Team Lead', 'Arshad Majothi', 'Priya Patel',
+        'Trade For Wealth - HQ Mumbai', 'ACTIVE', '2025-06-01', 'Diallo@2026'
     ]);
     fclose($output);
     exit;
@@ -91,8 +94,12 @@ try {
     $colRole = $headerMap['role'] ?? $headerMap['roleid'] ?? null;
     $colDept = $headerMap['department'] ?? $headerMap['dept'] ?? null;
     $colDesig = $headerMap['designation'] ?? $headerMap['title'] ?? null;
+    $colMgr = $headerMap['reportingmanager'] ?? $headerMap['manager'] ?? $headerMap['mgr'] ?? null;
+    $colTL = $headerMap['teamlead'] ?? $headerMap['teamleader'] ?? $headerMap['tl'] ?? null;
+    $colBranch = $headerMap['branch'] ?? $headerMap['branchname'] ?? $headerMap['location'] ?? null;
     $colStatus = $headerMap['employmentstatus'] ?? $headerMap['status'] ?? null;
     $colJoin = $headerMap['joiningdate'] ?? $headerMap['doj'] ?? null;
+    $colPass = $headerMap['initialpassword'] ?? $headerMap['password'] ?? $headerMap['loginpassword'] ?? null;
 
     if ($colCode === null || $colEmail === null) {
         fclose($handle);
@@ -129,6 +136,10 @@ try {
         $rawRole = trim($colRole !== null ? ($data[$colRole] ?? 'EMPLOYEE') : 'EMPLOYEE');
         $dept = trim($colDept !== null ? ($data[$colDept] ?? 'Operations') : 'Operations');
         $desig = trim($colDesig !== null ? ($data[$colDesig] ?? 'Staff') : 'Staff');
+        $mgr = trim($colMgr !== null ? ($data[$colMgr] ?? '') : '');
+        $tl = trim($colTL !== null ? ($data[$colTL] ?? '') : '');
+        $branch = trim($colBranch !== null ? ($data[$colBranch] ?? 'Trade For Wealth - HQ Mumbai') : 'Trade For Wealth - HQ Mumbai');
+        $pass = trim($colPass !== null ? ($data[$colPass] ?? 'TradeForWealth@2026') : 'TradeForWealth@2026');
         $status = strtoupper(trim($colStatus !== null ? ($data[$colStatus] ?? 'ACTIVE') : 'ACTIVE'));
         if (!in_array($status, ['ACTIVE', 'INACTIVE', 'SUSPENDED'])) $status = 'ACTIVE';
         $joinDate = trim($colJoin !== null ? ($data[$colJoin] ?? date('Y-m-d')) : date('Y-m-d'));
@@ -157,6 +168,10 @@ try {
             'role' => $canonicalRole,
             'department' => $dept,
             'designation' => $desig,
+            'manager' => $mgr,
+            'team_lead' => $tl,
+            'branch' => $branch,
+            'password' => $pass,
             'status' => $status,
             'joining_date' => $joinDate,
             'is_duplicate' => ($isDuplicateCode || $isDuplicateEmail),
@@ -202,11 +217,13 @@ try {
 
     $empStmt = $pdo->prepare("
         INSERT INTO employees (
-            id, employee_code, first_name, last_name, full_name, work_email, phone,
-            role_id, department, designation, employment_status, joining_date, company_id
+            id, user_id, employee_code, first_name, last_name, full_name, work_email, email, phone,
+            role_id, department, designation, manager, team_lead, branch_name, location,
+            employment_status, status, joining_date, date_of_joining, company_id
         ) VALUES (
-            :id, :code, :first, :last, :full, :email, :phone,
-            :role, :dept, :desig, :status, :join, 'comp_diallo_india'
+            :id, :uid, :code, :first, :last, :full, :email, :email2, :phone,
+            :role, :dept, :desig, :mgr, :tl, :bname, :loc,
+            :status, :status2, :join, :join2, 'comp_diallo_india'
         )
         ON DUPLICATE KEY UPDATE
             first_name = VALUES(first_name),
@@ -216,17 +233,23 @@ try {
             role_id = VALUES(role_id),
             department = VALUES(department),
             designation = VALUES(designation),
+            manager = COALESCE(NULLIF(VALUES(manager), ''), manager),
+            team_lead = COALESCE(NULLIF(VALUES(team_lead), ''), team_lead),
+            branch_name = COALESCE(NULLIF(VALUES(branch_name), ''), branch_name),
+            location = COALESCE(NULLIF(VALUES(location), ''), location),
             employment_status = VALUES(employment_status),
-            joining_date = VALUES(joining_date)
+            status = VALUES(status),
+            joining_date = VALUES(joining_date),
+            date_of_joining = VALUES(date_of_joining)
     ");
 
     $userStmt = $pdo->prepare("
         INSERT INTO users (
-            uid, employee_code, email, display_name, first_name, last_name, phone,
-            role_id, department, designation, status, company_id
+            uid, employee_code, email, password_hash, initial_password, display_name, first_name, last_name, phone,
+            role_id, department, designation, branch_name, status, company_id
         ) VALUES (
-            :uid, :code, :email, :name, :first, :last, :phone,
-            :role, :dept, :desig, :status, 'comp_diallo_india'
+            :uid, :code, :email, :phash, :pinit, :name, :first, :last, :phone,
+            :role, :dept, :desig, :bname, :status, 'comp_diallo_india'
         )
         ON DUPLICATE KEY UPDATE
             employee_code = VALUES(employee_code),
@@ -237,6 +260,7 @@ try {
             role_id = VALUES(role_id),
             department = VALUES(department),
             designation = VALUES(designation),
+            branch_name = COALESCE(NULLIF(VALUES(branch_name), ''), branch_name),
             status = VALUES(status)
     ");
 
@@ -259,26 +283,38 @@ try {
         try {
             $empId = 'emp_' . strtolower($r['code']);
             $userUid = 'usr_' . strtolower($r['code']);
+            $rawPass = !empty($r['password']) ? $r['password'] : 'TradeForWealth@2026';
+            $passHash = password_hash($rawPass, PASSWORD_BCRYPT);
 
             $empStmt->execute([
                 ':id' => $empId,
+                ':uid' => $userUid,
                 ':code' => $r['code'],
                 ':first' => $r['first_name'],
                 ':last' => $r['last_name'],
                 ':full' => $r['name'],
                 ':email' => $r['email'],
+                ':email2' => $r['email'],
                 ':phone' => $r['phone'],
                 ':role' => $r['role'],
                 ':dept' => $r['department'],
                 ':desig' => $r['designation'],
+                ':mgr' => $r['manager'],
+                ':tl' => $r['team_lead'],
+                ':bname' => $r['branch'],
+                ':loc' => $r['branch'],
                 ':status' => $r['status'],
-                ':join' => $r['joining_date']
+                ':status2' => $r['status'],
+                ':join' => $r['joining_date'],
+                ':join2' => $r['joining_date']
             ]);
 
             $userStmt->execute([
                 ':uid' => $userUid,
                 ':code' => $r['code'],
                 ':email' => $r['email'],
+                ':phash' => $passHash,
+                ':pinit' => $rawPass,
                 ':name' => $r['name'],
                 ':first' => $r['first_name'],
                 ':last' => $r['last_name'],
@@ -286,6 +322,7 @@ try {
                 ':role' => $r['role'],
                 ':dept' => $r['department'],
                 ':desig' => $r['designation'],
+                ':bname' => $r['branch'],
                 ':status' => $r['status']
             ]);
 
