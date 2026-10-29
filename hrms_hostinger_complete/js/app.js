@@ -1,0 +1,321 @@
+
+document.addEventListener('DOMContentLoaded', () => {
+  App.init();
+});
+
+const App = {
+  async init() {
+    // 1. Initialize Theme & Toast UI Immediately
+    try {
+      ThemeManager.init();
+      Toast.init();
+      ModalManager.init();
+    } catch (e) {
+      console.warn('UI components init warning:', e);
+    }
+
+    // 2. Bind UI Shell Controls
+    this.bindSidebarToggle();
+    this.bindDropdowns();
+    this.bindGlobalSearch();
+    this.bindTabsHorizontalWheel();
+
+    // 3. Initialize Auth Guard FIRST to ensure permissions and active profile are established
+    try {
+      const user = await AuthGuard.init({ isPublicPage: false });
+      if (!user) return; // User was redirected to login.html
+
+      // Start Live Presence Heartbeat for authenticated user
+      if (typeof presenceService !== 'undefined' && presenceService.start) {
+        presenceService.start();
+      }
+    } catch (e) {
+      console.warn('Auth guard warning:', e);
+    }
+
+    // 4. Initialize Router with Authenticated Role Context
+    try {
+      Router.init();
+    } catch (e) {
+      console.error('Router init error:', e);
+    }
+
+    // 5. Load Real Companies, Branches & Notifications from Firestore safely
+    this.bindCompanySwitcher().catch(() => {});
+    this.bindBranchSwitcher().catch(() => {});
+    this.bindNotifications().catch(() => {});
+
+    // 6. Safe Background Seeding & Test Record Cleanup
+    if (typeof seedService !== 'undefined' && seedService.bootstrapIfEmpty) {
+      seedService.bootstrapIfEmpty().catch(err => console.warn('Seed warning:', err));
+    }
+
+
+    console.log('[App] Diallo HRMS Enterprise Application Initialized.');
+  },
+
+  // Translate vertical wheel scroll to horizontal scrolling on tab navigations
+  bindTabsHorizontalWheel() {
+    document.addEventListener('wheel', (e) => {
+      const tabsNav = e.target.closest('.tabs-nav, .tab-list, .nav-tabs');
+      if (tabsNav && tabsNav.scrollWidth > tabsNav.clientWidth) {
+        if (Math.abs(e.deltaY) > Math.abs(e.deltaX)) {
+          tabsNav.scrollLeft += (e.deltaY * 0.9);
+        }
+      }
+    }, { passive: true });
+  },
+
+  // Sidebar Collapse and Mobile Drawer
+  bindSidebarToggle() {
+    const appContainer = document.querySelector('.app-container');
+    const toggleBtn = document.getElementById('sidebar-toggle');
+    const backdrop = document.getElementById('sidebar-backdrop');
+
+    if (toggleBtn) {
+      toggleBtn.addEventListener('click', () => {
+        if (window.innerWidth < 768) {
+          appContainer.classList.toggle('mobile-sidebar-open');
+        } else if (window.innerWidth <= 1024) {
+          appContainer.classList.toggle('sidebar-expanded');
+        } else {
+          appContainer.classList.toggle('sidebar-collapsed');
+        }
+      });
+    }
+
+    if (backdrop) {
+      backdrop.addEventListener('click', () => {
+        appContainer.classList.remove('mobile-sidebar-open');
+      });
+    }
+
+    // Clean up mobile drawer and active popovers on screen resize
+    let resizeTimer = null;
+    window.addEventListener('resize', () => {
+      clearTimeout(resizeTimer);
+      resizeTimer = setTimeout(() => {
+        if (window.innerWidth >= 768 && appContainer.classList.contains('mobile-sidebar-open')) {
+          appContainer.classList.remove('mobile-sidebar-open');
+        }
+        document.querySelectorAll('.dropdown-popover.active').forEach(p => p.classList.remove('active'));
+      }, 100);
+    });
+  },
+
+  // Dropdowns (Company, Branch, Notifications, Profile)
+  bindDropdowns() {
+    document.addEventListener('click', (e) => {
+      const trigger = e.target.closest('[data-dropdown-trigger]');
+      
+      if (trigger) {
+        e.stopPropagation();
+        const targetId = trigger.getAttribute('data-dropdown-trigger');
+        const popover = document.getElementById(targetId);
+        
+        document.querySelectorAll('.dropdown-popover').forEach(p => {
+          if (p !== popover) p.classList.remove('active');
+        });
+
+        if (popover) {
+          popover.classList.toggle('active');
+        }
+        return;
+      }
+
+      if (!e.target.closest('.dropdown-popover')) {
+        document.querySelectorAll('.dropdown-popover').forEach(p => {
+          p.classList.remove('active');
+        });
+      }
+    });
+  },
+
+  // Global Search Modal (Ctrl+K / /)
+  bindGlobalSearch() {
+    const trigger = document.getElementById('global-search-trigger');
+    if (trigger) {
+      trigger.addEventListener('click', () => this.openSearchModal());
+    }
+
+    document.addEventListener('keydown', (e) => {
+      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'k') {
+        e.preventDefault();
+        this.openSearchModal();
+      }
+      if (e.key === '/' && !['INPUT', 'TEXTAREA', 'SELECT'].includes(document.activeElement.tagName)) {
+        e.preventDefault();
+        this.openSearchModal();
+      }
+    });
+  },
+
+  openSearchModal() {
+    ModalManager.openModal({
+      id: 'global-search-modal',
+      title: 'Global Search',
+      subtitle: 'Find employees, pages, actions, and settings across Diallo HRMS',
+      size: 'md',
+      contentHtml: `
+        <div class="table-search-box" style="width: 100%; max-width: 100%; margin-bottom: 16px;">
+          <svg class="table-search-icon" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+          </svg>
+          <input type="text" id="quick-search-input" placeholder="Type a command, employee name, or module..." style="width: 100%; padding: 10px 14px 10px 38px; font-size: 0.95rem;" autofocus />
+        </div>
+
+        <div id="quick-search-results" class="flex flex-col gap-1">
+          <div class="dropdown-header">Quick Navigation</div>
+          <button class="dropdown-item" onclick="ModalManager.closeModal(); Router.navigate('employees');">
+            <span>Employee Directory</span>
+          </button>
+          <button class="dropdown-item" onclick="ModalManager.closeModal(); Router.navigate('attendance');">
+            <span>Attendance & Punch Logs</span>
+          </button>
+          <button class="dropdown-item" onclick="ModalManager.closeModal(); Router.navigate('leave');">
+            <span>Leave Quota & Applications</span>
+          </button>
+          <button class="dropdown-item" onclick="ModalManager.closeModal(); Router.navigate('payroll');">
+            <span>Payroll Processing & Salaries</span>
+          </button>
+          <button class="dropdown-item" onclick="ModalManager.closeModal(); Router.navigate('ess');">
+            <span>Employee Self-Service (ESS)</span>
+          </button>
+          <button class="dropdown-item" onclick="ModalManager.closeModal(); Router.navigate('communication');">
+            <span>Communication & Announcements</span>
+          </button>
+          <button class="dropdown-item" onclick="ModalManager.closeModal(); Router.navigate('compliance');">
+            <span>Compliance & Legal Dossiers</span>
+          </button>
+          <button class="dropdown-item" onclick="ModalManager.closeModal(); Router.navigate('reports');">
+            <span>Reports & Analytics</span>
+          </button>
+          <button class="dropdown-item" onclick="ModalManager.closeModal(); Router.navigate('admin');">
+            <span>Organization & Governance</span>
+          </button>
+          <button class="dropdown-item" onclick="ModalManager.closeModal(); Router.navigate('settings');">
+            <span>System Settings</span>
+          </button>
+        </div>
+      `,
+      footerHtml: `<button class="btn btn-secondary btn-sm" data-modal-close>Close</button>`
+    });
+
+    setTimeout(() => {
+      document.getElementById('quick-search-input')?.focus();
+    }, 100);
+  },
+
+  // Company Switcher (Firestore Backed)
+  async bindCompanySwitcher() {
+    const popover = document.getElementById('company-popover');
+    if (!popover) return;
+
+    let companies = [];
+    try {
+      companies = await companyService.getCompanies();
+    } catch (e) {
+      console.warn('Could not load companies for switcher:', e);
+    }
+
+    if (companies.length === 0) {
+      companies = [{ id: 'comp_diallo_india', name: 'Diallo India Private Limited', country: 'India' }];
+    }
+
+    const currentComp = AuthGuard.userProfile?.companyName || companies[0].name;
+    const labelEl = document.getElementById('current-company-label');
+    if (labelEl) {
+      labelEl.textContent = currentComp.length > 22 ? currentComp.substring(0, 20) + '...' : currentComp;
+    }
+
+    popover.innerHTML = `
+      <div class="dropdown-header">Select Legal Entity</div>
+      ${companies.map(c => `
+        <button class="dropdown-item ${c.name === currentComp ? 'active' : ''}" onclick="App.selectCompany('${c.id}', '${c.name}')">
+          <div class="flex-1">
+            <div class="font-semibold">${c.name}</div>
+            <div class="text-muted" style="font-size: 0.72rem;">${c.country || 'India'} • ${c.cin || 'Active Entity'}</div>
+          </div>
+          ${c.name === currentComp ? '<svg width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="currentColor" style="color: var(--primary);"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7"/></svg>' : ''}
+        </button>
+      `).join('')}
+    `;
+  },
+
+  async selectCompany(id, name) {
+    if (AuthGuard.userProfile) {
+      AuthGuard.userProfile.companyId = id;
+      AuthGuard.userProfile.companyName = name;
+    }
+    const labelEl = document.getElementById('current-company-label');
+    if (labelEl) {
+      labelEl.textContent = name.length > 22 ? name.substring(0, 20) + '...' : name;
+    }
+    document.getElementById('company-popover')?.classList.remove('active');
+    await this.bindCompanySwitcher();
+    Toast.info(`Active entity: ${name}`);
+    if (window.Router) Router.navigate(Router.currentRoute);
+  },
+
+  // Branch Switcher (Firestore Backed)
+  async bindBranchSwitcher() {
+    const popover = document.getElementById('branch-popover');
+    if (!popover) return;
+
+    let branches = [];
+    try {
+      branches = await companyService.getBranches();
+    } catch (e) {
+      console.warn('Could not load branches:', e);
+    }
+
+    if (branches.length === 0) {
+      branches = [
+        { id: 'b1', name: 'Ghansoli - Navi Mumbai', city: 'Ghansoli, Navi Mumbai', timezone: 'IST (UTC+5:30)' }
+      ];
+    }
+
+    const currentBranch = AuthGuard.userProfile?.branchName || branches[0].name;
+    const labelEl = document.getElementById('current-branch-label');
+    if (labelEl) {
+      labelEl.textContent = currentBranch;
+    }
+
+    popover.innerHTML = `
+      <div class="dropdown-header">Select Location</div>
+      ${branches.map(b => `
+        <button class="dropdown-item ${b.name === currentBranch ? 'active' : ''}" onclick="App.selectBranch('${b.id}', '${b.name}')">
+          <div class="flex-1">
+            <div class="font-semibold">${b.name}</div>
+            <div class="text-muted" style="font-size: 0.72rem;">${b.city || ''} • ${b.timezone || 'IST'}</div>
+          </div>
+          ${b.name === currentBranch ? '<svg width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="currentColor" style="color: var(--primary);"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7"/></svg>' : ''}
+        </button>
+      `).join('')}
+    `;
+  },
+
+  async selectBranch(id, name) {
+    if (AuthGuard.userProfile) {
+      AuthGuard.userProfile.branchId = id;
+      AuthGuard.userProfile.branchName = name;
+    }
+    const labelEl = document.getElementById('current-branch-label');
+    if (labelEl) {
+      labelEl.textContent = name;
+    }
+    document.getElementById('branch-popover')?.classList.remove('active');
+    await this.bindBranchSwitcher();
+    Toast.info(`Active branch: ${name}`);
+    if (window.Router) Router.navigate(Router.currentRoute);
+  },
+
+  // Notifications
+  async bindNotifications() {
+    if (window.notificationService && notificationService.initRealtimeBadgeListener) {
+      notificationService.initRealtimeBadgeListener();
+    }
+  },
+};
+
+window.App = App;

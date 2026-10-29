@@ -1,0 +1,71 @@
+# ==============================================================================
+# DIALLO HRMS — PRODUCTION APACHE / HOSTINGER SECURITY RULES (.htaccess)
+# Protects configuration, database dumps, source files, and environment secrets
+# ==============================================================================
+
+# 1. Disable Directory Indexing / Browsing
+Options -Indexes
+
+# 2. Block Direct Access to Sensitive Files (.env, .git, .sql, .md, .log, .json config)
+<FilesMatch "^(\.env|\.git|\.htaccess|.*\.sql|.*\.md|.*\.log|package\.json|package-lock\.json)$">
+    <IfModule mod_authz_core.c>
+        Require all denied
+    </IfModule>
+    <IfModule !mod_authz_core.c>
+        Order deny,allow
+        Deny from all
+    </IfModule>
+</FilesMatch>
+
+# 3. Block Hidden Files & Directories and Route Auth Actions
+<IfModule mod_rewrite.c>
+    RewriteEngine On
+
+    # Route Firebase / Hostinger Auth Action URLs to branded reset-password.html
+    RewriteRule ^__/auth/action/?$ reset-password.html [L,QSA]
+
+    # Map hostinger-backend (hyphen) to hostinger_backend (underscore) seamlessly
+    RewriteRule ^hostinger-backend/(.*)$ hostinger_backend/$1 [L,QSA]
+
+    RewriteRule "(^|/)\.(?!well-known)" - [F]
+</IfModule>
+
+# 4. Enforce HTTP Security Headers
+<IfModule mod_headers.c>
+    # Prevent MIME-type sniffing
+    Header always set X-Content-Type-Options "nosniff"
+
+    # Prevent Clickjacking (allow only same origin framing)
+    Header always set X-Frame-Options "SAMEORIGIN"
+
+    # Enable XSS Filter in legacy browsers
+    Header always set X-XSS-Protection "1; mode=block"
+
+    # Control referrer information passed in requests
+    Header always set Referrer-Policy "strict-origin-when-cross-origin"
+</IfModule>
+
+# 5. Enable GZIP Compression for static assets
+<IfModule mod_deflate.c>
+    AddOutputFilterByType DEFLATE text/plain
+    AddOutputFilterByType DEFLATE text/html
+    AddOutputFilterByType DEFLATE text/css
+    AddOutputFilterByType DEFLATE application/javascript
+    AddOutputFilterByType DEFLATE application/json
+</IfModule>
+
+# 6. Anti-Caching Directives for HTML Pages (Ensures Instant Browser Updates)
+<FilesMatch "\.(html|htm)$">
+    <IfModule mod_headers.c>
+        Header set Cache-Control "no-cache, no-store, must-revalidate"
+        Header set Pragma "no-cache"
+        Header set Expires 0
+    </IfModule>
+</FilesMatch>
+
+# 7. Revalidation Directives for Script & Style Assets
+<FilesMatch "\.(js|css)$">
+    <IfModule mod_headers.c>
+        Header set Cache-Control "no-cache, must-revalidate"
+    </IfModule>
+</FilesMatch>

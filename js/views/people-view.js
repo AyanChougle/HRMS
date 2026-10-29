@@ -1847,16 +1847,16 @@ const PeopleView = {
       title: 'Import Employees from CSV / Excel',
       templateName: 'Diallo_Employees_Template.csv',
       columns: [
-        { key: 'employeeCode', label: 'Employee Code', aliases: ['Emp Code', 'Code', 'E-ID', 'EID', 'ID'] },
-        { key: 'fullName', label: 'Full Name', aliases: ['Employee Name', 'Employee', 'Name'], required: true },
-        { key: 'workEmail', label: 'Work Email', aliases: ['Work Ema', 'Email'], required: true },
-        { key: 'department', label: 'Department', aliases: ['Departme', 'Dept'] },
-        { key: 'designation', label: 'Designation', aliases: ['Designati', 'Role', 'Title'] },
-        { key: 'branchName', label: 'Branch', aliases: ['Branch Location', 'Location', 'Center'] },
-        { key: 'manager', label: 'Reporting Manager', aliases: ['Reporting', 'Manager'] },
-        { key: 'dateOfJoining', label: 'Joining Date', aliases: ['Date of Joining', 'DOJ'] },
-        { key: 'employmentStatus', label: 'Status', aliases: ['Employment Status'] },
-        { key: 'phone', label: 'Phone', aliases: ['Mobile', 'Mobile No', 'Mobile Number'] },
+        { key: 'employeeCode', label: 'Employee Code', aliases: ['Emp Code', 'Code', 'E-ID', 'EID', 'ID', 'Employee ID', 'EmployeeID', 'Emp ID', 'EmpID', 'EmpCode'] },
+        { key: 'fullName', label: 'Full Name', aliases: ['Employee Name', 'Employee', 'Name', 'Full Name', 'Staff Name'], required: true },
+        { key: 'workEmail', label: 'Work Email', aliases: ['Work Ema', 'Email', 'Email ID', 'EmailID', 'Work Email', 'Official Email', 'Email Address', 'Work Email ID'], required: true },
+        { key: 'department', label: 'Department', aliases: ['Departme', 'Dept', 'Department Name', 'Branch Department'] },
+        { key: 'designation', label: 'Designation', aliases: ['Designati', 'Role', 'Title', 'Job Title', 'Position'] },
+        { key: 'branchName', label: 'Branch', aliases: ['Branch Location', 'Location', 'Center', 'Branch'] },
+        { key: 'manager', label: 'Reporting Manager', aliases: ['Reporting', 'Manager', 'Reporting M', 'Reporting Manager', 'Reporting To', 'Reports To', 'Manager Name'] },
+        { key: 'dateOfJoining', label: 'Joining Date', aliases: ['Date of Joining', 'DOJ', 'Joining Date', 'Date of Join'] },
+        { key: 'employmentStatus', label: 'Status', aliases: ['Employment Status', 'Status', 'Account Status'] },
+        { key: 'phone', label: 'Phone', aliases: ['Mobile', 'Mobile No', 'Mobile Number', 'Contact No', 'Contact', 'Contact Number', 'Phone', 'Phone Number', 'Phone No'] },
         { key: 'loginPassword', label: 'Login Password', aliases: ['Password', 'Pass', 'Initial Password', 'User Password', 'User Pass', 'Initial Pass'] }
       ],
       sampleRow: { employeeCode: '', fullName: 'Jane Doe', workEmail: 'jane.doe@company.com', department: 'Operations', designation: 'Operations Executive', branchName: 'Ghansoli - Navi Mumbai', manager: '', dateOfJoining: '2026-10-01', employmentStatus: 'ACTIVE', phone: '9876543210', loginPassword: 'Diallo@2026' },
@@ -1925,7 +1925,15 @@ const PeopleView = {
 
       validate: (row, ctx, seen) => {
         seen.emails = seen.emails || new Set(); seen.codes = seen.codes || new Set();
-        const email = (row.workEmail || '').toLowerCase().trim();
+        let email = (row.workEmail || '').toLowerCase().trim();
+        // Auto-clean email with accidental spaces (e.g. "Hiba Shaikh @tradeforwealth.co.in" -> "hiba.shaikh@tradeforwealth.co.in")
+        if (email.includes(' ')) {
+          const parts = email.split('@');
+          if (parts.length === 2) {
+            email = parts[0].trim().replace(/\s+/g, '.') + '@' + parts[1].trim().replace(/\s+/g, '');
+            row.workEmail = email;
+          }
+        }
         if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return 'Invalid work email: ' + (row.workEmail || 'blank');
         if (seen.emails.has(email)) return 'Duplicate email in file: ' + email;
         const code = (row.employeeCode || '').toUpperCase().trim();
@@ -1936,7 +1944,13 @@ const PeopleView = {
       },
 
       importRow: async (row, ctx) => {
-        const email = (row.workEmail || '').toLowerCase().trim();
+        let email = (row.workEmail || '').toLowerCase().trim();
+        if (email.includes(' ')) {
+          const parts = email.split('@');
+          if (parts.length === 2) {
+            email = parts[0].trim().replace(/\s+/g, '.') + '@' + parts[1].trim().replace(/\s+/g, '');
+          }
+        }
         let code = (row.employeeCode || '').toUpperCase().trim();
         if (!code) {
           code = 'D' + String(Math.floor(10000 + Math.random() * 90000));

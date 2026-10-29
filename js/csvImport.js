@@ -76,11 +76,27 @@ const CsvImport = {
       if (typeof XLSX !== 'undefined') {
         const buffer = await file.arrayBuffer();
         const workbook = XLSX.read(buffer, { type: 'array' });
-        const firstSheetName = workbook.SheetNames[0];
-        if (!firstSheetName) throw new Error('Excel file contains no worksheets.');
-        const worksheet = workbook.Sheets[firstSheetName];
-        const matrix = XLSX.utils.sheet_to_json(worksheet, { header: 1, raw: false, defval: '' });
-        return matrix.filter(r => r && r.some(cell => String(cell).trim() !== ''));
+        if (!workbook.SheetNames || workbook.SheetNames.length === 0) {
+          throw new Error('Excel file contains no worksheets.');
+        }
+
+        // Iterate across all sheets to find the worksheet with actual data rows (e.g. if Sheet1 is after an empty Sheet2)
+        let bestMatrix = [];
+        for (const sheetName of workbook.SheetNames) {
+          const worksheet = workbook.Sheets[sheetName];
+          if (!worksheet) continue;
+          const rows = XLSX.utils.sheet_to_json(worksheet, { header: 1, raw: false, defval: '' });
+          const cleanRows = (rows || []).filter(r => r && r.some(cell => String(cell).trim() !== ''));
+          if (cleanRows.length > bestMatrix.length) {
+            bestMatrix = cleanRows;
+          }
+        }
+
+        if (bestMatrix.length < 2) {
+          throw new Error('The Excel workbook contains no data rows in any worksheet.');
+        }
+
+        return bestMatrix;
       } else {
         throw new Error('Excel parser library is loading. Please wait a moment and try again.');
       }

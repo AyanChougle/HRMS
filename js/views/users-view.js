@@ -613,9 +613,9 @@ const UsersView = {
       title: 'Import User Accounts & Logins from CSV',
       templateName: 'Diallo_Logins_Template.csv',
       columns: [
-        { key: 'fullName', label: 'Full Name', aliases: ['Name', 'Employee Name', 'User Name'], required: true },
-        { key: 'email', label: 'Official Email', aliases: ['Work Email', 'Email', 'Login ID'], required: true },
-        { key: 'employeeCode', label: 'Employee Code', aliases: ['Emp Code', 'Code', 'ID'] },
+        { key: 'fullName', label: 'Full Name', aliases: ['Name', 'Employee Name', 'User Name', 'Employee', 'Full Name'], required: true },
+        { key: 'email', label: 'Official Email', aliases: ['Work Email', 'Email', 'Login ID', 'Email ID', 'EmailID', 'Official Email'], required: true },
+        { key: 'employeeCode', label: 'Employee Code', aliases: ['Emp Code', 'Code', 'ID', 'Employee ID', 'EmployeeID', 'Emp ID', 'EmpID'] },
         { key: 'roleId', label: 'Role', aliases: ['System Role', 'Role ID', 'User Role'] },
         { key: 'department', label: 'Department', aliases: ['Dept'] },
         { key: 'designation', label: 'Designation', aliases: ['Title', 'Position'] },
@@ -648,14 +648,27 @@ const UsersView = {
       },
       validate: (row, ctx, seen) => {
         seen.emails = seen.emails || new Set();
-        const email = (row.email || '').toLowerCase().trim();
+        let email = (row.email || '').toLowerCase().trim();
+        if (email.includes(' ')) {
+          const parts = email.split('@');
+          if (parts.length === 2) {
+            email = parts[0].trim().replace(/\s+/g, '.') + '@' + parts[1].trim().replace(/\s+/g, '');
+            row.email = email;
+          }
+        }
         if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return 'Invalid email address';
         if (seen.emails.has(email)) return 'Duplicate email in file';
         seen.emails.add(email);
         return null;
       },
       importRow: async (row, ctx) => {
-        const email = (row.email || '').toLowerCase().trim();
+        let email = (row.email || '').toLowerCase().trim();
+        if (email.includes(' ')) {
+          const parts = email.split('@');
+          if (parts.length === 2) {
+            email = parts[0].trim().replace(/\s+/g, '.') + '@' + parts[1].trim().replace(/\s+/g, '');
+          }
+        }
         const code = (row.employeeCode || '').toUpperCase().trim();
         const pass = (row.loginPassword || '').trim() || 'Diallo@2026';
         const role = (row.roleId || '').toUpperCase().trim() || 'EMPLOYEE';

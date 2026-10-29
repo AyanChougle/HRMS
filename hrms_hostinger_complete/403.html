@@ -1,0 +1,88 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Access Denied (403) — Diallo HRMS</title>
+    <link rel="stylesheet" href="css/variables.css" />
+    <link rel="stylesheet" href="css/global.css" />
+    <link rel="stylesheet" href="css/components.css" />
+    <style>
+      body {
+        min-height: 100vh;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        background: var(--bg-body);
+        padding: 24px;
+        font-family: var(--font-family-base);
+      }
+      .denied-card {
+        width: 100%;
+        max-width: 480px;
+        background: var(--bg-surface);
+        border: 1px solid var(--border-main);
+        border-radius: var(--radius-lg);
+        box-shadow: var(--shadow-lg);
+        padding: 40px 32px;
+        text-align: center;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="denied-card animate-fade-in">
+      <div
+        class="empty-state-icon"
+        style="
+          width: 56px;
+          height: 56px;
+          margin: 0 auto 16px auto;
+          background: rgba(220, 38, 38, 0.1);
+          color: var(--danger);
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          border-radius: 50%;
+        "
+      >
+        <svg
+          width="28"
+          height="28"
+          fill="none"
+          viewBox="0 0 24 24"
+          stroke="currentColor"
+        >
+          <path
+            stroke-linecap="round"
+            stroke-linejoin="round"
+            stroke-width="2"
+            d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"
+          />
+        </svg>
+      </div>
+      <h1
+        style="
+          font-size: 1.4rem;
+          font-weight: 700;
+          color: var(--text-main);
+          margin-bottom: 8px;
+        "
+      >
+        Access Denied (403)
+      </h1>
+      <p
+        style="
+          font-size: 0.875rem;
+          color: var(--text-secondary);
+          margin-bottom: 24px;
+          line-height: 1.5;
+        "
+      >
+        You don't have permission to access this module or administrative panel.
+      </p>
+      <a href="index.html#dashboard" class="btn btn-primary btn-sm"
+        >Return to Dashboard</a
+      >
+    </div>
+  </body>
+</html>

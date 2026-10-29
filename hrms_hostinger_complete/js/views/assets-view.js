@@ -1,0 +1,1319 @@
+
+const AssetsView = {
+  activeTab: 'register', // 'register', 'assignments', 'maintenance', 'returns', 'vendors'
+  employeeActiveTab: 'assigned', // 'assigned', 'requisitions'
+  currentFilters: {
+    status: 'All',
+    categoryCode: 'All',
+    search: ''
+  },
+
+  async render() {
+    const role = AuthGuard.userProfile?.roleId || 'EMPLOYEE';
+    const isEmployee = role === 'EMPLOYEE';
+    const currentEmpId = AuthGuard.userProfile?.employeeId || AuthGuard.currentUser?.uid;
+    const currentEmpName = AuthGuard.userProfile?.displayName || 'Employee';
+
+    const [assets, categories, vendors] = await Promise.all([
+      assetService.getAssets({}),
+      assetService.getCategories(),
+      assetService.getVendors()
+    ]);
+
+    if (isEmployee) {
+      const userIds = [
+        AuthGuard.userProfile?.employeeId,
+        AuthGuard.userProfile?.id,
+        AuthGuard.currentUser?.uid,
+        AuthGuard.userProfile?.employeeCode
+      ].filter(Boolean);
+
+      const myAssets = assets.filter(a => {
+        if (!a) return false;
+        if (a.currentEmployeeId && userIds.includes(a.currentEmployeeId)) return true;
+        if (a.employeeId && userIds.includes(a.employeeId)) return true;
+        if (a.employeeCode && userIds.includes(a.employeeCode)) return true;
+        if (a.currentEmployeeName && currentEmpName) {
+          const cName = a.currentEmployeeName.trim().toLowerCase();
+          const uName = currentEmpName.trim().toLowerCase();
+          if (cName === uName || cName.includes(uName) || uName.includes(cName)) return true;
+        }
+        return false;
+      });
+
+      let myRequests = [];
+      try {
+        const allReqs = await employeeRequestService.getRequests({});
+        myRequests = allReqs.filter(r => {
+          if (!r) return false;
+          const isHw = r.requestType === 'HARDWARE_REQUISITION' || (r.title && r.title.toLowerCase().includes('hardware'));
+          const isMyReq = userIds.includes(r.employeeId) ||
+            (r.employeeName && currentEmpName && (
+              r.employeeName.trim().toLowerCase() === currentEmpName.trim().toLowerCase() ||
+              r.employeeName.toLowerCase().includes(currentEmpName.toLowerCase()) ||
+              currentEmpName.toLowerCase().includes(r.employeeName.toLowerCase())
+            ));
+          return isHw && isMyReq;
+        });
+      } catch (e) {
+        console.warn('Error fetching employee hardware requests:', e);
+      }
+
+      return this.renderEmployeeView(myAssets, myRequests, categories);
+    }
+
+    const availableAssets = assets.filter(a => a.status === 'AVAILABLE');
+    const assignedAssets = assets.filter(a => a.status === 'ASSIGNED');
+    const maintenanceAssets = assets.filter(a => a.status === 'MAINTENANCE');
+    const damagedAssets = assets.filter(a => a.status === 'DAMAGED');
+
+    const totalValue = assets.reduce((sum, a) => sum + (Number(a.purchasePrice) || 0), 0);
+
+    return `
+      <div class="page-header animate-fade-in">
+        <div class="breadcrumb">
+          <a href="#dashboard">Dashboard</a>
+          <span class="breadcrumb-separator">/</span>
+          <span class="breadcrumb-current">Asset Management</span>
+        </div>
+        <div class="page-title-row">
+          <div>
+            <h1 class="page-title">Company Asset Lifecycle & Inventory</h1>
+            <p class="page-subtitle">Track hardware procurement, employee custodian assignments, return audits, and maintenance</p>
+          </div>
+          <div class="page-actions">
+            <button class="btn btn-secondary btn-sm" onclick="AssetsView.exportAssetsCSV()">
+              <svg width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/>
+              </svg>
+              Export Inventory
+            </button>
+            <button class="btn btn-primary btn-sm" onclick="AssetsView.openAddAssetModal()">
+              <svg width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/>
+              </svg>
+              + Register New Asset
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <!-- KPI Summary Cards -->
+      <div class="kpi-grid">
+        <div class="kpi-card">
+          <div class="kpi-top">
+            <div class="kpi-icon-box" style="background: var(--primary-light); color: var(--primary);">
+              <svg width="20" height="20" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/>
+              </svg>
+            </div>
+            <span class="kpi-trend neutral">Capital</span>
+          </div>
+          <div class="kpi-value">₹${totalValue.toLocaleString('en-IN')}</div>
+          <div class="kpi-label">Total Asset Value</div>
+          <div class="kpi-subtitle">${assets.length} Total Registered Assets</div>
+        </div>
+
+        <div class="kpi-card">
+          <div class="kpi-top">
+            <div class="kpi-icon-box" style="background: var(--success-light); color: var(--success);">
+              <svg width="20" height="20" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>
+              </svg>
+            </div>
+            <span class="kpi-trend neutral">Available</span>
+          </div>
+          <div class="kpi-value">${availableAssets.length}</div>
+          <div class="kpi-label">In Stock</div>
+          <div class="kpi-subtitle">Ready for Immediate Issue</div>
+        </div>
+
+        <div class="kpi-card">
+          <div class="kpi-top">
+            <div class="kpi-icon-box" style="background: var(--info-light); color: var(--info);">
+              <svg width="20" height="20" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"/>
+              </svg>
+            </div>
+            <span class="kpi-trend neutral">Custody</span>
+          </div>
+          <div class="kpi-value">${assignedAssets.length}</div>
+          <div class="kpi-label">Assigned</div>
+          <div class="kpi-subtitle">Active with Staff</div>
+        </div>
+
+        <div class="kpi-card">
+          <div class="kpi-top">
+            <div class="kpi-icon-box" style="background: var(--warning-light); color: var(--warning);">
+              <svg width="20" height="20" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/>
+              </svg>
+            </div>
+            <span class="kpi-trend neutral">Service</span>
+          </div>
+          <div class="kpi-value">${maintenanceAssets.length}</div>
+          <div class="kpi-label">Maintenance</div>
+          <div class="kpi-subtitle">${damagedAssets.length} Damaged Items</div>
+        </div>
+      </div>
+
+      <!-- Navigation Tabs -->
+      <div class="tabs-nav" style="margin-bottom: 20px;">
+        <button class="tab-btn ${this.activeTab === 'register' ? 'active' : ''}" onclick="AssetsView.switchTab('register')">
+          Asset Register (${assets.length})
+        </button>
+        <button class="tab-btn ${this.activeTab === 'assignments' ? 'active' : ''}" onclick="AssetsView.switchTab('assignments')">
+          Active Assignments (${assignedAssets.length})
+        </button>
+        <button class="tab-btn ${this.activeTab === 'maintenance' ? 'active' : ''}" onclick="AssetsView.switchTab('maintenance')">
+          Maintenance & Damage (${maintenanceAssets.length})
+        </button>
+        <button class="tab-btn ${this.activeTab === 'returns' ? 'active' : ''}" onclick="AssetsView.switchTab('returns')">
+          Returns & Clearances
+        </button>
+        <button class="tab-btn ${this.activeTab === 'vendors' ? 'active' : ''}" onclick="AssetsView.switchTab('vendors')">
+          Vendors & Suppliers (${vendors.length})
+        </button>
+      </div>
+
+      <!-- Tab Body -->
+      <div class="tab-content">
+        ${this.renderActiveTab(assets, assignedAssets, maintenanceAssets, categories, vendors)}
+      </div>
+    `;
+  },
+
+  switchTab(tab) {
+    this.activeTab = tab;
+    Router.mountView('assets');
+  },
+
+  renderActiveTab(assets, assignedAssets, maintenanceAssets, categories, vendors) {
+    if (this.activeTab === 'assignments') {
+      return this.renderAssignmentsTab(assignedAssets);
+    } else if (this.activeTab === 'maintenance') {
+      return this.renderMaintenanceTab(maintenanceAssets);
+    } else if (this.activeTab === 'returns') {
+      return this.renderReturnsTab();
+    } else if (this.activeTab === 'vendors') {
+      return this.renderVendorsTab(vendors);
+    }
+    return this.renderRegisterTab(assets, categories);
+  },
+
+  // TAB 1: ASSET REGISTER
+  renderRegisterTab(assets, categories) {
+    let list = assets;
+    if (this.currentFilters.status !== 'All') {
+      list = list.filter(a => a.status === this.currentFilters.status);
+    }
+    if (this.currentFilters.categoryCode !== 'All') {
+      list = list.filter(a => a.categoryCode === this.currentFilters.categoryCode);
+    }
+    if (this.currentFilters.search) {
+      const s = this.currentFilters.search.toLowerCase();
+      list = list.filter(a =>
+        (a.name && a.name.toLowerCase().includes(s)) ||
+        (a.assetTag && a.assetTag.toLowerCase().includes(s)) ||
+        (a.serialNumber && a.serialNumber.toLowerCase().includes(s)) ||
+        (a.currentEmployeeName && a.currentEmployeeName.toLowerCase().includes(s))
+      );
+    }
+
+    return `
+      <!-- Search & Filters -->
+      <div class="card" style="margin-bottom: 20px; padding: 16px;">
+        <div class="flex items-center gap-3" style="flex-wrap: wrap;">
+          <div style="flex: 1; min-width: 220px;">
+            <input type="text" id="filter-asset-search" class="form-control" placeholder="Search by Asset Tag, Name, Serial, Custodian..." value="${this.currentFilters.search}" onkeydown="if(event.key==='Enter') AssetsView.applyFilters()" />
+          </div>
+          <select id="filter-asset-status" class="form-control" style="width: 170px;">
+            <option value="All">All Statuses</option>
+            <option value="AVAILABLE" ${this.currentFilters.status === 'AVAILABLE' ? 'selected' : ''}>Available (In Stock)</option>
+            <option value="ASSIGNED" ${this.currentFilters.status === 'ASSIGNED' ? 'selected' : ''}>Assigned to Staff</option>
+            <option value="MAINTENANCE" ${this.currentFilters.status === 'MAINTENANCE' ? 'selected' : ''}>In Maintenance</option>
+            <option value="DAMAGED" ${this.currentFilters.status === 'DAMAGED' ? 'selected' : ''}>Damaged</option>
+          </select>
+          <select id="filter-asset-cat" class="form-control" style="width: 180px;">
+            <option value="All">All Categories</option>
+            ${categories.map(c => `<option value="${c.code}" ${this.currentFilters.categoryCode === c.code ? 'selected' : ''}>${c.name}</option>`).join('')}
+          </select>
+          <button class="btn btn-primary btn-sm" onclick="AssetsView.applyFilters()">Filter</button>
+          <button class="btn btn-secondary btn-sm" onclick="AssetsView.clearFilters()">Clear</button>
+        </div>
+      </div>
+
+      <!-- Assets Table -->
+      <div class="card">
+        <div class="card-header">
+          <div class="card-title">Inventory Master Census (${list.length})</div>
+        </div>
+        <div class="card-body" style="padding: 0;">
+          ${list.length === 0 ? `
+            <div class="empty-state">
+              <div class="empty-state-icon">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <rect x="2" y="3" width="20" height="14" rx="2" ry="2"/>
+                  <line x1="8" y1="21" x2="16" y2="21"/>
+                  <line x1="12" y1="17" x2="12" y2="21"/>
+                </svg>
+              </div>
+              <div class="empty-state-title">No Assets Found</div>
+              <div class="empty-state-desc">No asset records match your filter criteria.</div>
+              <div class="empty-state-actions">
+                <button class="btn btn-primary btn-sm" onclick="AssetsView.openCreateAssetModal()">+ Register Asset</button>
+              </div>
+            </div>
+          ` : `
+            <table class="data-table">
+              <thead>
+                <tr>
+                  <th>Asset Tag</th>
+                  <th>Device / Item Name</th>
+                  <th>Category</th>
+                  <th>Serial Number</th>
+                  <th>Value (INR)</th>
+                  <th>Custodian / Location</th>
+                  <th>Condition</th>
+                  <th>Status</th>
+                  <th>Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                ${list.map(a => `
+                  <tr>
+                    <td><strong style="font-family: monospace; color: var(--primary);">${a.assetTag}</strong></td>
+                    <td>
+                      <div class="font-semibold text-main">${a.name}</div>
+                      <div class="text-muted" style="font-size: 0.75rem;">${a.brand || ''} ${a.model || ''}</div>
+                    </td>
+                    <td><span class="badge badge-neutral">${a.categoryName}</span></td>
+                    <td><code style="font-size: 0.75rem;">${a.serialNumber || 'N/A'}</code></td>
+                    <td><strong>₹${(a.purchasePrice || 0).toLocaleString('en-IN')}</strong></td>
+                    <td>
+                      ${a.status === 'ASSIGNED' ? `
+                        <div class="font-semibold text-main" style="color: var(--primary);">${a.currentEmployeeName}</div>
+                      ` : `<span class="text-muted">${a.location || 'In Stock'}</span>`}
+                    </td>
+                    <td><span class="badge ${a.condition === 'EXCELLENT' ? 'badge-success' : 'badge-neutral'}">${a.condition}</span></td>
+                    <td>
+                      <span class="badge ${a.status === 'AVAILABLE' ? 'badge-success' : (a.status === 'ASSIGNED' ? 'badge-primary' : 'badge-warning')}">
+                        ${a.status}
+                      </span>
+                    </td>
+                    <td>
+                      <div class="flex items-center gap-1">
+                        ${a.status === 'AVAILABLE' ? `
+                          <button class="btn btn-primary btn-sm" onclick="AssetsView.openAssignModal('${a.id}', '${a.assetTag}', '${a.name}')">Assign</button>
+                        ` : (a.status === 'ASSIGNED' ? `
+                          <button class="btn btn-soft btn-sm" onclick="AssetsView.openReturnModal('${a.id}', '${a.assetTag}', '${a.name}', '${a.currentEmployeeName}')">Return</button>
+                        ` : '')}
+                        <button class="btn btn-secondary btn-sm" onclick="AssetsView.openMaintenanceModal('${a.id}', '${a.assetTag}', '${a.name}')">Service</button>
+                        <button class="btn btn-danger btn-sm" onclick="AssetsView.confirmDeleteAsset('${a.id}', '${a.assetTag}')">Delete</button>
+                      </div>
+                    </td>
+                  </tr>
+                `).join('')}
+              </tbody>
+            </table>
+          `}
+        </div>
+      </div>
+    `;
+  },
+
+  // TAB 2: ACTIVE ASSIGNMENTS
+  renderAssignmentsTab(assignedAssets) {
+    return `
+      <div class="card">
+        <div class="card-header">
+          <div>
+            <div class="card-title">Active Custodian Deployments (${assignedAssets.length})</div>
+            <div class="card-subtitle">Equipment currently in possession of active workforce staff</div>
+          </div>
+        </div>
+        <div class="card-body" style="padding: 0;">
+          ${assignedAssets.length === 0 ? `
+            <div class="empty-state">
+              <div class="empty-state-icon">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <path d="M16 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/>
+                  <circle cx="8.5" cy="7" r="4"/>
+                  <polyline points="17 11 19 13 23 9"/>
+                </svg>
+              </div>
+              <div class="empty-state-title">No Active Assignments</div>
+              <div class="empty-state-desc">All registered company assets are currently stored in inventory.</div>
+              <div class="empty-state-actions">
+                <button class="btn btn-primary btn-sm" onclick="AssetsView.openAssignModal()">+ Assign Custody</button>
+              </div>
+            </div>
+          ` : `
+            <table class="data-table">
+              <thead>
+                <tr>
+                  <th>Asset Tag</th>
+                  <th>Item Details</th>
+                  <th>Custodian Employee</th>
+                  <th>Serial Number</th>
+                  <th>Branch Location</th>
+                  <th>Action</th>
+                </tr>
+              </thead>
+              <tbody>
+                ${assignedAssets.map(a => `
+                  <tr>
+                    <td><strong style="font-family: monospace; color: var(--primary);">${a.assetTag}</strong></td>
+                    <td>
+                      <div class="font-semibold text-main">${a.name}</div>
+                      <div class="text-muted" style="font-size: 0.75rem;">${a.categoryName}</div>
+                    </td>
+                    <td>
+                      <div class="font-semibold text-main" style="color: var(--primary);">${a.currentEmployeeName}</div>
+                      <div class="text-muted" style="font-size: 0.75rem;">Assigned Custodian</div>
+                    </td>
+                    <td><code style="font-size: 0.8rem;">${a.serialNumber}</code></td>
+                    <td>${a.branchName || 'HQ - Mumbai'}</td>
+                    <td>
+                      <button class="btn btn-primary btn-sm" onclick="AssetsView.openReturnModal('${a.id}', '${a.assetTag}', '${a.name}', '${a.currentEmployeeName || 'Employee'}')">
+                        Check-in & Return
+                      </button>
+                    </td>
+                  </tr>
+                `).join('')}
+              </tbody>
+            </table>
+          `}
+        </div>
+      </div>
+    `;
+  },
+
+  // TAB 3: MAINTENANCE & REPAIRS
+  renderMaintenanceTab(maintenanceAssets) {
+    return `
+      <div class="card">
+        <div class="card-header">
+          <div>
+            <div class="card-title">Diagnostics & Repair Service Log (${maintenanceAssets.length})</div>
+            <div class="card-subtitle">Active repairs with hardware vendors and diagnostic work orders</div>
+          </div>
+          <button class="btn btn-primary btn-sm" onclick="AssetsView.openMaintenanceModal()">+ Log Repair Ticket</button>
+        </div>
+        <div class="card-body" style="padding: 0;">
+          ${maintenanceAssets.length === 0 ? `
+            <div class="empty-state">
+              <div class="empty-state-icon">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <path d="M14.7 6.3a1 1 0 000 1.4l1.6 1.6a1 1 0 001.4 0l3.77-3.77a6 6 0 01-7.94 7.94l-6.91 6.91a2.12 2.12 0 01-3-3l6.91-6.91a6 6 0 017.94-7.94l-3.76 3.76z"/>
+                </svg>
+              </div>
+              <div class="empty-state-title">No Active Repairs</div>
+              <div class="empty-state-desc">All registered hardware is operational.</div>
+            </div>
+          ` : `
+            <table class="data-table">
+              <thead>
+                <tr>
+                  <th>Asset Tag</th>
+                  <th>Device</th>
+                  <th>Issue Diagnostics</th>
+                  <th>Vendor / Workshop</th>
+                  <th>Estimated Cost</th>
+                  <th>Status</th>
+                  <th>Action</th>
+                </tr>
+              </thead>
+              <tbody>
+                ${maintenanceAssets.map(m => `
+                  <tr>
+                    <td><strong style="color: var(--primary); font-family: monospace;">${m.assetTag}</strong></td>
+                    <td>${m.assetName}</td>
+                    <td style="max-width: 250px;">
+                      <div class="text-truncate" style="font-size: 0.85rem;" title="${m.issue}">${m.issue}</div>
+                    </td>
+                    <td>${m.vendor || 'Authorized Service'}</td>
+                    <td>₹${(m.cost || 0).toLocaleString('en-IN')}</td>
+                    <td><span class="badge badge-warning">${m.status || 'IN_PROGRESS'}</span></td>
+                    <td>
+                      <button class="btn btn-primary btn-sm" onclick="AssetsView.resolveMaintenance('${m.id}', '${m.assetId}')">
+                        Complete Service
+                      </button>
+                    </td>
+                  </tr>
+                `).join('')}
+              </tbody>
+            </table>
+          `}
+        </div>
+      </div>
+    `;
+  },
+
+  // TAB 4: RETURNS & CLEARANCES
+  renderReturnsTab() {
+    return `
+      <div class="card">
+        <div class="card-header">
+          <div>
+            <div class="card-title">Custodian Asset Returns & Separation Audit</div>
+            <div class="card-subtitle">Audit return condition inspection, missing cables, and exit clearance sign-offs</div>
+          </div>
+        </div>
+        <div class="card-body">
+          <div class="empty-state">
+            <div class="empty-state-icon">
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M9 11l3 3L22 4"/>
+                <path d="M21 12v7a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2h11"/>
+              </svg>
+            </div>
+            <div class="empty-state-title">Asset Return Audit Ready</div>
+            <div class="empty-state-desc">All returned assets have been inspected and returned to Available inventory.</div>
+          </div>
+        </div>
+      </div>
+    `;
+  },
+
+  // TAB 5: VENDORS & SUPPLIERS
+  renderVendorsTab(vendors) {
+    return `
+      <div class="card">
+        <div class="card-header">
+          <div class="card-title">Authorized Hardware Suppliers & AMC Partners (${vendors.length})</div>
+        </div>
+        <div class="card-body" style="padding: 0;">
+          <table class="data-table">
+            <thead>
+              <tr>
+                <th>Vendor Name</th>
+                <th>Category</th>
+                <th>Contact Person</th>
+                <th>Email</th>
+                <th>Phone</th>
+                <th>City</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${vendors.map(v => `
+                <tr>
+                  <td><div class="font-semibold text-main">${v.name}</div></td>
+                  <td><span class="badge badge-neutral">${v.category}</span></td>
+                  <td>${v.contactPerson}</td>
+                  <td>${v.email}</td>
+                  <td>${v.phone}</td>
+                  <td>${v.city}</td>
+                </tr>
+              `).join('')}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    `;
+  },
+
+  // MODAL 1: REGISTER NEW ASSET
+  async openRegisterAssetModal() {
+    const categories = await assetService.getCategories();
+    const vendors = await assetService.getVendors();
+
+    ModalManager.openModal({
+      id: 'register-asset-modal',
+      title: 'Register New Asset',
+      subtitle: 'Add laptops, monitors, mobile devices, or office equipment',
+      contentHtml: `
+        <div class="form-row">
+          <div class="col-6 form-group">
+            <label class="form-label required">Asset Name / Title</label>
+            <input type="text" id="ast-name" class="form-control" placeholder="e.g. MacBook Pro 16 M3" required />
+          </div>
+          <div class="col-6 form-group">
+            <label class="form-label required">Category</label>
+            <select id="ast-category" class="form-control" required>
+              ${categories.map(c => `<option value="${c.code}">${c.name}</option>`).join('')}
+            </select>
+          </div>
+        </div>        </div>
+
+        <div class="form-row">
+          <div class="col-6 form-group">
+            <label class="form-label required">Brand / Manufacturer</label>
+            <input type="text" id="ast-brand" class="form-control" placeholder="e.g. Apple / Dell / Lenovo" required />
+          </div>
+          <div class="col-6 form-group">
+            <label class="form-label">Model Name / Number</label>
+            <input type="text" id="ast-model" class="form-control" placeholder="e.g. Latitude 7440" />
+          </div>
+        </div>
+
+        <div class="form-row">
+          <div class="col-6 form-group">
+            <label class="form-label required">Serial Number</label>
+            <input type="text" id="ast-serial" class="form-control" placeholder="e.g. SN-88992211" required />
+          </div>
+          <div class="col-6 form-group">
+            <label class="form-label">Asset Tag (Leave blank to auto-generate)</label>
+            <input type="text" id="ast-tag" class="form-control" placeholder="e.g. DL-LAP-0025" />
+          </div>
+        </div>
+
+        <div class="form-row">
+          <div class="col-6 form-group">
+            <label class="form-label required">Purchase Price (INR ₹)</label>
+            <input type="number" id="ast-price" class="form-control" value="85000" min="0" required />
+          </div>
+          <div class="col-6 form-group">
+            <label class="form-label required">Purchase Date</label>
+            <input type="date" id="ast-date" class="form-control" value="${todayStr}" required />
+          </div>
+        </div>
+
+        <div class="form-row">
+          <div class="col-6 form-group">
+            <label class="form-label">Supplier / Vendor</label>
+            <select id="ast-vendor" class="form-control">
+              ${vendors.map(v => `<option value="${v.name}">${v.name}</option>`).join('')}
+            </select>
+          </div>
+          <div class="col-6 form-group">
+            <label class="form-label required">Initial Condition</label>
+            <select id="ast-condition" class="form-control">
+              <option value="NEW">Brand New</option>
+              <option value="EXCELLENT" selected>Excellent</option>
+              <option value="GOOD">Good</option>
+              <option value="FAIR">Fair</option>
+            </select>
+          </div>
+        </div>
+      `,
+      footerHtml: `
+        <button class="btn btn-secondary btn-sm" data-modal-close>Cancel</button>
+        <button class="btn btn-primary btn-sm" onclick="AssetsView.saveNewAsset()">Register Asset</button>
+      `
+    });
+  },
+
+  async saveNewAsset() {
+    const name = document.getElementById('ast-name')?.value.trim();
+    const categoryCode = document.getElementById('ast-category')?.value;
+    const brand = document.getElementById('ast-brand')?.value.trim();
+    const model = document.getElementById('ast-model')?.value.trim();
+    const serialNumber = document.getElementById('ast-serial')?.value.trim();
+    const assetTag = document.getElementById('ast-tag')?.value.trim();
+    const purchasePrice = Number(document.getElementById('ast-price')?.value);
+    const purchaseDate = document.getElementById('ast-date')?.value;
+    const vendor = document.getElementById('ast-vendor')?.value;
+    const condition = document.getElementById('ast-condition')?.value;
+
+    if (!name || !brand || !serialNumber) {
+      Toast.warning('Please complete all mandatory fields.');
+      return;
+    }
+
+    try {
+      await assetService.createAsset({
+        name,
+        categoryCode,
+        brand,
+        model,
+        serialNumber,
+        assetTag,
+        purchasePrice,
+        purchaseDate,
+        vendor,
+        condition
+      });
+
+      Toast.success(`Asset '${name}' registered successfully!`);
+      ModalManager.closeModal();
+      Router.mountView('assets');
+    } catch (e) {
+      Toast.error(e.message);
+    }
+  },
+
+  // MODAL 2: ASSIGN ASSET TO EMPLOYEE
+  async openAssignModal(assetId, assetTag, assetName) {
+    let employees = await employeeService.getEmployees({});
+    const role = (AuthGuard._previewRoleId || AuthGuard.userProfile?.roleId || 'EMPLOYEE').toString().toUpperCase().trim();
+    const isSuperAdminOrHR = ['SUPER_ADMIN', 'COMPANY_ADMIN', 'ADMIN', 'HR_MANAGER', 'HR'].includes(role);
+    if (!isSuperAdminOrHR) {
+      employees = await employeeService.getSubordinates(AuthGuard.userProfile, employees, { directOnly: false, forceScoped: true });
+    }
+
+    ModalManager.openModal({
+      id: 'assign-asset-modal',
+      title: `Assign Custodian: ${assetTag}`,
+      subtitle: assetName,
+      contentHtml: `
+        <div class="form-group">
+          <label class="form-label required">Select Employee Custodian</label>
+          <select id="assign-emp-select" class="form-control" required>
+            ${employees.map(e => `
+              <option value="${e.id}" data-name="${e.fullName || e.name}" data-code="${e.employeeCode || ''}">
+                ${e.fullName || e.name} (${e.employeeCode || 'EMP'}) • ${e.department || 'General'}
+              </option>
+            `).join('')}
+          </select>
+        </div>
+
+        <div class="form-row">
+          <div class="col-6 form-group">
+            <label class="form-label required">Expected Return Date</label>
+            <input type="date" id="assign-return-date" class="form-control" value="2027-12-31" required />
+          </div>
+          <div class="col-6 form-group">
+            <label class="form-label required">Condition at Issue</label>
+            <select id="assign-condition" class="form-control">
+              <option value="EXCELLENT">Excellent</option>
+              <option value="GOOD" selected>Good</option>
+              <option value="FAIR">Fair</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label">Assignment Notes</label>
+          <textarea id="assign-notes" class="form-control" rows="2" placeholder="Issued for daily developer/manager responsibilities..."></textarea>
+        </div>
+      `,
+      footerHtml: `
+        <button class="btn btn-secondary btn-sm" data-modal-close>Cancel</button>
+        <button class="btn btn-primary btn-sm" onclick="AssetsView.confirmAssign('${assetId}')">Confirm Assignment</button>
+      `
+    });
+  },
+
+  async confirmAssign(assetId) {
+    const empSelect = document.getElementById('assign-emp-select');
+    const employeeId = empSelect?.value;
+    const employeeName = empSelect?.selectedOptions[0]?.getAttribute('data-name');
+    const employeeCode = empSelect?.selectedOptions[0]?.getAttribute('data-code');
+    const expectedReturnDate = document.getElementById('assign-return-date')?.value;
+    const condition = document.getElementById('assign-condition')?.value;
+    const notes = document.getElementById('assign-notes')?.value.trim();
+
+    if (!employeeId) return;
+
+    try {
+      await assetService.assignAsset(assetId, {
+        employeeId,
+        employeeName,
+        employeeCode,
+        expectedReturnDate,
+        condition,
+        notes
+      });
+
+      Toast.success(`Asset successfully assigned to ${employeeName}!`);
+      ModalManager.closeModal();
+      Router.mountView('assets');
+    } catch (e) {
+      Toast.error(e.message);
+    }
+  },
+
+  // MODAL 3: RETURN ASSET
+  openReturnModal(assetId, assetTag, assetName, empName) {
+    ModalManager.openModal({
+      id: 'return-asset-modal',
+      title: `Check-in & Return: ${assetTag}`,
+      subtitle: `Currently held by ${empName}`,
+      contentHtml: `
+        <div class="form-group">
+          <label class="form-label required">Inspected Condition on Return</label>
+          <select id="return-condition" class="form-control">
+            <option value="EXCELLENT">Excellent (No defects)</option>
+            <option value="GOOD" selected>Good (Minor wear)</option>
+            <option value="FAIR">Fair (Visible signs of use)</option>
+            <option value="DAMAGED">Damaged (Requires Repair)</option>
+            <option value="UNUSABLE">Unusable / Write-off</option>
+          </select>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label">Inspection & Check-in Notes</label>
+          <textarea id="return-notes" class="form-control" rows="2" placeholder="e.g. Power adapter and original cable received in good working order."></textarea>
+        </div>
+      `,
+      footerHtml: `
+        <button class="btn btn-secondary btn-sm" data-modal-close>Cancel</button>
+        <button class="btn btn-primary btn-sm" onclick="AssetsView.confirmReturn('${assetId}')">Confirm Return to Inventory</button>
+      `
+    });
+  },
+
+  async confirmReturn(assetId) {
+    const condition = document.getElementById('return-condition')?.value;
+    const notes = document.getElementById('return-notes')?.value.trim();
+
+    try {
+      await assetService.returnAsset(assetId, { condition, notes });
+      Toast.success('Asset returned to company inventory!');
+      ModalManager.closeModal();
+      Router.mountView('assets');
+    } catch (e) {
+      Toast.error(e.message);
+    }
+  },
+
+  // MODAL 4: MAINTENANCE TICKET
+  openMaintenanceModal(assetId, assetTag, assetName) {
+    ModalManager.openModal({
+      id: 'service-asset-modal',
+      title: `Log Service / Repair: ${assetTag}`,
+      subtitle: assetName,
+      contentHtml: `
+        <div class="form-group">
+          <label class="form-label required">Issue Description</label>
+          <input type="text" id="maint-issue" class="form-control" placeholder="e.g. Battery replacement & thermal repasting" required />
+        </div>
+        <div class="form-row">
+          <div class="col-6 form-group">
+            <label class="form-label required">Service Vendor</label>
+            <input type="text" id="maint-vendor" class="form-control" value="Dell Authorized Service" required />
+          </div>
+          <div class="col-6 form-group">
+            <label class="form-label">Estimated Cost (INR ₹)</label>
+            <input type="number" id="maint-cost" class="form-control" value="4500" />
+          </div>
+        </div>
+      `,
+      footerHtml: `
+        <button class="btn btn-secondary btn-sm" data-modal-close>Cancel</button>
+        <button class="btn btn-primary btn-sm" onclick="AssetsView.confirmMaintenance('${assetId}', '${assetTag}', '${assetName}')">Send to Service</button>
+      `
+    });
+  },
+
+  async confirmMaintenance(assetId, assetTag, assetName) {
+    const issue = document.getElementById('maint-issue')?.value.trim();
+    const vendor = document.getElementById('maint-vendor')?.value.trim();
+    const cost = Number(document.getElementById('maint-cost')?.value);
+
+    if (!issue) return;
+
+    try {
+      await assetService.createMaintenanceRecord({ assetId, assetTag, assetName, issue, vendor, cost });
+      Toast.success('Service ticket created and asset moved to Maintenance!');
+      ModalManager.closeModal();
+      Router.mountView('assets');
+    } catch (e) {
+      Toast.error(e.message);
+    }
+  },
+
+  openCompleteMaintenanceModal(assetId, assetTag) {
+    ModalManager.openModal({
+      id: 'complete-maint-modal',
+      title: `Complete Service: ${assetTag}`,
+      subtitle: 'Mark maintenance ticket as resolved and return asset to Available status',
+      contentHtml: `
+        <div class="form-group">
+          <label class="form-label required">Resolution Summary</label>
+          <textarea id="comp-maint-notes" class="form-control" rows="3" placeholder="e.g. Battery replaced under warranty. Clean diagnostics passed."></textarea>
+        </div>
+      `,
+      footerHtml: `
+        <button class="btn btn-secondary btn-sm" data-modal-close>Cancel</button>
+        <button class="btn btn-primary btn-sm" onclick="AssetsView.confirmCompleteMaintenance('${assetId}')">Restore to Available</button>
+      `
+    });
+  },
+
+  async confirmCompleteMaintenance(assetId) {
+    const notes = document.getElementById('comp-maint-notes')?.value.trim();
+    try {
+      await db.collection('assets').doc(assetId).update({
+        status: 'AVAILABLE',
+        condition: 'GOOD',
+        updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+      });
+      Toast.success('Asset service completed and restored to inventory!');
+      ModalManager.closeModal();
+      Router.mountView('assets');
+    } catch (e) {
+      Toast.error(e.message);
+    }
+  },
+
+  confirmDeleteAsset(assetId, assetTag) {
+    ModalManager.confirm({
+      title: 'Delete Asset Record',
+      message: `Are you sure you want to permanently delete asset ${assetTag}?`,
+      confirmText: 'Delete Asset',
+      confirmClass: 'btn-danger',
+      onConfirm: async () => {
+        try {
+          await assetService.deleteAsset(assetId);
+          Toast.success(`Asset ${assetTag} deleted.`);
+          Router.mountView('assets');
+        } catch (e) {
+          Toast.error(e.message);
+        }
+      }
+    });
+  },
+
+  applyFilters() {
+    this.currentFilters.search = document.getElementById('filter-asset-search')?.value.trim() || '';
+    this.currentFilters.status = document.getElementById('filter-asset-status')?.value || 'All';
+    this.currentFilters.categoryCode = document.getElementById('filter-asset-cat')?.value || 'All';
+    Router.mountView('assets');
+  },
+
+  clearFilters() {
+    this.currentFilters = { status: 'All', categoryCode: 'All', search: '' };
+    Router.mountView('assets');
+  },
+
+  switchEmployeeTab(tab) {
+    this.employeeActiveTab = tab;
+    Router.mountView('assets');
+  },
+
+  // ==========================================
+  // EMPLOYEE VIEW: MY ASSIGNED ASSETS & HARDWARE REQUISITIONS
+  // ==========================================
+  renderEmployeeView(myAssets, myRequests = [], categories = []) {
+    const activeAssigned = myAssets.filter(a => a.status === 'ASSIGNED');
+    const inMaintenance = myAssets.filter(a => a.status === 'MAINTENANCE');
+    const pendingRequests = myRequests.filter(r => r.status === 'SUBMITTED' || r.status === 'UNDER_REVIEW');
+    const approvedRequests = myRequests.filter(r => r.status === 'APPROVED' || r.status === 'COMPLETED');
+
+    let assetList = myAssets;
+    if (this.currentFilters.status !== 'All') {
+      assetList = assetList.filter(a => a.status === this.currentFilters.status);
+    }
+    if (this.currentFilters.search) {
+      const s = this.currentFilters.search.toLowerCase();
+      assetList = assetList.filter(a =>
+        (a.name && a.name.toLowerCase().includes(s)) ||
+        (a.assetTag && a.assetTag.toLowerCase().includes(s)) ||
+        (a.serialNumber && a.serialNumber.toLowerCase().includes(s))
+      );
+    }
+
+    return `
+      <div class="page-header animate-fade-in">
+        <div class="breadcrumb">
+          <a href="#dashboard">Dashboard</a>
+          <span class="breadcrumb-separator">/</span>
+          <span class="breadcrumb-current">My Assets & Hardware</span>
+        </div>
+        <div class="page-title-row">
+          <div>
+            <h1 class="page-title">My Assigned Assets & Hardware Requests</h1>
+            <p class="page-subtitle">View company devices issued to your custody and track hardware requisition requests</p>
+          </div>
+          <div class="page-actions">
+            <button class="btn btn-primary btn-sm" onclick="AssetsView.openRequestHardwareModal()">
+              <svg width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/>
+              </svg>
+              + Request Hardware / Accessory
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Informational Guide Card -->
+      <div class="card" style="margin-bottom: 20px; padding: 14px 18px; background: linear-gradient(135deg, rgba(37, 99, 235, 0.05), rgba(99, 102, 241, 0.03)); border: 1px solid rgba(37, 99, 235, 0.15); border-radius: var(--radius-md);">
+        <div style="display: flex; align-items: flex-start; gap: 12px;">
+          <div style="color: var(--primary); display: flex; align-items: center; margin-top: 2px;">
+            <svg width="20" height="20" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z"/></svg>
+          </div>
+          <div>
+            <div style="font-weight: 600; font-size: 0.9rem; color: var(--text-main); margin-bottom: 4px;">
+              Asset Allocation & Requisition Lifecycle
+            </div>
+            <div style="font-size: 0.8rem; color: var(--text-secondary); line-height: 1.4;">
+              • <strong>Assigned Devices:</strong> When IT registers hardware in company inventory and assigns it to your employee account, it appears under <em>Assigned Devices</em>.<br/>
+              • <strong>Hardware Requests:</strong> When you submit a request via <em>+ Request Hardware / Accessory</em>, it tracks under <em>Hardware Requisitions</em> until approved and issued.
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- KPI Grid -->
+      <div class="kpi-grid">
+        <div class="kpi-card">
+          <div class="kpi-top">
+            <div class="kpi-icon-box" style="background: var(--primary-light); color: var(--primary);">
+              <svg width="20" height="20" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/>
+              </svg>
+            </div>
+            <span class="kpi-trend neutral">Custody</span>
+          </div>
+          <div class="kpi-value">${myAssets.length}</div>
+          <div class="kpi-label">Assigned Devices</div>
+          <div class="kpi-subtitle">In Your Physical Custody</div>
+        </div>
+
+        <div class="kpi-card">
+          <div class="kpi-top">
+            <div class="kpi-icon-box" style="background: var(--success-light); color: var(--success);">
+              <svg width="20" height="20" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>
+              </svg>
+            </div>
+            <span class="kpi-trend neutral">Active</span>
+          </div>
+          <div class="kpi-value">${activeAssigned.length}</div>
+          <div class="kpi-label">Operational Hardware</div>
+          <div class="kpi-subtitle">Active In Daily Use</div>
+        </div>
+
+        <div class="kpi-card">
+          <div class="kpi-top">
+            <div class="kpi-icon-box" style="background: var(--warning-light); color: var(--warning);">
+              <svg width="20" height="20" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/>
+              </svg>
+            </div>
+            <span class="kpi-trend neutral">Requests</span>
+          </div>
+          <div class="kpi-value">${pendingRequests.length}</div>
+          <div class="kpi-label">Pending Requisitions</div>
+          <div class="kpi-subtitle">Awaiting IT Review</div>
+        </div>
+
+        <div class="kpi-card">
+          <div class="kpi-top">
+            <div class="kpi-icon-box" style="background: var(--info-light); color: var(--info);">
+              <svg width="20" height="20" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
+              </svg>
+            </div>
+            <span class="kpi-trend neutral">Approved</span>
+          </div>
+          <div class="kpi-value">${approvedRequests.length}</div>
+          <div class="kpi-label">Approved Requests</div>
+          <div class="kpi-subtitle">Fulfilled / Dispatched</div>
+        </div>
+      </div>
+
+      <!-- Navigation Tabs -->
+      <div class="tabs-nav" style="margin-bottom: 20px;">
+        <button class="tab-btn ${this.employeeActiveTab === 'assigned' ? 'active' : ''}" onclick="AssetsView.switchEmployeeTab('assigned')">
+          Assigned Devices (${myAssets.length})
+        </button>
+        <button class="tab-btn ${this.employeeActiveTab === 'requisitions' ? 'active' : ''}" onclick="AssetsView.switchEmployeeTab('requisitions')">
+          Hardware Requisitions (${myRequests.length})
+        </button>
+      </div>
+
+      <!-- Tab 1: Assigned Devices -->
+      ${this.employeeActiveTab === 'assigned' ? `
+        <div class="card">
+          <div class="card-header">
+            <div class="card-title">Assigned Hardware & Equipment (${assetList.length})</div>
+          </div>
+          <div class="card-body" style="padding: 0;">
+            ${assetList.length === 0 ? `
+              <div class="empty-state">
+                <div class="empty-state-icon">
+                  <svg width="24" height="24" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/></svg>
+                </div>
+                <div class="empty-state-title">No Assets Assigned</div>
+                <div class="empty-state-desc">You currently do not have any company hardware or devices issued to your custody. When IT assigns an asset to your profile, it will appear here.</div>
+                <div class="empty-state-actions">
+                  <button class="btn btn-primary btn-sm" onclick="AssetsView.openRequestHardwareModal()">+ Request Work Equipment</button>
+                </div>
+              </div>
+            ` : `
+              <table class="data-table">
+                <thead>
+                  <tr>
+                    <th>Asset Tag</th>
+                    <th>Device / Item Details</th>
+                    <th>Category</th>
+                    <th>Serial Number</th>
+                    <th>Assigned Date</th>
+                    <th>Condition</th>
+                    <th>Status</th>
+                    <th>Action</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  ${assetList.map(a => `
+                    <tr>
+                      <td><strong style="font-family: monospace; color: var(--primary);">${a.assetTag}</strong></td>
+                      <td>
+                        <div class="font-semibold text-main">${a.name}</div>
+                        <div class="text-muted" style="font-size: 0.75rem;">${a.brand || ''} ${a.model || ''}</div>
+                      </td>
+                      <td><span class="badge badge-neutral">${a.categoryName || a.categoryCode}</span></td>
+                      <td><code style="font-size: 0.75rem;">${a.serialNumber || 'N/A'}</code></td>
+                      <td>${a.assignedDate || 'Active'}</td>
+                      <td><span class="badge ${a.condition === 'EXCELLENT' || a.condition === 'GOOD' ? 'badge-success' : 'badge-warning'}">${a.condition || 'GOOD'}</span></td>
+                      <td>
+                        <span class="badge ${a.status === 'ASSIGNED' ? 'badge-primary' : (a.status === 'MAINTENANCE' ? 'badge-warning' : 'badge-danger')}">
+                          ${a.status}
+                        </span>
+                      </td>
+                      <td>
+                        <button class="btn btn-soft btn-sm" onclick="AssetsView.openReportAssetIssueModal('${a.id}', '${a.assetTag}', '${a.name}')">
+                          Report Issue
+                        </button>
+                      </td>
+                    </tr>
+                  `).join('')}
+                </tbody>
+              </table>
+            `}
+          </div>
+        </div>
+      ` : `
+        <!-- Tab 2: Hardware Requisitions -->
+        <div class="card">
+          <div class="card-header">
+            <div>
+              <div class="card-title">My Hardware Requisitions (${myRequests.length})</div>
+              <div class="card-subtitle">Equipment & accessory requests submitted to IT Asset Management</div>
+            </div>
+            <button class="btn btn-primary btn-sm" onclick="AssetsView.openRequestHardwareModal()">+ New Requisition</button>
+          </div>
+          <div class="card-body" style="padding: 0;">
+            ${myRequests.length === 0 ? `
+              <div class="empty-state">
+                <div class="empty-state-icon">
+                  <svg width="24" height="24" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
+                </div>
+                <div class="empty-state-title">No Hardware Requests Found</div>
+                <div class="empty-state-desc">You have not submitted any hardware requisitions yet.</div>
+                <div class="empty-state-actions">
+                  <button class="btn btn-primary btn-sm" onclick="AssetsView.openRequestHardwareModal()">+ Request Work Equipment</button>
+                </div>
+              </div>
+            ` : `
+              <table class="data-table">
+                <thead>
+                  <tr>
+                    <th>Request Item</th>
+                    <th>Category & Change</th>
+                    <th>Submitted On</th>
+                    <th>Status</th>
+                    <th>Action</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  ${myRequests.map(r => `
+                    <tr>
+                      <td>
+                        <div class="font-semibold text-main">${r.title}</div>
+                        ${r.description ? `<div class="text-muted text-truncate" style="font-size: 0.75rem; max-width: 320px;">${r.description.split('\n')[0]}</div>` : ''}
+                      </td>
+                      <td>
+                        <span class="badge badge-neutral">${r.requestedValue || r.requestTypeName || 'Hardware'}</span>
+                      </td>
+                      <td>${r.createdAt ? new Date(r.createdAt.seconds ? r.createdAt.seconds * 1000 : r.createdAt).toLocaleDateString() : 'Recent'}</td>
+                      <td>
+                        <span class="badge ${r.status === 'COMPLETED' || r.status === 'APPROVED' ? 'badge-success' : (r.status === 'SUBMITTED' || r.status === 'UNDER_REVIEW' ? 'badge-warning' : 'badge-danger')}">
+                          ${r.status === 'SUBMITTED' ? 'Pending IT Review' : (r.status === 'UNDER_REVIEW' ? 'In Review' : r.status)}
+                        </span>
+                      </td>
+                      <td>
+                        <button class="btn btn-soft btn-sm" onclick="RequestsView.openRequestDetailsModal('${r.id}')">
+                          View Details
+                        </button>
+                      </td>
+                    </tr>
+                  `).join('')}
+                </tbody>
+              </table>
+            `}
+          </div>
+        </div>
+      `}
+    `;
+  },
+
+  openRequestHardwareModal() {
+    ModalManager.openModal({
+      id: 'req-hardware-modal',
+      title: 'Request Work Hardware & Accessories',
+      subtitle: 'Submit IT equipment requisition for laptops, monitors, or peripherals',
+      contentHtml: `
+        <div class="form-row">
+          <div class="col-6 form-group">
+            <label class="form-label required">Hardware Category</label>
+            <select id="rh-category" class="form-control">
+              <option value="Company Laptop">Company Laptop / Workstation</option>
+              <option value="External Monitor">External Monitor / Display</option>
+              <option value="Wireless Keyboard & Mouse">Wireless Keyboard & Mouse</option>
+              <option value="Noise-Canceling Headset">Noise-Canceling Headset</option>
+              <option value="USB-C Dock / Adapter">USB-C Dock / Power Adapter</option>
+              <option value="Ergonomic Chair / Desk">Ergonomic Chair & Desk Setup</option>
+              <option value="Mobile Test Device">Mobile Testing Device</option>
+              <option value="Other Hardware">Other Hardware / Accessory</option>
+            </select>
+          </div>
+          <div class="col-6 form-group">
+            <label class="form-label required">Specific Item / Model Requested</label>
+            <input type="text" id="rh-title" class="form-control" placeholder="e.g. Dell XPS 15 (16GB RAM) or 27-inch 4K Monitor" required />
+          </div>
+        </div>
+
+        <div class="form-row">
+          <div class="col-6 form-group">
+            <label class="form-label required">Requisition Purpose</label>
+            <select id="rh-reason-type" class="form-control">
+              <option value="New Setup">New Joinee / Work Setup</option>
+              <option value="Upgrade">Performance Upgrade for Dev / Design</option>
+              <option value="Replacement">Replacement for Damaged / Faulty Device</option>
+              <option value="WFH Essential">Work From Home (WFH) Essential</option>
+            </select>
+          </div>
+          <div class="col-6 form-group">
+            <label class="form-label required">Required By Date</label>
+            <input type="date" id="rh-date" class="form-control" value="${new Date(Date.now() + 5 * 86400000).toISOString().slice(0, 10)}" required />
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label">Delivery / Handover Preference</label>
+          <select id="rh-delivery" class="form-control">
+            <option value="Office Desk Pickup">Office Desk Handover (HQ - Mumbai)</option>
+            <option value="Home Delivery Courier">Courier to Registered Home Address</option>
+          </select>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label required">Business Justification & Specifications</label>
+          <textarea id="rh-justification" class="form-control" rows="3" placeholder="Explain why this equipment is needed for your daily role & deliverables..." required></textarea>
+        </div>
+
+        <div class="card" style="padding: 12px; background: var(--bg-hover); font-size: 0.8rem; color: var(--text-secondary); display: flex; align-items: center; gap: 8px;">
+          <svg width="18" height="18" fill="none" viewBox="0 0 24 24" stroke="currentColor" style="color: var(--primary); flex-shrink: 0;">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+          </svg>
+          <div>Asset requests are reviewed by IT Asset Management. Average turnaround time is 3 business days.</div>
+        </div>
+      `,
+      footerHtml: `
+        <button class="btn btn-secondary btn-sm" data-modal-close>Cancel</button>
+        <button class="btn btn-primary btn-sm" id="btn-submit-hw" onclick="AssetsView.submitHardwareRequisition()">Submit Hardware Request</button>
+      `
+    });
+  },
+
+  async submitHardwareRequisition() {
+    const category = document.getElementById('rh-category')?.value;
+    const title = document.getElementById('rh-title')?.value.trim();
+    const reasonType = document.getElementById('rh-reason-type')?.value;
+    const requiredDate = document.getElementById('rh-date')?.value;
+    const delivery = document.getElementById('rh-delivery')?.value;
+    const justification = document.getElementById('rh-justification')?.value.trim();
+
+    if (!title || !justification) {
+      Toast.warning('Please enter the hardware model and business justification.');
+      return;
+    }
+
+    const btn = document.getElementById('btn-submit-hw');
+    if (btn) {
+      btn.disabled = true;
+      btn.innerText = 'Submitting...';
+    }
+
+    try {
+      const empId = AuthGuard.userProfile?.employeeId || AuthGuard.currentUser?.uid;
+      const empName = AuthGuard.userProfile?.displayName || 'Employee';
+
+      await employeeRequestService.createRequest({
+        employeeId: empId,
+        employeeName: empName,
+        requestType: 'HARDWARE_REQUISITION',
+        title: `Hardware Requisition: ${title} (${category})`,
+        requestedValue: `${category} — ${title} [${reasonType}]`,
+        description: `Item: ${title}\nCategory: ${category}\nPurpose: ${reasonType}\nRequired By: ${requiredDate}\nDelivery: ${delivery}\nJustification: ${justification}`
+      });
+
+      Toast.success('Hardware request dispatched to IT Asset Management!');
+      ModalManager.closeModal();
+      Router.mountView('assets');
+    } catch (e) {
+      Toast.error(e.message || 'Failed to submit hardware request');
+      if (btn) {
+        btn.disabled = false;
+        btn.innerText = 'Submit Hardware Request';
+      }
+    }
+  },
+
+  openReportAssetIssueModal(assetId, assetTag, assetName) {
+    ModalManager.openModal({
+      id: 'report-asset-issue-modal',
+      title: `Report Hardware Issue: ${assetTag}`,
+      subtitle: `${assetName}`,
+      contentHtml: `
+        <div class="form-group">
+          <label class="form-label required">Issue Description</label>
+          <textarea id="asset-issue-desc" class="form-control" rows="3" placeholder="Describe the issue (e.g. Battery draining rapidly, screen flicker, keyboard key not working)..." required></textarea>
+        </div>
+        <div class="form-group">
+          <label class="form-label required">Urgency</label>
+          <select id="asset-issue-urgency" class="form-control">
+            <option value="NORMAL">Normal — Usable with minor issue</option>
+            <option value="HIGH">High — Severely affecting daily work</option>
+            <option value="CRITICAL">Critical — Device completely inoperable</option>
+          </select>
+        </div>
+      `,
+      footerHtml: `
+        <button class="btn btn-secondary btn-sm" data-modal-close>Cancel</button>
+        <button class="btn btn-primary btn-sm" onclick="AssetsView.submitAssetIssue('${assetId}', '${assetTag}', '${assetName}')">Submit Ticket</button>
+      `
+    });
+  },
+
+  async submitAssetIssue(assetId, assetTag, assetName) {
+    const desc = document.getElementById('asset-issue-desc')?.value.trim();
+    const urgency = document.getElementById('asset-issue-urgency')?.value;
+    if (!desc) {
+      Toast.warning('Please describe the issue.');
+      return;
+    }
+
+    try {
+      const empId = AuthGuard.userProfile?.employeeId || AuthGuard.currentUser?.uid;
+      const empName = AuthGuard.userProfile?.displayName || 'Employee';
+
+      await employeeRequestService.createRequest({
+        employeeId: empId,
+        employeeName: empName,
+        requestType: 'GENERAL_HR_QUERY',
+        title: `Hardware Issue: ${assetTag} - ${assetName} [${urgency}]`,
+        description: `Asset: ${assetTag} (${assetName})\nUrgency: ${urgency}\nDetails: ${desc}`
+      });
+
+      Toast.success('Hardware issue reported to IT & HR!');
+      ModalManager.closeModal();
+      Router.navigate('requests');
+    } catch (e) {
+      Toast.error(e.message);
+    }
+  },
+
+  async exportAssetsCSV() {
+    const assets = await assetService.getAssets({});
+    let csv = 'AssetTag,Name,Category,Brand,Model,SerialNumber,Price,Status,Condition,Custodian\n';
+    assets.forEach(a => {
+      csv += `"${a.assetTag}","${a.name}","${a.categoryName}","${a.brand || ''}","${a.model || ''}","${a.serialNumber}","${a.purchasePrice}","${a.status}","${a.condition}","${a.currentEmployeeName || ''}"\n`;
+    });
+
+    const blob = new Blob([csv], { type: 'text/csv' });
+    const url = window.URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `Diallo_Asset_Register_${new Date().toISOString().slice(0, 10)}.csv`;
+    a.click();
+    Toast.success('Exported asset inventory to CSV.');
+  }
+};
+
+window.AssetsView = AssetsView;
+
