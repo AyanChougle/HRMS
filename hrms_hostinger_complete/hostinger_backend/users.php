@@ -37,7 +37,7 @@ if ($method === 'GET') {
     $params = [];
 
     if (!empty($emailParam)) {
-        $sql .= " AND (email = :email OR work_email = :email)";
+        $sql .= " AND email = :email";
         $params[':email'] = $emailParam;
     }
 
@@ -71,6 +71,18 @@ if ($method === 'GET') {
     ]);
 }
 
+function normalize_date_to_mysql($d) {
+    if (empty($d)) return date('Y-m-d');
+    $d = trim($d);
+    if (preg_match('/^\d{4}-\d{2}-\d{2}$/', $d)) return $d;
+    $ts = strtotime($d);
+    if ($ts !== false && $ts > 0) return date('Y-m-d', $ts);
+    if (preg_match('/^(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{4})$/', $d, $m)) {
+        return sprintf('%04d-%02d-%02d', $m[3], $m[2], $m[1]);
+    }
+    return date('Y-m-d');
+}
+
 // -----------------------------------------------------------------------------
 // POST / PUT: Create or Update User & Role
 // -----------------------------------------------------------------------------
@@ -79,185 +91,289 @@ if ($method === 'POST') {
 
     // 1. CREATE USER
     if ($action === 'create' || empty($uid)) {
-        $email = strtolower(trim($input['email'] ?? ''));
-        $password = $input['password'] ?? 'TradeForWealth@2026';
-        $displayName = trim($input['display_name'] ?? $input['displayName'] ?? '');
-        $firstName = trim($input['first_name'] ?? $input['firstName'] ?? '');
-        $lastName = trim($input['last_name'] ?? $input['lastName'] ?? '');
-        $roleId = canonical_role($input['role_id'] ?? $input['roleId'] ?? 'EMPLOYEE');
-        $department = trim($input['department'] ?? 'Sales');
-        $designation = trim($input['designation'] ?? 'Relationship Manager');
-        $phone = trim($input['phone'] ?? '');
-        $employeeCode = strtoupper(trim($input['employee_code'] ?? $input['employeeCode'] ?? ''));
-        $status = strtoupper(trim($input['status'] ?? 'ACTIVE'));
+        try {
+            $email = strtolower(trim($input['email'] ?? ''));
+            $password = $input['password'] ?? 'TradeForWealth@2026';
+            $displayName = trim($input['display_name'] ?? $input['displayName'] ?? '');
+            $firstName = trim($input['first_name'] ?? $input['firstName'] ?? '');
+            $lastName = trim($input['last_name'] ?? $input['lastName'] ?? '');
+            $roleId = canonical_role($input['role_id'] ?? $input['roleId'] ?? 'EMPLOYEE');
+            $department = trim($input['department'] ?? 'Sales');
+            $designation = trim($input['designation'] ?? 'Relationship Manager');
+            $phone = trim($input['phone'] ?? '');
+            $employeeCode = strtoupper(trim($input['employee_code'] ?? $input['employeeCode'] ?? ''));
+            $status = strtoupper(trim($input['status'] ?? 'ACTIVE'));
 
-        $managerId = trim($input['manager_id'] ?? $input['managerId'] ?? '');
-        $manager = trim($input['manager'] ?? $input['manager_name'] ?? $input['managerName'] ?? '');
-        $teamLeadId = trim($input['team_lead_id'] ?? $input['teamLeadId'] ?? '');
-        $teamLead = trim($input['team_lead'] ?? $input['team_lead_name'] ?? $input['teamLeadName'] ?? '');
-        $mentor = trim($input['mentor'] ?? $input['mentor_name'] ?? $input['mentorName'] ?? '');
-        $dateOfJoining = trim($input['date_of_joining'] ?? $input['joiningDate'] ?? $input['dateOfJoining'] ?? $input['doj'] ?? date('Y-m-d'));
-        $branchName = trim($input['branch_name'] ?? $input['branchName'] ?? $input['location'] ?? 'Trade For Wealth - HQ Mumbai');
-        $location = $branchName;
+            $managerId = trim($input['manager_id'] ?? $input['managerId'] ?? '');
+            $manager = trim($input['manager'] ?? $input['manager_name'] ?? $input['managerName'] ?? '');
+            $teamLeadId = trim($input['team_lead_id'] ?? $input['teamLeadId'] ?? '');
+            $teamLead = trim($input['team_lead'] ?? $input['team_lead_name'] ?? $input['teamLeadName'] ?? '');
+            $mentor = trim($input['mentor'] ?? $input['mentor_name'] ?? $input['mentorName'] ?? '');
+            $dateOfJoining = normalize_date_to_mysql($input['date_of_joining'] ?? $input['joiningDate'] ?? $input['dateOfJoining'] ?? $input['doj'] ?? '');
+            $branchName = trim($input['branch_name'] ?? $input['branchName'] ?? $input['location'] ?? 'Trade For Wealth - HQ Mumbai');
+            $location = $branchName;
 
-        if (empty($email) || !filter_var($email, FILTER_VALIDATE_EMAIL)) {
-            json_out(["success" => false, "error" => "Valid email is required."], 400);
-        }
-
-        // Check duplicate email
-        $chkStmt = $pdo->prepare("SELECT id FROM users WHERE LOWER(email) = :email LIMIT 1");
-        $chkStmt->execute([':email' => $email]);
-        if ($chkStmt->fetch()) {
-            json_out(["success" => false, "error" => "A user with this email address already exists."], 409);
-        }
-
-        if (empty($displayName)) {
-            $displayName = trim("$firstName $lastName") ?: explode('@', $email)[0];
-        }
-
-        // Auto-generate employee code if missing
-        if (empty($employeeCode)) {
-            try {
-                $cStmt = $pdo->query("SELECT employee_code FROM employees WHERE employee_code REGEXP '^D[0-9]+$' ORDER BY LENGTH(employee_code) DESC, employee_code DESC LIMIT 1");
-                $maxRow = $cStmt ? $cStmt->fetch() : null;
-                if ($maxRow && preg_match('/^D([0-9]+)$/', $maxRow['employee_code'], $m)) {
-                    $nextNum = intval($m[1]) + 1;
-                    $employeeCode = 'D' . str_pad($nextNum, 5, '0', STR_PAD_LEFT);
-                } else {
-                    $employeeCode = 'D06813';
-                }
-            } catch (\Throwable $e) {
-                $employeeCode = 'D' . rand(10000, 99999);
+            if (empty($email) || !filter_var($email, FILTER_VALIDATE_EMAIL)) {
+                json_out(["success" => false, "error" => "Valid email is required."], 400);
             }
-        }
 
-        $newUid = 'usr_' . ($employeeCode ? strtolower($employeeCode) : bin2hex(random_bytes(6)));
-        $hash = password_hash($password, PASSWORD_BCRYPT);
+            // Check duplicate email
+            $chkStmt = $pdo->prepare("SELECT id FROM users WHERE LOWER(email) = :email LIMIT 1");
+            $chkStmt->execute([':email' => $email]);
+            if ($chkStmt->fetch()) {
+                json_out(["success" => false, "error" => "A user with this email address already exists."], 409);
+            }
 
-        $insStmt = $pdo->prepare("
-            INSERT INTO users (
-                uid, employee_code, email, password_hash, display_name, first_name, last_name,
-                phone, role_id, department, designation, status, company_id
-            ) VALUES (
-                :uid, :code, :email, :hash, :name, :first, :last,
-                :phone, :role, :dept, :desig, :status, 'comp_diallo_india'
-            )
-        ");
-        $insStmt->execute([
-            ':uid' => $newUid,
-            ':code' => $employeeCode,
-            ':email' => $email,
-            ':hash' => $hash,
-            ':name' => $displayName,
-            ':first' => $firstName,
-            ':last' => $lastName,
-            ':phone' => $phone,
-            ':role' => $roleId,
-            ':dept' => $department,
-            ':desig' => $designation,
-            ':status' => $status
-        ]);
+            if (empty($displayName)) {
+                $displayName = trim("$firstName $lastName") ?: explode('@', $email)[0];
+            }
 
-        $newId = $pdo->lastInsertId();
+            // Auto-generate employee code if missing
+            if (empty($employeeCode)) {
+                try {
+                    $cStmt = $pdo->query("SELECT employee_code FROM employees WHERE employee_code REGEXP '^D[0-9]+$' ORDER BY LENGTH(employee_code) DESC, employee_code DESC LIMIT 1");
+                    $maxRow = $cStmt ? $cStmt->fetch() : null;
+                    if ($maxRow && preg_match('/^D([0-9]+)$/', $maxRow['employee_code'], $m)) {
+                        $nextNum = intval($m[1]) + 1;
+                        $employeeCode = 'D' . str_pad($nextNum, 5, '0', STR_PAD_LEFT);
+                    } else {
+                        $employeeCode = 'D06813';
+                    }
+                } catch (\Throwable $e) {
+                    $employeeCode = 'D' . rand(10000, 99999);
+                }
+            }
 
-        // Cross-link with employees table without creating duplicate records
-        $checkEmp = $pdo->prepare("
-            SELECT id FROM employees 
-            WHERE LOWER(work_email) = :email 
-               OR LOWER(email) = :email2 
-               OR (employee_code != '' AND (employee_code = :code OR REPLACE(employee_code, '-', '') = REPLACE(:clean, '-', '')))
-            LIMIT 1
-        ");
-        $checkEmp->execute([
-            ':email' => strtolower($email),
-            ':email2' => strtolower($email),
-            ':code' => $employeeCode,
-            ':clean' => $employeeCode
-        ]);
-        $existingEmp = $checkEmp->fetch();
+            $newUid = 'usr_' . ($employeeCode ? strtolower($employeeCode) : bin2hex(random_bytes(6)));
+            $hash = password_hash($password, PASSWORD_BCRYPT);
 
-        if ($existingEmp) {
-            // Link existing employee to this user login and update hierarchy details
-            $upd = $pdo->prepare("
-                UPDATE employees 
-                SET user_id = :uid, role_id = :role,
-                    manager_id = COALESCE(NULLIF(:mid, ''), manager_id),
-                    manager = COALESCE(NULLIF(:mname, ''), manager),
-                    team_lead_id = COALESCE(NULLIF(:tlid, ''), team_lead_id),
-                    team_lead = COALESCE(NULLIF(:tlname, ''), team_lead),
-                    mentor = COALESCE(NULLIF(:mentor, ''), mentor),
-                    date_of_joining = COALESCE(NULLIF(:doj, ''), date_of_joining),
-                    branch_name = COALESCE(NULLIF(:bname, ''), branch_name),
-                    location = COALESCE(NULLIF(:loc, ''), location)
-                WHERE id = :id
+            // Check if initial_password exists on users table
+            $hasInitCol = false;
+            try {
+                $cCheck = $pdo->query("SHOW COLUMNS FROM users LIKE 'initial_password'");
+                if ($cCheck && $cCheck->fetch()) {
+                    $hasInitCol = true;
+                }
+            } catch (\Throwable $e) {}
+
+            if ($hasInitCol) {
+                $insStmt = $pdo->prepare("
+                    INSERT INTO users (
+                        uid, employee_code, email, password_hash, initial_password, display_name, first_name, last_name,
+                        phone, role_id, department, designation, status, company_id
+                    ) VALUES (
+                        :uid, :code, :email, :hash, :init_pwd, :name, :first, :last,
+                        :phone, :role, :dept, :desig, :status, 'comp_diallo_india'
+                    )
+                ");
+                $insStmt->execute([
+                    ':uid' => $newUid,
+                    ':code' => $employeeCode,
+                    ':email' => $email,
+                    ':hash' => $hash,
+                    ':init_pwd' => $password,
+                    ':name' => $displayName,
+                    ':first' => $firstName,
+                    ':last' => $lastName,
+                    ':phone' => $phone,
+                    ':role' => $roleId,
+                    ':dept' => $department,
+                    ':desig' => $designation,
+                    ':status' => $status
+                ]);
+            } else {
+                $insStmt = $pdo->prepare("
+                    INSERT INTO users (
+                        uid, employee_code, email, password_hash, display_name, first_name, last_name,
+                        phone, role_id, department, designation, status, company_id
+                    ) VALUES (
+                        :uid, :code, :email, :hash, :name, :first, :last,
+                        :phone, :role, :dept, :desig, :status, 'comp_diallo_india'
+                    )
+                ");
+                $insStmt->execute([
+                    ':uid' => $newUid,
+                    ':code' => $employeeCode,
+                    ':email' => $email,
+                    ':hash' => $hash,
+                    ':name' => $displayName,
+                    ':first' => $firstName,
+                    ':last' => $lastName,
+                    ':phone' => $phone,
+                    ':role' => $roleId,
+                    ':dept' => $department,
+                    ':desig' => $designation,
+                    ':status' => $status
+                ]);
+            }
+
+            $newId = $pdo->lastInsertId();
+
+            // Check if initial_password exists on employees table
+            $hasEmpInitCol = false;
+            try {
+                $cEmpCheck = $pdo->query("SHOW COLUMNS FROM employees LIKE 'initial_password'");
+                if ($cEmpCheck && $cEmpCheck->fetch()) {
+                    $hasEmpInitCol = true;
+                }
+            } catch (\Throwable $e) {}
+
+            // Cross-link with employees table without creating duplicate records
+            $checkEmp = $pdo->prepare("
+                SELECT id FROM employees 
+                WHERE LOWER(work_email) = :email 
+                   OR LOWER(email) = :email2 
+                   OR (employee_code != '' AND (employee_code = :code OR REPLACE(employee_code, '-', '') = REPLACE(:clean, '-', '')))
+                LIMIT 1
             ");
-            $upd->execute([
-                ':uid' => $newUid,
-                ':role' => $roleId,
-                ':mid' => $managerId,
-                ':mname' => $manager,
-                ':tlid' => $teamLeadId,
-                ':tlname' => $teamLead,
-                ':mentor' => $mentor,
-                ':doj' => $dateOfJoining,
-                ':bname' => $branchName,
-                ':loc' => $location,
-                ':id' => $existingEmp['id']
-            ]);
-        } else {
-            // Insert employee record only if none existed previously
-            $empStmt = $pdo->prepare("
-                INSERT INTO employees (
-                    id, user_id, employee_code, first_name, last_name, full_name,
-                    work_email, email, phone, role_id, department, designation,
-                    manager_id, manager, team_lead_id, team_lead, mentor,
-                    date_of_joining, branch_name, location,
-                    employment_status, status, company_id
-                ) VALUES (
-                    :id, :uid, :code, :first, :last, :full,
-                    :email, :email2, :phone, :role, :dept, :desig,
-                    :mid, :mname, :tlid, :tlname, :mentor,
-                    :doj, :bname, :loc,
-                    :status, :status2, 'comp_diallo_india'
-                )
-            ");
-            $empStmt->execute([
-                ':id' => 'emp_' . ($employeeCode ? strtolower($employeeCode) : bin2hex(random_bytes(6))),
-                ':uid' => $newUid,
+            $checkEmp->execute([
+                ':email' => strtolower($email),
+                ':email2' => strtolower($email),
                 ':code' => $employeeCode,
-                ':first' => $firstName,
-                ':last' => $lastName,
-                ':full' => $displayName,
-                ':email' => $email,
-                ':email2' => $email,
-                ':phone' => $phone,
-                ':role' => $roleId,
-                ':dept' => $department,
-                ':desig' => $designation,
-                ':mid' => $managerId ?: null,
-                ':mname' => $manager ?: null,
-                ':tlid' => $teamLeadId ?: null,
-                ':tlname' => $teamLead ?: null,
-                ':mentor' => $mentor ?: null,
-                ':doj' => $dateOfJoining,
-                ':bname' => $branchName,
-                ':loc' => $location,
-                ':status' => $status,
-                ':status2' => $status
+                ':clean' => $employeeCode
             ]);
-        }
+            $existingEmp = $checkEmp->fetch();
 
-        json_out([
-            "success" => true,
-            "message" => "User {$displayName} created successfully.",
-            "user" => [
-                "id" => $newId,
-                "uid" => $newUid,
-                "employee_code" => $employeeCode,
-                "email" => $email,
-                "display_name" => $displayName,
-                "role_id" => $roleId,
-                "department" => $department,
+            if ($existingEmp) {
+                // Link existing employee to this user login and update hierarchy details
+                $initPwdSql = $hasEmpInitCol ? ", initial_password = COALESCE(NULLIF(:init_pwd, ''), initial_password)" : "";
+                $upd = $pdo->prepare("
+                    UPDATE employees 
+                    SET user_id = :uid, role_id = :role $initPwdSql,
+                        manager_id = COALESCE(NULLIF(:mid, ''), manager_id),
+                        manager = COALESCE(NULLIF(:mname, ''), manager),
+                        team_lead_id = COALESCE(NULLIF(:tlid, ''), team_lead_id),
+                        team_lead = COALESCE(NULLIF(:tlname, ''), team_lead),
+                        mentor = COALESCE(NULLIF(:mentor, ''), mentor),
+                        date_of_joining = COALESCE(NULLIF(:doj, ''), date_of_joining),
+                        branch_name = COALESCE(NULLIF(:bname, ''), branch_name),
+                        location = COALESCE(NULLIF(:loc, ''), location)
+                    WHERE id = :id
+                ");
+                $updParams = [
+                    ':uid' => $newUid,
+                    ':role' => $roleId,
+                    ':mid' => $managerId,
+                    ':mname' => $manager,
+                    ':tlid' => $teamLeadId,
+                    ':tlname' => $teamLead,
+                    ':mentor' => $mentor,
+                    ':doj' => $dateOfJoining,
+                    ':bname' => $branchName,
+                    ':loc' => $location,
+                    ':id' => $existingEmp['id']
+                ];
+                if ($hasEmpInitCol) {
+                    $updParams[':init_pwd'] = $password;
+                }
+                $upd->execute($updParams);
+            } else {
+                // Insert employee record only if none existed previously
+                if ($hasEmpInitCol) {
+                    $empStmt = $pdo->prepare("
+                        INSERT INTO employees (
+                            id, user_id, employee_code, first_name, last_name, full_name,
+                            work_email, email, phone, role_id, department, designation,
+                            manager_id, manager, team_lead_id, team_lead, mentor,
+                            date_of_joining, branch_name, location,
+                            employment_status, status, company_id, initial_password
+                        ) VALUES (
+                            :id, :uid, :code, :first, :last, :full,
+                            :email, :email2, :phone, :role, :dept, :desig,
+                            :mid, :mname, :tlid, :tlname, :mentor,
+                            :doj, :bname, :loc,
+                            :status, :status2, 'comp_diallo_india', :init_pwd
+                        )
+                    ");
+                    $empStmt->execute([
+                        ':id' => 'emp_' . ($employeeCode ? strtolower($employeeCode) : bin2hex(random_bytes(6))),
+                        ':uid' => $newUid,
+                        ':code' => $employeeCode,
+                        ':first' => $firstName,
+                        ':last' => $lastName,
+                        ':full' => $displayName,
+                        ':email' => $email,
+                        ':email2' => $email,
+                        ':phone' => $phone,
+                        ':role' => $roleId,
+                        ':dept' => $department,
+                        ':desig' => $designation,
+                        ':mid' => $managerId ?: null,
+                        ':mname' => $manager ?: null,
+                        ':tlid' => $teamLeadId ?: null,
+                        ':tlname' => $teamLead ?: null,
+                        ':mentor' => $mentor ?: null,
+                        ':doj' => $dateOfJoining,
+                        ':bname' => $branchName,
+                        ':loc' => $location,
+                        ':status' => $status,
+                        ':status2' => $status,
+                        ':init_pwd' => $password
+                    ]);
+                } else {
+                    $empStmt = $pdo->prepare("
+                        INSERT INTO employees (
+                            id, user_id, employee_code, first_name, last_name, full_name,
+                            work_email, email, phone, role_id, department, designation,
+                            manager_id, manager, team_lead_id, team_lead, mentor,
+                            date_of_joining, branch_name, location,
+                            employment_status, status, company_id
+                        ) VALUES (
+                            :id, :uid, :code, :first, :last, :full,
+                            :email, :email2, :phone, :role, :dept, :desig,
+                            :mid, :mname, :tlid, :tlname, :mentor,
+                            :doj, :bname, :loc,
+                            :status, :status2, 'comp_diallo_india'
+                        )
+                    ");
+                    $empStmt->execute([
+                        ':id' => 'emp_' . ($employeeCode ? strtolower($employeeCode) : bin2hex(random_bytes(6))),
+                        ':uid' => $newUid,
+                        ':code' => $employeeCode,
+                        ':first' => $firstName,
+                        ':last' => $lastName,
+                        ':full' => $displayName,
+                        ':email' => $email,
+                        ':email2' => $email,
+                        ':phone' => $phone,
+                        ':role' => $roleId,
+                        ':dept' => $department,
+                        ':desig' => $designation,
+                        ':mid' => $managerId ?: null,
+                        ':mname' => $manager ?: null,
+                        ':tlid' => $teamLeadId ?: null,
+                        ':tlname' => $teamLead ?: null,
+                        ':mentor' => $mentor ?: null,
+                        ':doj' => $dateOfJoining,
+                        ':bname' => $branchName,
+                        ':loc' => $location,
+                        ':status' => $status,
+                        ':status2' => $status
+                    ]);
+                }
+            }
+
+            json_out([
+                "success" => true,
+                "message" => "User {$displayName} created successfully.",
+                "user" => [
+                    "id" => $newId,
+                    "uid" => $newUid,
+                    "employee_code" => $employeeCode,
+                    "email" => $email,
+                    "display_name" => $displayName,
+                    "role_id" => $roleId,
+                    "department" => $department,
+                    "designation" => $designation
+                ]
+            ]);
+        } catch (\Throwable $createEx) {
+            json_out([
+                "success" => false,
+                "error" => "Failed to create user account: " . $createEx->getMessage()
+            ], 500);
+        }
+    }
                 "designation" => $designation,
                 "status" => $status
             ]

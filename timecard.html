@@ -1,27 +1,168 @@
-      <!-- HIGHLIGHTED TIMECARD & BREAK STATION HERO -->
-      <div class="card animate-fade-in" style="margin-bottom: 24px; border: 2px solid \${ESSView.isPunchedIn && ESSView.isOnBreak ? "var(--warning)" : "var(--primary-light)"}; box-shadow: \${ESSView.isPunchedIn && ESSView.isOnBreak ? "0 0 16px rgba(245, 158, 11, 0.15)" : "var(--shadow-sm)"};" id="emp-timecard-hero-card">
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>My Daily Shift & Timecard — Diallo HRMS Enterprise Cloud</title>
+  <meta name="description" content="Diallo HRMS Enterprise Cloud Daily Shift and Timecard Punch Station." />
+
+  <!-- CSS Architecture Tokens & Components -->
+  <link rel="stylesheet" href="css/variables.css?v=1793275281408" />
+  <link rel="stylesheet" href="css/global.css?v=1793275281408" />
+  <link rel="stylesheet" href="css/components.css?v=1793275281408" />
+  <link rel="stylesheet" href="css/forms.css?v=1793275281408" />
+  <link rel="stylesheet" href="css/modals.css?v=1793275281408" />
+  <link rel="stylesheet" href="css/responsive.css?v=1793275281408" />
+  <link rel="icon" type="image/png" sizes="32x32" href="favicon-32x32.png?v=1793275281408" />
+
+  <style>
+    body {
+      min-height: 100vh;
+      background-color: var(--bg-app, #f8fafc);
+      padding: 32px 16px;
+      font-family: var(--font-family, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif);
+      color: var(--text-main, #0f172a);
+    }
+    .timecard-page-wrapper {
+      max-width: 980px;
+      margin: 0 auto;
+    }
+    .timecard-top-nav {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 24px;
+      flex-wrap: wrap;
+      gap: 12px;
+    }
+    .brand-link {
+      display: inline-flex;
+      align-items: center;
+      gap: 10px;
+      text-decoration: none;
+      color: var(--text-main, #0f172a);
+      font-weight: 700;
+      font-size: 1.25rem;
+    }
+    .brand-logo-sq {
+      width: 36px;
+      height: 36px;
+      border-radius: 8px;
+      background: var(--primary, #2563eb);
+      color: #fff;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: 800;
+      font-size: 1.1rem;
+    }
+    .portal-return-btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      color: var(--primary, #2563eb);
+      font-size: 0.88rem;
+      font-weight: 600;
+      text-decoration: none;
+      padding: 8px 16px;
+      border-radius: 8px;
+      background: var(--bg-card, #ffffff);
+      border: 1px solid var(--border-main, #e2e8f0);
+      transition: all 0.2s ease;
+      box-shadow: var(--shadow-xs, 0 1px 2px rgba(0,0,0,0.05));
+    }
+    .portal-return-btn:hover {
+      background: var(--bg-hover, #f1f5f9);
+      border-color: var(--border-strong, #cbd5e1);
+    }
+    .timecard-auth-prompt {
+      background: var(--bg-card, #ffffff);
+      border: 1px solid var(--border-main, #e2e8f0);
+      border-radius: var(--radius-lg, 12px);
+      padding: 48px 24px;
+      text-align: center;
+      box-shadow: var(--shadow-sm, 0 1px 3px rgba(0,0,0,0.05));
+    }
+    .break-active-pulse {
+      animation: pulse 2s infinite;
+    }
+    @keyframes pulse {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.55; }
+    }
+    #toast-container {
+      position: fixed;
+      top: 24px;
+      right: 24px;
+      z-index: 99999;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+  </style>
+</head>
+<body>
+  <div id="toast-container"></div>
+
+  <div class="timecard-page-wrapper">
+    <!-- Top Branding & Navigation Bar -->
+    <header class="timecard-top-nav">
+      <a href="index.html" class="brand-link">
+        <span class="brand-logo-sq">D</span>
+        <span>Diallo HRMS <span style="font-size: 0.8rem; font-weight: 500; color: var(--text-secondary); margin-left: 4px;">Time Station</span></span>
+      </a>
+      <div style="display: flex; align-items: center; gap: 12px;">
+        <span id="user-display-pill" style="font-size: 0.85rem; font-weight: 600; color: var(--text-secondary);"></span>
+        <a href="index.html#dashboard" class="portal-return-btn">
+          <svg width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18" />
+          </svg>
+          Return to Portal
+        </a>
+      </div>
+    </header>
+
+    <!-- Sign-In Required Container (Shown when unauthenticated) -->
+    <div id="auth-required-box" class="timecard-auth-prompt" style="display: none;">
+      <div style="width: 56px; height: 56px; border-radius: 50%; background: rgba(37, 99, 235, 0.1); color: var(--primary, #2563eb); display: inline-flex; align-items: center; justify-content: center; margin-bottom: 16px;">
+        <svg width="28" height="28" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+        </svg>
+      </div>
+      <h2 style="font-size: 1.3rem; font-weight: 700; margin-bottom: 8px;">Authentication Required</h2>
+      <p style="color: var(--text-secondary); font-size: 0.95rem; max-width: 440px; margin: 0 auto 24px auto;">
+        Please sign in with your official company credentials to access your daily shift station and record time punches.
+      </p>
+      <a href="login.html" class="btn btn-primary" style="padding: 10px 28px; font-weight: 600;">Sign In to HRMS</a>
+    </div>
+
+    <!-- Active Timecard Station Hero (Shown when authenticated) -->
+    <main id="timecard-main-content">
+      <div class="card animate-fade-in" style="margin-bottom: 24px; border: 1.5px solid var(--border-main); box-shadow: var(--shadow-sm);" id="emp-timecard-hero-card">
         <div class="card-header timecard-header">
           <div class="timecard-header-main">
             <div class="card-title" style="display: flex; align-items: center; gap: 8px; flex-wrap: wrap;">
-              <span>My Daily Shift & Timecard</span>
-              <span id="emp-header-break-badge">\${ESSView.isPunchedIn && ESSView.isOnBreak ? '<span class="badge badge-warning" style="font-size: 0.75rem; animation: pulse 2s infinite; display: inline-flex; align-items: center; gap: 4px;"><svg width="12" height="12" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/></svg> Break Active</span>' : ""}</span>
+              <span>My Daily Shift &amp; Timecard</span>
+              <span id="emp-header-break-badge"></span>
             </div>
-            <div class="card-subtitle timecard-header-subtitle">General Shift: Mon–Fri 10:00 AM – 07:00 PM • Sat 10:00 AM – 04:00 PM (Half Day)</div>
+            <div class="card-subtitle timecard-header-subtitle">
+              General Shift: Mon–Fri 10:00 AM – 07:00 PM • Sat 10:00 AM – 04:00 PM (Half Day)
+            </div>
           </div>
           <div class="timecard-header-status">
-            <span class="badge \${ESSView.isShiftCompletedToday ? "badge-success" : !ESSView.isPunchedIn ? "badge-neutral" : ESSView.isOnBreak ? "badge-warning" : "badge-success"}" id="emp-shift-badge">
-              <span class="badge-dot"></span> \${ESSView.isShiftCompletedToday ? "Shift Completed (Today)" : !ESSView.isPunchedIn ? "Checked OUT" : ESSView.isOnBreak ? "On Break (Paused)" : "Checked IN"}
+            <span class="badge badge-neutral" id="emp-shift-badge">
+              <span class="badge-dot"></span> Checked OUT
             </span>
           </div>
         </div>
 
         <div class="card-body" style="padding: 18px 20px;">
           <div class="timecard-station-grid">
-            <!-- Left: Work Time Display (Minimal Clean Timer) -->
+            <!-- Left: Work Time Display -->
             <div class="timecard-timer-card">
               <div style="width: 44px; height: 44px; border-radius: 10px; background: rgba(59, 130, 246, 0.08); color: var(--primary); display: flex; align-items: center; justify-content: center; flex-shrink: 0;">
                 <svg width="22" height="22" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
                 </svg>
               </div>
               <div style="min-width: 0; flex: 1;">
@@ -35,82 +176,514 @@
                   </span>
                 </div>
                 <div style="font-size: 0.76rem; color: var(--text-secondary); margin-top: 5px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
-                  Status: <strong id="emp-timer-substatus">\${ESSView.isShiftCompletedToday ? "Shift completed & punched out" : !ESSView.isPunchedIn ? "Ready to Check In (Opens 09:30 AM)" : ESSView.isOnBreak ? "Paused for Break" : "Active On Duty"}</strong>
+                  Status: <strong id="emp-timer-substatus">Ready to Check In</strong>
                 </div>
               </div>
             </div>
 
-            <!-- Center: Break Time Tracker (Minimal Clean Timer) -->
-            <div class="timecard-timer-card" style="display: block; background: \${ESSView.isOnBreak ? "rgba(245, 158, 11, 0.08)" : "var(--bg-card, #ffffff)"}; border: 1px solid \${ESSView.isOnBreak ? "#d97706" : "var(--border-color, #e2e8f0)"};" id="emp-break-highlight-box">
+            <!-- Center: Break Time Tracker -->
+            <div class="timecard-timer-card" style="display: block; background: var(--bg-card, #ffffff); border: 1px solid var(--border-color, #e2e8f0);" id="emp-break-highlight-box">
               <div class="flex items-center justify-between" style="margin-bottom: 6px;">
                 <div class="flex items-center gap-2">
                   <div style="width: 22px; height: 22px; border-radius: 6px; background: rgba(217, 119, 6, 0.12); color: #d97706; display: flex; align-items: center; justify-content: center;">
-                    <svg width="13" height="13" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M18 8h1a4 4 0 010 8h-1M2 8h16v9a4 4 0 01-4 4H6a4 4 0 01-4-4V8z M6 1v3M10 1v3M14 1v3"/></svg>
+                    <svg width="13" height="13" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M18 8h1a4 4 0 010 8h-1M2 8h16v9a4 4 0 01-4 4H6a4 4 0 01-4-4V8z M6 1v3M10 1v3M14 1v3" />
+                    </svg>
                   </div>
                   <span style="font-size: 0.72rem; font-weight: 700; color: #d97706; text-transform: uppercase; letter-spacing: 0.05em;">Break Tracker</span>
                 </div>
-                <span class="badge \${ESSView.isOnBreak ? "badge-warning" : "badge-neutral"}" style="font-size: 0.7rem;" id="emp-break-badge-status">
-                  \${ESSView.isShiftCompletedToday ? "Shift Ended" : ESSView.isOnBreak ? (ESSView.currentBreakLabel ? "Break: " + ESSView.currentBreakLabel : "On Break") : "1h Quota"}
-                </span>
+                <span class="badge badge-neutral" style="font-size: 0.7rem;" id="emp-break-badge-status">1h Quota</span>
               </div>
               <div class="flex items-baseline justify-between" style="gap: 12px; margin-top: 4px;">
                 <div>
                   <div style="font-size: 0.7rem; color: var(--text-muted); font-weight: 600; text-transform: uppercase; letter-spacing: 0.03em;">Current</div>
-                  <div style="font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Inter', 'Segoe UI', system-ui, sans-serif; font-variant-numeric: tabular-nums; font-feature-settings: 'tnum'; font-size: 1.45rem; font-weight: 700; color: \${ESSView.isOnBreak ? "var(--warning)" : "var(--text-secondary)"}; letter-spacing: 0.03em; line-height: 1.1; margin-top: 3px;" id="emp-break-timer">
+                  <div style="font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Inter', 'Segoe UI', system-ui, sans-serif; font-variant-numeric: tabular-nums; font-feature-settings: 'tnum'; font-size: 1.45rem; font-weight: 700; color: var(--text-secondary); letter-spacing: 0.03em; line-height: 1.1; margin-top: 3px;" id="emp-break-timer">
                     00:00
                   </div>
                 </div>
                 <div style="text-align: right;">
                   <div style="font-size: 0.7rem; color: var(--text-muted); font-weight: 600; text-transform: uppercase; letter-spacing: 0.03em;">Used / Quota</div>
                   <div style="font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Inter', 'Segoe UI', system-ui, sans-serif; font-variant-numeric: tabular-nums; font-feature-settings: 'tnum'; font-size: 1.45rem; font-weight: 700; color: #d97706; letter-spacing: 0.03em; line-height: 1.1; margin-top: 3px;" id="emp-total-break">
-                    \${typeof attendanceService !== "undefined" && attendanceService.formatBreakDuration ? attendanceService.formatBreakDuration(ESSView.totalBreakSeconds) : Math.floor(ESSView.totalBreakSeconds / 60) + "m"}
+                    0m / 60m
                   </div>
                 </div>
               </div>
             </div>
 
-            <!-- Right: Action Buttons Group (2 Distinct Punch Buttons + Break + Apply Leave) -->
+            <!-- Right: Action Buttons Group -->
             <div class="timecard-actions-panel">
               <div class="timecard-action-grid">
                 <!-- 1. Dedicated Punch In Button -->
-                <button class="btn timecard-action-btn \${ESSView.isShiftCompletedToday ? "btn-secondary disabled" : ESSView.isPunchedIn ? "btn-secondary disabled" : "btn-primary"}" id="emp-punch-in-btn" onclick="EmployeeDashboardView.handlePunchIn()" style="\${ESSView.isShiftCompletedToday ? "opacity: 0.55; cursor: not-allowed;" : ESSView.isPunchedIn ? "opacity: 0.85; cursor: default; background: #f0fdf4; border-color: #86efac; color: #166534;" : "background: #16a34a; border-color: #16a34a; color: #ffffff;"}" \${ESSView.isShiftCompletedToday || ESSView.isPunchedIn ? "disabled" : ""}>
+                <button class="btn timecard-action-btn btn-primary" id="emp-punch-in-btn" onclick="TimecardApp.punchIn()" style="background: #16a34a; border-color: #16a34a; color: #ffffff;">
                   <svg width="17" height="17" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    \${ESSView.isPunchedIn || ESSView.isShiftCompletedToday
-        ? '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>'
-        : '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 16l-4-4m0 0l4-4m-4 4h14m-5 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013 3h7a3 3 0 013 3v1"/>'
-      }
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 16l-4-4m0 0l4-4m-4 4h14m-5 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013 3h7a3 3 0 013 3v1" />
                   </svg>
-                  <span>\${ESSView.isPunchedIn || ESSView.isShiftCompletedToday ? "Punched In" : "Punch In"}</span>
+                  <span id="punch-in-text">Punch In</span>
                 </button>
 
                 <!-- 2. Dedicated Punch Out Button -->
-                <button class="btn timecard-action-btn \${ESSView.isShiftCompletedToday ? "btn-secondary disabled" : ESSView.isPunchedIn ? "btn-secondary" : "btn-secondary disabled"}" id="emp-punch-out-btn" onclick="ESSView.punchOut()" style="\${ESSView.isShiftCompletedToday ? "opacity: 0.7; cursor: not-allowed; background: #fef2f2; border-color: #fecaca; color: #991b1b;" : ESSView.isPunchedIn ? "color: #dc2626; border-color: #fca5a5; background: #fff5f5; cursor: pointer;" : "opacity: 0.5; cursor: not-allowed;"}" \${ESSView.isShiftCompletedToday || !ESSView.isPunchedIn ? "disabled" : ""}>
+                <button class="btn timecard-action-btn btn-secondary disabled" id="emp-punch-out-btn" onclick="TimecardApp.punchOut()" style="opacity: 0.5; cursor: not-allowed;" disabled>
                   <svg width="17" height="17" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    \${ESSView.isShiftCompletedToday
-        ? '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"/>'
-        : '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"/>'
-      }
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013 3h4a3 3 0 013 3v1" />
                   </svg>
-                  <span>\${ESSView.isShiftCompletedToday ? "Punched Out" : "Punch Out"}</span>
+                  <span id="punch-out-text">Punch Out</span>
                 </button>
-                
+
                 <!-- 3. Break Button -->
-                <button class="btn timecard-action-btn \${ESSView.isShiftCompletedToday ? "btn-secondary disabled" : ESSView.isOnBreak ? "btn-warning" : "btn-secondary"}" id="emp-break-btn" onclick="ESSView.toggleBreak()" style="\${ESSView.isShiftCompletedToday ? "opacity: 0.55; cursor: not-allowed;" : !ESSView.isOnBreak && ESSView.isPunchedIn ? "color: #d97706; border-color: #fcd34d;" : ""}" \${ESSView.isShiftCompletedToday ? "disabled" : ""}>
+                <button class="btn timecard-action-btn btn-secondary" id="emp-break-btn" onclick="TimecardApp.toggleBreak()">
                   <svg width="17" height="17" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="\${ESSView.isOnBreak ? "M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z M21 12a9 9 0 11-18 0 9 9 0 0118 0z" : "M18 8h1a4 4 0 010 8h-1M2 8h16v9a4 4 0 01-4 4H6a4 4 0 01-4-4V8z M6 1v3M10 1v3M14 1v3"}"/>
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M18 8h1a4 4 0 010 8h-1M2 8h16v9a4 4 0 01-4 4H6a4 4 0 01-4-4V8z M6 1v3M10 1v3M14 1v3" />
                   </svg>
-                  <span>\${ESSView.isShiftCompletedToday ? "Break" : ESSView.isOnBreak ? "Resume" : "Break"}</span>
+                  <span id="break-btn-text">Break</span>
                 </button>
 
                 <!-- 4. Apply Leave Button -->
-                <button class="btn btn-secondary timecard-action-btn" onclick="Forms.openApplyLeaveModal()">
+                <a href="index.html#leaves" class="btn btn-secondary timecard-action-btn" style="text-decoration: none; justify-content: center;">
                   <svg width="17" height="17" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/>
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
                   </svg>
                   <span>Apply Leave</span>
-                </button>
+                </a>
               </div>
             </div>
           </div>
         </div>
       </div>
+    </main>
+  </div>
+
+  <!-- Break Reason Modal -->
+  <div id="break-modal" class="modal-backdrop" style="display: none;">
+    <div class="modal" style="max-width: 440px;">
+      <div class="modal-header">
+        <h3 class="modal-title">Select Break Reason</h3>
+        <button type="button" class="modal-close" onclick="TimecardApp.closeBreakModal()">&times;</button>
+      </div>
+      <div class="modal-body">
+        <p style="font-size: 0.88rem; color: var(--text-secondary); margin-bottom: 16px;">
+          Choose the category for your break. Your break time is tracked against daily policy quotas.
+        </p>
+        <div style="display: flex; flex-direction: column; gap: 10px;">
+          <button type="button" class="btn btn-secondary" style="justify-content: flex-start; text-align: left; padding: 12px 16px;" onclick="TimecardApp.startBreakWithReason('Tea / Coffee Break (15m)')">
+            ☕ Tea / Coffee Break
+          </button>
+          <button type="button" class="btn btn-secondary" style="justify-content: flex-start; text-align: left; padding: 12px 16px;" onclick="TimecardApp.startBreakWithReason('Lunch Break (45m)')">
+            🍽 Lunch Break
+          </button>
+          <button type="button" class="btn btn-secondary" style="justify-content: flex-start; text-align: left; padding: 12px 16px;" onclick="TimecardApp.startBreakWithReason('Personal / Bio Break')">
+            🚶 Personal / Bio Break
+          </button>
+          <button type="button" class="btn btn-secondary" style="justify-content: flex-start; text-align: left; padding: 12px 16px;" onclick="TimecardApp.startBreakWithReason('Official Break / Discussion')">
+            💼 Official Discussion
+          </button>
+        </div>
+      </div>
+      <div class="modal-footer" style="margin-top: 16px;">
+        <button type="button" class="btn btn-secondary" onclick="TimecardApp.closeBreakModal()">Cancel</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Core Services -->
+  <script src="js/theme.js?v=1793275281408"></script>
+  <script src="js/toast.js?v=1793275281408"></script>
+  <script src="js/services/apiClient.js?v=1793275281408"></script>
+  <script src="js/services/authService.js?v=1793275281408"></script>
+  <script src="js/services/attendanceService.js?v=1793275281408"></script>
+
+  <!-- Interactive Timecard App Controller -->
+  <script>
+    const TimecardApp = {
+      user: null,
+      todayRecord: null,
+      isPunchedIn: false,
+      isShiftCompleted: false,
+      isOnBreak: false,
+      workSeconds: 0,
+      breakSeconds: 0,
+      totalBreakSeconds: 0,
+      currentBreakLabel: '',
+      workTimer: null,
+      breakTimer: null,
+
+      async init() {
+        // Hydrate current user
+        try {
+          const authUser = (typeof authService !== 'undefined' && authService.getCurrentUser)
+            ? authService.getCurrentUser()
+            : null;
+          const cachedUser = JSON.parse(localStorage.getItem('currentUser') || 'null');
+          this.user = authUser || cachedUser;
+        } catch (e) {
+          this.user = null;
+        }
+
+        if (!this.user || !this.user.email) {
+          document.getElementById('auth-required-box').style.display = 'block';
+          document.getElementById('timecard-main-content').style.display = 'none';
+          return;
+        }
+
+        // Show user info
+        const displayName = this.user.displayName || this.user.display_name || this.user.email.split('@')[0];
+        const empCode = this.user.employeeCode || this.user.employee_code || '';
+        document.getElementById('user-display-pill').textContent = `${displayName} (${empCode || 'Staff'})`;
+
+        await this.loadTodayAttendance();
+      },
+
+      async loadTodayAttendance() {
+        try {
+          const empId = this.user.employeeId || this.user.uid || this.user.id || this.user.employeeCode;
+          if (typeof attendanceService !== 'undefined') {
+            this.todayRecord = await attendanceService.getTodayAttendance(empId);
+          }
+        } catch (e) {
+          console.warn('[Timecard] Could not fetch attendance:', e.message);
+        }
+
+        this.syncStateFromRecord();
+        this.updateUI();
+      },
+
+      syncStateFromRecord() {
+        const rec = this.todayRecord || {};
+        const checkIn = rec.checkIn || rec.check_in;
+        const checkOut = rec.checkOut || rec.check_out;
+        const status = (rec.status || '').toUpperCase();
+
+        this.isShiftCompleted = Boolean(checkOut && checkOut !== '—' && checkOut !== '-');
+        this.isPunchedIn = Boolean(checkIn && checkIn !== '—' && checkIn !== '-') && !this.isShiftCompleted;
+        this.isOnBreak = status === 'ON_BREAK' || Boolean(rec.isOnBreak);
+
+        this.totalBreakSeconds = Number(rec.totalBreakSeconds || rec.break_duration || 0);
+
+        if (this.isPunchedIn && checkIn) {
+          this.calculateLiveWorkSeconds(checkIn);
+          this.startWorkTimer();
+        } else {
+          this.stopWorkTimer();
+          if (this.isShiftCompleted) {
+            this.workSeconds = Number(rec.netWorkSeconds || rec.work_duration || 28800);
+          } else {
+            this.workSeconds = 0;
+          }
+        }
+
+        if (this.isOnBreak) {
+          this.startBreakTimer();
+        } else {
+          this.stopBreakTimer();
+        }
+      },
+
+      calculateLiveWorkSeconds(checkInStr) {
+        try {
+          const now = new Date();
+          const parts = checkInStr.split(':');
+          if (parts.length >= 2) {
+            const inDate = new Date();
+            let hours = parseInt(parts[0], 10);
+            let mins = parseInt(parts[1], 10);
+            if (/PM/i.test(checkInStr) && hours < 12) hours += 12;
+            if (/AM/i.test(checkInStr) && hours === 12) hours = 0;
+            inDate.setHours(hours, mins, 0, 0);
+
+            const elapsed = Math.floor((now.getTime() - inDate.getTime()) / 1000);
+            this.workSeconds = Math.max(0, elapsed - this.totalBreakSeconds);
+          }
+        } catch (e) {
+          this.workSeconds = 0;
+        }
+      },
+
+      startWorkTimer() {
+        if (this.workTimer) clearInterval(this.workTimer);
+        this.workTimer = setInterval(() => {
+          if (!this.isOnBreak && this.isPunchedIn) {
+            this.workSeconds++;
+            this.renderWorkTimer();
+          }
+        }, 1000);
+      },
+
+      stopWorkTimer() {
+        if (this.workTimer) clearInterval(this.workTimer);
+        this.workTimer = null;
+      },
+
+      startBreakTimer() {
+        if (this.breakTimer) clearInterval(this.breakTimer);
+        this.breakTimer = setInterval(() => {
+          if (this.isOnBreak) {
+            this.breakSeconds++;
+            this.totalBreakSeconds++;
+            this.renderBreakTimer();
+          }
+        }, 1000);
+      },
+
+      stopBreakTimer() {
+        if (this.breakTimer) clearInterval(this.breakTimer);
+        this.breakTimer = null;
+        this.breakSeconds = 0;
+      },
+
+      formatDurationHMS(totalSecs) {
+        const s = Math.max(0, Math.floor(totalSecs));
+        const hrs = String(Math.floor(s / 3600)).padStart(2, '0');
+        const mins = String(Math.floor((s % 3600) / 60)).padStart(2, '0');
+        const secs = String(s % 60).padStart(2, '0');
+        return `${hrs}:${mins}:${secs}`;
+      },
+
+      formatDurationMS(totalSecs) {
+        const s = Math.max(0, Math.floor(totalSecs));
+        const mins = String(Math.floor(s / 60)).padStart(2, '0');
+        const secs = String(s % 60).padStart(2, '0');
+        return `${mins}:${secs}`;
+      },
+
+      renderWorkTimer() {
+        const el = document.getElementById('emp-live-timer');
+        if (el) el.textContent = this.formatDurationHMS(this.workSeconds);
+      },
+
+      renderBreakTimer() {
+        const bEl = document.getElementById('emp-break-timer');
+        if (bEl) bEl.textContent = this.formatDurationMS(this.breakSeconds);
+        const tEl = document.getElementById('emp-total-break');
+        if (tEl) {
+          const usedMins = Math.floor(this.totalBreakSeconds / 60);
+          tEl.textContent = `${usedMins}m / 60m`;
+        }
+      },
+
+      updateUI() {
+        const shiftBadge = document.getElementById('emp-shift-badge');
+        const timerSubstatus = document.getElementById('emp-timer-substatus');
+        const headerBreakBadge = document.getElementById('emp-header-break-badge');
+        const breakHighlightBox = document.getElementById('emp-break-highlight-box');
+        const breakBadgeStatus = document.getElementById('emp-break-badge-status');
+
+        const punchInBtn = document.getElementById('emp-punch-in-btn');
+        const punchOutBtn = document.getElementById('emp-punch-out-btn');
+        const breakBtn = document.getElementById('emp-break-btn');
+        const breakBtnText = document.getElementById('break-btn-text');
+        const punchInText = document.getElementById('punch-in-text');
+        const punchOutText = document.getElementById('punch-out-text');
+
+        this.renderWorkTimer();
+        this.renderBreakTimer();
+
+        if (this.isShiftCompleted) {
+          shiftBadge.className = 'badge badge-success';
+          shiftBadge.innerHTML = '<span class="badge-dot"></span> Shift Completed (Today)';
+          timerSubstatus.textContent = 'Shift completed & punched out';
+          headerBreakBadge.innerHTML = '';
+
+          breakHighlightBox.style.background = 'var(--bg-card, #ffffff)';
+          breakHighlightBox.style.borderColor = 'var(--border-color, #e2e8f0)';
+          breakBadgeStatus.className = 'badge badge-neutral';
+          breakBadgeStatus.textContent = 'Shift Ended';
+
+          punchInBtn.className = 'btn timecard-action-btn btn-secondary disabled';
+          punchInBtn.style = 'opacity: 0.55; cursor: not-allowed;';
+          punchInBtn.disabled = true;
+          punchInText.textContent = 'Punched In';
+
+          punchOutBtn.className = 'btn timecard-action-btn btn-secondary disabled';
+          punchOutBtn.style = 'opacity: 0.7; cursor: not-allowed; background: #fef2f2; border-color: #fecaca; color: #991b1b;';
+          punchOutBtn.disabled = true;
+          punchOutText.textContent = 'Punched Out';
+
+          breakBtn.className = 'btn timecard-action-btn btn-secondary disabled';
+          breakBtn.style = 'opacity: 0.55; cursor: not-allowed;';
+          breakBtn.disabled = true;
+          breakBtnText.textContent = 'Break';
+        } else if (this.isPunchedIn) {
+          if (this.isOnBreak) {
+            shiftBadge.className = 'badge badge-warning';
+            shiftBadge.innerHTML = '<span class="badge-dot"></span> On Break (Paused)';
+            timerSubstatus.textContent = 'Paused for Break';
+            headerBreakBadge.innerHTML = '<span class="badge badge-warning break-active-pulse" style="font-size: 0.75rem; display: inline-flex; align-items: center; gap: 4px;">Break Active</span>';
+
+            breakHighlightBox.style.background = 'rgba(245, 158, 11, 0.08)';
+            breakHighlightBox.style.borderColor = '#d97706';
+            breakBadgeStatus.className = 'badge badge-warning';
+            breakBadgeStatus.textContent = this.currentBreakLabel ? `Break: ${this.currentBreakLabel}` : 'On Break';
+
+            breakBtn.className = 'btn timecard-action-btn btn-warning';
+            breakBtn.style = '';
+            breakBtn.disabled = false;
+            breakBtnText.textContent = 'Resume';
+          } else {
+            shiftBadge.className = 'badge badge-success';
+            shiftBadge.innerHTML = '<span class="badge-dot"></span> Checked IN';
+            timerSubstatus.textContent = 'Active On Duty';
+            headerBreakBadge.innerHTML = '';
+
+            breakHighlightBox.style.background = 'var(--bg-card, #ffffff)';
+            breakHighlightBox.style.borderColor = 'var(--border-color, #e2e8f0)';
+            breakBadgeStatus.className = 'badge badge-neutral';
+            breakBadgeStatus.textContent = '1h Quota';
+
+            breakBtn.className = 'btn timecard-action-btn btn-secondary';
+            breakBtn.style = 'color: #d97706; border-color: #fcd34d;';
+            breakBtn.disabled = false;
+            breakBtnText.textContent = 'Break';
+          }
+
+          punchInBtn.className = 'btn timecard-action-btn btn-secondary disabled';
+          punchInBtn.style = 'opacity: 0.85; cursor: default; background: #f0fdf4; border-color: #86efac; color: #166534;';
+          punchInBtn.disabled = true;
+          punchInText.textContent = 'Punched In';
+
+          punchOutBtn.className = 'btn timecard-action-btn btn-secondary';
+          punchOutBtn.style = 'color: #dc2626; border-color: #fca5a5; background: #fff5f5; cursor: pointer;';
+          punchOutBtn.disabled = false;
+          punchOutText.textContent = 'Punch Out';
+        } else {
+          shiftBadge.className = 'badge badge-neutral';
+          shiftBadge.innerHTML = '<span class="badge-dot"></span> Checked OUT';
+          timerSubstatus.textContent = 'Ready to Check In';
+          headerBreakBadge.innerHTML = '';
+
+          breakHighlightBox.style.background = 'var(--bg-card, #ffffff)';
+          breakHighlightBox.style.borderColor = 'var(--border-color, #e2e8f0)';
+          breakBadgeStatus.className = 'badge badge-neutral';
+          breakBadgeStatus.textContent = '1h Quota';
+
+          punchInBtn.className = 'btn timecard-action-btn btn-primary';
+          punchInBtn.style = 'background: #16a34a; border-color: #16a34a; color: #ffffff;';
+          punchInBtn.disabled = false;
+          punchInText.textContent = 'Punch In';
+
+          punchOutBtn.className = 'btn timecard-action-btn btn-secondary disabled';
+          punchOutBtn.style = 'opacity: 0.5; cursor: not-allowed;';
+          punchOutBtn.disabled = true;
+          punchOutText.textContent = 'Punch Out';
+
+          breakBtn.className = 'btn timecard-action-btn btn-secondary disabled';
+          breakBtn.style = 'opacity: 0.55; cursor: not-allowed;';
+          breakBtn.disabled = true;
+          breakBtnText.textContent = 'Break';
+        }
+      },
+
+      async punchIn() {
+        if (this.isPunchedIn || this.isShiftCompleted) return;
+        try {
+          const empId = this.user.employeeId || this.user.uid || this.user.id || this.user.employeeCode;
+          const empCode = this.user.employeeCode || this.user.employee_code || '';
+          const empName = this.user.displayName || this.user.display_name || this.user.email.split('@')[0];
+
+          if (typeof attendanceService !== 'undefined') {
+            await attendanceService.checkIn({
+              employeeId: empId,
+              employeeCode: empCode,
+              employeeName: empName,
+              department: this.user.department || 'Operations',
+              workMode: 'OFFICE',
+              location: 'Trade For Wealth - HQ Mumbai'
+            });
+          }
+
+          if (typeof Toast !== 'undefined') Toast.success('Punched in successfully! Have a productive shift.');
+          await this.loadTodayAttendance();
+        } catch (e) {
+          if (typeof Toast !== 'undefined') Toast.error(e.message || 'Failed to punch in.');
+        }
+      },
+
+      async punchOut() {
+        if (!this.isPunchedIn || this.isShiftCompleted) return;
+        if (!confirm('Are you sure you want to Punch Out and complete your shift for today?')) return;
+
+        try {
+          const empId = this.user.employeeId || this.user.uid || this.user.id || this.user.employeeCode;
+          const empCode = this.user.employeeCode || this.user.employee_code || '';
+
+          if (typeof attendanceService !== 'undefined') {
+            await attendanceService.checkOut(empId, { employeeCode: empCode });
+          }
+
+          if (typeof Toast !== 'undefined') Toast.success('Punched out successfully. Shift completed for today.');
+          await this.loadTodayAttendance();
+        } catch (e) {
+          if (typeof Toast !== 'undefined') Toast.error(e.message || 'Failed to punch out.');
+        }
+      },
+
+      toggleBreak() {
+        if (!this.isPunchedIn || this.isShiftCompleted) return;
+        if (this.isOnBreak) {
+          this.endBreak();
+        } else {
+          document.getElementById('break-modal').style.display = 'flex';
+        }
+      },
+
+      closeBreakModal() {
+        document.getElementById('break-modal').style.display = 'none';
+      },
+
+      async startBreakWithReason(reason) {
+        this.closeBreakModal();
+        try {
+          const empId = this.user.employeeId || this.user.uid || this.user.id || this.user.employeeCode;
+          const empCode = this.user.employeeCode || this.user.employee_code || '';
+
+          if (typeof attendanceService !== 'undefined') {
+            await attendanceService.recordPunch({
+              employeeId: empId,
+              employeeCode: empCode,
+              punchType: 'Break In',
+              breakReason: reason
+            });
+          }
+
+          this.currentBreakLabel = reason;
+          this.isOnBreak = true;
+          this.breakSeconds = 0;
+          this.startBreakTimer();
+          this.updateUI();
+
+          if (typeof Toast !== 'undefined') Toast.warning(`Break active: ${reason}`);
+        } catch (e) {
+          if (typeof Toast !== 'undefined') Toast.error(e.message || 'Failed to start break.');
+        }
+      },
+
+      async endBreak() {
+        try {
+          const empId = this.user.employeeId || this.user.uid || this.user.id || this.user.employeeCode;
+          const empCode = this.user.employeeCode || this.user.employee_code || '';
+
+          if (typeof attendanceService !== 'undefined') {
+            await attendanceService.recordPunch({
+              employeeId: empId,
+              employeeCode: empCode,
+              punchType: 'Break Out',
+              breakDuration: this.breakSeconds,
+              totalBreakSeconds: this.totalBreakSeconds
+            });
+          }
+
+          this.isOnBreak = false;
+          this.stopBreakTimer();
+          this.updateUI();
+
+          if (typeof Toast !== 'undefined') Toast.success('Welcome back! Break ended.');
+        } catch (e) {
+          if (typeof Toast !== 'undefined') Toast.error(e.message || 'Failed to resume from break.');
+        }
+      }
+    };
+
+    document.addEventListener('DOMContentLoaded', () => {
+      TimecardApp.init();
+    });
+  </script>
+</body>
+</html>

@@ -231,15 +231,9 @@ const Router = {
       ? AuthGuard.resolveCanonicalRole(rawRole)
       : rawRole;
 
-    let isHrLead = false;
-    if (typeof roleAccessService !== 'undefined' && typeof roleAccessService.isHrLead === 'function') {
-      isHrLead = roleAccessService.isHrLead(rawRole, AuthGuard.userProfile);
-    }
-    if (rawRole === 'HR_LEAD') isHrLead = true;
-
     // Fetch allowed pages configured by Admin (falls back to official policy defaults)
     let allowedKeys = (typeof roleAccessService !== 'undefined')
-      ? roleAccessService.getVisiblePagesForRole(isHrLead ? 'HR_LEAD' : role, AuthGuard.userProfile)
+      ? roleAccessService.getVisiblePagesForRole(role)
       : ['dashboard', 'attendance', 'leave', 'compliance', 'ess'];
 
     const allPages = (typeof roleAccessService !== 'undefined') ? roleAccessService.PAGES : [];
@@ -260,8 +254,7 @@ const Router = {
 
     let roleBadgeTitle = 'Employee Workspace (ESS)';
     if (role === 'ADMIN') roleBadgeTitle = 'Admin Console';
-    else if (isHrLead) roleBadgeTitle = 'HR Management';
-    else if (role === 'HR') roleBadgeTitle = 'HR Portal (Employee & Talent)';
+    else if (role === 'HR') roleBadgeTitle = 'HR Management';
     else if (role === 'OPS') roleBadgeTitle = 'Operations Portal (OPS)';
     else if (role === 'COMPLIANCE') roleBadgeTitle = 'Compliance Workspace';
     else if (role === 'MANAGER') roleBadgeTitle = 'Manager Portal';

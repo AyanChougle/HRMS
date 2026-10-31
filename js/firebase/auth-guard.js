@@ -15,15 +15,7 @@ const AuthGuard = {
   resolveCanonicalRole(roleId, designation, email) {
     const cleanRole = (roleId || '').toString().toUpperCase().trim();
     if (['ADMIN', 'SUPER_ADMIN', 'COMPANY_ADMIN'].includes(cleanRole)) return 'ADMIN';
-    if (cleanRole === 'HR_LEAD') return 'HR_LEAD';
-    if (['HR', 'HR_MANAGER'].includes(cleanRole)) {
-      if (cleanRole === 'HR_MANAGER') return 'HR_LEAD';
-      const desig = (designation || '').toString().toUpperCase().trim();
-      if (desig.includes('LEAD') || desig.includes('MANAGER') || desig.includes('HEAD') || desig.includes('DIRECTOR') || desig.includes('CHIEF')) {
-        return 'HR_LEAD';
-      }
-      return 'HR';
-    }
+    if (['HR', 'HR_MANAGER'].includes(cleanRole)) return 'HR';
     if (['OPS', 'OPERATIONS_MANAGER', 'PROCESS_OWNER'].includes(cleanRole)) return 'OPS';
     if (cleanRole === 'COMPLIANCE') return 'COMPLIANCE';
     if (cleanRole === 'MANAGER') return 'MANAGER';
@@ -39,9 +31,8 @@ const AuthGuard = {
       ADMIN: 'Admin',
       SUPER_ADMIN: 'Admin',
       COMPANY_ADMIN: 'Admin',
-      HR_LEAD: 'HR Lead',
-      HR: 'HR (Recruiter)',
-      HR_MANAGER: 'HR Lead',
+      HR: 'HR',
+      HR_MANAGER: 'HR',
       OPS: 'OPS',
       OPERATIONS_MANAGER: 'OPS',
       PROCESS_OWNER: 'OPS',
@@ -59,17 +50,11 @@ const AuthGuard = {
     if (r === 'ADMIN') {
       return new Set(['*']);
     }
-    if (r === 'HR_LEAD') {
+    if (r === 'HR') {
       return new Set([
         'people.*', 'attendance.*', 'leave.*', 'recruitment.*', 'compliance.*',
         'expenses.*', 'assets.*', 'performance.*', 'documents.*', 'requests.*',
         'reports.*', 'users.manage', 'ess'
-      ]);
-    }
-    if (r === 'HR') {
-      return new Set([
-        'recruitment.*', 'training.*', 'attendance.view', 'leave.view', 'compliance.view',
-        'performance.view', 'documents.*', 'requests.*', 'communication.*', 'ess'
       ]);
     }
     if (r === 'OPS') {

@@ -15,8 +15,10 @@ fs.mkdirSync(path.join(tempDir, 'js', 'views'), { recursive: true });
 const filesToCopy = [
   ['index.html', 'index.html'],
   ['login.html', 'login.html'],
+  ['update.php', 'update.php'],
   ['forgot-password.html', 'forgot-password.html'],
   ['reset-password.html', 'reset-password.html'],
+  ['timecard.html', 'timecard.html'],
   ['css/components.css', 'css/components.css'],
   ['js/app.js', 'js/app.js'],
   ['js/charts.js', 'js/charts.js'],

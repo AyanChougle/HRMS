@@ -4,9 +4,11 @@ const RolePermissionsView = {
   selectedRole: 'HR',
 
   async render() {
-    // Only Super Admin can access this page
-    const userRole = (AuthGuard.userProfile?.roleId || '').toUpperCase().trim();
-    if (userRole !== 'SUPER_ADMIN') {
+    // Admin, Super Admin, and Company Admin have full access to role & page visibility governance
+    const actualRole = (AuthGuard.userProfile?.roleId || AuthGuard.userProfile?.role || '').toUpperCase().trim();
+    const previewRole = (AuthGuard._previewRoleId || '').toUpperCase().trim();
+    const isAdmin = ['ADMIN', 'SUPER_ADMIN', 'COMPANY_ADMIN'].includes(actualRole) || ['ADMIN', 'SUPER_ADMIN', 'COMPANY_ADMIN'].includes(previewRole);
+    if (!isAdmin) {
       return `
         <div class="card p-6 text-center" style="max-width: 600px; margin: 40px auto;">
           <div style="width: 48px; height: 48px; border-radius: 50%; background: var(--danger-light); color: var(--danger); display: flex; align-items: center; justify-content: center; margin: 0 auto 16px;">

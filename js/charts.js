@@ -126,7 +126,7 @@ const Charts = {
             <div style="font-size: 0.7rem; color: var(--text-muted); text-transform: uppercase;">Employees</div>
           </div>
         </div>
-        <div style="flex: 1; min-width: 160px; max-height: 180px; overflow-y: auto;">
+        <div style="flex: 1; min-width: 160px;">
           ${legendHtml}
         </div>
       </div>

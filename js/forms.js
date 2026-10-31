@@ -41,20 +41,6 @@ const Forms = {
     const defaultCode = emp?.employeeCode || await employeeService.getNextEmployeeCode();
     const isEdit = !!emp;
 
-    const empRoleRaw = emp?.roleId || emp?.role || 'EMPLOYEE';
-    const currentEmpRole = (typeof AuthGuard !== 'undefined' && AuthGuard.resolveCanonicalRole)
-      ? AuthGuard.resolveCanonicalRole(empRoleRaw)
-      : (function(r) {
-          const c = (r || 'EMPLOYEE').toString().toUpperCase().trim();
-          if (['ADMIN', 'SUPER_ADMIN', 'COMPANY_ADMIN'].includes(c)) return 'ADMIN';
-          if (['HR', 'HR_MANAGER'].includes(c)) return 'HR';
-          if (['OPS', 'OPERATIONS_MANAGER', 'PROCESS_OWNER'].includes(c)) return 'OPS';
-          if (c === 'COMPLIANCE' || c === 'COMPLIANCE_OFFICER') return 'COMPLIANCE';
-          if (c === 'MANAGER' || c === 'DEPARTMENT_MANAGER') return 'MANAGER';
-          if (['TL', 'TEAM_LEAD'].includes(c)) return 'TL';
-          return 'EMPLOYEE';
-        })(empRoleRaw);
-
     const contentHtml = `
       <form id="employee-wizard-form" onsubmit="event.preventDefault(); Forms.submitEmployeeForm('${employeeId || ''}')">
         <!-- Wizard Sub-Navigation Tabs -->
@@ -199,13 +185,18 @@ const Forms = {
             <div class="col-4 form-group">
               <label class="form-label required">System Role / Portal Access</label>
               <select id="ef-role" class="form-control" style="font-weight: 600; color: var(--primary);">
-                <option value="EMPLOYEE" ${currentEmpRole === 'EMPLOYEE' ? 'selected' : ''}>Employee (Self Service)</option>
-                <option value="OPS" ${currentEmpRole === 'OPS' ? 'selected' : ''}>Operations Manager (OPS)</option>
-                <option value="MANAGER" ${currentEmpRole === 'MANAGER' ? 'selected' : ''}>Manager</option>
-                <option value="HR" ${currentEmpRole === 'HR' ? 'selected' : ''}>HR Manager (HRS)</option>
-                <option value="TL" ${currentEmpRole === 'TL' ? 'selected' : ''}>Team Leader (TL)</option>
-                <option value="COMPLIANCE" ${currentEmpRole === 'COMPLIANCE' ? 'selected' : ''}>Compliance Officer</option>
-                <option value="ADMIN" ${currentEmpRole === 'ADMIN' ? 'selected' : ''}>Super Admin</option>
+                <option value="EMPLOYEE" ${(emp?.roleId || 'EMPLOYEE') === 'EMPLOYEE' ? 'selected' : ''}>Employee (Self Service)</option>
+                <option value="OPERATIONS_MANAGER" ${emp?.roleId === 'OPERATIONS_MANAGER' ? 'selected' : ''}>Operations Manager (OPS)</option>
+                <option value="MANAGER" ${emp?.roleId === 'MANAGER' ? 'selected' : ''}>Manager</option>
+                <option value="PROCESS_OWNER" ${emp?.roleId === 'PROCESS_OWNER' ? 'selected' : ''}>Process Owner</option>
+                <option value="COMPLIANCE" ${emp?.roleId === 'COMPLIANCE' ? 'selected' : ''}>Compliance Officer</option>
+                <option value="DIGITAL_MARKETING" ${emp?.roleId === 'DIGITAL_MARKETING' ? 'selected' : ''}>Digital Marketing</option>
+                <option value="HR_MANAGER" ${(emp?.roleId === 'HR_MANAGER' || emp?.roleId === 'HR') ? 'selected' : ''}>HR Manager (HRS)</option>
+                <option value="TEAM_LEAD" ${(emp?.roleId === 'TEAM_LEAD' || emp?.roleId === 'TL') ? 'selected' : ''}>Team Leader</option>
+                <option value="RELATIONSHIP_MANAGER" ${emp?.roleId === 'RELATIONSHIP_MANAGER' ? 'selected' : ''}>Relationship Manager</option>
+                <option value="MENTOR_TRAINER" ${emp?.roleId === 'MENTOR_TRAINER' ? 'selected' : ''}>Mentor / Trainer</option>
+                <option value="TRAINEE" ${emp?.roleId === 'TRAINEE' ? 'selected' : ''}>Trainee</option>
+                <option value="SUPER_ADMIN" ${emp?.roleId === 'SUPER_ADMIN' ? 'selected' : ''}>Super Admin</option>
               </select>
             </div>
           </div>

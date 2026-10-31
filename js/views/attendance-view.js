@@ -1285,9 +1285,11 @@ const AttendanceView = {
                               <svg width="11" height="11" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
                               09:00 PM (Auto)
                             </span>
+                          ` : (!t.attendance.checkIn || t.attendance.checkIn === '—' || t.attendance.checkIn === '-' || ['ABSENT', 'ON_LEAVE', 'LEAVE', 'HOLIDAY', 'WEEK_OFF'].includes(t.attendance.status) ? `
+                            <span class="text-muted">—</span>
                           ` : `
                             <span class="font-semibold text-main">${t.attendance.checkOut || '<span class="badge badge-warning" style="font-size: 0.7rem;">On Shift</span>'}</span>
-                          `}
+                          `)}
                         </td>
                         <td><strong style="color: var(--primary);">${t.attendance.workedHoursFormatted || '0h 00m'}</strong></td>
                         <td>

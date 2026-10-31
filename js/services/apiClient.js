@@ -51,21 +51,22 @@ const apiClient = {
 
     try {
       const response = await fetch(url, fetchConfig);
-      const text = await response.text();
+      const contentType = response.headers.get('content-type') || '';
 
       let data = null;
-      if (text && text.trim()) {
+      if (contentType.includes('application/json')) {
+        data = await response.json();
+      } else {
+        const text = await response.text();
         try {
           data = JSON.parse(text);
         } catch (_) {
-          data = { raw: text, error: text.length > 200 ? text.substring(0, 200) + '...' : text };
+          data = { raw: text };
         }
-      } else {
-        data = { success: response.ok };
       }
 
       if (!response.ok) {
-        const errorMsg = data?.error || data?.message || (data?.raw ? (data.raw.length > 200 ? data.raw.substring(0, 200) + '...' : data.raw) : `Server error (HTTP ${response.status})`);
+        const errorMsg = data?.error || data?.message || `Server responded with HTTP ${response.status}`;
         throw new Error(errorMsg);
       }
 

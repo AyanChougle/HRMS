@@ -1,18 +1,32 @@
-
-
 const CreateEmployeeView = {
   async render() {
-    const userRole = (AuthGuard.userProfile?.roleId || '').toUpperCase().trim();
+    const userRole = (AuthGuard.userProfile?.roleId || "").toUpperCase().trim();
     let employees = [];
     try {
-      if (typeof employeeService !== 'undefined') {
+      if (typeof employeeService !== "undefined") {
         employees = await employeeService.getAllEmployees();
       }
-    } catch(e) { console.warn(e); }
-    
-    const mgrOptions = '<option value="">-- Select --</option>' + employees.map(e => `<option value="${e.id}">${e.fullName || e.firstName} (${e.employeeCode})</option>`).join('');
-    
-    const isAuthorized = ['SUPER_ADMIN', 'COMPANY_ADMIN', 'ADMIN', 'HR_MANAGER', 'HR', 'MANAGER'].includes(userRole);
+    } catch (e) {
+      console.warn(e);
+    }
+
+    const mgrOptions =
+      '<option value="">-- Select --</option>' +
+      employees
+        .map(
+          (e) =>
+            `<option value="${e.id}">${e.fullName || e.firstName} (${e.employeeCode})</option>`,
+        )
+        .join("");
+
+    const isAuthorized = [
+      "SUPER_ADMIN",
+      "COMPANY_ADMIN",
+      "ADMIN",
+      "HR_MANAGER",
+      "HR",
+      "MANAGER",
+    ].includes(userRole);
 
     if (!isAuthorized) {
       return `
@@ -26,21 +40,24 @@ const CreateEmployeeView = {
 
     let liveDepts = [];
     try {
-      if (typeof departmentService !== 'undefined') {
+      if (typeof departmentService !== "undefined") {
         liveDepts = await departmentService.getDepartments();
       }
-    } catch(e) {}
+    } catch (e) {}
 
-    const officialDepartments = liveDepts.length > 0 ? liveDepts.map(d => d.name || d) : [
-      'Digital Team',
-      'Operations',
-      'Sales',
-      'Real Estate',
-      'Car Rental',
-      'Compliance',
-      'Training',
-      'Human Resources'
-    ];
+    const officialDepartments =
+      liveDepts.length > 0
+        ? liveDepts.map((d) => d.name || d)
+        : [
+            "Digital Team",
+            "Operations",
+            "Sales",
+            "Real Estate",
+            "Car Rental",
+            "Compliance",
+            "Training",
+            "Human Resources",
+          ];
 
     return `
       <div class="page-header animate-fade-in">
@@ -143,7 +160,7 @@ const CreateEmployeeView = {
               <div class="form-group">
                 <label class="form-label required">Standard Department</label>
                 <select id="new-emp-department" class="form-control" required>
-                  ${officialDepartments.map(dept => `<option value="${dept}">${dept}</option>`).join('')}
+                  ${officialDepartments.map((dept) => `<option value="${dept}">${dept}</option>`).join("")}
                 </select>
               </div>
               <div class="form-group">
@@ -177,7 +194,7 @@ const CreateEmployeeView = {
               </div>
               <div class="form-group">
                 <label class="form-label required">Date of Joining</label>
-                <input type="date" id="new-emp-doj" class="form-control" required value="${new Date().toISOString().split('T')[0]}" />
+                <input type="date" id="new-emp-doj" class="form-control" required value="${new Date().toISOString().split("T")[0]}" />
               </div>
               <div class="form-group">
                 <label class="form-label">Office Location</label>
@@ -264,81 +281,96 @@ const CreateEmployeeView = {
   },
 
   handleRoleChange(role) {
-    const notice = document.getElementById('trainee-notice-box');
-    const desigInput = document.getElementById('new-emp-designation');
-    if (role === 'TRAINEE') {
-      if (notice) notice.style.display = 'block';
-      if (desigInput && (!desigInput.value || desigInput.value.includes('Executive'))) desigInput.value = 'Graduate Trainee';
+    const notice = document.getElementById("trainee-notice-box");
+    const desigInput = document.getElementById("new-emp-designation");
+    if (role === "TRAINEE") {
+      if (notice) notice.style.display = "block";
+      if (
+        desigInput &&
+        (!desigInput.value || desigInput.value.includes("Executive"))
+      )
+        desigInput.value = "Graduate Trainee";
     } else {
-      if (notice) notice.style.display = 'none';
-      if (desigInput && desigInput.value === 'Graduate Trainee') desigInput.value = 'Associate';
+      if (notice) notice.style.display = "none";
+      if (desigInput && desigInput.value === "Graduate Trainee")
+        desigInput.value = "Associate";
     }
   },
 
   generatePassword() {
-    const fName = (document.getElementById('new-emp-firstname')?.value || 'User').trim();
-    const cleanFname = fName.charAt(0).toUpperCase() + fName.slice(1).toLowerCase().replace(/[^a-zA-Z]/g, '');
-    const randCode = 'D' + String(Math.floor(1000 + Math.random() * 90000)).padStart(5, '0');
-    const pass = `${cleanFname || 'User'}@${randCode}`;
-    const passInput = document.getElementById('new-emp-password');
+    const pass = "Diallo@" + Math.floor(1000 + Math.random() * 9000);
+    const passInput = document.getElementById("new-emp-password");
     if (passInput) passInput.value = pass;
     Toast.info(`Generated password: ${pass}`);
   },
 
   async handleSubmit(event) {
     event.preventDefault();
-    const submitBtn = document.getElementById('create-emp-submit-btn');
+    const submitBtn = document.getElementById("create-emp-submit-btn");
     if (submitBtn) {
       submitBtn.disabled = true;
-      submitBtn.innerHTML = '<span>Creating Login Account...</span>';
+      submitBtn.innerHTML = "<span>Creating Login Account...</span>";
     }
 
-    const firstName = (document.getElementById('new-emp-firstname')?.value || '').trim();
-    const lastName = (document.getElementById('new-emp-lastname')?.value || '').trim();
+    const firstName = (
+      document.getElementById("new-emp-firstname")?.value || ""
+    ).trim();
+    const lastName = (
+      document.getElementById("new-emp-lastname")?.value || ""
+    ).trim();
     const fullName = `${firstName} ${lastName}`.trim();
-    const email = (document.getElementById('new-emp-email')?.value || '').trim().toLowerCase();
-    const password = (document.getElementById('new-emp-password')?.value || '').trim();
-    const phone = (document.getElementById('new-emp-phone')?.value || '').trim();
-    const roleId = document.getElementById('new-emp-role')?.value || 'EMPLOYEE';
-    const department = document.getElementById('new-emp-department')?.value || 'Sales';
-    const designation = (document.getElementById('new-emp-designation')?.value || '').trim();
-    
-    // Normalize date of joining to standard YYYY-MM-DD
-    let rawDoj = document.getElementById('new-emp-doj')?.value || '';
-    let dateOfJoining = new Date().toISOString().split('T')[0];
-    if (rawDoj) {
-      if (rawDoj.includes('/')) {
-        const parts = rawDoj.split('/');
-        if (parts.length === 3) {
-          dateOfJoining = `${parts[2]}-${String(parts[0]).padStart(2, '0')}-${String(parts[1]).padStart(2, '0')}`;
-        }
-      } else {
-        dateOfJoining = rawDoj;
-      }
-    }
+    const email = (document.getElementById("new-emp-email")?.value || "")
+      .trim()
+      .toLowerCase();
+    const password = document.getElementById("new-emp-password")?.value || "";
+    const phone = (
+      document.getElementById("new-emp-phone")?.value || ""
+    ).trim();
+    const roleId = document.getElementById("new-emp-role")?.value || "EMPLOYEE";
+    const department =
+      document.getElementById("new-emp-department")?.value || "Sales";
+    const designation = (
+      document.getElementById("new-emp-designation")?.value || ""
+    ).trim();
+    const dateOfJoining =
+      document.getElementById("new-emp-doj")?.value ||
+      new Date().toISOString().split("T")[0];
 
-    // Extract employee code if embedded in password (e.g. Shirkant@D08532 -> D08532)
-    let employeeCode = '';
-    const codeMatch = password.match(/@([dD][0-9]{4,6})/i);
-    if (codeMatch) {
-      employeeCode = codeMatch[1].toUpperCase();
-    }
+    const tlSelect = document.getElementById("new-emp-team-leader");
+    const teamLeadId = tlSelect?.value || "";
+    const teamLeadName =
+      tlSelect?.selectedIndex > 0
+        ? tlSelect.options[tlSelect.selectedIndex].text
+            .replace(/\s*\([^)]*\)$/, "")
+            .trim()
+        : "";
 
-    const tlSelect = document.getElementById('new-emp-team-leader');
-    const teamLeadId = tlSelect?.value || '';
-    const teamLeadName = tlSelect?.selectedIndex > 0 ? tlSelect.options[tlSelect.selectedIndex].text.replace(/\s*\([^)]*\)$/, '').trim() : '';
+    const opsSelect = document.getElementById("new-emp-ops-manager");
+    const opsManagerId = opsSelect?.value || "";
+    const opsManagerName =
+      opsSelect?.selectedIndex > 0
+        ? opsSelect.options[opsSelect.selectedIndex].text
+            .replace(/\s*\([^)]*\)$/, "")
+            .trim()
+        : "";
 
-    const opsSelect = document.getElementById('new-emp-ops-manager');
-    const opsManagerId = opsSelect?.value || '';
-    const opsManagerName = opsSelect?.selectedIndex > 0 ? opsSelect.options[opsSelect.selectedIndex].text.replace(/\s*\([^)]*\)$/, '').trim() : '';
+    const mgrSelect = document.getElementById("new-emp-manager");
+    const managerId = mgrSelect?.value || "";
+    const managerName =
+      mgrSelect?.selectedIndex > 0
+        ? mgrSelect.options[mgrSelect.selectedIndex].text
+            .replace(/\s*\([^)]*\)$/, "")
+            .trim()
+        : "";
 
-    const mgrSelect = document.getElementById('new-emp-manager');
-    const managerId = mgrSelect?.value || '';
-    const managerName = mgrSelect?.selectedIndex > 0 ? mgrSelect.options[mgrSelect.selectedIndex].text.replace(/\s*\([^)]*\)$/, '').trim() : '';
-
-    const mentorSelect = document.getElementById('new-emp-mentor');
-    const mentorId = mentorSelect?.value || '';
-    const mentorName = mentorSelect?.selectedIndex > 0 ? mentorSelect.options[mentorSelect.selectedIndex].text.replace(/\s*\([^)]*\)$/, '').trim() : '';
+    const mentorSelect = document.getElementById("new-emp-mentor");
+    const mentorId = mentorSelect?.value || "";
+    const mentorName =
+      mentorSelect?.selectedIndex > 0
+        ? mentorSelect.options[mentorSelect.selectedIndex].text
+            .replace(/\s*\([^)]*\)$/, "")
+            .trim()
+        : "";
 
     try {
       const payload = {
@@ -347,8 +379,6 @@ const CreateEmployeeView = {
         displayName: fullName,
         email,
         password,
-        initialPassword: password,
-        employeeCode,
         phone,
         roleId,
         department,
@@ -364,58 +394,70 @@ const CreateEmployeeView = {
         managerName: managerName || opsManagerName,
         mentor: mentorName,
         mentorId,
-        branchName: 'Trade For Wealth - HQ Mumbai',
-        location: 'Ghansoli - Navi Mumbai, Maharashtra'
+        branchName: "Trade For Wealth - HQ Mumbai",
+        location: "Ghansoli - Navi Mumbai, Maharashtra",
       };
 
-      const res = await apiClient.post('users.php?action=create', payload);
+      const res = await apiClient.post("users.php?action=create", payload);
 
       if (!res || res.success === false) {
-        throw new Error(res?.error || res?.message || 'Failed to create user account.');
+        throw new Error(
+          res?.error || res?.message || "Failed to create user account.",
+        );
       }
 
       const createdUser = res.user || {};
-      const empCode = createdUser.employee_code || '';
+      const empCode = createdUser.employee_code || "";
 
       // Log Audit Trail if available
-      if (typeof auditService !== 'undefined') {
+      if (typeof auditService !== "undefined") {
         try {
-          await auditService.log('USER_LOGIN_CREATED', 'SECURITY', 'users', createdUser.id || createdUser.uid, {
-            email,
-            roleId,
-            department,
-            employeeCode: empCode,
-            createdBy: AuthGuard.userProfile?.displayName || AuthGuard.userProfile?.email
-          });
+          await auditService.log(
+            "USER_LOGIN_CREATED",
+            "SECURITY",
+            "users",
+            createdUser.id || createdUser.uid,
+            {
+              email,
+              roleId,
+              department,
+              employeeCode: empCode,
+              createdBy:
+                AuthGuard.userProfile?.displayName ||
+                AuthGuard.userProfile?.email,
+            },
+          );
         } catch (_) {}
       }
 
       // Present Success Modal with Credentials
-      const credName = document.getElementById('cred-name');
-      if (credName) credName.textContent = fullName + (empCode ? ` (${empCode})` : '');
-      const credEmail = document.getElementById('cred-email');
+      const credName = document.getElementById("cred-name");
+      if (credName)
+        credName.textContent = fullName + (empCode ? ` (${empCode})` : "");
+      const credEmail = document.getElementById("cred-email");
       if (credEmail) credEmail.textContent = email;
-      const credPass = document.getElementById('cred-pass');
+      const credPass = document.getElementById("cred-pass");
       if (credPass) credPass.textContent = password;
-      const credRole = document.getElementById('cred-role');
+      const credRole = document.getElementById("cred-role");
       if (credRole) credRole.textContent = roleId;
-      const credDept = document.getElementById('cred-dept');
+      const credDept = document.getElementById("cred-dept");
       if (credDept) credDept.textContent = department;
 
-      const modal = document.getElementById('credentials-success-modal');
-      if (modal) modal.style.display = 'flex';
+      const modal = document.getElementById("credentials-success-modal");
+      if (modal) modal.style.display = "flex";
 
       Toast.success(`Login credentials created for ${fullName} (${email})`);
 
       // Reset form
-      const form = document.getElementById('create-employee-form');
+      const form = document.getElementById("create-employee-form");
       if (form) form.reset();
-      const dojInput = document.getElementById('new-emp-doj');
-      if (dojInput) dojInput.value = new Date().toISOString().split('T')[0];
-
+      const dojInput = document.getElementById("new-emp-doj");
+      if (dojInput) dojInput.value = new Date().toISOString().split("T")[0];
     } catch (err) {
-      console.error('[CreateEmployee] Error provisioning user:', err);
-      Toast.error('Account creation failed: ' + (err.message || 'Unknown server error'));
+      console.error("[CreateEmployee] Error provisioning user:", err);
+      Toast.error(
+        "Account creation failed: " + (err.message || "Unknown server error"),
+      );
     } finally {
       if (submitBtn) {
         submitBtn.disabled = false;
@@ -430,25 +472,25 @@ const CreateEmployeeView = {
   },
 
   closeModal() {
-    const modal = document.getElementById('credentials-success-modal');
-    if (modal) modal.style.display = 'none';
+    const modal = document.getElementById("credentials-success-modal");
+    if (modal) modal.style.display = "none";
   },
 
   copyCredentials() {
-    const email = document.getElementById('cred-email')?.textContent || '';
-    const pass = document.getElementById('cred-pass')?.textContent || '';
-    const name = document.getElementById('cred-name')?.textContent || '';
-    const role = document.getElementById('cred-role')?.textContent || '';
+    const email = document.getElementById("cred-email")?.textContent || "";
+    const pass = document.getElementById("cred-pass")?.textContent || "";
+    const name = document.getElementById("cred-name")?.textContent || "";
+    const role = document.getElementById("cred-role")?.textContent || "";
     const text = `Trade For Wealth HRMS Login Credentials:\nName: ${name}\nRole: ${role}\nEmail: ${email}\nPassword: ${pass}\nPortal: https://hrmstfw.com/login.html`;
-    
+
     if (navigator.clipboard) {
       navigator.clipboard.writeText(text).then(() => {
-        Toast.success('Credentials copied to clipboard!');
+        Toast.success("Credentials copied to clipboard!");
       });
     } else {
-      Toast.info('Credentials ready to share.');
+      Toast.info("Credentials ready to share.");
     }
-  }
+  },
 };
 
 window.CreateEmployeeView = CreateEmployeeView;
