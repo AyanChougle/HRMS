@@ -276,7 +276,10 @@ const CreateEmployeeView = {
   },
 
   generatePassword() {
-    const pass = 'Diallo@' + Math.floor(1000 + Math.random() * 9000);
+    const fName = (document.getElementById('new-emp-firstname')?.value || 'User').trim();
+    const cleanFname = fName.charAt(0).toUpperCase() + fName.slice(1).toLowerCase().replace(/[^a-zA-Z]/g, '');
+    const randCode = 'D' + String(Math.floor(1000 + Math.random() * 90000)).padStart(5, '0');
+    const pass = `${cleanFname || 'User'}@${randCode}`;
     const passInput = document.getElementById('new-emp-password');
     if (passInput) passInput.value = pass;
     Toast.info(`Generated password: ${pass}`);
@@ -294,12 +297,32 @@ const CreateEmployeeView = {
     const lastName = (document.getElementById('new-emp-lastname')?.value || '').trim();
     const fullName = `${firstName} ${lastName}`.trim();
     const email = (document.getElementById('new-emp-email')?.value || '').trim().toLowerCase();
-    const password = document.getElementById('new-emp-password')?.value || '';
+    const password = (document.getElementById('new-emp-password')?.value || '').trim();
     const phone = (document.getElementById('new-emp-phone')?.value || '').trim();
     const roleId = document.getElementById('new-emp-role')?.value || 'EMPLOYEE';
     const department = document.getElementById('new-emp-department')?.value || 'Sales';
     const designation = (document.getElementById('new-emp-designation')?.value || '').trim();
-    const dateOfJoining = document.getElementById('new-emp-doj')?.value || new Date().toISOString().split('T')[0];
+    
+    // Normalize date of joining to standard YYYY-MM-DD
+    let rawDoj = document.getElementById('new-emp-doj')?.value || '';
+    let dateOfJoining = new Date().toISOString().split('T')[0];
+    if (rawDoj) {
+      if (rawDoj.includes('/')) {
+        const parts = rawDoj.split('/');
+        if (parts.length === 3) {
+          dateOfJoining = `${parts[2]}-${String(parts[0]).padStart(2, '0')}-${String(parts[1]).padStart(2, '0')}`;
+        }
+      } else {
+        dateOfJoining = rawDoj;
+      }
+    }
+
+    // Extract employee code if embedded in password (e.g. Shirkant@D08532 -> D08532)
+    let employeeCode = '';
+    const codeMatch = password.match(/@([dD][0-9]{4,6})/i);
+    if (codeMatch) {
+      employeeCode = codeMatch[1].toUpperCase();
+    }
 
     const tlSelect = document.getElementById('new-emp-team-leader');
     const teamLeadId = tlSelect?.value || '';
@@ -324,6 +347,8 @@ const CreateEmployeeView = {
         displayName: fullName,
         email,
         password,
+        initialPassword: password,
+        employeeCode,
         phone,
         roleId,
         department,

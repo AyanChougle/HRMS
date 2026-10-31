@@ -526,11 +526,19 @@ const AdminDashboardView = {
         "#dc2626",
         "#4f46e5",
       ];
-      const deptSegments = departments.map((d, i) => ({
-        label: d.name,
-        count: employees.filter((e) => e.department === d.name || (e.department && e.department.toLowerCase().includes(d.name.toLowerCase()))).length,
-        color: deptColors[i % deptColors.length],
-      }));
+      const deptMap = {};
+      departments.forEach((d) => { if (d.name) deptMap[d.name] = 0; });
+      employees.forEach((e) => {
+        const dName = e.department || 'Operations';
+        deptMap[dName] = (deptMap[dName] || 0) + 1;
+      });
+      const deptSegments = Object.entries(deptMap)
+        .sort((a, b) => b[1] - a[1])
+        .map(([name, count], i) => ({
+          label: name,
+          count: count,
+          color: deptColors[i % deptColors.length],
+        }));
       Charts.renderDonutChart("department-donut-chart", deptSegments);
 
       // Announcements

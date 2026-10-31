@@ -93,18 +93,24 @@ if ($method === 'GET') {
         $params[':self_uid'] = $userUid;
         $params[':self_code'] = $userCode;
     } elseif ($userRole === 'TL') {
-        $sql .= " AND (l.employee_id = :self_uid OR l.employee_code = :self_code OR e.team_lead_id = :tlid OR e.team_lead_id = :tlcode OR e.manager_id = :tlid OR e.manager_id = :tlcode)";
+        $myName = $currentUser['display_name'] ?? trim(($currentUser['first_name'] ?? '') . ' ' . ($currentUser['last_name'] ?? ''));
+        $sql .= " AND (l.employee_id = :self_uid OR l.employee_code = :self_code OR e.team_lead_id = :tlid OR e.team_lead_id = :tlcode OR e.team_lead LIKE :tlname OR e.manager_id = :tlid OR e.manager_id = :tlcode OR e.manager LIKE :tlname2)";
         $params[':self_uid'] = $userUid;
         $params[':self_code'] = $userCode;
         $params[':tlid'] = $userUid;
         $params[':tlcode'] = $userCode;
-    } elseif ($userRole === 'MANAGER' && !empty($userDept)) {
-        $sql .= " AND (l.employee_id = :self_uid OR l.employee_code = :self_code OR e.department = :dept OR e.manager_id = :mgr_uid OR e.manager_id = :mgr_code)";
+        $params[':tlname'] = '%' . trim($myName ?: 'none') . '%';
+        $params[':tlname2'] = '%' . trim($myName ?: 'none') . '%';
+    } elseif ($userRole === 'MANAGER') {
+        $myName = $currentUser['display_name'] ?? trim(($currentUser['first_name'] ?? '') . ' ' . ($currentUser['last_name'] ?? ''));
+        $sql .= " AND (l.employee_id = :self_uid OR l.employee_code = :self_code OR (e.department IS NOT NULL AND e.department = :dept AND :dept != '') OR e.manager_id = :mgr_uid OR e.manager_id = :mgr_code OR e.manager LIKE :mgrname OR e.team_lead LIKE :mgrname2)";
         $params[':self_uid'] = $userUid;
         $params[':self_code'] = $userCode;
-        $params[':dept'] = $userDept;
+        $params[':dept'] = $userDept ?: '';
         $params[':mgr_uid'] = $userUid;
         $params[':mgr_code'] = $userCode;
+        $params[':mgrname'] = '%' . trim($myName ?: 'none') . '%';
+        $params[':mgrname2'] = '%' . trim($myName ?: 'none') . '%';
     }
 
     if (!empty($empId)) {
@@ -137,6 +143,10 @@ if ($method === 'POST') {
 
         if (!$leaveId || !in_array($status, ['APPROVED', 'REJECTED'])) {
             json_out(["success" => false, "error" => "Invalid review parameters."], 400);
+        }
+
+        if (!in_array($userRole, ['ADMIN', 'HR', 'HR_LEAD', 'OPS', 'MANAGER', 'TL', 'SUPER_ADMIN', 'COMPANY_ADMIN'])) {
+            json_out(["success" => false, "error" => "Access denied. Only Team Leaders, Managers, HR, and Admins can review leave applications."], 403);
         }
 
         // Fetch application details first

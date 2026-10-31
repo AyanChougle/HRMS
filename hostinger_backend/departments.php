@@ -12,6 +12,17 @@ try {
     // GET: Fetch all active departments dynamically from DB with member counts
     // -----------------------------------------------------------------------------
     if ($method === 'GET') {
+        // Auto-sync any distinct departments from employees master into departments table
+        try {
+            $pdo->exec("
+                INSERT IGNORE INTO departments (name, code, description, status)
+                SELECT DISTINCT department, UPPER(LEFT(REPLACE(department, ' ', ''), 4)), CONCAT(department, ' Department'), 'ACTIVE'
+                FROM employees
+                WHERE department IS NOT NULL AND department != '' 
+                  AND department NOT IN (SELECT name FROM departments);
+            ");
+        } catch (\Throwable $e) {}
+
         $stmt = $pdo->query("
             SELECT d.id, d.name, d.code, d.head_employee_id, d.head_name, d.description, d.status, d.created_at,
                    COUNT(e.id) AS members

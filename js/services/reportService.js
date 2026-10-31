@@ -53,8 +53,15 @@ const reportService = {
 
   // Authoritative Backend Export: Direct XLSX / CSV from Hostinger MySQL
   downloadBackendExport(type = 'attendance', format = 'xlsx', extraParams = {}) {
-    const baseUrl = 'https://hrmstfw.com/hostinger_backend/export.php';
-    const token = localStorage.getItem('auth_token') || sessionStorage.getItem('auth_token') || '';
+    const baseUrl = (window.location.hostname === 'hrmstfw.com' || window.location.hostname.endsWith('hrmstfw.com'))
+      ? '/hostinger_backend/export.php'
+      : 'https://hrmstfw.com/hostinger_backend/export.php';
+    const token = sessionStorage.getItem('dh_bearer_token') ||
+                  localStorage.getItem('dh_bearer_token') ||
+                  sessionStorage.getItem('dh_session_token') ||
+                  localStorage.getItem('auth_token') ||
+                  sessionStorage.getItem('auth_token') ||
+                  '';
     const user = (typeof AuthGuard !== 'undefined' && AuthGuard.userProfile) ? AuthGuard.userProfile : {};
     const params = new URLSearchParams();
     params.set('type', type);

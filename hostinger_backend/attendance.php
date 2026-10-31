@@ -444,7 +444,13 @@ try {
 
         $sql = "
             SELECT a.*,
-                   COALESCE(NULLIF(e.full_name, ''), NULLIF(u.display_name, ''), NULLIF(a.employee_name, ''), 'Staff') as employee_name,
+                   COALESCE(
+                       NULLIF(NULLIF(e.full_name, 'Employee'), 'Staff'),
+                       NULLIF(NULLIF(u.display_name, 'Employee'), 'Staff'),
+                       NULLIF(CONCAT(TRIM(COALESCE(u.first_name, '')), ' ', TRIM(COALESCE(u.last_name, ''))), ' '),
+                       NULLIF(NULLIF(a.employee_name, 'Employee'), 'Staff'),
+                       'Staff'
+                   ) as employee_name,
                    COALESCE(NULLIF(e.department, ''), NULLIF(u.department, ''), NULLIF(a.department, ''), 'General') as department,
                    COALESCE(NULLIF(e.branch_name, ''), NULLIF(a.branch_name, ''), 'HQ - Mumbai') as branch_name,
                    COALESCE(e.team_id, 0) as team_id,
@@ -457,11 +463,16 @@ try {
                 OR e.employee_code = a.employee_code 
                 OR REPLACE(e.employee_code, '-', '') = REPLACE(a.employee_code, '-', '')
                 OR e.user_id = a.employee_id
+                OR e.employee_code = a.employee_id
+                OR a.record_key LIKE CONCAT(e.employee_code, '_%')
             )
             LEFT JOIN users u ON (
                 u.uid = a.employee_id
                 OR u.employee_code = a.employee_code
                 OR REPLACE(u.employee_code, '-', '') = REPLACE(a.employee_code, '-', '')
+                OR u.id = a.employee_id
+                OR u.employee_code = a.employee_id
+                OR a.record_key LIKE CONCAT(u.employee_code, '_%')
             )
             WHERE 1=1
         ";
@@ -623,17 +634,67 @@ try {
             $params[':st'] = $status;
         }
 
-        $sql .= " ORDER BY a.date DESC, a.check_in ASC, a.employee_name ASC";
+        $sql .= " GROUP BY a.id ORDER BY a.date DESC, a.check_in ASC, a.employee_name ASC";
         $stmt = $pdo->prepare($sql);
         $stmt->execute($params);
         $records = $stmt->fetchAll();
 
         foreach ($records as &$rec) {
             if (empty($rec['employee_name']) || $rec['employee_name'] === 'Employee' || $rec['employee_name'] === 'Staff') {
-                if (!empty($rec['full_name'])) {
+                if (!empty($rec['full_name']) && $rec['full_name'] !== 'Employee' && $rec['full_name'] !== 'Staff') {
                     $rec['employee_name'] = $rec['full_name'];
-                } elseif (!empty($rec['display_name'])) {
+                } elseif (!empty($rec['display_name']) && $rec['display_name'] !== 'Employee' && $rec['display_name'] !== 'Staff') {
                     $rec['employee_name'] = $rec['display_name'];
+                } else {
+                    $code = trim($rec['employee_code'] ?? '');
+                    if (empty($code) && !empty($rec['record_key'])) {
+                        $parts = explode('_', $rec['record_key']);
+                        $code = trim($parts[0] ?? '');
+                    }
+                    if (empty($code)) {
+                        $code = trim($rec['employee_id'] ?? '');
+                    }
+                    $cleanCode = strtoupper(str_replace(['-', ' '], '', $code));
+                    $codeDigits = ltrim(preg_replace('/[^0-9]/', '', $code), '0');
+
+                    try {
+                        $lookupStmt = $pdo->prepare("
+                            SELECT COALESCE(NULLIF(NULLIF(e.full_name, 'Employee'), 'Staff'), NULLIF(NULLIF(u.display_name, 'Employee'), 'Staff'), NULLIF(CONCAT(TRIM(COALESCE(u.first_name, '')), ' ', TRIM(COALESCE(u.last_name, ''))), ' ')) as real_name,
+                                   COALESCE(NULLIF(e.department, ''), NULLIF(u.department, ''), 'Operations') as real_dept,
+                                   COALESCE(NULLIF(e.employee_code, ''), NULLIF(u.employee_code, ''), :c1) as real_code
+                            FROM (SELECT 1) dummy
+                            LEFT JOIN employees e ON (
+                                e.id = :c1 
+                                OR e.employee_code = :c2 
+                                OR UPPER(REPLACE(e.employee_code, '-', '')) = :c3
+                                OR (e.employee_code LIKE :c4 AND :c4 != '')
+                                OR e.user_id = :c1
+                            )
+                            LEFT JOIN users u ON (
+                                u.id = :c1
+                                OR u.uid = :c1
+                                OR u.employee_code = :c2
+                                OR UPPER(REPLACE(u.employee_code, '-', '')) = :c3
+                                OR (u.employee_code LIKE :c4 AND :c4 != '')
+                            )
+                            LIMIT 1
+                        ");
+                        $lookupStmt->execute([
+                            ':c1' => $code,
+                            ':c2' => $code,
+                            ':c3' => $cleanCode,
+                            ':c4' => $codeDigits ? "%$codeDigits" : ''
+                        ]);
+                        $found = $lookupStmt->fetch();
+                        if ($found && !empty($found['real_name'])) {
+                            $rec['employee_name'] = $found['real_name'];
+                            if (!empty($found['real_dept'])) $rec['department'] = $found['real_dept'];
+                            if (empty($rec['employee_code']) && !empty($found['real_code'])) $rec['employee_code'] = $found['real_code'];
+                            // Auto-repair record in DB
+                            $upd = $pdo->prepare("UPDATE attendance_records SET employee_name = :nm, department = :dp, employee_code = COALESCE(NULLIF(employee_code, ''), :code) WHERE id = :id");
+                            $upd->execute([':nm' => $found['real_name'], ':dp' => $rec['department'], ':code' => $rec['employee_code'], ':id' => $rec['id']]);
+                        }
+                    } catch (\Throwable $e) {}
                 }
             }
         }
@@ -1000,7 +1061,8 @@ try {
             $mgrName = null;
         }
 
-        $recordKey = "{$actualEmpId}_{$dateStr}";
+        $canonicalCode = strtoupper(trim(str_replace(['-', ' '], '', $actualEmpCode ?: $actualEmpId)));
+        $recordKey = "{$canonicalCode}_{$dateStr}";
 
         // Always log raw punch event in punch_logs
         try {

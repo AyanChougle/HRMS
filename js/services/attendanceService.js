@@ -463,6 +463,16 @@ const attendanceService = {
                 isOnBreak: (r.is_on_break == 1)
               });
             });
+
+            // Client-side deduplication guarantee: exactly 1 record per employee per date
+            const seenKeys = new Set();
+            records = records.filter(rec => {
+              const dedupeKey = `${(rec.employeeCode || rec.employeeId || '').toUpperCase().trim()}_${rec.date}`;
+              if (seenKeys.has(dedupeKey)) return false;
+              seenKeys.add(dedupeKey);
+              return true;
+            });
+
             loadedFromMySQL = true;
           }
         } catch (sqlErr) {

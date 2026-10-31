@@ -29,7 +29,7 @@ const roleAccessService = {
     { key: 'settings', label: 'System Settings', category: 'Administration', icon: 'M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z' }
   ],
 
-  // Official Policy Defaults Per Role (Strict 7 Canonical Roles Hierarchy)
+  // Official Policy Defaults Per Role (Strict Canonical Roles Hierarchy)
   DEFAULT_ROLE_PAGES: {
     ADMIN: [
       'dashboard', 'people', 'create-employee', 'training', 'attendance', 'leave',
@@ -37,9 +37,13 @@ const roleAccessService = {
       'documents', 'requests', 'communication', 'reports', 'users', 'role-permissions',
       'settings', 'ess'
     ],
-    HR: [
+    HR_LEAD: [
       'dashboard', 'people', 'create-employee', 'training', 'attendance', 'leave', 'recruitment', 'compliance', 'expenses', 'assets', 'performance',
       'documents', 'requests', 'communication', 'reports', 'users', 'ess'
+    ],
+    HR: [
+      'dashboard', 'ess', 'attendance', 'leave', 'compliance', 'performance',
+      'recruitment', 'training', 'create-employee', 'documents', 'requests', 'communication'
     ],
     OPS: [
       'dashboard', 'people', 'attendance', 'leave', 'performance', 'compliance',
@@ -88,10 +92,31 @@ const roleAccessService = {
     return;
   },
 
-  getVisiblePagesForRole(roleId) {
-    let r = (roleId || 'EMPLOYEE').toUpperCase().trim();
+  isHrLead(roleId, userProfile = null) {
+    const r = (roleId || userProfile?.roleId || '').toString().toUpperCase().trim();
+    if (['HR_LEAD', 'HR_MANAGER', 'HEAD_HR'].includes(r)) return true;
+    if (['ADMIN', 'SUPER_ADMIN', 'COMPANY_ADMIN'].includes(r)) return true;
+    if (r === 'HR') {
+      const prof = userProfile || (typeof AuthGuard !== 'undefined' ? AuthGuard.userProfile : null);
+      const desig = (prof?.designation || '').toString().toUpperCase().trim();
+      if (desig.includes('LEAD') || desig.includes('MANAGER') || desig.includes('HEAD') || desig.includes('DIRECTOR') || desig.includes('CHIEF')) {
+        return true;
+      }
+      return false; // HR Recruiter / HR Executive / non-lead
+    }
+    return false;
+  },
+
+  getVisiblePagesForRole(roleId, userProfile = null) {
+    let r = (roleId || userProfile?.roleId || 'EMPLOYEE').toUpperCase().trim();
     if (['SUPER_ADMIN', 'COMPANY_ADMIN'].includes(r)) r = 'ADMIN';
-    if (r === 'HR_MANAGER') r = 'HR';
+    if (r === 'HR_MANAGER' || r === 'HR_LEAD') r = 'HR_LEAD';
+    if (r === 'HR') {
+      const prof = userProfile || (typeof AuthGuard !== 'undefined' ? AuthGuard.userProfile : null);
+      if (this.isHrLead('HR', prof)) {
+        r = 'HR_LEAD';
+      }
+    }
     if (['OPERATIONS_MANAGER', 'PROCESS_OWNER'].includes(r)) r = 'OPS';
     if (r === 'TEAM_LEAD') r = 'TL';
     if (['RELATIONSHIP_MANAGER', 'DIGITAL_MARKETING', 'MENTOR_TRAINER', 'TRAINEE'].includes(r)) r = 'EMPLOYEE';
@@ -106,7 +131,7 @@ const roleAccessService = {
       pages = [...this.DEFAULT_ROLE_PAGES.EMPLOYEE];
     }
 
-    const isHrOrAdmin = ['ADMIN', 'SUPER_ADMIN', 'HR', 'HR_MANAGER'].includes(r);
+    const isHrOrAdmin = ['ADMIN', 'SUPER_ADMIN', 'HR', 'HR_MANAGER', 'HR_LEAD'].includes(r);
     // Unconditional security: Non-admin/HR roles NEVER see payroll or payslip-templates
     if (!isHrOrAdmin) {
       pages = pages.filter(p => p !== 'payroll' && p !== 'payslip-templates');
@@ -120,7 +145,7 @@ const roleAccessService = {
     if (r === 'SUPER_ADMIN') return true;
 
     // Hard security check for payroll: Only HR and Super/Company Admin allowed
-    const isHrOrAdmin = ['SUPER_ADMIN', 'COMPANY_ADMIN', 'ADMIN', 'HR', 'HR_MANAGER'].includes(r);
+    const isHrOrAdmin = ['SUPER_ADMIN', 'COMPANY_ADMIN', 'ADMIN', 'HR', 'HR_MANAGER', 'HR_LEAD'].includes(r);
     if (!isHrOrAdmin && (routeKey === 'payroll' || routeKey === 'payslip-templates')) {
       return false;
     }
@@ -131,7 +156,7 @@ const roleAccessService = {
     }
 
     // Performance is allowed for full-time staff and managers
-    if (routeKey === 'performance' && ['EMPLOYEE', 'MENTOR', 'TRAINER', 'TEAM_LEAD', 'MANAGER', 'HR', 'HR_MANAGER', 'COMPANY_ADMIN'].includes(r)) {
+    if (routeKey === 'performance' && ['EMPLOYEE', 'MENTOR', 'TRAINER', 'TEAM_LEAD', 'MANAGER', 'HR', 'HR_MANAGER', 'HR_LEAD', 'COMPANY_ADMIN'].includes(r)) {
       return true;
     }
 

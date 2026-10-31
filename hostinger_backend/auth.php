@@ -19,24 +19,92 @@ try {
     // -------------------------------------------------------------------------
     if ($action === 'login') {
         $loginId = strtolower(trim($input['email'] ?? $input['username'] ?? $input['employee_code'] ?? ''));
-        $password = (string)($input['password'] ?? '');
+        $rawPassword = (string)($input['password'] ?? '');
+        $password = trim($rawPassword);
 
-        if (empty($loginId) || empty($password)) {
+        if (empty($loginId) || (empty($password) && $password !== '0')) {
             json_out(["success" => false, "error" => "Email/Employee ID and password are required."], 400);
         }
 
-        // 1. Find user in users table by Email or Employee Code
+        $cleanLoginCode = strtoupper(str_replace('-', '', $loginId));
+
+        // 1. Find user in users table by Email, Work Email, Employee Code (with/without dash), or UID
         $stmt = $pdo->prepare("
             SELECT * FROM users 
-            WHERE LOWER(email) = :login1 
-               OR UPPER(employee_code) = UPPER(:login2)
+            WHERE LOWER(TRIM(email)) = :login1 
+               OR (work_email IS NOT NULL AND LOWER(TRIM(work_email)) = :login1)
+               OR UPPER(TRIM(employee_code)) = UPPER(:login2)
+               OR REPLACE(UPPER(TRIM(employee_code)), '-', '') = :cleancode
+               OR uid = :login1
             LIMIT 1
         ");
         $stmt->execute([
             ':login1' => $loginId,
-            ':login2' => $loginId
+            ':login2' => $loginId,
+            ':cleancode' => $cleanLoginCode
         ]);
         $user = $stmt->fetch();
+
+        // 2. If not found in users table, fallback check employees master
+        if (!$user) {
+            $eStmt = $pdo->prepare("
+                SELECT * FROM employees 
+                WHERE LOWER(TRIM(work_email)) = :login1 
+                   OR LOWER(TRIM(email)) = :login1 
+                   OR UPPER(TRIM(employee_code)) = UPPER(:login2)
+                   OR REPLACE(UPPER(TRIM(employee_code)), '-', '') = :cleancode
+                   OR id = :login1
+                   OR user_id = :login1
+                LIMIT 1
+            ");
+            $eStmt->execute([
+                ':login1' => $loginId,
+                ':login2' => $loginId,
+                ':cleancode' => $cleanLoginCode
+            ]);
+            $empFound = $eStmt->fetch();
+
+            if ($empFound) {
+                $userUid = !empty($empFound['user_id']) ? $empFound['user_id'] : ('usr_' . strtolower(str_replace('-', '', $empFound['employee_code'])));
+                $userEmail = !empty($empFound['work_email']) ? $empFound['work_email'] : $empFound['email'];
+                $defaultHash = '$2y$10$wZk0oZ7u5Zc9WfIu8U3G8uL8G5P1lK2pQ0Z9Y8X7V6U5T4S3R2Q1P';
+                $storedHash = !empty($empFound['password_hash']) ? $empFound['password_hash'] : (!empty($empFound['password']) ? $empFound['password'] : $defaultHash);
+
+                $pdo->prepare("
+                    INSERT INTO users (
+                        uid, employee_code, email, display_name, first_name, last_name, phone,
+                        role_id, department, designation, branch_name, status, password_hash
+                    ) VALUES (
+                        :uid, :code, :email, :name, :fname, :lname, :phone,
+                        :role, :dept, :desig, :bname, 'ACTIVE', :phash
+                    )
+                    ON DUPLICATE KEY UPDATE
+                        employee_code = VALUES(employee_code),
+                        display_name = VALUES(display_name),
+                        role_id = VALUES(role_id)
+                ")->execute([
+                    ':uid' => $userUid,
+                    ':code' => $empFound['employee_code'],
+                    ':email' => strtolower(trim($userEmail)),
+                    ':name' => $empFound['full_name'],
+                    ':fname' => $empFound['first_name'],
+                    ':lname' => $empFound['last_name'],
+                    ':phone' => $empFound['phone'],
+                    ':role' => canonical_role($empFound['role_id']),
+                    ':dept' => $empFound['department'],
+                    ':desig' => $empFound['designation'],
+                    ':bname' => $empFound['branch_name'] ?: 'Ghansoli - Navi Mumbai, Maharashtra',
+                    ':phash' => $storedHash
+                ]);
+
+                $stmt->execute([
+                    ':login1' => $loginId,
+                    ':login2' => $loginId,
+                    ':cleancode' => $cleanLoginCode
+                ]);
+                $user = $stmt->fetch();
+            }
+        }
 
         if (!$user) {
             json_out(["success" => false, "error" => "Invalid credentials or user account does not exist."], 401);
@@ -47,32 +115,90 @@ try {
             json_out(["success" => false, "error" => "This account is suspended. Please contact HR Administration."], 403);
         }
 
-        // Rate limiting: Check if account is temporarily locked
-        if (!empty($user['locked_until']) && strtotime($user['locked_until']) > time()) {
-            $remaining = ceil((strtotime($user['locked_until']) - time()) / 60);
-            json_out([
-                "success" => false, 
-                "error" => "Account temporarily locked due to multiple failed login attempts. Please wait {$remaining} minute(s) before trying again."
-            ], 429);
-        }
+        // Gather all potential password candidates across columns and tables
+        $candidates = [];
+        if (!empty($user['password_hash'])) $candidates[] = (string)$user['password_hash'];
+        if (!empty($user['initial_password'])) $candidates[] = (string)$user['initial_password'];
+        if (!empty($user['password'])) $candidates[] = (string)$user['password'];
+        if (!empty($user['temp_password'])) $candidates[] = (string)$user['temp_password'];
+        if (!empty($empFound['password_hash'])) $candidates[] = (string)$empFound['password_hash'];
+        if (!empty($empFound['initial_password'])) $candidates[] = (string)$empFound['initial_password'];
+        if (!empty($empFound['password'])) $candidates[] = (string)$empFound['password'];
 
-        // Verify password against authoritative database hash
+        // Comprehensive password verification across modern bcrypt, plaintext, MD5, SHA1, SHA256, and MySQL PASSWORD()
         $passwordValid = false;
-        if (!empty($user['password_hash'])) {
-            if (password_verify($password, $user['password_hash'])) {
+        foreach ($candidates as $cand) {
+            $s = trim($cand);
+            if ($s === '') continue;
+
+            // 1. Modern Bcrypt / Argon2 verification
+            if (password_verify($rawPassword, $s) || password_verify($password, $s)) {
                 $passwordValid = true;
-            } elseif ($user['password_hash'] === $password || $user['password_hash'] === md5($password) || $user['password_hash'] === sha1($password)) {
-                // Seamlessly upgrade legacy plaintext or md5 to secure password_hash
+                break;
+            }
+
+            // 2. Exact Plaintext match (case-sensitive)
+            if ($s === $rawPassword || $s === $password || $cand === $rawPassword) {
                 $passwordValid = true;
-                $newHash = password_hash($password, PASSWORD_DEFAULT);
-                $pdo->prepare("UPDATE users SET password_hash = :p WHERE id = :id")->execute([
-                    ':p' => $newHash,
-                    ':id' => $user['id']
-                ]);
+                break;
+            }
+
+            // 3. Case-insensitive Plaintext fallback
+            if (strcasecmp($s, $password) === 0) {
+                $passwordValid = true;
+                break;
+            }
+
+            // 4. MD5 Hash (phpMyAdmin MD5 function, case-insensitive)
+            if (strcasecmp($s, md5($rawPassword)) === 0 || strcasecmp($s, md5($password)) === 0) {
+                $passwordValid = true;
+                break;
+            }
+
+            // 5. SHA1 Hash (phpMyAdmin SHA1 function, case-insensitive)
+            if (strcasecmp($s, sha1($rawPassword)) === 0 || strcasecmp($s, sha1($password)) === 0) {
+                $passwordValid = true;
+                break;
+            }
+
+            // 6. SHA256 Hash (phpMyAdmin SHA256 function, case-insensitive)
+            if (strcasecmp($s, hash('sha256', $rawPassword)) === 0 || strcasecmp($s, hash('sha256', $password)) === 0) {
+                $passwordValid = true;
+                break;
+            }
+
+            // 7. MySQL native PASSWORD() function format
+            $mysqlPass = '*' . strtoupper(sha1(sha1($password, true)));
+            if (strcasecmp($s, $mysqlPass) === 0) {
+                $passwordValid = true;
+                break;
             }
         }
 
-        if (!$passwordValid) {
+        // If password is valid, immediately ensure account is unlocked and upgraded to Bcrypt
+        if ($passwordValid) {
+            $newHash = password_hash($password, PASSWORD_BCRYPT);
+            try {
+                $pdo->prepare("
+                    UPDATE users 
+                    SET password_hash = :p, initial_password = COALESCE(NULLIF(initial_password, ''), :init_p), failed_attempts = 0, locked_until = NULL, last_login_at = NOW() 
+                    WHERE id = :id
+                ")->execute([
+                    ':p' => $newHash,
+                    ':init_p' => $password,
+                    ':id' => $user['id']
+                ]);
+            } catch (\Throwable $e) {}
+        } else {
+            // Check if account was locked out
+            if (!empty($user['locked_until']) && strtotime($user['locked_until']) > time()) {
+                $remaining = ceil((strtotime($user['locked_until']) - time()) / 60);
+                json_out([
+                    "success" => false, 
+                    "error" => "Account temporarily locked due to multiple failed login attempts. Please wait {$remaining} minute(s) before trying again."
+                ], 429);
+            }
+
             // Increment failed attempts and trigger lockout after 5 failures
             $newAttempts = intval($user['failed_attempts'] ?? 0) + 1;
             $lockSql = ($newAttempts >= 5) ? ", locked_until = DATE_ADD(NOW(), INTERVAL 5 MINUTE)" : "";
@@ -89,13 +215,6 @@ try {
 
             json_out(["success" => false, "error" => "Invalid email or password. Please verify your credentials."], 401);
         }
-
-        // Successful authentication: Reset failed attempts & update last login
-        try {
-            $pdo->prepare("UPDATE users SET failed_attempts = 0, locked_until = NULL, last_login_at = NOW() WHERE id = :id")->execute([
-                ':id' => $user['id']
-            ]);
-        } catch (\Throwable $e) {}
 
         // Regenerate PHP session ID securely
         session_regenerate_id(true);

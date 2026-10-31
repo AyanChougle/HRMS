@@ -25,6 +25,8 @@ const UsersView = {
             designation: u.designation || 'Associate',
             branchName: u.branch_name || 'Ghansoli - Navi Mumbai, Maharashtra',
             status: u.status || 'ACTIVE',
+            loginPassword: u.login_password || u.initial_password || u.initialPassword || u.password || '',
+            initialPassword: u.login_password || u.initial_password || u.initialPassword || u.password || '',
             lastLoginAt: u.last_login_at || null,
             createdAt: u.created_at || null
           }));
@@ -43,12 +45,12 @@ const UsersView = {
 
     const roleCounts = {
       total: users.length,
-      admin: users.filter(u => u.roleId === 'ADMIN' || u.roleId === 'SUPER_ADMIN').length,
-      hr: users.filter(u => u.roleId === 'HR' || u.roleId === 'HR_MANAGER').length,
-      management: users.filter(u => ['MANAGER', 'OPS', 'OPERATIONS_MANAGER', 'TL', 'TEAM_LEAD'].includes(u.roleId)).length,
-      compliance: users.filter(u => u.roleId === 'COMPLIANCE').length,
-      employee: users.filter(u => u.roleId === 'EMPLOYEE' || !u.roleId || ['RELATIONSHIP_MANAGER', 'DIGITAL_MARKETING', 'MENTOR_TRAINER', 'TRAINEE'].includes(u.roleId)).length,
-      active: users.filter(u => u.status === 'ACTIVE').length
+      admin: users.filter(u => ['ADMIN', 'SUPER_ADMIN', 'COMPANY_ADMIN'].includes((u.roleId || '').toUpperCase())).length,
+      hr: users.filter(u => ['HR', 'HR_MANAGER', 'HR_LEAD'].includes((u.roleId || '').toUpperCase())).length,
+      management: users.filter(u => ['MANAGER', 'OPS', 'OPERATIONS_MANAGER', 'TL', 'TEAM_LEAD'].includes((u.roleId || '').toUpperCase())).length,
+      compliance: users.filter(u => (u.roleId || '').toUpperCase() === 'COMPLIANCE').length,
+      employee: users.filter(u => ['EMPLOYEE', 'RELATIONSHIP_MANAGER', 'DIGITAL_MARKETING', 'MENTOR_TRAINER', 'TRAINEE', ''].includes((u.roleId || '').toUpperCase())).length,
+      active: users.filter(u => (u.status || '').toUpperCase() === 'ACTIVE').length
     };
 
     return `
@@ -107,7 +109,7 @@ const UsersView = {
         <div class="card p-4">
           <div class="text-muted" style="font-size: 0.78rem; font-weight: 700; text-transform: uppercase;">Super Administrators</div>
           <div class="flex items-baseline justify-between mt-2">
-            <span style="font-size: 1.8rem; font-weight: 800; color: #7c3aed;">${roleCounts.superAdmin}</span>
+            <span style="font-size: 1.8rem; font-weight: 800; color: #7c3aed;">${roleCounts.admin}</span>
             <span class="badge badge-primary">Full Root</span>
           </div>
         </div>
@@ -123,8 +125,8 @@ const UsersView = {
         <div class="card p-4">
           <div class="text-muted" style="font-size: 0.78rem; font-weight: 700; text-transform: uppercase;">Employees & Trainees</div>
           <div class="flex items-baseline justify-between mt-2">
-            <span style="font-size: 1.8rem; font-weight: 800; color: #2563eb;">${roleCounts.employee + roleCounts.trainee}</span>
-            <span class="badge badge-neutral">${roleCounts.employee} Staff • ${roleCounts.trainee} Trainee</span>
+            <span style="font-size: 1.8rem; font-weight: 800; color: #2563eb;">${roleCounts.employee}</span>
+            <span class="badge badge-neutral">${roleCounts.employee} Staff • ${roleCounts.active} Active</span>
           </div>
         </div>
       </div>
@@ -254,14 +256,14 @@ const UsersView = {
         </td>
         <td>
           <div class="flex items-center gap-1" style="font-family: monospace; font-size: 0.8rem; background: var(--bg-hover); padding: 4px 8px; border-radius: 4px; border: 1px solid var(--border-light); width: fit-content;">
-            <span id="pwd-text-${u.uid || u.id}" data-raw="${u.initialPassword || u.password || 'Diallo@2026'}" style="letter-spacing: 0.5px;">••••••••</span>
+            <span id="pwd-text-${u.uid || u.id}" data-raw="${u.loginPassword || u.initialPassword || ''}" style="letter-spacing: 0.5px;">••••••••</span>
             <button type="button" class="btn btn-ghost btn-sm" onclick="UsersView.togglePasswordVisibility('${u.uid || u.id}')" title="Show/Hide Password" style="padding: 1px 3px; margin-left: 2px;">
               <svg width="13" height="13" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/>
               </svg>
             </button>
-            <button type="button" class="btn btn-ghost btn-sm" onclick="UsersView.copyText('${u.initialPassword || u.password || 'Diallo@2026'}')" title="Copy Password" style="padding: 1px 3px;">
+            <button type="button" class="btn btn-ghost btn-sm" onclick="UsersView.copyText(document.getElementById('pwd-text-${u.uid || u.id}')?.getAttribute('data-raw') || '${u.loginPassword || u.initialPassword || ''}')" title="Copy Password" style="padding: 1px 3px;">
               <svg width="12" height="12" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 5H6a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2v-1M8 5a2 2 0 002 2h2a2 2 0 002-2M8 5a2 2 0 012-2h2a2 2 0 012 2m0 0h2a2 2 0 012 2v3m2 4H10m0 0l3-3m-3 3l3 3"/>
               </svg>
@@ -564,7 +566,7 @@ const UsersView = {
   togglePasswordVisibility(uid) {
     const el = document.getElementById(`pwd-text-${uid}`);
     if (!el) return;
-    const raw = el.getAttribute('data-raw') || 'Diallo@2026';
+    const raw = el.getAttribute('data-raw') || '••••••••';
     if (el.textContent === '••••••••') {
       el.textContent = raw;
       el.style.color = 'var(--primary)';

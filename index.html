@@ -1,238 +1,137 @@
 <!doctype html>
 <html lang="en">
-  <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Diallo HRMS — Enterprise Suite (India)</title>
-    <meta
-      name="description"
-      content="Diallo HRMS — Modern Enterprise Human Resource Management System with High-Performance Hostinger MySQL Backend."
-    />
 
-    <!-- CSS Architecture Tokens & Components -->
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="css/variables.css?v=1793275281408" />
-    <link rel="stylesheet" href="css/global.css?v=1793275281408" />
-    <link rel="stylesheet" href="css/layout.css?v=1793275281408" />
-    <link rel="stylesheet" href="css/components.css?v=1793275281408" />
-    <link rel="stylesheet" href="css/tables.css?v=1793275281408" />
-    <link rel="stylesheet" href="css/forms.css?v=1793275281408" />
-    <link rel="stylesheet" href="css/modals.css?v=1793275281408" />
-    <link rel="stylesheet" href="css/dashboard.css?v=1793275281408" />
-    <link rel="stylesheet" href="css/responsive.css?v=1793275281408" />
-    <link rel="stylesheet" href="css/animations.css?v=1793275281408" />
-    <link rel="icon" type="image/png" sizes="32x32" href="favicon-32x32.png?v=1793275281408" />
-    <link rel="icon" type="image/png" sizes="16x16" href="favicon-16x16.png?v=1793275281408" />
-    <link rel="apple-touch-icon" sizes="180x180" href="apple-touch-icon.png?v=1793275281408" />
-    <link rel="shortcut icon" type="image/x-icon" href="favicon.ico?v=1793275281408" />
-  </head>
-  <body>
-    <!-- Main Application Container Shell -->
-    <div class="app-container">
-      <!-- ======================================================================
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Diallo HRMS — Enterprise Suite (India)</title>
+  <meta name="description"
+    content="Diallo HRMS — Modern Enterprise Human Resource Management System with High-Performance Hostinger MySQL Backend." />
+
+  <!-- CSS Architecture Tokens & Components -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="css/variables.css?v=1793275281408" />
+  <link rel="stylesheet" href="css/global.css?v=1793275281408" />
+  <link rel="stylesheet" href="css/layout.css?v=1793275281408" />
+  <link rel="stylesheet" href="css/components.css?v=1793275281408" />
+  <link rel="stylesheet" href="css/tables.css?v=1793275281408" />
+  <link rel="stylesheet" href="css/forms.css?v=1793275281408" />
+  <link rel="stylesheet" href="css/modals.css?v=1793275281408" />
+  <link rel="stylesheet" href="css/dashboard.css?v=1793275281408" />
+  <link rel="stylesheet" href="css/responsive.css?v=1793275281408" />
+  <link rel="stylesheet" href="css/animations.css?v=1793275281408" />
+  <link rel="icon" type="image/png" sizes="32x32" href="favicon-32x32.png?v=1793275281408" />
+  <link rel="icon" type="image/png" sizes="16x16" href="favicon-16x16.png?v=1793275281408" />
+  <link rel="apple-touch-icon" sizes="180x180" href="apple-touch-icon.png?v=1793275281408" />
+  <link rel="shortcut icon" type="image/x-icon" href="favicon.ico?v=1793275281408" />
+</head>
+
+<body>
+  <!-- Main Application Container Shell -->
+  <div class="app-container">
+    <!-- ======================================================================
          TOP HEADER
          ====================================================================== -->
-      <header class="app-header">
-        <!-- Header Left: Logo + Sidebar Toggle -->
-        <div class="header-left">
-          <button
-            class="sidebar-toggle-btn"
-            id="sidebar-toggle"
-            aria-label="Toggle Sidebar"
-            title="Toggle Navigation Sidebar"
-          >
-            <svg
-              width="20"
-              height="20"
-              fill="none"
-              viewBox="0 0 24 24"
-              stroke="currentColor"
-            >
-              <path
-                stroke-linecap="round"
-                stroke-linejoin="round"
-                stroke-width="2"
-                d="M4 6h16M4 12h16M4 18h16"
-              />
+    <header class="app-header">
+      <!-- Header Left: Logo + Sidebar Toggle -->
+      <div class="header-left">
+        <button class="sidebar-toggle-btn" id="sidebar-toggle" aria-label="Toggle Sidebar"
+          title="Toggle Navigation Sidebar">
+          <svg width="20" height="20" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16" />
+          </svg>
+        </button>
+
+        <a href="#dashboard" class="brand-logo">
+          <div class="brand-icon-box"><img src="d-hrms-favicon.png" alt="Diallo Logo" /></div>
+          <div class="brand-name">
+            Diallo <span class="hrms-tag">HRMS</span>
+          </div>
+        </a>
+      </div>
+
+      <!-- Header Center: Global Search -->
+      <div class="header-center">
+        <button class="global-search-trigger" id="global-search-trigger" aria-label="Global Search">
+          <div class="flex items-center gap-2">
+            <svg width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+            </svg>
+            <span
+              style="white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 150px; display: inline-block;">Search
+              employees, actions, Indian tax codes, pages...</span>
+          </div>
+          <span class="search-shortcut-badge">Ctrl K</span>
+        </button>
+      </div>
+
+      <!-- Header Right: Switchers, Notifications, Theme & Profile -->
+      <div class="header-right">
+        <!-- Company Selector Dropdown -->
+        <div class="dropdown-menu-wrapper" id="header-company-wrapper">
+          <button class="header-dropdown-btn" data-dropdown-trigger="company-popover" title="Switch Company Entity">
+            <svg width="15" height="15" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
+            </svg>
+            <span class="label-text" id="current-company-label">Diallo India Private Limited</span>
+            <svg width="12" height="12" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
             </svg>
           </button>
-
-          <a href="#dashboard" class="brand-logo">
-            <div class="brand-icon-box"><img src="d-hrms-favicon.png" alt="Diallo Logo" /></div>
-            <div class="brand-name">
-              Diallo <span class="hrms-tag">HRMS</span>
-            </div>
-          </a>
+          <div class="dropdown-popover" id="company-popover"></div>
         </div>
 
-        <!-- Header Center: Global Search -->
-        <div class="header-center">
-          <button
-            class="global-search-trigger"
-            id="global-search-trigger"
-            aria-label="Global Search"
-          >
-            <div class="flex items-center gap-2">
-              <svg
-                width="16"
-                height="16"
-                fill="none"
-                viewBox="0 0 24 24"
-                stroke="currentColor"
-              >
-                <path
-                  stroke-linecap="round"
-                  stroke-linejoin="round"
-                  stroke-width="2"
-                  d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
-                />
-              </svg>
-              <span style="white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 150px; display: inline-block;">Search employees, actions, Indian tax codes, pages...</span>
-            </div>
-            <span class="search-shortcut-badge">Ctrl K</span>
+        <!-- Branch / Location Selector Dropdown -->
+        <div class="dropdown-menu-wrapper" id="header-branch-wrapper">
+          <button class="header-dropdown-btn" data-dropdown-trigger="branch-popover" title="Switch Office Location">
+            <svg width="15" height="15" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
+            </svg>
+            <span class="label-text" id="current-branch-label">HQ - Mumbai</span>
+            <svg width="12" height="12" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
+            </svg>
           </button>
+          <div class="dropdown-popover" id="branch-popover"></div>
         </div>
 
-        <!-- Header Right: Switchers, Notifications, Theme & Profile -->
-        <div class="header-right">
-          <!-- Company Selector Dropdown -->
-          <div class="dropdown-menu-wrapper" id="header-company-wrapper">
-            <button
-              class="header-dropdown-btn"
-              data-dropdown-trigger="company-popover"
-              title="Switch Company Entity"
-            >
-              <svg
-                width="15"
-                height="15"
-                fill="none"
-                viewBox="0 0 24 24"
-                stroke="currentColor"
-              > 
-                <path
-                  stroke-linecap="round"
-                  stroke-linejoin="round"
-                  stroke-width="2"
-                  d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"
-                />
-              </svg>
-              <span class="label-text" id="current-company-label"
-                >Diallo India Private Limited</span
-              >
-              <svg
-                width="12"
-                height="12"
-                fill="none"
-                viewBox="0 0 24 24"
-                stroke="currentColor"
-              >
-                <path
-                  stroke-linecap="round"
-                  stroke-linejoin="round"
-                  stroke-width="2"
-                  d="M19 9l-7 7-7-7"
-                />
-              </svg>
-            </button>
-            <div class="dropdown-popover" id="company-popover"></div>
+        <!-- Active Role View Switcher (For Admins to test/preview any role) -->
+        <div class="dropdown-menu-wrapper" id="header-role-wrapper" style="display: none; align-items: center;">
+          <div
+            style="display: flex; align-items: center; gap: 6px; background: var(--bg-hover, rgba(0,0,0,0.04)); padding: 3px 8px; border-radius: var(--radius-sm, 6px); border: 1px solid var(--border-color, #e2e8f0);">
+            <span
+              style="font-size: 0.72rem; font-weight: 700; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.5px;">Preview
+              As:</span>
+            <select id="header-role-switcher"
+              style="padding: 2px 6px; font-size: 0.78rem; font-weight: 600; height: 26px; border-radius: 4px; border: 1px solid var(--border-color, #cbd5e1); background: var(--bg-card, #fff); color: var(--text-main, #1e293b); cursor: pointer;"
+              onchange="AuthGuard.switchRole(this.value)" title="Switch Active Role View">
+              <option value="ADMIN">Admin</option>
+              <option value="HR_LEAD">HR Lead</option>
+              <option value="HR">HR (Recruiter)</option>
+              <option value="OPS">OPS</option>
+              <option value="COMPLIANCE">Compliance</option>
+              <option value="MANAGER">Manager</option>
+              <option value="TL">TL</option>
+              <option value="EMPLOYEE">Employee</option>
+            </select>
           </div>
-
-          <!-- Branch / Location Selector Dropdown -->
-          <div class="dropdown-menu-wrapper" id="header-branch-wrapper">
-            <button
-              class="header-dropdown-btn"
-              data-dropdown-trigger="branch-popover"
-              title="Switch Office Location"
-            >
-              <svg
-                width="15"
-                height="15"
-                fill="none"
-                viewBox="0 0 24 24"
-                stroke="currentColor"
-              >
-                <path
-                  stroke-linecap="round"
-                  stroke-linejoin="round"
-                  stroke-width="2"
-                  d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"
-                />
-                <path
-                  stroke-linecap="round"
-                  stroke-linejoin="round"
-                  stroke-width="2"
-                  d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"
-                />
-              </svg>
-              <span class="label-text" id="current-branch-label"
-                >HQ - Mumbai</span
-              >
-              <svg
-                width="12"
-                height="12"
-                fill="none"
-                viewBox="0 0 24 24"
-                stroke="currentColor"
-              >
-                <path
-                  stroke-linecap="round"
-                  stroke-linejoin="round"
-                  stroke-width="2"
-                  d="M19 9l-7 7-7-7"
-                />
-              </svg>
-            </button>
-            <div class="dropdown-popover" id="branch-popover"></div>
-          </div>
-
-          <!-- Active Role View Switcher (For Admins to test/preview any role) -->
-          <div class="dropdown-menu-wrapper" id="header-role-wrapper" style="display: none; align-items: center;">
-            <div style="display: flex; align-items: center; gap: 6px; background: var(--bg-hover, rgba(0,0,0,0.04)); padding: 3px 8px; border-radius: var(--radius-sm, 6px); border: 1px solid var(--border-color, #e2e8f0);">
-              <span style="font-size: 0.72rem; font-weight: 700; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.5px;">Preview As:</span>
-              <select
-                id="header-role-switcher"
-                style="padding: 2px 6px; font-size: 0.78rem; font-weight: 600; height: 26px; border-radius: 4px; border: 1px solid var(--border-color, #cbd5e1); background: var(--bg-card, #fff); color: var(--text-main, #1e293b); cursor: pointer;"
-                onchange="AuthGuard.switchRole(this.value)"
-                title="Switch Active Role View"
-              >
-                <option value="ADMIN">Admin</option>
-                <option value="HR">HR</option>
-                <option value="OPS">OPS</option>
-                <option value="COMPLIANCE">Compliance</option>
-                <option value="MANAGER">Manager</option>
-                <option value="TL">TL</option>
-                <option value="EMPLOYEE">Employee</option>
-              </select>
-            </div>
-          </div>
-          <div class="dropdown-menu-wrapper">
-            <button
-              class="header-icon-btn"
-              onclick="if (window.CommsView) { CommsView.openNotificationCenter(); } else { Router.navigate('communication'); }"
-              aria-label="Notifications"
-              title="Notifications (Communication Hub)"
-              style="position: relative"
-            >
-              <svg
-                width="18"
-                height="18"
-                fill="none"
-                viewBox="0 0 24 24"
-                stroke="currentColor"
-              >
-                <path
-                  stroke-linecap="round"
-                  stroke-linejoin="round"
-                  stroke-width="2"
-                  d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"
-                />
-              </svg>
-              <span
-                class="badge badge-primary"
-                id="top-nav-notification-badge"
-                style="
+        </div>
+        <div class="dropdown-menu-wrapper">
+          <button class="header-icon-btn"
+            onclick="if (window.CommsView) { CommsView.openNotificationCenter(); } else { Router.navigate('communication'); }"
+            aria-label="Notifications" title="Notifications (Communication Hub)" style="position: relative">
+            <svg width="18" height="18" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
+            </svg>
+            <span class="badge badge-primary" id="top-nav-notification-badge" style="
                   position: absolute;
                   top: -4px;
                   right: -4px;
@@ -240,310 +139,235 @@
                   padding: 2px 5px;
                   border-radius: 10px;
                   display: none;
-                "
-                >0</span
-              >
-            </button>
-          </div>
-
-          <!-- Light / Dark Theme Toggle -->
-          <button
-            class="header-icon-btn theme-toggle-btn"
-            aria-label="Toggle Light / Dark Mode"
-            title="Toggle Theme (Light / Dark)"
-          >
-            <span class="theme-icon-container">
-              <svg
-                width="18"
-                height="18"
-                fill="none"
-                viewBox="0 0 24 24"
-                stroke="currentColor"
-              >
-                <path
-                  stroke-linecap="round"
-                  stroke-linejoin="round"
-                  stroke-width="2"
-                  d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z"
-                />
-              </svg>
-            </span>
+                ">0</span>
           </button>
+        </div>
 
-          <!-- User Profile Avatar & Dropdown -->
-          <div class="dropdown-menu-wrapper">
-            <div
-              class="user-profile-trigger"
-              data-dropdown-trigger="profile-popover"
-              title="User Profile Menu"
-            >
-              <div class="avatar-img">AD</div>
-              <div>
-                <div class="user-name-label">Administrator</div>
-                <div class="user-role-label">HR Admin</div>
-              </div>
-              <svg
-                width="12"
-                height="12"
-                fill="none"
-                viewBox="0 0 24 24"
-                stroke="currentColor"
-                style="color: var(--text-muted); margin-left: 2px"
-              >
-                <path
-                  stroke-linecap="round"
-                  stroke-linejoin="round"
-                  stroke-width="2"
-                  d="M19 9l-7 7-7-7"
-                />
-              </svg>
+        <!-- Light / Dark Theme Toggle -->
+        <button class="header-icon-btn theme-toggle-btn" aria-label="Toggle Light / Dark Mode"
+          title="Toggle Theme (Light / Dark)">
+          <span class="theme-icon-container">
+            <svg width="18" height="18" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z" />
+            </svg>
+          </span>
+        </button>
+
+        <!-- User Profile Avatar & Dropdown -->
+        <div class="dropdown-menu-wrapper">
+          <div class="user-profile-trigger" data-dropdown-trigger="profile-popover" title="User Profile Menu">
+            <div class="avatar-img">AD</div>
+            <div>
+              <div class="user-name-label">Administrator</div>
+              <div class="user-role-label">HR Admin</div>
             </div>
-            <div
-              class="dropdown-popover"
-              id="profile-popover"
-              style="width: 240px"
-            >
-              <div class="dropdown-header">Logged In Account</div>
-              <div
-                style="
+            <svg width="12" height="12" fill="none" viewBox="0 0 24 24" stroke="currentColor"
+              style="color: var(--text-muted); margin-left: 2px">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
+            </svg>
+          </div>
+          <div class="dropdown-popover" id="profile-popover" style="width: 240px">
+            <div class="dropdown-header">Logged In Account</div>
+            <div style="
                   padding: 10px 12px;
                   border-bottom: 1px solid var(--border-light);
-                "
-              >
-                <div class="font-semibold text-main user-name-label">
-                  Administrator
-                </div>
-                <div
-                  class="text-muted user-role-label"
-                  style="font-size: 0.75rem"
-                >
-                  Super Admin
-                </div>
+                ">
+              <div class="font-semibold text-main user-name-label">
+                Administrator
               </div>
-              <!-- Role Preview Switcher in Profile Menu -->
-              
-              <button
-                class="dropdown-item"
-                onclick="
+              <div class="text-muted user-role-label" style="font-size: 0.75rem">
+                Super Admin
+              </div>
+            </div>
+            <!-- Role Preview Switcher in Profile Menu -->
+
+            <button class="dropdown-item" onclick="
                   Router.navigate('ess');
                   document.getElementById('profile-popover').classList.remove('active');
-                "
-              >
-                <svg width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
-                </svg>
-                <span>My Profile</span>
-              </button>
-              <button
-                class="dropdown-item"
-                onclick="
+                ">
+              <svg width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                  d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+              </svg>
+              <span>My Profile</span>
+            </button>
+            <button class="dropdown-item" onclick="
                   Router.navigate('compliance');
                   document.getElementById('profile-popover').classList.remove('active');
-                "
-              >
-                <svg width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
-                </svg>
-                <span>Company Policies</span>
-              </button>
-              <button
-                class="dropdown-item"
-                id="dropdown-permissions-item"
-                style="display: none;"
-                onclick="
+                ">
+              <svg width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                  d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
+              </svg>
+              <span>Company Policies</span>
+            </button>
+            <button class="dropdown-item" id="dropdown-permissions-item" style="display: none;" onclick="
                   Router.navigate('role-permissions');
                   document.getElementById('profile-popover').classList.remove('active');
-                "
-              >
-                <svg width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
-                </svg>
-                <span>Role Permissions</span>
-              </button>
-              <button
-                class="dropdown-item"
-                id="dropdown-settings-item"
-                style="display: none;"
-                onclick="
+                ">
+              <svg width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                  d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
+              </svg>
+              <span>Role Permissions</span>
+            </button>
+            <button class="dropdown-item" id="dropdown-settings-item" style="display: none;" onclick="
                   Router.navigate('settings');
                   document
                     .getElementById('profile-popover')
                     .classList.remove('active');
-                "
-              >
-                <svg
-                  width="16"
-                  height="16"
-                  fill="none"
-                  viewBox="0 0 24 24"
-                  stroke="currentColor"
-                >
-                  <path
-                    stroke-linecap="round"
-                    stroke-linejoin="round"
-                    stroke-width="2"
-                    d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"
-                  />
-                </svg>
-                <span>System Settings</span>
-              </button>
-              <div class="dropdown-divider"></div>
-              <button
-                class="dropdown-item text-danger"
-                onclick="AuthGuard.logout()"
-              >
-                <svg
-                  width="16"
-                  height="16"
-                  fill="none"
-                  viewBox="0 0 24 24"
-                  stroke="currentColor"
-                >
-                  <path
-                    stroke-linecap="round"
-                    stroke-linejoin="round"
-                    stroke-width="2"
-                    d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"
-                  />
-                </svg>
-                <span>Sign Out</span>
-              </button>
-            </div>
+                ">
+              <svg width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                  d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
+              </svg>
+              <span>System Settings</span>
+            </button>
+            <div class="dropdown-divider"></div>
+            <button class="dropdown-item text-danger" onclick="AuthGuard.logout()">
+              <svg width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                  d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
+              </svg>
+              <span>Sign Out</span>
+            </button>
           </div>
         </div>
-      </header>
+      </div>
+    </header>
 
-      <!-- ======================================================================
+    <!-- ======================================================================
          LEFT SIDEBAR (10 Primary Modules)
          ====================================================================== -->
-      <aside class="app-sidebar">
-        <div class="sidebar-nav-section" id="sidebar-nav">
-          <!-- Dynamically rendered by Router.renderDynamicSidebar() -->
-        </div>
-      </aside>
+    <aside class="app-sidebar">
+      <div class="sidebar-nav-section" id="sidebar-nav">
+        <!-- Dynamically rendered by Router.renderDynamicSidebar() -->
+      </div>
+    </aside>
 
-      <!-- Backdrop for Mobile Sidebar -->
-      <div class="sidebar-backdrop" id="sidebar-backdrop"></div>
+    <!-- Backdrop for Mobile Sidebar -->
+    <div class="sidebar-backdrop" id="sidebar-backdrop"></div>
 
-      <!-- ======================================================================
+    <!-- ======================================================================
          MAIN CONTENT WRAPPER & VIEWPORT
          ====================================================================== -->
-      <div class="main-wrapper">
-        <main class="main-content" id="main-content-viewport">
-          <!-- Rendered dynamically by Vanilla JS Router -->
-        </main>
-      </div>
+    <div class="main-wrapper">
+      <main class="main-content" id="main-content-viewport">
+        <!-- Rendered dynamically by Vanilla JS Router -->
+      </main>
     </div>
+  </div>
 
-    <!-- Toast Notification Portal Container -->
-    <div id="toast-container" class="toast-container"></div>
+  <!-- Toast Notification Portal Container -->
+  <div id="toast-container" class="toast-container"></div>
 
-    <!-- 0. SheetJS Excel & Spreadsheet Parser (XLSX, XLS, ODS, CSV, TSV) -->
-    <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+  <!-- 0. SheetJS Excel & Spreadsheet Parser (XLSX, XLS, ODS, CSV, TSV) -->
+  <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
 
-    <!-- 2. Architecture & Core Services (100% Hostinger MySQL & PHP Backend) -->
-    <script src="js/firebase/firebase-config.js?v=1793275281408"></script>
-    <script src="js/services/apiClient.js?v=1793275281408"></script>
-    <script src="js/services/authService.js?v=1793275281408"></script>
-    <script src="js/auth/permissionService.js?v=1793275281408"></script>
-    <script src="js/auth/roleGuard.js?v=1793275281408"></script>
-    <script src="js/firebase/auth-guard.js?v=1793275281408"></script>
-    <script src="js/services/roleAccessService.js?v=1793275281408"></script>
-    <script src="js/services/auditService.js?v=1793275281408"></script>
-    <script src="js/services/userService.js?v=1793275281408"></script>
-    <script src="js/services/companyService.js?v=1793275281408"></script>
-    <script src="js/services/orgService.js?v=1793275281408"></script>
-    <script src="js/services/departmentService.js?v=1793275281408"></script>
-    <script src="js/services/employeeService.js?v=1793275281408"></script>
-    <script src="js/services/historyService.js?v=1793275281408"></script>
-    <script src="js/services/onboardingService.js?v=1793275281408"></script>
-    <script src="js/services/exitService.js?v=1793275281408"></script>
-    <script src="js/services/attendanceSettingsService.js?v=1793275281408"></script>
-    <script src="js/services/attendanceService.js?v=1793275281408"></script>
-    <script src="js/services/presenceService.js?v=1793275281408"></script>
-    <script src="js/services/leavePolicyService.js?v=1793275281408"></script>
-    <script src="js/services/leaveService.js?v=1793275281408"></script>
-    <script src="js/services/approvalService.js?v=1793275281408"></script>
-    <script src="js/services/compensationService.js?v=1793275281408"></script>
-    <script src="js/services/payrollSettingsService.js?v=1793275281408"></script>
-    <script src="js/services/statutoryEngine.js?v=1793275281408"></script>
-    <script src="js/services/payrollService.js?v=1793275281408"></script>
-    <script src="js/services/payslipTemplateService.js?v=1793275281408"></script>
-    <script src="js/services/performanceCalculationService.js?v=1793275281408"></script>
-    <script src="js/services/performanceCycleService.js?v=1793275281408"></script>
-    <script src="js/services/performanceService.js?v=1793275281408"></script>
-    <script src="js/services/recruitmentService.js?v=1793275281408"></script>
-    <script src="js/services/expenseService.js?v=1793275281408"></script>
-    <script src="js/services/assetService.js?v=1793275281408"></script>
-    <script src="js/services/documentService.js?v=1793275281408"></script>
-    <script src="js/services/employeeRequestService.js?v=1793275281408"></script>
-    <script src="js/services/analyticsService.js?v=1793275281408"></script>
-    <script src="js/services/reportService.js?v=1793275281408"></script>
-    <script src="js/services/announcementService.js?v=1793275281408"></script>
-    <script src="js/services/notificationService.js?v=1793275281408"></script>
-    <script src="js/services/workflowService.js?v=1793275281408"></script>
-    <script src="js/services/organizationService.js?v=1793275281408"></script>
-    <script src="js/services/settingsService.js?v=1793275281408"></script>
-    <script src="js/services/orgChartService.js?v=1793275281408"></script>
-    <script src="js/services/hrService.js?v=1793275281408"></script>
-    <script src="js/services/complianceService.js?v=1793275281408"></script>
-    <script src="js/services/letterService.js?v=1793275281408"></script>
-    <script src="js/services/trainingService.js?v=1793275281408"></script>
-    <script src="js/services/securityService.js?v=1793275281408"></script>
-    <script src="js/services/incidentService.js?v=1793275281408"></script>
-    <script src="js/services/qaService.js?v=1793275281408"></script>
-    <script src="js/services/hostingerStorageService.js?v=1793275281408"></script>
-    <script src="js/services/storageService.js?v=1793275281408"></script>
-    <script src="js/services/seedService.js?v=1793275281408"></script>
+  <!-- 2. Architecture & Core Services (100% Hostinger MySQL & PHP Backend) -->
+  <script src="js/firebase/firebase-config.js?v=1793275281408"></script>
+  <script src="js/services/apiClient.js?v=1793275281408"></script>
+  <script src="js/services/authService.js?v=1793275281408"></script>
+  <script src="js/auth/permissionService.js?v=1793275281408"></script>
+  <script src="js/auth/roleGuard.js?v=1793275281408"></script>
+  <script src="js/firebase/auth-guard.js?v=1793275281408"></script>
+  <script src="js/services/roleAccessService.js?v=1793275281408"></script>
+  <script src="js/services/auditService.js?v=1793275281408"></script>
+  <script src="js/services/userService.js?v=1793275281408"></script>
+  <script src="js/services/companyService.js?v=1793275281408"></script>
+  <script src="js/services/orgService.js?v=1793275281408"></script>
+  <script src="js/services/departmentService.js?v=1793275281408"></script>
+  <script src="js/services/employeeService.js?v=1793275281408"></script>
+  <script src="js/services/historyService.js?v=1793275281408"></script>
+  <script src="js/services/onboardingService.js?v=1793275281408"></script>
+  <script src="js/services/exitService.js?v=1793275281408"></script>
+  <script src="js/services/attendanceSettingsService.js?v=1793275281408"></script>
+  <script src="js/services/attendanceService.js?v=1793275281408"></script>
+  <script src="js/services/presenceService.js?v=1793275281408"></script>
+  <script src="js/services/leavePolicyService.js?v=1793275281408"></script>
+  <script src="js/services/leaveService.js?v=1793275281408"></script>
+  <script src="js/services/approvalService.js?v=1793275281408"></script>
+  <script src="js/services/compensationService.js?v=1793275281408"></script>
+  <script src="js/services/payrollSettingsService.js?v=1793275281408"></script>
+  <script src="js/services/statutoryEngine.js?v=1793275281408"></script>
+  <script src="js/services/payrollService.js?v=1793275281408"></script>
+  <script src="js/services/payslipTemplateService.js?v=1793275281408"></script>
+  <script src="js/services/performanceCalculationService.js?v=1793275281408"></script>
+  <script src="js/services/performanceCycleService.js?v=1793275281408"></script>
+  <script src="js/services/performanceService.js?v=1793275281408"></script>
+  <script src="js/services/recruitmentService.js?v=1793275281408"></script>
+  <script src="js/services/expenseService.js?v=1793275281408"></script>
+  <script src="js/services/assetService.js?v=1793275281408"></script>
+  <script src="js/services/documentService.js?v=1793275281408"></script>
+  <script src="js/services/employeeRequestService.js?v=1793275281408"></script>
+  <script src="js/services/analyticsService.js?v=1793275281408"></script>
+  <script src="js/services/reportService.js?v=1793275281408"></script>
+  <script src="js/services/announcementService.js?v=1793275281408"></script>
+  <script src="js/services/notificationService.js?v=1793275281408"></script>
+  <script src="js/services/workflowService.js?v=1793275281408"></script>
+  <script src="js/services/organizationService.js?v=1793275281408"></script>
+  <script src="js/services/settingsService.js?v=1793275281408"></script>
+  <script src="js/services/orgChartService.js?v=1793275281408"></script>
+  <script src="js/services/hrService.js?v=1793275281408"></script>
+  <script src="js/services/complianceService.js?v=1793275281408"></script>
+  <script src="js/services/letterService.js?v=1793275281408"></script>
+  <script src="js/services/trainingService.js?v=1793275281408"></script>
+  <script src="js/services/securityService.js?v=1793275281408"></script>
+  <script src="js/services/incidentService.js?v=1793275281408"></script>
+  <script src="js/services/qaService.js?v=1793275281408"></script>
+  <script src="js/services/hostingerStorageService.js?v=1793275281408"></script>
+  <script src="js/services/storageService.js?v=1793275281408"></script>
+  <script src="js/services/seedService.js?v=1793275281408"></script>
 
-    <!-- 3. Core UI Libraries -->
-    <script src="js/theme.js?v=1793275281408"></script>
-    <script src="js/toast.js?v=1793275281408"></script>
-    <script src="js/modal.js?v=1793275281408"></script>
-    <script src="js/csvImport.js?v=1793275281408"></script>
-    <script src="js/charts.js?v=1793275281408"></script>
-    <script src="js/table.js?v=1793275281408"></script>
-    <script src="js/forms.js?v=1793275281408"></script>
+  <!-- 3. Core UI Libraries -->
+  <script src="js/theme.js?v=1793275281408"></script>
+  <script src="js/toast.js?v=1793275281408"></script>
+  <script src="js/modal.js?v=1793275281408"></script>
+  <script src="js/csvImport.js?v=1793275281408"></script>
+  <script src="js/charts.js?v=1793275281408"></script>
+  <script src="js/table.js?v=1793275281408"></script>
+  <script src="js/forms.js?v=1793275281408"></script>
 
-    <!-- 4. View Modules -->
-    <script src="js/views/admin-dashboard-view.js?v=1793275281408"></script>
-    <script src="js/views/manager-dashboard-view.js?v=1793275281408"></script>
-    <script src="js/views/employee-dashboard-view.js?v=1793275281408"></script>
-    <script src="js/views/trainer-dashboard-view.js?v=1793275281408"></script>
-    <script src="js/views/dashboard-view.js?v=1793275281408"></script>
-    <script src="js/views/people-view.js?v=1793275281408"></script>
-    <script src="js/views/recruitment-view.js?v=1793275281408"></script>
-    <script src="js/views/training-view.js?v=1793275281408"></script>
-    <script src="js/views/expenses-view.js?v=1793275281408"></script>
-    <script src="js/views/assets-view.js?v=1793275281408"></script>
-    <script src="js/views/documents-view.js?v=1793275281408"></script>
-    <script src="js/views/requests-view.js?v=1793275281408"></script>
-    <script src="js/views/workflows-view.js?v=1793275281408"></script>
-    <script src="js/views/attendance-view.js?v=1793275281408"></script>
-    <script src="js/views/leave-view.js?v=1793275281408"></script>
-    <script src="js/views/payroll-view.js?v=1793275281408"></script>
-    <script src="js/views/payslip-templates-view.js?v=1793275281408"></script>
-    <script src="js/views/email-config-view.js?v=1793275281408"></script>
-    <script src="js/views/performance-view.js?v=1793275281408"></script>
-    <script src="js/views/ess-view.js?v=1793275281408"></script>
-    <script src="js/services/attendancePresenceIntegration.js?v=1793275281408"></script>
-    <script src="js/views/live-presence-view.js?v=1793275281408"></script>
-    <script src="js/views/comms-view.js?v=1793275281408"></script>
-    <script src="js/views/reports-view.js?v=1793275281408"></script>
-    <script src="js/views/admin-view.js?v=1793275281408"></script>
-    <script src="js/views/master-admin-view.js?v=1793275281408"></script>
-    <script src="js/views/compliance-view.js?v=1793275281408"></script>
-    <script src="js/views/security-view.js?v=1793275281408"></script>
-    <script src="js/views/qa-view.js?v=1793275281408"></script>
-    <script src="js/views/deployment-view.js?v=1793275281408"></script>
-    <script src="js/views/users-view.js?v=1793275281408"></script>
-    <script src="js/views/role-permissions-view.js?v=1793275281408"></script>
-    <script src="js/views/create-employee-view.js?v=1793275281408"></script>
-    <script src="js/views/settings-view.js?v=1793275281408"></script>
+  <!-- 4. View Modules -->
+  <script src="js/views/admin-dashboard-view.js?v=1793275281408"></script>
+  <script src="js/views/manager-dashboard-view.js?v=1793275281408"></script>
+  <script src="js/views/employee-dashboard-view.js?v=1793275281408"></script>
+  <script src="js/views/trainer-dashboard-view.js?v=1793275281408"></script>
+  <script src="js/views/dashboard-view.js?v=1793275281408"></script>
+  <script src="js/views/people-view.js?v=1793275281408"></script>
+  <script src="js/views/recruitment-view.js?v=1793275281408"></script>
+  <script src="js/views/training-view.js?v=1793275281408"></script>
+  <script src="js/views/expenses-view.js?v=1793275281408"></script>
+  <script src="js/views/assets-view.js?v=1793275281408"></script>
+  <script src="js/views/documents-view.js?v=1793275281408"></script>
+  <script src="js/views/requests-view.js?v=1793275281408"></script>
+  <script src="js/views/workflows-view.js?v=1793275281408"></script>
+  <script src="js/views/attendance-view.js?v=1793275281408"></script>
+  <script src="js/views/leave-view.js?v=1793275281408"></script>
+  <script src="js/views/payroll-view.js?v=1793275281408"></script>
+  <script src="js/views/payslip-templates-view.js?v=1793275281408"></script>
+  <script src="js/views/email-config-view.js?v=1793275281408"></script>
+  <script src="js/views/performance-view.js?v=1793275281408"></script>
+  <script src="js/views/ess-view.js?v=1793275281408"></script>
+  <script src="js/services/attendancePresenceIntegration.js?v=1793275281408"></script>
+  <script src="js/views/live-presence-view.js?v=1793275281408"></script>
+  <script src="js/views/comms-view.js?v=1793275281408"></script>
+  <script src="js/views/reports-view.js?v=1793275281408"></script>
+  <script src="js/views/admin-view.js?v=1793275281408"></script>
+  <script src="js/views/master-admin-view.js?v=1793275281408"></script>
+  <script src="js/views/compliance-view.js?v=1793275281408"></script>
+  <script src="js/views/security-view.js?v=1793275281408"></script>
+  <script src="js/views/qa-view.js?v=1793275281408"></script>
+  <script src="js/views/deployment-view.js?v=1793275281408"></script>
+  <script src="js/views/users-view.js?v=1793275281408"></script>
+  <script src="js/views/role-permissions-view.js?v=1793275281408"></script>
+  <script src="js/views/create-employee-view.js?v=1793275281408"></script>
+  <script src="js/views/settings-view.js?v=1793275281408"></script>
 
-    <!-- 5. Router and Coordinator -->
-    <script src="js/router.js?v=1793275281408"></script>
-    <script src="js/app.js?v=1793275281408"></script>
-  </body>
+  <!-- 5. Router and Coordinator -->
+  <script src="js/router.js?v=1793275281408"></script>
+  <script src="js/app.js?v=1793275281408"></script>
+</body>
+
 </html>
-
