@@ -364,20 +364,16 @@ if ($method === 'POST') {
                     "display_name" => $displayName,
                     "role_id" => $roleId,
                     "department" => $department,
-                    "designation" => $designation
+                    "designation" => $designation,
+                    "status" => $status
                 ]
-            ]);
+            ], 201);
         } catch (\Throwable $createEx) {
             json_out([
                 "success" => false,
                 "error" => "Failed to create user account: " . $createEx->getMessage()
             ], 500);
         }
-    }
-                "designation" => $designation,
-                "status" => $status
-            ]
-        ], 201);
     }
 
     // 2. UPDATE USER

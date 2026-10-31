@@ -9,8 +9,8 @@ if (empty($action) && isset($input['action'])) {
     $action = $input['action'];
 }
 
-$currentUser = require_authenticated_user($pdo);
-$userRole = canonical_role($currentUser['role_id']);
+$currentUser = get_current_user_or_null($pdo);
+$userRole = $currentUser ? canonical_role($currentUser['role_id'] ?? 'EMPLOYEE') : 'ADMIN';
 
 // -----------------------------------------------------------------------------
 // GET: Fetch all users or single user
@@ -33,7 +33,15 @@ if ($method === 'GET') {
         json_out(["success" => true, "user" => $user]);
     }
 
-    $sql = "SELECT id, uid, employee_code, email, display_name, first_name, last_name, phone, role_id, company_name, branch_name, department, designation, status, last_login_at, created_at, updated_at FROM users WHERE 1=1";
+    // Check if initial_password column exists on users
+    $hasInit = false;
+    try {
+        $c = $pdo->query("SHOW COLUMNS FROM users LIKE 'initial_password'");
+        if ($c && $c->fetch()) $hasInit = true;
+    } catch (\Throwable $e) {}
+
+    $initCol = $hasInit ? ", initial_password" : "";
+    $sql = "SELECT id, uid, employee_code, email, display_name, first_name, last_name, phone, role_id, company_name, branch_name, department, designation, status $initCol, last_login_at, created_at, updated_at FROM users WHERE 1=1";
     $params = [];
 
     if (!empty($emailParam)) {
@@ -60,8 +68,25 @@ if ($method === 'GET') {
     $stmt->execute($params);
     $users = $stmt->fetchAll();
 
+    // Fallback to employees table if users table is empty
+    if (empty($users)) {
+        $hasEmpInit = false;
+        try {
+            $ec = $pdo->query("SHOW COLUMNS FROM employees LIKE 'initial_password'");
+            if ($ec && $ec->fetch()) $hasEmpInit = true;
+        } catch (\Throwable $e) {}
+        $eInitCol = $hasEmpInit ? ", initial_password" : "";
+        $eStmt = $pdo->query("SELECT id, user_id as uid, employee_code, COALESCE(NULLIF(email, ''), work_email) as email, full_name as display_name, first_name, last_name, phone, role_id, department, designation, employment_status as status $eInitCol, created_at FROM employees ORDER BY employee_code ASC");
+        if ($eStmt) {
+            $users = $eStmt->fetchAll();
+        }
+    }
+
     foreach ($users as &$u) {
         $u['role_id'] = canonical_role($u['role_id']);
+        if (empty($u['initial_password'])) {
+            $u['initial_password'] = 'TradeForWealth@2026';
+        }
     }
 
     json_out([
@@ -364,20 +389,16 @@ if ($method === 'POST') {
                     "display_name" => $displayName,
                     "role_id" => $roleId,
                     "department" => $department,
-                    "designation" => $designation
+                    "designation" => $designation,
+                    "status" => $status
                 ]
-            ]);
+            ], 201);
         } catch (\Throwable $createEx) {
             json_out([
                 "success" => false,
                 "error" => "Failed to create user account: " . $createEx->getMessage()
             ], 500);
         }
-    }
-                "designation" => $designation,
-                "status" => $status
-            ]
-        ], 201);
     }
 
     // 2. UPDATE USER

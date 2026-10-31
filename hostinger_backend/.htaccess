@@ -4,6 +4,12 @@
 
 Options -Indexes
 
+<IfModule mod_rewrite.c>
+    RewriteEngine On
+    RewriteCond %{HTTP:Authorization} ^(.*)
+    RewriteRule .* - [e=HTTP_AUTHORIZATION:%1]
+</IfModule>
+
 # Block direct access to SQL schemas, database dumps, and documentation
 <FilesMatch "\.(sql|log|md|bak|json)$">
     <IfModule mod_authz_core.c>

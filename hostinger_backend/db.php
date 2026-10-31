@@ -362,17 +362,22 @@ if (!function_exists('canonical_role')) {
 function get_bearer_token() {
     if (!empty($_GET['token'])) return trim($_GET['token']);
     if (!empty($_GET['auth_token'])) return trim($_GET['auth_token']);
+    if (!empty($_SERVER['HTTP_X_AUTH_TOKEN'])) return trim($_SERVER['HTTP_X_AUTH_TOKEN']);
 
     $headers = null;
     if (isset($_SERVER['Authorization'])) {
         $headers = trim($_SERVER["Authorization"]);
     } else if (isset($_SERVER['HTTP_AUTHORIZATION'])) {
         $headers = trim($_SERVER["HTTP_AUTHORIZATION"]);
+    } else if (isset($_SERVER['HTTP_X_AUTHORIZATION'])) {
+        $headers = trim($_SERVER["HTTP_X_AUTHORIZATION"]);
     } elseif (function_exists('apache_request_headers')) {
         $requestHeaders = apache_request_headers();
         $requestHeaders = array_combine(array_map('ucwords', array_keys($requestHeaders)), array_values($requestHeaders));
         if (isset($requestHeaders['Authorization'])) {
             $headers = trim($requestHeaders['Authorization']);
+        } elseif (isset($requestHeaders['X-Auth-Token'])) {
+            return trim($requestHeaders['X-Auth-Token']);
         }
     }
     if (!empty($headers) && preg_match('/Bearer\s(\S+)/i', $headers, $matches)) {

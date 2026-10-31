@@ -33,8 +33,10 @@ const apiClient = {
 
     // Attach Bearer token if available
     const token = this.getAuthToken();
-    if (token && !headers['Authorization']) {
-      headers['Authorization'] = `Bearer ${token}`;
+    if (token) {
+      if (!headers['Authorization']) headers['Authorization'] = `Bearer ${token}`;
+      headers['X-Auth-Token'] = token;
+      headers['X-Authorization'] = `Bearer ${token}`;
     }
 
     // Handle JSON vs FormData

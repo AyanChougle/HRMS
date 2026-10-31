@@ -77,11 +77,53 @@ try {
         }
     }
 
+    // 3. Ensure every employee in employees table has a corresponding record in users table
+    $createdLogins = 0;
+    foreach ($employees as $emp) {
+        $empEmail = strtolower(trim(!empty($emp['email']) ? $emp['email'] : ($emp['work_email'] ?? '')));
+        if (empty($empEmail)) continue;
+
+        $checkU = $pdo->prepare("SELECT id FROM users WHERE LOWER(email) = :e OR (employee_code != '' AND employee_code = :c) LIMIT 1");
+        $checkU->execute([':e' => $empEmail, ':c' => $emp['employee_code']]);
+        if (!$checkU->fetch()) {
+            $userUid = !empty($emp['user_id']) ? $emp['user_id'] : ('emp_' . strtolower(str_replace(['-', ' '], '', $emp['employee_code'] ?: bin2hex(random_bytes(4)))));
+            $userPass = !empty($emp['initial_password']) ? $emp['initial_password'] : 'TradeForWealth@2026';
+            $hash = password_hash($userPass, PASSWORD_BCRYPT);
+            try {
+                $pdo->prepare("
+                    INSERT INTO users (
+                        uid, employee_code, email, password_hash, initial_password, display_name,
+                        first_name, last_name, phone, role_id, department, designation, status, company_id
+                    ) VALUES (
+                        :uid, :code, :email, :hash, :init_pwd, :name,
+                        :first, :last, :phone, :role, :dept, :desig, 'ACTIVE', 'comp_diallo_india'
+                    )
+                ")->execute([
+                    ':uid' => $userUid,
+                    ':code' => $emp['employee_code'],
+                    ':email' => $empEmail,
+                    ':hash' => $hash,
+                    ':init_pwd' => $userPass,
+                    ':name' => $emp['full_name'],
+                    ':first' => $emp['first_name'] ?? '',
+                    ':last' => $emp['last_name'] ?? '',
+                    ':phone' => $emp['phone'] ?? '',
+                    ':role' => mapToCanonicalRole($emp['role_id']),
+                    ':dept' => $emp['department'] ?? 'Operations',
+                    ':desig' => $emp['designation'] ?? 'Associate'
+                ]);
+                $createdLogins++;
+            } catch (\Throwable $e) {}
+        }
+    }
+
     echo json_encode([
         'success'           => true,
         'message'           => 'Role synchronization to 7 canonical roles complete (non-destructive).',
         'updated_employees' => $updatedEmployees,
-        'updated_users'     => $updatedUsers
+        'updated_users'     => $updatedUsers,
+        'created_logins'    => $createdLogins,
+        'synced'            => count($employees)
     ], JSON_PRETTY_PRINT);
 
 } catch (Exception $e) {

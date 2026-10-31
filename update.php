@@ -125,6 +125,44 @@ try {
         // Check employees count
         $eCount = $pdo->query("SELECT COUNT(*) FROM employees")->fetchColumn();
         echo "<div class='ok'>&nbsp;&nbsp;✔ Employees in database: {$eCount}</div>";
+
+        // Auto sync missing logins from employees to users table
+        try {
+            $missingStmt = $pdo->query("SELECT id, user_id, employee_code, email, work_email, full_name, first_name, last_name, phone, role_id, department, designation, initial_password FROM employees");
+            $allEmps = $missingStmt->fetchAll();
+            $syncedCount = 0;
+            foreach ($allEmps as $emp) {
+                $eMail = strtolower(trim(!empty($emp['email']) ? $emp['email'] : ($emp['work_email'] ?? '')));
+                if (empty($eMail)) continue;
+                $chk = $pdo->prepare("SELECT id FROM users WHERE LOWER(email) = :e OR (employee_code != '' AND employee_code = :c) LIMIT 1");
+                $chk->execute([':e' => $eMail, ':c' => $emp['employee_code']]);
+                if (!$chk->fetch()) {
+                    $uUid = !empty($emp['user_id']) ? $emp['user_id'] : ('emp_' . strtolower(str_replace(['-', ' '], '', $emp['employee_code'] ?: bin2hex(random_bytes(4)))));
+                    $uPass = !empty($emp['initial_password']) ? $emp['initial_password'] : 'TradeForWealth@2026';
+                    $pdo->prepare("
+                        INSERT INTO users (uid, employee_code, email, password_hash, initial_password, display_name, first_name, last_name, phone, role_id, department, designation, status, company_id)
+                        VALUES (:uid, :code, :email, :hash, :init_pwd, :name, :first, :last, :phone, :role, :dept, :desig, 'ACTIVE', 'comp_diallo_india')
+                    ")->execute([
+                        ':uid' => $uUid,
+                        ':code' => $emp['employee_code'],
+                        ':email' => $eMail,
+                        ':hash' => password_hash($uPass, PASSWORD_BCRYPT),
+                        ':init_pwd' => $uPass,
+                        ':name' => $emp['full_name'],
+                        ':first' => $emp['first_name'] ?? '',
+                        ':last' => $emp['last_name'] ?? '',
+                        ':phone' => $emp['phone'] ?? '',
+                        ':role' => canonical_role($emp['role_id']),
+                        ':dept' => $emp['department'] ?? 'Operations',
+                        ':desig' => $emp['designation'] ?? 'Associate'
+                    ]);
+                    $syncedCount++;
+                }
+            }
+            if ($syncedCount > 0) {
+                echo "<div class='ok'>&nbsp;&nbsp;✔ Provisioned {$syncedCount} missing user login accounts from employees table</div>";
+            }
+        } catch (\Throwable $e) {}
     }
 } catch (\Throwable $ex) {
     echo "<div class='warn'>[NOTICE] DB verification: " . htmlspecialchars($ex->getMessage()) . "</div>";

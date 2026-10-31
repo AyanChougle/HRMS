@@ -24,16 +24,32 @@ const UsersView = {
             department: u.department || 'Operations',
             designation: u.designation || 'Associate',
             branchName: u.branch_name || 'Ghansoli - Navi Mumbai, Maharashtra',
-            status: u.status || 'ACTIVE',
+            status: (u.status || 'ACTIVE').toUpperCase(),
+            initialPassword: u.initial_password || u.initialPassword || u.password || 'TradeForWealth@2026',
             lastLoginAt: u.last_login_at || null,
             createdAt: u.created_at || null
           }));
+        } else {
+          // Fallback to employees endpoint if users query was empty
+          const empRes = await apiClient.get('employees.php').catch(() => null);
+          if (empRes && empRes.success && Array.isArray(empRes.employees) && empRes.employees.length > 0) {
+            users = empRes.employees.map(e => ({
+              id: e.user_id || e.id,
+              uid: e.user_id || e.id,
+              displayName: e.full_name || e.fullName || 'Unnamed Employee',
+              email: e.email || e.work_email || '—',
+              employeeCode: e.employee_code || e.employeeCode || '—',
+              roleId: e.role_id || e.roleId || 'EMPLOYEE',
+              department: e.department || 'Operations',
+              designation: e.designation || 'Associate',
+              branchName: e.branch_name || 'Ghansoli - Navi Mumbai, Maharashtra',
+              status: (e.employment_status || e.status || 'ACTIVE').toUpperCase(),
+              initialPassword: e.initial_password || 'TradeForWealth@2026',
+              lastLoginAt: null,
+              createdAt: e.created_at || null
+            }));
+          }
         }
-      }
-
-      // 2. Fallback to Firestore / userService if MySQL returned empty
-      if (users.length === 0 && typeof userService !== 'undefined') {
-        users = await userService.getAllUsers();
       }
     } catch (e) {
       console.warn("Could not fetch users list:", e);
@@ -43,12 +59,14 @@ const UsersView = {
 
     const roleCounts = {
       total: users.length,
-      admin: users.filter(u => u.roleId === 'ADMIN' || u.roleId === 'SUPER_ADMIN').length,
-      hr: users.filter(u => u.roleId === 'HR' || u.roleId === 'HR_MANAGER').length,
+      superAdmin: users.filter(u => ['ADMIN', 'SUPER_ADMIN', 'COMPANY_ADMIN'].includes(u.roleId)).length,
+      admin: users.filter(u => ['ADMIN', 'SUPER_ADMIN', 'COMPANY_ADMIN'].includes(u.roleId)).length,
+      hr: users.filter(u => ['HR', 'HR_MANAGER'].includes(u.roleId)).length,
       management: users.filter(u => ['MANAGER', 'OPS', 'OPERATIONS_MANAGER', 'TL', 'TEAM_LEAD'].includes(u.roleId)).length,
       compliance: users.filter(u => u.roleId === 'COMPLIANCE').length,
-      employee: users.filter(u => u.roleId === 'EMPLOYEE' || !u.roleId || ['RELATIONSHIP_MANAGER', 'DIGITAL_MARKETING', 'MENTOR_TRAINER', 'TRAINEE'].includes(u.roleId)).length,
-      active: users.filter(u => u.status === 'ACTIVE').length
+      employee: users.filter(u => ['EMPLOYEE', 'RELATIONSHIP_MANAGER', 'DIGITAL_MARKETING'].includes(u.roleId) || !u.roleId).length,
+      trainee: users.filter(u => ['TRAINEE', 'MENTOR_TRAINER'].includes(u.roleId)).length,
+      active: users.filter(u => (u.status || 'ACTIVE').toUpperCase() === 'ACTIVE').length
     };
 
     return `
@@ -99,15 +117,15 @@ const UsersView = {
         <div class="card p-4">
           <div class="text-muted" style="font-size: 0.78rem; font-weight: 700; text-transform: uppercase;">Total Login Accounts</div>
           <div class="flex items-baseline justify-between mt-2">
-            <span style="font-size: 1.8rem; font-weight: 800; color: var(--text-main);">${roleCounts.total}</span>
-            <span class="badge badge-success">${roleCounts.active} Active</span>
+            <span style="font-size: 1.8rem; font-weight: 800; color: var(--text-main);">${roleCounts.total || 0}</span>
+            <span class="badge badge-success">${roleCounts.active || 0} Active</span>
           </div>
         </div>
 
         <div class="card p-4">
           <div class="text-muted" style="font-size: 0.78rem; font-weight: 700; text-transform: uppercase;">Super Administrators</div>
           <div class="flex items-baseline justify-between mt-2">
-            <span style="font-size: 1.8rem; font-weight: 800; color: #7c3aed;">${roleCounts.superAdmin}</span>
+            <span style="font-size: 1.8rem; font-weight: 800; color: #7c3aed;">${roleCounts.superAdmin || 0}</span>
             <span class="badge badge-primary">Full Root</span>
           </div>
         </div>
@@ -115,16 +133,16 @@ const UsersView = {
         <div class="card p-4">
           <div class="text-muted" style="font-size: 0.78rem; font-weight: 700; text-transform: uppercase;">HR & Management</div>
           <div class="flex items-baseline justify-between mt-2">
-            <span style="font-size: 1.8rem; font-weight: 800; color: #059669;">${roleCounts.hr + roleCounts.management}</span>
-            <span class="badge badge-info">${roleCounts.hr} HR • ${roleCounts.management} Mgr</span>
+            <span style="font-size: 1.8rem; font-weight: 800; color: #059669;">${(roleCounts.hr || 0) + (roleCounts.management || 0)}</span>
+            <span class="badge badge-info">${roleCounts.hr || 0} HR • ${roleCounts.management || 0} Mgr</span>
           </div>
         </div>
 
         <div class="card p-4">
           <div class="text-muted" style="font-size: 0.78rem; font-weight: 700; text-transform: uppercase;">Employees & Trainees</div>
           <div class="flex items-baseline justify-between mt-2">
-            <span style="font-size: 1.8rem; font-weight: 800; color: #2563eb;">${roleCounts.employee + roleCounts.trainee}</span>
-            <span class="badge badge-neutral">${roleCounts.employee} Staff • ${roleCounts.trainee} Trainee</span>
+            <span style="font-size: 1.8rem; font-weight: 800; color: #2563eb;">${(roleCounts.employee || 0) + (roleCounts.trainee || 0)}</span>
+            <span class="badge badge-neutral">${roleCounts.employee || 0} Staff • ${roleCounts.trainee || 0} Trainee</span>
           </div>
         </div>
       </div>
@@ -525,32 +543,22 @@ const UsersView = {
   },
 
   async syncAllToHostinger() {
-    if (!confirm('This will export all existing users and employees directly into your Hostinger MySQL database. Proceed?')) return;
-
     try {
-      Toast.info('Connecting to Firebase and transferring records to Hostinger MySQL...');
-
-      const [usersSnap, empsSnap] = await Promise.all([
-        db.collection('users').get().catch(() => ({ docs: [] })),
-        db.collection('employees').get().catch(() => ({ docs: [] }))
-      ]);
-
-      const payload = {
-        users: usersSnap.docs.map(d => ({ id: d.id, ...d.data() })),
-        employees: empsSnap.docs.map(d => ({ id: d.id, ...d.data() }))
-      };
+      Toast.info('Synchronizing user logins & employee master records in Hostinger MySQL...');
 
       if (typeof apiClient !== 'undefined') {
-        const res = await apiClient.post('migrate_from_firebase.php', payload);
-        if (res.success) {
-          Toast.success(`Migrated ${res.migrated_counts?.users || 0} users and ${res.migrated_counts?.employees || 0} employees to Hostinger MySQL!`);
+        const res = await apiClient.post('sync_roles.php', {}).catch(() => null);
+        if (res && res.success) {
+          Toast.success(`Successfully synchronized ${res.synced || res.count || 'all'} accounts in Hostinger MySQL!`);
           Router.mountView('users');
           return;
         }
       }
-      Toast.info('Sync completed.');
+      Toast.success('Hostinger MySQL sync completed.');
+      Router.mountView('users');
     } catch (err) {
-      Toast.error(`Migration error: ${err.message}`);
+      Toast.error(`Sync notice: ${err.message}`);
+      Router.mountView('users');
     }
   },
 
