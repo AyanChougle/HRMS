@@ -71,7 +71,7 @@ try {
         $params = [];
 
         if (!empty($emailParam)) {
-            $sql .= " AND (email = :email OR work_email = :email)";
+            $sql .= " AND email = :email";
             $params[':email'] = $emailParam;
         }
 
@@ -200,10 +200,16 @@ try {
             $newUid = 'emp_' . ($cleanCode ?: bin2hex(random_bytes(6)));
             $hash = password_hash($password, PASSWORD_BCRYPT);
 
-            // Ensure initial_password column exists
+            // Ensure initial_password column exists if not already present
             try {
-                $pdo->exec("ALTER TABLE users ADD COLUMN initial_password VARCHAR(255) DEFAULT NULL AFTER password_hash");
-                $pdo->exec("ALTER TABLE employees ADD COLUMN initial_password VARCHAR(255) DEFAULT NULL");
+                $hasCol = $pdo->query("SHOW COLUMNS FROM users LIKE 'initial_password'")->fetch();
+                if (!$hasCol) {
+                    $pdo->exec("ALTER TABLE users ADD COLUMN initial_password VARCHAR(255) DEFAULT NULL AFTER password_hash");
+                }
+                $hasEmpCol = $pdo->query("SHOW COLUMNS FROM employees LIKE 'initial_password'")->fetch();
+                if (!$hasEmpCol) {
+                    $pdo->exec("ALTER TABLE employees ADD COLUMN initial_password VARCHAR(255) DEFAULT NULL");
+                }
             } catch (\Throwable $e) {}
 
             // Insert or Update in users table

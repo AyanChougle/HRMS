@@ -28,11 +28,10 @@ try {
 
         $cleanLoginCode = strtoupper(str_replace('-', '', $loginId));
 
-        // 1. Find user in users table by Email, Work Email, Employee Code (with/without dash), or UID
+        // 1. Find user in users table by Email, Employee Code (with/without dash), or UID
         $stmt = $pdo->prepare("
             SELECT * FROM users 
             WHERE LOWER(TRIM(email)) = :login1 
-               OR (work_email IS NOT NULL AND LOWER(TRIM(work_email)) = :login1)
                OR UPPER(TRIM(employee_code)) = UPPER(:login2)
                OR REPLACE(UPPER(TRIM(employee_code)), '-', '') = :cleancode
                OR uid = :login1
